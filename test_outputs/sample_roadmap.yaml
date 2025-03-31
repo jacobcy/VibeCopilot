@@ -1,0 +1,126 @@
+title: "VibeCopilot 产品路线图"
+description: "VibeCopilot 项目的产品路线图，包含了主要功能和里程碑规划。"
+milestones:
+  - id: "M1"
+    name: "MVP原型版"
+    description: "最小可行产品版本，包含核心功能"
+    status: "completed"
+    start_date: "2023-05-01"
+    end_date: "2023-06-30"
+    tasks:
+      - id: "M1-1"
+        title: "设计产品架构"
+        description: "定义产品的整体架构和技术栈"
+        milestone: "M1"
+        status: "completed"
+        priority: "P1"
+        assignees: ["user1"]
+
+      - id: "M1-2"
+        title: "实现基础UI框架"
+        description: "创建基础UI框架和组件库"
+        milestone: "M1"
+        status: "completed"
+        priority: "P1"
+        assignees: ["user2"]
+
+      - id: "M1-3"
+        title: "开发数据采集模块"
+        description: "实现基础数据采集功能"
+        milestone: "M1"
+        status: "completed"
+        priority: "P2"
+        assignees: ["user3"]
+
+  - id: "M2"
+    name: "Alpha测试版"
+    description: "内部测试版本，完善核心功能"
+    status: "in_progress"
+    start_date: "2023-07-01"
+    end_date: "2023-08-31"
+    tasks:
+      - id: "M2-1"
+        title: "优化UI体验"
+        description: "改进用户界面和交互体验"
+        milestone: "M2"
+        status: "completed"
+        priority: "P2"
+        assignees: ["user2"]
+
+      - id: "M2-2"
+        title: "实现数据分析功能"
+        description: "添加基础数据分析和可视化功能"
+        milestone: "M2"
+        status: "in_progress"
+        priority: "P1"
+        assignees: ["user3", "user4"]
+
+      - id: "M2-3"
+        title: "添加用户权限管理"
+        description: "实现基本的用户权限控制"
+        milestone: "M2"
+        status: "todo"
+        priority: "P2"
+        assignees: ["user1"]
+
+  - id: "M3"
+    name: "Beta公测版"
+    description: "对外公测版本，功能更加完善"
+    status: "planned"
+    start_date: "2023-09-01"
+    end_date: "2023-11-30"
+    tasks:
+      - id: "M3-1"
+        title: "实现高级分析功能"
+        description: "增加高级数据分析和预测功能"
+        milestone: "M3"
+        status: "planned"
+        priority: "P1"
+        assignees: []
+
+      - id: "M3-2"
+        title: "添加API接口"
+        description: "提供对外API接口"
+        milestone: "M3"
+        status: "planned"
+        priority: "P2"
+        assignees: []
+
+      - id: "M3-3"
+        title: "提升系统性能"
+        description: "优化系统性能和稳定性"
+        milestone: "M3"
+        status: "planned"
+        priority: "P2"
+        assignees: []
+
+  - id: "M4"
+    name: "1.0正式版"
+    description: "正式发布版本，功能完整"
+    status: "planned"
+    start_date: "2023-12-01"
+    end_date: "2024-02-28"
+    tasks:
+      - id: "M4-1"
+        title: "支持更多数据源"
+        description: "增加对更多第三方数据源的支持"
+        milestone: "M4"
+        status: "planned"
+        priority: "P2"
+        assignees: []
+
+      - id: "M4-2"
+        title: "完善文档和示例"
+        description: "编写全面的使用文档和示例"
+        milestone: "M4"
+        status: "planned"
+        priority: "P2"
+        assignees: []
+
+      - id: "M4-3"
+        title: "产品正式发布"
+        description: "产品正式发布上线"
+        milestone: "M4"
+        status: "planned"
+        priority: "P0"
+        assignees: []

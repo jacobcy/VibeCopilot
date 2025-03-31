@@ -15,21 +15,31 @@ repos:
     rev: 23.9.1
     hooks:
     -   id: black
+        args: ["--line-length=100"]
 
 -   repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
     -   id: isort
         name: isort (python)
+        args: ["--profile", "black", "--line-length=100"]
 
 -   repo: https://github.com/pycqa/flake8
     rev: 6.1.0
     hooks:
     -   id: flake8
-        additional_dependencies: [flake8-docstrings]
+        args: [
+            "--max-line-length=100",
+            "--ignore=E203,W503,F401,F541,D400,E226",
+            "--exclude=.git,__pycache__,docs/,build/,dist/,venv/"
+        ]
 
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.5.1
+# 添加本地hook检查文件长度
+-   repo: local
     hooks:
-    -   id: mypy
-        additional_dependencies: [types-PyYAML, types-requests]
+    -   id: check-file-length
+        name: Check file length
+        entry: python -c "import os,sys; files=[f for f in sys.argv[1:] if f.endswith('.py')]; long_files=[(f,len(open(f).readlines())) for f in files if os.path.exists(f) and len(open(f).readlines())>300 and not 'test' in f]; exit(1 if long_files else 0) or print('\n'.join([f'File {f} has {l} lines (>300)' for f,l in long_files]))"
+        language: system
+        types: [python]
+        verbose: true

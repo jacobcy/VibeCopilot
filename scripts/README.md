@@ -1,6 +1,75 @@
-# VibeCopilot 项目脚本
+# VibeCopilot 工具脚本
 
-本目录包含VibeCopilot项目中使用的各种辅助脚本。
+本目录包含VibeCopilot项目的各种工具脚本，用于自动化项目管理和开发流程。
+
+## 目录结构
+
+```
+/scripts
+├── github/            # GitHub相关工具
+│   ├── api/           # GitHub API封装
+│   ├── projects/      # GitHub Projects管理工具
+│   └── issues/        # Issues和PR管理工具
+├── setup/             # 环境设置和项目初始化工具
+│   ├── init_project.py # 项目初始化脚本
+│   └── ...
+├── project/           # 项目管理工具
+│   ├── docs_sync.py   # 文档同步检查
+│   └── ...
+└── utils/             # 通用工具函数
+    ├── file_operations.py # 文件操作工具
+    └── ...
+```
+
+## 使用方法
+
+所有脚本都设计为命令行工具，支持`--help`参数查看详细用法：
+
+```bash
+python scripts/<script_path>.py --help
+```
+
+### 环境要求
+
+- Python 3.8+
+- 相关依赖在`requirements.txt`中指定
+
+### 常用脚本
+
+1. **项目初始化**
+```bash
+python scripts/setup/init_project.py --name "MyProject" --template python
+```
+
+2. **创建GitHub项目**
+```bash
+python scripts/github/projects/create_project.py --name "项目路线图"
+```
+
+3. **导入路线图**
+```bash
+python scripts/github/projects/import_roadmap.py --file docs/project/roadmap/development_roadmap.md
+```
+
+4. **添加Issues到项目**
+```bash
+python scripts/github/issues/add_to_project.py --title "实现功能X" --project-number 1
+```
+
+## 开发指南
+
+如需添加新脚本，请遵循以下规范：
+
+1. 按功能分类放置在合适的子目录中
+2. 每个脚本只处理一个主要功能
+3. 提供详细的命令行参数说明
+4. 使用`utils`中的通用函数，避免代码重复
+5. 添加适当的错误处理和日志记录
+6. 遵循项目的编码规范和文档标准
+
+## 贡献
+
+欢迎提交PR改进这些脚本。请确保所有新脚本都包含详细的文档和测试。
 
 ## GitHub Projects路线图脚本
 

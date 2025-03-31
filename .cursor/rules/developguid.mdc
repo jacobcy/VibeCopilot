@@ -25,15 +25,15 @@ alwaysApply: true
 - 相关功能应放在同一个模块下
 - 测试文件应放在tests目录下
 - 模块内功能按逻辑分组，使用空行分隔
+- 单个文件不应该超过300行，否则应拆分成更小的逻辑单元
 
 ## 项目目录结构
 - 遵循以下标准化目录结构:
   * `/docs/ai` - AI阅读的文档
-  * `/docs/human` - 人类阅读的文档
-  * `/docs/project` - 项目规划文档
+  * `/docs/user` - 用户阅读的文档
+  * `/docs/dev` - 开发者阅读的详细文档
+  * `/docs/shared` - 文档和提示词模版
   * `/scripts` - 工具脚本，按功能分类
-  * `/tools` - 工具使用指南
-  * `/templates` - 项目模板
 
 ## Commit规范
 - 使用Conventional Commits标准

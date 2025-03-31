@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+"""VibeCopilot安装配置脚本."""
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -30,7 +31,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "vibecopilot=src.main:main",
+            "vibecopilot=vibecopilot.main:app",
         ],
     },
     include_package_data=True,
