@@ -1,0 +1,47 @@
+name: Update Roadmap Status
+
+on:
+  # 每天凌晨运行
+  schedule:
+    - cron: '0 0 * * *'
+  # 允许手动触发
+  workflow_dispatch:
+  # 当项目相关文件变更时触发
+  push:
+    paths:
+      - 'docs/9_Development_Roadmap.md'
+      - 'scripts/github_projects.py'
+      - '.github/workflows/roadmap-update.yml'
+
+jobs:
+  update-roadmap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Generate Roadmap Status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/github_projects.py -s reports/roadmap_status.md
+          python scripts/github_projects.py -f json -s reports/roadmap_status.json
+
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add reports/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "docs: update roadmap status [skip ci]" && git push)
