@@ -24,6 +24,19 @@ repos:
         name: isort (python)
         args: ["--profile", "black", "--line-length=100"]
 
+# 添加Markdown语法检查
+-   repo: local
+    hooks:
+    -   id: markdownlint
+        name: markdownlint
+        description: "Checks Markdown files for style and syntax"
+        entry: markdownlint
+        language: node
+        types: [markdown]
+        args: ["--fix"]
+        # 排除自动生成的文件和特定目录
+        exclude: '^(website/build/|website/.docusaurus/|vibecopilot.egg-info/)'
+
 # 暂时将flake8设为只发出警告不阻止提交
 -   repo: https://github.com/pycqa/flake8
     rev: 6.1.0
