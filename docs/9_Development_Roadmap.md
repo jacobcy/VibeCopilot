@@ -75,9 +75,49 @@ query {
 brew install gh  # macOS
 # 登录
 gh auth login
-# 查看项目
-gh project view "VibeCopilot Roadmap"
+# 如果遇到权限问题，刷新令牌添加项目访问权限
+gh auth refresh -s read:project
+# 查看项目列表获取项目编号
+gh project list --owner jacobcy
+# 使用项目编号查看项目（替换 <number> 为实际项目编号）
+gh project view <number>
+# 或者使用网页模式打开
+gh project view --web "VibeCopilot Roadmap"
 ```
+
+### 2.4 导入路线图数据
+
+项目路线图数据可以通过导入脚本从本地YAML文件导入到GitHub Projects:
+
+```bash
+# 确保你的GitHub令牌具有以下权限:
+# - repo (仓库完整访问权限)
+# - read:org (组织读取权限)
+# - project (项目权限)
+
+# 方法1: 使用环境变量设置令牌
+export GITHUB_TOKEN=your_token_here
+python scripts/import_roadmap_to_github.py --create-project
+
+# 方法2: 直接在命令行指定令牌
+python scripts/import_roadmap_to_github.py --create-project --token your_token_here
+
+# 如果你使用gh cli已登录，可以这样使用:
+python scripts/import_roadmap_to_github.py --create-project --token $(gh auth token)
+```
+
+**注意**: 导入脚本需要`read:org`权限来获取GitHub用户ID，请确保你的令牌包含此权限。
+
+#### 将现有Issues添加到项目
+
+如果你已经创建了项目和Issues，但需要将Issues添加到项目中，可以使用以下脚本：
+
+```bash
+# 确保设置了GITHUB_TOKEN环境变量或使用gh cli已登录
+python scripts/add_issues_to_project.py --owner jacobcy --repo VibeCopilot --project-number 3
+```
+
+其中`--project-number`是GitHub Projects的编号，可以通过`gh project list --owner jacobcy`命令获取。
 
 ## 3. 项目开发阶段概览
 
