@@ -47,3 +47,13 @@ htmlcov/
 *.log
 logs/
 .cache/
+
+# Node.js / Docusaurus
+node_modules/
+website/node_modules/
+website/.docusaurus/
+website/build/
+website/package-lock.json
+
+# Obsidian
+.obsidian/
