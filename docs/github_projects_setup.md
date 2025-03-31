@@ -30,7 +30,7 @@
 确保已安装必要的Python依赖：
 
 ```bash
-pip install pyyaml requests
+pip install pyyaml requests python-dotenv
 ```
 
 ## 导入路线图数据
@@ -38,6 +38,24 @@ pip install pyyaml requests
 ### 方法1：使用导入脚本
 
 我们提供了一个Python脚本，可以自动将本地路线图数据导入到GitHub：
+
+#### A. 使用环境变量文件（推荐）
+
+1. 复制示例环境变量文件并编辑：
+```bash
+cp .env.sample .env
+```
+
+2. 在`.env`文件中填入您的GitHub令牌和其他配置信息
+
+3. 运行导入脚本：
+```bash
+python scripts/import_roadmap_to_github.py --create-project
+```
+
+#### B. 使用命令行参数
+
+直接在命令行指定所有参数：
 
 ```bash
 # 导出GitHub令牌到环境变量

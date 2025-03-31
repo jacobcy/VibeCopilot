@@ -5,6 +5,13 @@
 
 此脚本读取本地YAML格式的路线图数据，
 并将其导入到GitHub Projects中，创建对应的milestone、issues和项目视图。
+
+使用方法:
+1. 复制 .env.sample 为 .env 并填入您的GitHub令牌
+2. 运行: python scripts/import_roadmap_to_github.py
+
+或者直接指定参数:
+python scripts/import_roadmap_to_github.py --owner jacobcy --repo VibeCopilot --file data/roadmap.yaml
 """
 
 import os
@@ -16,6 +23,15 @@ from typing import Dict, List, Any, Optional
 
 import requests
 from datetime import datetime
+
+# 尝试导入dotenv库用于加载环境变量
+try:
+    from dotenv import load_dotenv
+    # 加载.env文件中的环境变量
+    load_dotenv()
+except ImportError:
+    print("提示: 未安装dotenv库，将不会从.env文件加载环境变量")
+    print("可以运行 'pip install python-dotenv' 安装该库")
 
 
 class GitHubImporter:
@@ -570,11 +586,19 @@ def main() -> None:
     """主函数."""
     parser = argparse.ArgumentParser(description="将路线图数据导入到GitHub Projects")
     parser.add_argument("-t", "--token", help="GitHub个人访问令牌")
-    parser.add_argument("-o", "--owner", default="jacobcy", help="仓库所有者")
-    parser.add_argument("-r", "--repo", default="VibeCopilot", help="仓库名称")
+    parser.add_argument(
+        "-o", "--owner",
+        default=os.environ.get("GITHUB_OWNER", "jacobcy"),
+        help="仓库所有者"
+    )
+    parser.add_argument(
+        "-r", "--repo",
+        default=os.environ.get("GITHUB_REPO", "VibeCopilot"),
+        help="仓库名称"
+    )
     parser.add_argument(
         "-f", "--file",
-        default="data/roadmap.yaml",
+        default=os.environ.get("ROADMAP_DATA_FILE", "data/roadmap.yaml"),
         help="YAML格式的路线图数据文件路径"
     )
     parser.add_argument(
@@ -584,13 +608,19 @@ def main() -> None:
     )
     parser.add_argument(
         "--project-title",
-        default="VibeCopilot Roadmap",
+        default=os.environ.get("ROADMAP_PROJECT_TITLE", "VibeCopilot Roadmap"),
         help="GitHub Project标题"
     )
 
     args = parser.parse_args()
 
-    importer = GitHubImporter(args.token)
+    # 如果命令行没有提供token，尝试从环境变量获取
+    token = args.token or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        print("错误: 未提供GitHub令牌，请设置GITHUB_TOKEN环境变量或使用--token参数")
+        sys.exit(1)
+
+    importer = GitHubImporter(token)
 
     # 加载路线图数据
     roadmap_data = importer.load_roadmap_data(args.file)
