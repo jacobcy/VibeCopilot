@@ -7,6 +7,18 @@
                 "@modelcontextprotocol/server-filesystem",
                 "/Users/chenyi/Public/VibeCopilot"
             ]
+        },
+        "server-github-npx": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-github"
+            ],
+            "envFile": ".env.github"
+        },
+        "git": {
+            "command": "uvx",
+            "args": ["mcp-server-git", "--repository", "/Users/chenyi/Public/VibeCopilot"]
         }
     }
 }

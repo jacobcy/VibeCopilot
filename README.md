@@ -1,83 +1,103 @@
-# VibeCopilot
+# VibeCopilot - 智能项目管理助手
 
-VibeCopilot 是一个 AI 驱动的开发工作流助手，旨在通过结构化的方法和人工智能的辅助，为开发者提供更高效的编码体验。
+VibeCopilot是一个为开发者设计的智能项目管理工具，旨在通过AI辅助和规范化流程，提高项目质量和开发效率。
 
-## 特点
+## 🌟 主要功能
 
-- 🧠 **AI 辅助开发**：集成 AI 模型，提供智能代码生成、重构和优化建议
-- 📝 **文档生成**：自动生成项目文档、API 文档和开发指南
-- 🔍 **项目分析**：分析代码结构、依赖关系和项目健康度
-- 🛠️ **工作流管理**：提供结构化开发流程和任务管理
-- 🧩 **模板系统**：支持各种项目类型的标准化模板
+- **规范化开发流程** - 引导开发者遵循专业的项目开发生命周期
+- **AI辅助集成** - 优化与Cursor等AI工具的协作效率
+- **文档生成与管理** - 自动化文档创建和更新
+- **GitHub Projects集成** - 路线图和任务管理自动化
+- **项目模板库** - 快速启动新项目的标准化模板
 
-## 安装
+## 📋 项目结构
 
+```
+/VibeCopilot
+├── .cursor               # Cursor AI配置
+├── docs                  # 项目文档
+│   ├── ai                # AI读取的文档
+│   ├── human             # 人类阅读的文档
+│   └── project           # 项目规划文档
+├── scripts               # 工具脚本
+├── tools                 # 工具使用指南
+├── templates             # 项目模板
+└── src                   # 源代码(开发中)
+```
+
+## 🚀 快速开始
+
+### 安装
+
+1. 克隆仓库:
 ```bash
-# 使用pip安装
-pip install vibecopilot
-
-# 或者从源码安装
-git clone https://github.com/jacobcy/VibeCopilot.git
+git clone https://github.com/yourusername/VibeCopilot.git
 cd VibeCopilot
-pip install -e .
 ```
 
-## 快速开始
-
-初始化一个新项目：
-
+2. 创建虚拟环境:
 ```bash
-vibecopilot init --name my-awesome-project --template python-web
-```
-
-分析现有项目：
-
-```bash
-vibecopilot analyze /path/to/project --output markdown
-```
-
-## 文档
-
-查看我们的[完整文档](docs/)，了解更多关于：
-
-- [项目需求文档](docs/1_Project_Requirements_Document_PRD.md)
-- [应用流程](docs/2_App_Flow.md)
-- [技术栈](docs/3_Tech_Stack.md)
-- [前端指南](docs/4_Frontend_Guidelines.md)
-- [后端结构](docs/5_Backend_Structure.md)
-- [AI规则](docs/6_AI_Rules.md)
-- [实施计划](docs/7_Implementation_Plan.md)
-- [最佳实践](docs/8_Best_Practices.md)
-- [开发路线图](docs/9_Development_Roadmap.md)
-
-## 开发
-
-设置开发环境：
-
-```bash
-# 创建并激活虚拟环境
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
+source .venv/bin/activate  # Linux/macOS
 # 或
-.venv\Scripts\activate  # Windows
-
-# 安装开发依赖
-pip install -e ".[dev]"
-
-# 安装pre-commit钩子
-pre-commit install
+.venv\Scripts\activate     # Windows
 ```
 
-运行测试：
-
+3. 安装依赖:
 ```bash
-pytest
+pip install -r requirements.txt
 ```
 
-## 贡献
+### 使用方法
 
-欢迎贡献！请查看我们的[贡献指南](CONTRIBUTING.md)了解如何参与项目。
+1. **查看入门指南**:
+```bash
+cat docs/human/guides/getting_started.md
+```
 
-## 许可证
+2. **使用项目模板**:
+```bash
+python scripts/setup/init_project.py --name "MyProject" --template python
+```
 
-本项目采用 MIT 许可证 - 详情请查看 [LICENSE](LICENSE) 文件。
+3. **与GitHub Projects集成**:
+```bash
+python scripts/github/create_project.py --name "项目路线图"
+```
+
+## 📚 文档
+
+- **用户指南**: [docs/human/guides](docs/human/guides/)
+- **教程**: [docs/human/tutorials](docs/human/tutorials/)
+- **AI规则**: [docs/ai/rules](docs/ai/rules/)
+- **工具指南**: [tools](tools/)
+
+## 🛠️ 开发
+
+### 开发流程
+
+VibeCopilot采用"开发流程五步法":
+
+1. **遵守规范** - 严格遵循项目编码和文档规范
+2. **确认需求** - 明确开发目标和范围
+3. **制定计划** - 分解任务，设计解决方案
+4. **修改代码** - 实现功能，保证质量
+5. **总结报告** - 记录过程和结果
+
+### 贡献指南
+
+1. Fork仓库
+2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建Pull Request
+
+## 📄 许可证
+
+本项目采用MIT许可证 - 详见[LICENSE](LICENSE)文件
+
+## 📞 联系方式
+
+项目维护者 - [@yourusername](https://github.com/yourusername)
+
+项目链接: [https://github.com/yourusername/VibeCopilot](https://github.com/yourusername/VibeCopilot)
