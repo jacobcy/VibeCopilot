@@ -1,0 +1,36 @@
+{
+  "obsidian": {
+    "vault_dir": "/Users/chenyi/Public/VibeCopilot/docs",
+    "exclude_patterns": [
+      ".obsidian/**",
+      ".git/**",
+      "**/.DS_Store",
+      "**/node_modules/**"
+    ],
+    "plugins": [
+      "dataview",
+      "templater",
+      "obsidian-git"
+    ]
+  },
+  "docusaurus": {
+    "content_dir": "/Users/chenyi/Public/VibeCopilot/website/docs",
+    "sidebar_category_order": [
+      "指南",
+      "API文档",
+      "教程",
+      "参考"
+    ]
+  },
+  "sync": {
+    "auto_sync": true,
+    "watch_for_changes": true,
+    "sync_on_startup": true,
+    "backup_before_sync": true
+  },
+  "templates": {
+    "template_dir": "/Users/chenyi/Public/VibeCopilot/templates",
+    "default_template": "default",
+    "default_category": "未分类"
+  }
+}

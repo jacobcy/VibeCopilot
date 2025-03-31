@@ -16,7 +16,7 @@ fi
 
 # 启动同步监控
 echo "正在启动文档同步监控..."
-python scripts/docs/obsidian_sync.py --watch
+python scripts/docs/obsidian/sync.py --watch
 
 # 如果用户按下Ctrl+C，优雅退出
 trap "echo '停止监控'; exit 0" SIGINT SIGTERM

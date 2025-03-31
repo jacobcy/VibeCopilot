@@ -330,10 +330,10 @@ python -m vibecopilot.tools.quality_dashboard --output=reports/quality
 
 ## 11. 资源与参考
 
-- [Pytest 文档](https://docs.pytest.org/)
-- [Jest 文档](https://jestjs.io/docs/getting-started)
-- [Playwright 文档](https://playwright.dev/docs/intro)
-- [GitHub Actions 文档](https://docs.github.com/en/actions)
+- [Pytest 文档](https://docs.pytest.org/.md)
+- [Jest 文档](https://jestjs.io/docs/getting-started.md)
+- [Playwright 文档](https://playwright.dev/docs/intro.md)
+- [GitHub Actions 文档](https://docs.github.com/en/actions.md)
 
 ---
 

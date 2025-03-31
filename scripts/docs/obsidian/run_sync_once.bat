@@ -16,7 +16,7 @@ if exist .venv\Scripts\activate.bat (
 
 REM 执行同步
 echo 开始同步所有文档...
-python scripts/docs/obsidian_sync.py --sync-all
+python scripts/docs/obsidian/sync.py --sync-all
 
 REM 等待用户输入以防止窗口立即关闭
 echo 同步完成。按任意键退出...

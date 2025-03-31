@@ -21,11 +21,11 @@ fi
 
 # 同步所有文档
 echo "正在同步文档..."
-python scripts/docs/obsidian_sync.py --sync-all
+python scripts/docs/obsidian/sync.py --sync-all
 
 # 验证链接
 echo "验证文档链接..."
-python scripts/docs/obsidian_sync.py --validate
+python scripts/docs/obsidian/sync.py --validate
 
 # 确认是否继续
 read -p "是否继续构建和部署网站？[y/N] " response
@@ -36,7 +36,7 @@ fi
 
 # 生成侧边栏配置
 echo "正在生成侧边栏配置..."
-python scripts/docs/obsidian_sync.py --sidebar --output website/sidebars.json
+python scripts/docs/obsidian/sync.py --sidebar --output website/sidebars.json
 
 # 构建网站
 echo "正在构建Docusaurus网站..."

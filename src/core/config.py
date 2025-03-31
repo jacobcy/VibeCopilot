@@ -7,16 +7,15 @@ VibeCopilot配置管理模块
 3. 配置验证
 """
 
-import os
 import json
-from pathlib import Path
-from typing import Dict, Any, Optional
 import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -47,8 +46,9 @@ DEFAULT_CONFIG = {
         "enable_command_line": True,
         "enable_mcp": True,
         "enable_web_ui": False,
-    }
+    },
 }
+
 
 class ConfigManager:
     """配置管理器类"""
@@ -90,7 +90,7 @@ class ConfigManager:
         """
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, 'r') as f:
+                with open(self.config_path, "r") as f:
                     config = json.load(f)
                     logger.info(f"配置已从 {self.config_path} 加载")
                     # 合并默认配置，确保所有必要的键存在
@@ -139,7 +139,7 @@ class ConfigManager:
             保存是否成功
         """
         try:
-            with open(self.config_path, 'w') as f:
+            with open(self.config_path, "w") as f:
                 json.dump(config, f, indent=2)
             logger.info(f"配置已保存到 {self.config_path}")
             return True
@@ -183,7 +183,7 @@ class ConfigManager:
         Returns:
             配置值或默认值
         """
-        keys = key_path.split('.')
+        keys = key_path.split(".")
         value = self.config
 
         for key in keys:
@@ -206,7 +206,7 @@ class ConfigManager:
         Returns:
             设置是否成功
         """
-        keys = key_path.split('.')
+        keys = key_path.split(".")
         config = self.config
 
         # 导航到最后一个键之前的所有键
@@ -222,8 +222,10 @@ class ConfigManager:
             return self.save_config(self.config)
         return True
 
+
 # 全局配置实例
 config_manager = ConfigManager()
+
 
 def get_config() -> ConfigManager:
     """

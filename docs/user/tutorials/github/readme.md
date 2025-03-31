@@ -25,8 +25,8 @@
 ## 🆘 需要帮助？
 
 - 遇到问题？查看我们的[常见问题解答](../faq.md)
-- 想要更多帮助？加入我们的[社区讨论](https://github.com/VibeCopilot/discussions)
-- 发现 Bug？[提交问题](https://github.com/VibeCopilot/issues)
+- 想要更多帮助？加入我们的[社区讨论](https://github.com/VibeCopilot/discussions.md)
+- 发现 Bug？[提交问题](https://github.com/VibeCopilot/issues.md)
 
 ## 💡 小贴士
 
@@ -78,6 +78,7 @@ python -m scripts.github.projects.main import \
 ```
 
 支持的格式：
+
 - YAML格式（.yaml, .yml）
 - Markdown格式（.md, .markdown）
 
@@ -94,6 +95,7 @@ python -m scripts.github.projects.main generate \
 ```
 
 可以指定生成的格式：
+
 - `--json`: 生成JSON格式
 - `--markdown`: 生成Markdown格式
 - `--html`: 生成HTML格式
@@ -113,6 +115,7 @@ python -m scripts.github.projects.main export \
 ```
 
 支持的导出格式：
+
 - YAML格式（默认）
 - JSON格式（使用 `--format json`）
 

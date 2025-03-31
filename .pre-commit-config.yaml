@@ -35,7 +35,23 @@ repos:
         types: [markdown]
         args: ["--fix"]
         # 排除自动生成的文件和特定目录
-        exclude: '^(website/build/|website/.docusaurus/|vibecopilot.egg-info/)'
+        exclude: '^(website/|node_modules/|vibecopilot.egg-info/)'
+
+# 添加文档链接检查
+-   repo: local
+    hooks:
+    -   id: docs-links-check
+        name: Docs links checker
+        description: "Checks documentation links validity"
+        entry: node scripts/hooks/check_docs_links.js
+        language: node
+        # 仅在修改Markdown文件时运行
+        types: [markdown]
+        # 仅检查文档目录
+        files: '^website/docs/'
+        # 默认只发出警告，不阻止提交
+        verbose: true
+        stages: [pre-commit]
 
 # 暂时将flake8设为只发出警告不阻止提交
 -   repo: https://github.com/pycqa/flake8

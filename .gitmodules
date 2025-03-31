@@ -1,0 +1,3 @@
+[submodule "scripts/docs/tools/obsidiosaurus"]
+	path = scripts/docs/tools/obsidiosaurus
+	url = https://github.com/CIMSTA/obsidiosaurus.git

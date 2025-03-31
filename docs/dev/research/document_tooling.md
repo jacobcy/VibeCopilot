@@ -21,6 +21,7 @@
 ### 1. Docusaurus
 
 **优势**：
+
 - 强大的文档版本控制
 - 优秀的交叉链接支持（MDX + React）
 - 自动目录生成与侧边栏导航
@@ -30,11 +31,13 @@
 - Facebook 开发维护，社区活跃
 
 **劣势**：
+
 - 需要 React 知识来充分利用
 - 初始设置较复杂
 - 构建时间可能较长
 
 **特色功能**：
+
 - 内置的文档版本控制
 - 自动生成 API 文档
 - 与 GitHub 集成的编辑链接
@@ -42,6 +45,7 @@
 ### 2. MkDocs + Material 主题
 
 **优势**：
+
 - 简单快速的设置流程
 - 自动生成目录和导航
 - 强大的搜索功能
@@ -49,17 +53,20 @@
 - 适合技术文档
 
 **劣势**：
+
 - 功能相对简单
 - 交叉链接需要手动管理
 - 自定义需要更多工作
 
 **特色功能**：
+
 - 导航结构自动生成
 - 强大的 Material Design 主题选项
 
 ### 3. mdBook
 
 **优势**：
+
 - 轻量级且快速
 - 简单易用的配置
 - 良好的目录生成
@@ -67,28 +74,33 @@
 - Rust 编写，性能优秀
 
 **劣势**：
+
 - 功能相对基础
 - 扩展性有限
 - 自动交叉链接支持有限
 
 **特色功能**：
+
 - 可打印格式支持
 - 内置搜索功能
 
 ### 4. Docsify
 
 **优势**：
+
 - 零构建步骤（直接加载 Markdown）
 - 快速部署
 - 简单的配置
 - 插件系统丰富
 
 **劣势**：
+
 - 客户端渲染可能影响性能
 - SEO 支持较弱
 - 自动链接生成支持有限
 
 **特色功能**：
+
 - 实时预览变更
 - 无需构建过程
 
@@ -178,7 +190,7 @@ glob('docs/**/*.md', (err, files) => {
       content = content.replace(regex, match => {
         if (count < maxOccurrences) {
           count++;
-          return `[${match}](${link})`;
+          return `[${match}](${link}.md)`;
         }
         return match;
       });
@@ -252,7 +264,7 @@ Object.entries(categorized).forEach(([category, docs]) => {
   indexContent += '| 文档 | 路径 | 描述 |\n|------|------|------|\n';
 
   docs.forEach(doc => {
-    indexContent += `| [${doc.title}](/${doc.path}) | \`${doc.path}\` | ${doc.summary} |\n`;
+    indexContent += `| [${doc.title}](/${doc.path}.md) | \`${doc.path}\` | ${doc.summary} |\n`;
   });
 
   indexContent += '\n';
@@ -270,6 +282,7 @@ console.log('索引生成完成');
 ### 主要推荐：Docusaurus
 
 Docusaurus 提供了最完整的文档解决方案，特别是：
+
 - 自动生成的侧边栏和导航
 - 强大的版本控制支持
 - MDX 支持，允许在文档中嵌入交互组件

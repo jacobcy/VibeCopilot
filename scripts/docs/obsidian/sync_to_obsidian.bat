@@ -16,7 +16,7 @@ if exist .venv\Scripts\activate.bat (
 
 REM 启动同步监控
 echo 正在启动文档同步监控...
-python scripts/docs/obsidian_sync.py --watch
+python scripts/docs/obsidian/sync.py --watch
 
 REM 等待用户输入以防止窗口立即关闭
 pause

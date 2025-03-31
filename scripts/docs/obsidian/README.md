@@ -25,17 +25,17 @@
 
 ## 高级用法
 
-所有脚本都是基于 `obsidian_sync.py` 实现的，您可以直接使用该脚本获得更多高级功能：
+所有脚本都是基于 `obsidian/sync.py` 实现的，您可以直接使用该脚本获得更多高级功能：
 
 ```bash
 # 查看帮助
-python obsidian_sync.py
+python obsidian/sync.py
 
 # 验证文档链接
-python obsidian_sync.py --validate
+python obsidian/sync.py --validate
 
 # 创建新文档
-python obsidian_sync.py --create-doc "用户/教程/示例.md" --title "示例教程" --category "教程"
+python obsidian/sync.py --create-doc "用户/教程/示例.md" --title "示例教程" --category "教程"
 ```
 
 ## 常见问题

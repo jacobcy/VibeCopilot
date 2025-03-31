@@ -30,11 +30,11 @@ fi
 
 # 生成侧边栏配置
 echo "正在生成侧边栏配置..."
-python scripts/docs/obsidian_sync.py --sidebar --output website/sidebars.json
+python scripts/docs/obsidian/sync.py --sidebar --output website/sidebars.json
 
 # 启动同步监控（后台运行）
 echo "启动文档同步监控..."
-python scripts/docs/obsidian_sync.py --watch &
+python scripts/docs/obsidian/sync.py --watch &
 SYNC_PID=$!
 
 # 设置trap以在脚本退出时终止后台进程

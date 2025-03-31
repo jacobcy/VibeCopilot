@@ -40,7 +40,7 @@ VibeCopilot 文档系统
 
 在Obsidian中编写和组织文档，利用其强大的知识管理功能：
 
-- 使用双向链接 `[[文档名]]` 创建文档引用
+- 使用双向链接 `[文档名](文档名.md)` 创建文档引用
 - 通过知识图谱可视化文档关系
 - 应用标准模板创建一致的文档
 - 使用标签组织和分类内容
@@ -83,6 +83,7 @@ pip install -r requirements.txt
 文档引擎会自动读取配置文件 `config/docs_config.json`，通常不需要手动修改。
 
 如需自定义，可以编辑以下配置：
+
 - `obsidian.vault_dir`：Obsidian文档库目录
 - `docusaurus.content_dir`：Docusaurus文档目录
 - `sync.watch_for_changes`：是否监控文件变更
@@ -94,7 +95,7 @@ pip install -r requirements.txt
 1. 在Obsidian中打开VibeCopilot的`docs`目录作为仓库
 2. 启动文档同步监控：
    ```bash
-   python scripts/docs/obsidian_sync.py --watch
+   python scripts/docs/obsidian/sync.py --watch
    ```
 3. 启动Docusaurus开发服务器：
    ```bash
@@ -109,7 +110,7 @@ pip install -r requirements.txt
 1. **在Obsidian中创建文档**：
    - 使用模板创建标准化文档：
      ```bash
-     python scripts/docs/obsidian_sync.py --create-doc "path/to/doc.md" --template default --title "文档标题"
+     python scripts/docs/obsidian/sync.py --create-doc "path/to/doc.md" --template default --title "文档标题"
      ```
    - 或在Obsidian中直接创建文档
 
@@ -128,7 +129,7 @@ pip install -r requirements.txt
 1. **实时监控变更**：
    ```bash
    # 开启文件监控
-   python scripts/docs/obsidian_sync.py --watch
+   python scripts/docs/obsidian/sync.py --watch
    ```
 
 2. **预览Docusaurus网站**：
@@ -139,7 +140,7 @@ pip install -r requirements.txt
 
 3. **检查链接有效性**：
    ```bash
-   python scripts/docs/obsidian_sync.py --validate
+   python scripts/docs/obsidian/sync.py --validate
    ```
 
 ### 生成侧边栏和导航
@@ -147,7 +148,7 @@ pip install -r requirements.txt
 文档引擎可以自动生成Docusaurus的侧边栏配置：
 
 ```bash
-python scripts/docs/obsidian_sync.py --sidebar --output website/sidebars.json
+python scripts/docs/obsidian/sync.py --sidebar --output website/sidebars.json
 ```
 
 这将根据文档的类别和目录结构创建组织良好的侧边栏。
@@ -215,14 +216,16 @@ npm run docusaurus docs:version 1.0.0
 
 **问题**：文档中的链接在Docusaurus中无法正常工作
 **解决方案**：
-1. 运行验证工具检查链接：`python scripts/docs/obsidian_sync.py --validate`
-2. 确保链接使用正确的语法：Obsidian中使用`[[文档名]]`，同步工具会自动转换
+
+1. 运行验证工具检查链接：`python scripts/docs/obsidian/sync.py --validate`
+2. 确保链接使用正确的语法：Obsidian中使用`[文档名](文档名.md)`，同步工具会自动转换
 3. 检查目标文件是否存在
 
 ### 格式不一致
 
 **问题**：文档在Obsidian和Docusaurus中显示不一致
 **解决方案**：
+
 1. 确保使用兼容的Markdown语法
 2. 避免使用Obsidian特有的高级功能（如Dataview查询）
 3. 使用标准模板创建文档
@@ -231,9 +234,10 @@ npm run docusaurus docs:version 1.0.0
 
 **问题**：文档同步失败或出现错误
 **解决方案**：
+
 1. 检查文档引擎日志（`logs/docs_engine.log`）
 2. 确保路径和权限正确
-3. 尝试手动同步单个文件：`python scripts/docs/obsidian_sync.py --sync-file "path/to/file.md"`
+3. 尝试手动同步单个文件：`python scripts/docs/obsidian/sync.py --sync-file "path/to/file.md"`
 
 ## 最佳实践
 
@@ -261,5 +265,5 @@ npm run docusaurus docs:version 1.0.0
 - [Obsidian 使用指南](../obsidian/obsidian_integration_guide.md)
 - [Docusaurus 使用指南](./docusaurus_guide.md)
 - [Markdown 最佳实践](../../guides/markdown_best_practices.md)
-- [Docusaurus 官方文档](https://docusaurus.io/docs)
-- [Obsidian 官方帮助](https://help.obsidian.md/)
+- [Docusaurus 官方文档](https://docusaurus.io/docs.md)
+- [Obsidian 官方帮助](https://help.obsidian.md/.md)

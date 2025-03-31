@@ -188,4 +188,4 @@ python -m src.github.projects.main import \
    - 检查命令参数
    - 确保设置了正确的GITHUB_TOKEN环境变量
 
-需要更多帮助？请查看我们的[详细文档](../docs/index.md)或[联系支持](mailto:support@vibecopilot.com)。
+需要更多帮助？请查看我们的[详细文档](../../../index.md)或[联系支持](mailto:support@vibecopilot.com.md)。

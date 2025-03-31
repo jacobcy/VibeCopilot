@@ -37,21 +37,25 @@ python scripts/<script_path>.py --help
 ### 常用脚本
 
 1. **项目初始化**
+
 ```bash
 python scripts/setup/init_project.py --name "MyProject" --template python
 ```
 
 2. **创建GitHub项目**
+
 ```bash
 python scripts/github/projects/create_project.py --name "项目路线图"
 ```
 
 3. **导入路线图**
+
 ```bash
 python scripts/github/projects/import_roadmap.py --file docs/project/roadmap/development_roadmap.md
 ```
 
 4. **添加Issues到项目**
+
 ```bash
 python scripts/github/issues/add_to_project.py --title "实现功能X" --project-number 1
 ```

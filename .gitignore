@@ -57,3 +57,4 @@ website/package-lock.json
 
 # Obsidian
 .obsidian/
+backups/

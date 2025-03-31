@@ -21,11 +21,11 @@ if not exist website (
 
 REM 同步所有文档
 echo 正在同步文档...
-python scripts/docs/obsidian_sync.py --sync-all
+python scripts/docs/obsidian/sync.py --sync-all
 
 REM 验证链接
 echo 验证文档链接...
-python scripts/docs/obsidian_sync.py --validate
+python scripts/docs/obsidian/sync.py --validate
 
 REM 确认是否继续
 set /p response="是否继续构建和部署网站？[y/N] "
@@ -36,7 +36,7 @@ if /i not "%response%"=="y" (
 
 REM 生成侧边栏配置
 echo 正在生成侧边栏配置...
-python scripts/docs/obsidian_sync.py --sidebar --output website/sidebars.json
+python scripts/docs/obsidian/sync.py --sidebar --output website/sidebars.json
 
 REM 构建网站
 echo 正在构建Docusaurus网站...

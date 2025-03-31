@@ -99,9 +99,7 @@ def init_project(
     if ignore_patterns is None:
         ignore_patterns = set()
 
-    ignore_patterns.update(
-        {".git", "__pycache__", "*.pyc", "*.pyo", "*.pyd", ".DS_Store", "*.swp"}
-    )
+    ignore_patterns.update({".git", "__pycache__", "*.pyc", "*.pyo", "*.pyd", ".DS_Store", "*.swp"})
 
     # 复制模板文件
     for src_path in template_dir.glob("**/*"):

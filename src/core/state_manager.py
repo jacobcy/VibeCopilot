@@ -7,33 +7,38 @@ VibeCopilot状态管理模块
 3. 进度报告
 """
 
-import os
 import json
 import logging
-from enum import Enum
-from typing import Dict, List, Any, Optional
+import os
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from .config import get_config
 
 # 配置日志
 logger = logging.getLogger(__name__)
 
+
 class ProjectPhase(Enum):
     """项目阶段枚举"""
-    SETUP = "setup"           # 准备与配置
-    PLANNING = "planning"     # 规划与设计
-    DEVELOPMENT = "development" # 开发与执行
-    TESTING = "testing"       # 测试与质量保证
-    MANAGEMENT = "management" # 项目管理与维护
+
+    SETUP = "setup"  # 准备与配置
+    PLANNING = "planning"  # 规划与设计
+    DEVELOPMENT = "development"  # 开发与执行
+    TESTING = "testing"  # 测试与质量保证
+    MANAGEMENT = "management"  # 项目管理与维护
+
 
 class TaskStatus(Enum):
     """任务状态枚举"""
+
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     BLOCKED = "blocked"
     SKIPPED = "skipped"
+
 
 class StateManager:
     """项目状态管理器"""
@@ -62,7 +67,7 @@ class StateManager:
 
         if os.path.exists(self.state_file):
             try:
-                with open(self.state_file, 'r') as f:
+                with open(self.state_file, "r") as f:
                     state = json.load(f)
                     logger.info(f"项目状态已从 {self.state_file} 加载")
                     return state
@@ -90,9 +95,11 @@ class StateManager:
         phases = {}
         for phase in ProjectPhase:
             phases[phase.value] = {
-                "status": TaskStatus.NOT_STARTED.value if phase != ProjectPhase.SETUP else TaskStatus.IN_PROGRESS.value,
+                "status": TaskStatus.NOT_STARTED.value
+                if phase != ProjectPhase.SETUP
+                else TaskStatus.IN_PROGRESS.value,
                 "progress": 0,
-                "tasks": {}
+                "tasks": {},
             }
 
         # 为每个阶段添加默认任务
@@ -101,26 +108,26 @@ class StateManager:
                 "status": TaskStatus.NOT_STARTED.value,
                 "description": "选择开发工具",
                 "progress": 0,
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now().isoformat(),
             },
             "ai_rules": {
                 "status": TaskStatus.NOT_STARTED.value,
                 "description": "配置AI规则",
                 "progress": 0,
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now().isoformat(),
             },
             "project_docs": {
                 "status": TaskStatus.NOT_STARTED.value,
                 "description": "建立项目级知识库",
                 "progress": 0,
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now().isoformat(),
             },
             "dev_environment": {
                 "status": TaskStatus.NOT_STARTED.value,
                 "description": "搭建开发环境",
                 "progress": 0,
-                "updated_at": datetime.now().isoformat()
-            }
+                "updated_at": datetime.now().isoformat(),
+            },
         }
 
         # 初始化状态
@@ -130,23 +137,14 @@ class StateManager:
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat(),
                 "current_phase": ProjectPhase.SETUP.value,
-                "overall_progress": 0
+                "overall_progress": 0,
             },
             "phases": phases,
             "documents": {
-                "prd": {
-                    "status": "not_created",
-                    "updated_at": None
-                },
-                "app_flow": {
-                    "status": "not_created",
-                    "updated_at": None
-                },
-                "tech_stack": {
-                    "status": "not_created",
-                    "updated_at": None
-                }
-            }
+                "prd": {"status": "not_created", "updated_at": None},
+                "app_flow": {"status": "not_created", "updated_at": None},
+                "tech_stack": {"status": "not_created", "updated_at": None},
+            },
         }
 
     def save_state(self, state: Dict[str, Any]) -> bool:
@@ -163,7 +161,7 @@ class StateManager:
             # 更新时间戳
             state["project"]["updated_at"] = datetime.now().isoformat()
 
-            with open(self.state_file, 'w') as f:
+            with open(self.state_file, "w") as f:
                 json.dump(state, f, indent=2)
             logger.info(f"项目状态已保存到 {self.state_file}")
             return True
@@ -229,7 +227,9 @@ class StateManager:
             logger.error(f"无效的阶段: {current_phase}")
             return False
 
-    def set_task_status(self, phase: str, task_id: str, status: TaskStatus, progress: int = None) -> bool:
+    def set_task_status(
+        self, phase: str, task_id: str, status: TaskStatus, progress: int = None
+    ) -> bool:
         """
         设置任务状态
 
@@ -305,7 +305,7 @@ class StateManager:
             "status": TaskStatus.NOT_STARTED.value,
             "description": description,
             "progress": 0,
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
         }
 
         # 重新计算阶段进度
@@ -377,14 +377,11 @@ class StateManager:
             ProjectPhase.PLANNING.value: 0.2,
             ProjectPhase.DEVELOPMENT.value: 0.4,
             ProjectPhase.TESTING.value: 0.2,
-            ProjectPhase.MANAGEMENT.value: 0.1
+            ProjectPhase.MANAGEMENT.value: 0.1,
         }
 
         # 计算加权进度
-        weighted_progress = sum(
-            phases[phase]["progress"] * weights[phase]
-            for phase in phases
-        )
+        weighted_progress = sum(phases[phase]["progress"] * weights[phase] for phase in phases)
 
         # 更新总体进度
         self.state["project"]["overall_progress"] = round(weighted_progress)
@@ -422,11 +419,12 @@ class StateManager:
                     "progress": self.state["phases"][phase]["progress"],
                     "task_count": len(self.state["phases"][phase]["tasks"]),
                     "completed_tasks": sum(
-                        1 for task in self.state["phases"][phase]["tasks"].values()
+                        1
+                        for task in self.state["phases"][phase]["tasks"].values()
                         if task["status"] == TaskStatus.COMPLETED.value
-                    )
+                    ),
                 }
                 for phase in self.state["phases"]
             },
-            "documents": self.state["documents"]
+            "documents": self.state["documents"],
         }

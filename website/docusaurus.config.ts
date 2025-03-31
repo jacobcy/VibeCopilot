@@ -5,30 +5,30 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'My Site',
-  tagline: 'Dinosaurs are cool',
+  title: 'VibeCopilot',
+  tagline: '智能项目管理助手',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  url: 'https://jacobcy.github.io',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: '/VibeCopilot/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'facebook', // Usually your GitHub org/user name.
-  projectName: 'docusaurus', // Usually your repo name.
+  organizationName: 'jacobcy', // Usually your GitHub org/user name.
+  projectName: 'VibeCopilot', // Usually your repo name.
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
   i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
+    defaultLocale: 'zh-Hans',
+    locales: ['zh-Hans', 'en'],
   },
 
   presets: [
@@ -40,7 +40,8 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+            'https://github.com/jacobcy/VibeCopilot/tree/main/website/',
+          routeBasePath: '/', // 让文档作为默认首页显示
         },
         blog: {
           showReadingTime: true,
@@ -51,11 +52,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-          // Useful options to enforce blogging best practices
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
+            'https://github.com/jacobcy/VibeCopilot/tree/main/website/',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -68,9 +65,9 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'My Site',
+      title: 'VibeCopilot',
       logo: {
-        alt: 'My Site Logo',
+        alt: 'VibeCopilot Logo',
         src: 'img/logo.svg',
       },
       items: [
@@ -78,11 +75,30 @@ const config: Config = {
           type: 'docSidebar',
           sidebarId: 'tutorialSidebar',
           position: 'left',
-          label: 'Tutorial',
+          label: '文档',
         },
-        {to: '/blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/facebook/docusaurus',
+          to: '/user/guides/getting_started',
+          label: '快速入门',
+          position: 'left'
+        },
+        {
+          to: '/user/tutorials/',
+          label: '教程',
+          position: 'left'
+        },
+        {
+          to: '/dev/architecture',
+          label: '开发文档',
+          position: 'left'
+        },
+        {
+          to: '/blog',
+          label: '博客',
+          position: 'left'
+        },
+        {
+          href: 'https://github.com/jacobcy/VibeCopilot',
           label: 'GitHub',
           position: 'right',
         },
@@ -92,46 +108,50 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: '文档',
           items: [
             {
-              label: 'Tutorial',
-              to: '/docs/intro',
+              label: '快速入门',
+              to: '/user/guides/getting_started',
+            },
+            {
+              label: 'Obsidian集成',
+              to: '/user/tutorials/obsidian/obsidian_integration_guide',
+            },
+            {
+              label: 'Docusaurus指南',
+              to: '/user/tutorials/docusaurus/docusaurus_guide',
             },
           ],
         },
         {
-          title: 'Community',
+          title: '社区',
           items: [
             {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+              label: '讨论区',
+              href: 'https://github.com/jacobcy/VibeCopilot/discussions',
             },
             {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
-            },
-            {
-              label: 'X',
-              href: 'https://x.com/docusaurus',
+              label: '问题反馈',
+              href: 'https://github.com/jacobcy/VibeCopilot/issues',
             },
           ],
         },
         {
-          title: 'More',
+          title: '更多',
           items: [
             {
-              label: 'Blog',
+              label: '博客',
               to: '/blog',
             },
             {
               label: 'GitHub',
-              href: 'https://github.com/facebook/docusaurus',
+              href: 'https://github.com/jacobcy/VibeCopilot',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} VibeCopilot Project. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

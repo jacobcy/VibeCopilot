@@ -394,10 +394,10 @@ jobs:
 
 ## 资源和参考
 
-- [GitHub Projects API 文档](https://docs.github.com/en/rest/reference/projects)
-- [GitHub GraphQL API 文档](https://docs.github.com/en/graphql)
-- [GitHub Actions 文档](https://docs.github.com/en/actions)
-- [项目最佳实践指南](https://docs.github.com/en/issues/planning-and-tracking-with-projects/learning-about-projects/best-practices-for-projects)
+- [GitHub Projects API 文档](https://docs.github.com/en/rest/reference/projects.md)
+- [GitHub GraphQL API 文档](https://docs.github.com/en/graphql.md)
+- [GitHub Actions 文档](https://docs.github.com/en/actions.md)
+- [项目最佳实践指南](https://docs.github.com/en/issues/planning-and-tracking-with-projects/learning-about-projects/best-practices-for-projects.md)
 
 ---
 

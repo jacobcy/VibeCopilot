@@ -16,7 +16,7 @@ fi
 
 # 执行同步
 echo "开始同步所有文档..."
-python scripts/docs/obsidian_sync.py --sync-all
+python scripts/docs/obsidian/sync.py --sync-all
 
 echo "同步完成。按任意键退出..."
 read -n 1

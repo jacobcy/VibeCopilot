@@ -8,14 +8,14 @@
 
 VibeCopilot 项目推荐使用以下 IDE：
 
-- **首选**: [Cursor](https://cursor.sh/)
+- **首选**: [Cursor](https://cursor.sh/.md)
   - 内置 AI 辅助功能，与 VibeCopilot 文档驱动开发理念最佳契合
   - 基于 VSCode，支持所有 VSCode 插件
 
-- **备选**: [VS Code](https://code.visualstudio.com/)
+- **备选**: [VS Code](https://code.visualstudio.com/.md)
   - 如果使用 VS Code，建议安装 GitHub Copilot 插件实现 AI 辅助功能
 
-- **其他选项**: [Windsurf](https://getwindsurf.com/)
+- **其他选项**: [Windsurf](https://getwindsurf.com/.md)
   - 另一款强大的 AI 辅助编程工具，与 VibeCopilot 兼容
 
 ### 1.2 必要插件安装
@@ -23,18 +23,21 @@ VibeCopilot 项目推荐使用以下 IDE：
 无论选择哪种 IDE，请安装以下插件：
 
 #### 通用插件
+
 - **EditorConfig**: 保持一致的编码样式
 - **GitLens**: 增强 Git 功能
 - **Markdown All in One**: 增强 Markdown 支持
 - **Docker**: Docker 集成（如需要）
 
 #### Python 项目插件
+
 - **Python Extension**: Python 语言支持
 - **Pylance**: 类型检查与智能提示
 - **Python Docstring Generator**: 文档字符串生成器
 - **Python Test Explorer**: 测试发现与执行
 
 #### JavaScript/TypeScript 项目插件
+
 - **ESLint**: 代码质量检查
 - **Prettier**: 代码格式化
 - **npm Intellisense**: npm 模块自动补全

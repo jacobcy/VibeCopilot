@@ -15,7 +15,7 @@ VibeCopilot项目使用GitHub Projects作为路线图管理工具，而非静态
 
 ### 2.1 在线访问
 
-1. 访问GitHub项目页面: [https://github.com/jacobcy/VibeCopilot](https://github.com/jacobcy/VibeCopilot)
+1. 访问GitHub项目页面: [https://github.com/jacobcy/VibeCopilot](https://github.com/jacobcy/VibeCopilot.md)
 2. 点击顶部导航栏中的"Projects"选项卡
 3. 选择"VibeCopilot Roadmap"项目
 4. 选择合适的视图:

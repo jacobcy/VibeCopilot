@@ -30,12 +30,14 @@ VibeCopilot是一个为开发者设计的智能项目管理工具，旨在通过
 ### 安装
 
 1. 克隆仓库:
+
 ```bash
 git clone https://github.com/yourusername/VibeCopilot.git
 cd VibeCopilot
 ```
 
 2. 创建虚拟环境:
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Linux/macOS
@@ -44,6 +46,7 @@ source .venv/bin/activate  # Linux/macOS
 ```
 
 3. 安装依赖:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -51,16 +54,19 @@ pip install -r requirements.txt
 ### 使用方法
 
 1. **查看入门指南**:
+
 ```bash
 cat docs/human/guides/getting_started.md
 ```
 
 2. **使用项目模板**:
+
 ```bash
 python scripts/setup/init_project.py --name "MyProject" --template python
 ```
 
 3. **与GitHub Projects集成**:
+
 ```bash
 python scripts/github/create_project.py --name "项目路线图"
 ```

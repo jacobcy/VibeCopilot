@@ -30,11 +30,11 @@ if not exist website\node_modules (
 
 REM 生成侧边栏配置
 echo 正在生成侧边栏配置...
-python scripts/docs/obsidian_sync.py --sidebar --output website/sidebars.json
+python scripts/docs/obsidian/sync.py --sidebar --output website/sidebars.json
 
 REM 启动同步监控（新窗口）
 echo 启动文档同步监控...
-start "Docs Sync" cmd /c python scripts/docs/obsidian_sync.py --watch
+start "Docs Sync" cmd /c python scripts/docs/obsidian/sync.py --watch
 
 REM 启动Docusaurus开发服务器
 echo 启动Docusaurus开发服务器...

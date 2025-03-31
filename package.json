@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "lint:md": "markdownlint --fix \"**/*.md\" --ignore \"**/node_modules/**\"",
+    "lint:docs": "markdownlint --fix \"docs/**/*.md\"",
+    "lint:md:project": "markdownlint --fix \"**/*.md\" --ignore \"**/node_modules/**\" --ignore \"website/**\""
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.44.0"
+  }
+}

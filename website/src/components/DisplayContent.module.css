@@ -1,0 +1,56 @@
+.embedContainer {
+  margin: 1rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.embedHeader {
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  background-color: var(--ifm-color-emphasis-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.embedPath {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  font-weight: normal;
+}
+
+.embedContent {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.embedContent pre {
+  margin: 0;
+  border-radius: 0;
+}
+
+.errorContainer {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  color: var(--ifm-color-danger);
+}
+
+.loading {
+  margin: 1rem 0;
+  padding: 1rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* 深色模式适配 */
+.dark .embedHeader {
+  background-color: var(--ifm-color-emphasis-300);
+}
+
+.dark .embedContainer {
+  border-color: var(--ifm-color-emphasis-400);
+}

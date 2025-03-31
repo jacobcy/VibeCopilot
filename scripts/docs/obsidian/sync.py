@@ -2,173 +2,280 @@
 """
 Obsidian 文档同步工具
 
-该脚本提供简单的命令行界面，用于在Obsidian和项目文档之间同步内容。
-可用于单次同步或启动持续监控模式。
+用于在标准Markdown文档和Obsidian知识库之间进行双向同步的简化工具。
+使用.env配置文件定义目录路径和同步选项。
 """
 
-import argparse
 import logging
 import os
 import sys
 import time
 from pathlib import Path
+from typing import Optional, Union, cast
+
+import dotenv
 
 # 添加项目根目录到模块搜索路径
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-# 导入文档引擎
+# 加载环境变量
+dotenv.load_dotenv(os.path.join(project_root, ".env"))
+
+
+# 从环境变量获取配置，处理可能包含注释的情况
+def get_env(key, default):
+    """获取环境变量并去除可能的注释"""
+    value = os.getenv(key, default)
+    if value and "#" in value:
+        value = value.split("#")[0].strip()
+    return value
+
+
+# 配置源文档和Obsidian知识库路径
+DOCS_SOURCE_DIR = os.path.join(project_root, get_env("DOCS_SOURCE_DIR", "docs"))
+OBSIDIAN_VAULT_DIR = os.path.join(project_root, get_env("OBSIDIAN_VAULT_DIR", ".obsidian/vault"))
+AUTO_SYNC = get_env("AUTO_SYNC_DOCS", "false").lower() == "true"
+SYNC_INTERVAL = int(get_env("AUTO_SYNC_INTERVAL", "300"))
+
+# 导入转换工具
 try:
-    from scripts.docs.utils.md_utils import batch_fix_documents, fix_document
-    from src.docs_engine.docs_engine import create_docs_engine
-except ModuleNotFoundError as e:
-    print(f"错误: 无法导入模块 - {e}")
-    print(f"当前Python路径: {sys.path}")
-    print(f"项目根目录: {project_root}")
-    print(f"当前工作目录: {os.getcwd()}")
+    from scripts.docs.utils.converter import MDToObsidian, ObsidianToMD
+except ImportError:
+    print("找不到转换工具模块，请确保converter.py文件存在")
     sys.exit(1)
 
 
-def setup_logging():
-    """配置日志系统"""
+def setup_logging() -> logging.Logger:
+    """配置并返回日志记录器"""
     logging.basicConfig(
-        level=logging.INFO,
+        level=getattr(logging, get_env("LOG_LEVEL", "INFO").upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.StreamHandler()],
     )
     return logging.getLogger("obsidian_sync")
 
 
-def parse_arguments():
-    """解析命令行参数"""
-    parser = argparse.ArgumentParser(
-        description="Obsidian 文档同步工具",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-示例用法:
-  # 同步所有文档
-  python scripts/docs/obsidian/sync.py --sync-all
+def ensure_dir_exists(directory: str) -> str:
+    """确保目录存在"""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    return directory
 
-  # 监控文档变更
-  python scripts/docs/obsidian/sync.py --watch
 
-  # 验证链接
-  python scripts/docs/obsidian/sync.py --validate
+def sync_to_obsidian(file: Optional[str] = None, logger: Optional[logging.Logger] = None) -> bool:
+    """
+    将标准文档同步到Obsidian
 
-  # 修复文档链接
-  python scripts/docs/obsidian/sync.py --fix-links
+    Args:
+        file: 可选，指定要同步的单个文件的相对路径
+        logger: 可选，日志记录器
 
-  # 创建新文档
-  python scripts/docs/obsidian/sync.py --create-doc "新文档.md" --title "文档标题" --category "分类"
-""",
-    )
+    Returns:
+        bool: 同步是否成功
+    """
+    if logger is None:
+        logger = logging.getLogger(__name__)
 
-    parser.add_argument("--sync-all", action="store_true", help="同步所有文档")
-    parser.add_argument("--sync-file", help="同步单个文件")
-    parser.add_argument("--watch", action="store_true", help="监控文档变更")
-    parser.add_argument("--validate", action="store_true", help="验证文档链接")
-    parser.add_argument("--fix-links", action="store_true", help="修复文档中的链接")
-    parser.add_argument("--create-doc", help="创建新文档的路径")
-    parser.add_argument("--template", default="default", help="文档模板名称")
-    parser.add_argument("--title", help="文档标题")
-    parser.add_argument("--description", help="文档描述")
-    parser.add_argument("--category", help="文档分类")
-    parser.add_argument("--config", help="自定义配置文件路径")
+    converter = MDToObsidian()
+    ensure_dir_exists(OBSIDIAN_VAULT_DIR)
 
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
+    if file:
+        # 同步单个文件
+        source = os.path.join(DOCS_SOURCE_DIR, file)
+        target = os.path.join(OBSIDIAN_VAULT_DIR, file)
 
-    return parser.parse_args()
+        if not os.path.exists(source):
+            logger.error(f"源文件不存在: {source}")
+            return False
+
+        return converter.convert_file(source, target, logger)
+
+    # 同步整个目录
+    success_count = 0
+    error_count = 0
+
+    for root, _, files in os.walk(DOCS_SOURCE_DIR):
+        rel_path = os.path.relpath(root, DOCS_SOURCE_DIR)
+        target_dir = (
+            os.path.join(OBSIDIAN_VAULT_DIR, rel_path) if rel_path != "." else OBSIDIAN_VAULT_DIR
+        )
+
+        ensure_dir_exists(target_dir)
+
+        for filename in files:
+            if filename.endswith(".md"):
+                source = os.path.join(root, filename)
+                target = os.path.join(target_dir, filename)
+
+                try:
+                    if converter.convert_file(source, target, logger):
+                        success_count += 1
+                    else:
+                        error_count += 1
+                except Exception as e:
+                    logger.error(f"转换失败 {source}: {str(e)}")
+                    error_count += 1
+
+    logger.info(f"完成: 成功 {success_count} 个文件, 失败 {error_count} 个文件")
+    return error_count == 0
+
+
+def sync_to_docs(file: Optional[str] = None, logger: Optional[logging.Logger] = None) -> bool:
+    """
+    将Obsidian文档同步回标准文档
+
+    Args:
+        file: 可选，指定要同步的单个文件的相对路径
+        logger: 可选，日志记录器
+
+    Returns:
+        bool: 同步是否成功
+    """
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    converter = ObsidianToMD()
+
+    if file:
+        # 同步单个文件
+        source = os.path.join(OBSIDIAN_VAULT_DIR, file)
+        target = os.path.join(DOCS_SOURCE_DIR, file)
+
+        if not os.path.exists(source):
+            logger.error(f"源文件不存在: {source}")
+            return False
+
+        return converter.convert_file(source, target, logger)
+
+    # 同步整个目录
+    success_count = 0
+    error_count = 0
+
+    for root, _, files in os.walk(OBSIDIAN_VAULT_DIR):
+        rel_path = os.path.relpath(root, OBSIDIAN_VAULT_DIR)
+        target_dir = os.path.join(DOCS_SOURCE_DIR, rel_path) if rel_path != "." else DOCS_SOURCE_DIR
+
+        ensure_dir_exists(target_dir)
+
+        for filename in files:
+            if filename.endswith(".md"):
+                source = os.path.join(root, filename)
+                target = os.path.join(target_dir, filename)
+
+                try:
+                    if converter.convert_file(source, target, logger):
+                        success_count += 1
+                    else:
+                        error_count += 1
+                except Exception as e:
+                    logger.error(f"转换失败 {source}: {str(e)}")
+                    error_count += 1
+
+    logger.info(f"完成: 成功 {success_count} 个文件, 失败 {error_count} 个文件")
+    return error_count == 0
+
+
+def watch_changes(logger: Optional[logging.Logger] = None) -> None:
+    """
+    监控文档变化并自动同步
+
+    Args:
+        logger: 日志记录器
+    """
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    try:
+        from watchdog.events import FileSystemEventHandler
+        from watchdog.observers import Observer
+    except ImportError:
+        logger.error("未安装watchdog模块，无法监控文件变更。请运行: pip install watchdog")
+        return
+
+    class DocsChangeHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            if not event.is_directory and str(event.src_path).endswith(".md"):
+                rel_path = os.path.relpath(str(event.src_path), DOCS_SOURCE_DIR)
+                logger.info(f"检测到文档变更: {rel_path}")
+                sync_to_obsidian(rel_path, logger)
+
+    class ObsidianChangeHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            if not event.is_directory and str(event.src_path).endswith(".md"):
+                rel_path = os.path.relpath(str(event.src_path), OBSIDIAN_VAULT_DIR)
+                logger.info(f"检测到Obsidian变更: {rel_path}")
+                sync_to_docs(rel_path, logger)
+
+    # 设置观察者
+    docs_observer = Observer()
+    obsidian_observer = Observer()
+
+    # 添加事件处理器
+    docs_observer.schedule(DocsChangeHandler(), DOCS_SOURCE_DIR, recursive=True)
+    obsidian_observer.schedule(ObsidianChangeHandler(), OBSIDIAN_VAULT_DIR, recursive=True)
+
+    # 启动观察者
+    docs_observer.start()
+    obsidian_observer.start()
+
+    try:
+        logger.info(f"开始监控文档变更 (间隔: {SYNC_INTERVAL}秒, 按Ctrl+C停止)...")
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        logger.info("停止监控")
+        docs_observer.stop()
+        obsidian_observer.stop()
+
+    docs_observer.join()
+    obsidian_observer.join()
 
 
 def main():
     """主函数"""
-    args = parse_arguments()
     logger = setup_logging()
 
-    try:
-        # 创建文档引擎实例
-        engine = create_docs_engine(str(project_root), args.config)
-        logger.info("已初始化文档引擎")
+    # 显示配置信息
+    logger.info(f"标准文档目录: {DOCS_SOURCE_DIR}")
+    logger.info(f"Obsidian知识库目录: {OBSIDIAN_VAULT_DIR}")
+    logger.info("注意: 同步仅在标准Markdown文档和Obsidian知识库之间进行，不涉及Docusaurus生成的网站文件")
 
-        # 处理命令
-        if args.sync_all:
-            logger.info("开始全量同步文档...")
-            stats = engine.sync_all()
-            logger.info(f"同步完成: 添加 {stats['added']}，更新 {stats['updated']}，删除 {stats['deleted']}")
+    # 确保目录存在
+    ensure_dir_exists(DOCS_SOURCE_DIR)
+    ensure_dir_exists(OBSIDIAN_VAULT_DIR)
 
-        elif args.sync_file:
-            logger.info(f"同步文件: {args.sync_file}")
-            rel_path = os.path.relpath(args.sync_file, engine.obsidian_dir)
-            success = engine.sync_manager.sync_file(rel_path)
-            logger.info(f"文件同步{'成功' if success else '失败'}")
+    # 简单的命令行参数处理
+    if len(sys.argv) > 1:
+        command = sys.argv[1].lower()
 
-        elif args.watch:
-            logger.info("开始监控文档变更 (按Ctrl+C停止)...")
-            try:
-                # 启动文件监控
-                if not hasattr(engine, "file_watcher") or not engine.file_watcher.is_running():
-                    engine._start_file_watcher()
+        if command == "to-obsidian":
+            logger.info("正在将标准文档同步到Obsidian...")
+            sync_to_obsidian(logger=logger)
 
-                # 保持运行直到用户中断
-                while True:
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                logger.info("停止监控")
+        elif command == "to-docs":
+            logger.info("正在将Obsidian文档同步回标准文档...")
+            sync_to_docs(logger=logger)
 
-        elif args.fix_links:
-            logger.info("修复文档链接...")
-            # 使用批量修复功能处理所有文档
-            count = batch_fix_documents(engine.obsidian_dir, logger)
-            logger.info(f"修复完成: 已修复 {count} 个文件")
+        elif command == "watch":
+            if AUTO_SYNC:
+                logger.info(f"自动同步已启用，间隔为 {SYNC_INTERVAL} 秒")
+            watch_changes(logger)
 
-        elif args.validate:
-            logger.info("验证文档链接...")
-            broken_links = engine.validate_links()
-
-            if broken_links:
-                logger.warning(f"发现 {sum(len(links) for links in broken_links.values())} 个无效链接:")
-
-                for file_path, links in broken_links.items():
-                    logger.warning(f"\n文件: {file_path}")
-                    for link in links:
-                        logger.warning(f"  无效链接: {link['text']} (目标: {link['target']})")
-            else:
-                logger.info("未发现无效链接")
-
-        elif args.create_doc:
-            # 准备变量
-            variables = {}
-            if args.title:
-                variables["title"] = args.title
-            if args.description:
-                variables["description"] = args.description
-            if args.category:
-                variables["category"] = args.category
-
-            # 确保文件路径是绝对路径
-            doc_path = args.create_doc
-            if not os.path.isabs(doc_path):
-                doc_path = os.path.join(engine.obsidian_dir, doc_path)
-
-            logger.info(f"创建文档: {doc_path}")
-            success = engine.generate_new_document(
-                template=args.template, output_path=doc_path, variables=variables
-            )
-
-            logger.info(f"文档创建{'成功' if success else '失败'}")
-
-    except Exception as e:
-        logger.error(f"错误: {str(e)}")
-        return 1
-    finally:
-        # 确保停止引擎
-        if "engine" in locals():
-            engine.stop()
-
-    return 0
+        else:
+            logger.error(f"未知命令: {command}")
+            print("\n用法: python sync.py [命令]")
+            print("可用命令:")
+            print("  to-obsidian  - 将标准Markdown文档同步到Obsidian")
+            print("  to-docs      - 将Obsidian文档同步回标准Markdown")
+            print("  watch        - 监控文件变化并自动同步")
+    else:
+        print("\n用法: python sync.py [命令]")
+        print("可用命令:")
+        print("  to-obsidian  - 将标准Markdown文档同步到Obsidian")
+        print("  to-docs      - 将Obsidian文档同步回标准Markdown")
+        print("  watch        - 监控文件变化并自动同步")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

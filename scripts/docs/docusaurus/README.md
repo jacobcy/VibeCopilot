@@ -6,48 +6,58 @@
 
 ### Windows用户
 
-1. **启动开发环境**：双击 `start_docusaurus.bat` 启动开发服务器和文档同步
-2. **构建和部署**：双击 `build_deploy.bat` 构建静态网站并选择性部署
+1. **修复依赖问题**：首先运行 `fix_dependencies.bat` 来解决React 19的兼容性问题
+2. **启动开发环境**：运行 `start_docusaurus.bat` 启动开发服务器
+3. **构建和部署**：运行 `build_deploy.bat` 或简单的 `build_website.bat` 构建静态网站
 
 ### Mac/Linux用户
 
-1. **启动开发环境**：
+1. **修复依赖问题**：
+   ```bash
+   chmod +x fix_dependencies.sh
+   ./fix_dependencies.sh
+   ```
+
+2. **启动开发环境**：
    ```bash
    chmod +x start_docusaurus.sh
    ./start_docusaurus.sh
    ```
 
-2. **构建和部署**：
+3. **构建网站**：
    ```bash
-   chmod +x build_deploy.sh
-   ./build_deploy.sh
+   chmod +x build_website.sh
+   ./build_website.sh
    ```
 
-## 脚本功能
+## 常见问题排除
 
-### start_docusaurus
-启动完整的开发环境，包括：
-- 检查并安装依赖
-- 生成侧边栏配置
-- 启动文档同步监控
-- 启动Docusaurus开发服务器
+### 构建失败
 
-### build_deploy
-构建和部署文档网站，步骤包括：
-- 同步所有文档
-- 验证文档链接
-- 生成侧边栏配置
-- 构建静态网站
-- 可选部署到GitHub Pages
+如果构建或启动开发服务器失败，通常是由以下原因造成：
 
-## 常见问题
+1. **React版本不兼容**：
+   - 错误信息：`Invalid hook call...`
+   - 解决方案：运行 `fix_dependencies.sh` 或 `fix_dependencies.bat` 降级React版本
 
-1. **Node.js版本**：确保Node.js版本 >= 16.14
-2. **依赖问题**：如遇npm依赖问题，尝试删除`node_modules`目录后重新安装
-3. **部署失败**：检查GitHub配置和权限
+2. **Node.js版本过低**：
+   - 错误信息：`Minimum Node.js version not met`
+   - 解决方案：升级Node.js到18.0或更高版本
+
+3. **依赖冲突**：
+   - 错误信息：`Conflicting peer dependency`
+   - 解决方案：删除node_modules目录并重新安装依赖
+
+## 脚本说明
+
+- **fix_dependencies.sh/bat**: 将React从19降级到18，解决兼容性问题
+- **build_website.sh/bat**: 简化版构建脚本，只执行构建过程
+- **start_docusaurus.sh/bat**: 启动开发服务器和文档同步
+- **build_deploy.sh/bat**: 构建和可选部署到GitHub Pages
 
 ## 更多信息
 
 详细的Docusaurus使用指南请参阅：
+
 - `/docs/user/tutorials/docusaurus/docusaurus_guide.md`
 - `/docs/user/tutorials/docusaurus/obsidian_docusaurus_integration.md`

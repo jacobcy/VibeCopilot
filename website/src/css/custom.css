@@ -1,10 +1,9 @@
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * 自定义CSS
+ *
+ * 优先级高于默认CSS
  */
 
-/* You can override the default Infima variables here. */
 :root {
   --ifm-color-primary: #2e8555;
   --ifm-color-primary-dark: #29784c;
@@ -17,7 +16,7 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
+/* 深色主题 */
 [data-theme='dark'] {
   --ifm-color-primary: #25c2a0;
   --ifm-color-primary-dark: #21af90;
@@ -27,4 +26,37 @@
   --ifm-color-primary-lighter: #32d8b4;
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Obsidian风格支持 */
+.obsidian-callout {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+}
+
+.obsidian-callout-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.obsidian-callout-info {
+  background-color: rgba(0, 124, 223, 0.1);
+  border-left-color: #0070df;
+}
+
+.obsidian-callout-warning {
+  background-color: rgba(255, 196, 0, 0.1);
+  border-left-color: #ffc400;
+}
+
+.obsidian-callout-danger {
+  background-color: rgba(255, 59, 48, 0.1);
+  border-left-color: #ff3b30;
+}
+
+.obsidian-callout-success {
+  background-color: rgba(52, 199, 89, 0.1);
+  border-left-color: #34c759;
 }
