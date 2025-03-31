@@ -1,67 +1,83 @@
-# VibeCopilot - AI辅助项目管理工具
+# VibeCopilot
 
-VibeCopilot是一个为使用AI工具（如Cursor）的开发者设计的项目管理助手，旨在提供规范化的开发流程指导、文档生成和项目管理支持。
+VibeCopilot 是一个 AI 驱动的开发工作流助手，旨在通过结构化的方法和人工智能的辅助，为开发者提供更高效的编码体验。
 
-## 项目背景
+## 特点
 
-随着AI辅助编程工具的普及，开发者可以更快地编写代码，但仍然面临项目管理、流程规范和文档一致性等挑战。VibeCopilot旨在弥补这一差距，将AI的强大能力与结构化的项目管理相结合。
+- 🧠 **AI 辅助开发**：集成 AI 模型，提供智能代码生成、重构和优化建议
+- 📝 **文档生成**：自动生成项目文档、API 文档和开发指南
+- 🔍 **项目分析**：分析代码结构、依赖关系和项目健康度
+- 🛠️ **工作流管理**：提供结构化开发流程和任务管理
+- 🧩 **模板系统**：支持各种项目类型的标准化模板
 
-## 核心功能
+## 安装
 
-- **项目初始化与配置** - 基于模板生成项目结构和核心文档
-- **开发流程引导** - 阶段性开发指导，检查清单和任务跟踪
-- **AI辅助集成** - 提示词管理，AI规则配置，上下文优化
-- **文档生成与管理** - 智能文档生成，自动更新，版本控制
-- **工具推荐** - 针对不同开发阶段推荐适合的工具和库
-- **代码质量与规范检查** - 确保代码风格一致性和文档同步
+```bash
+# 使用pip安装
+pip install vibecopilot
 
-## 工作形式
-
-VibeCopilot采用MCP工具+知识库的混合模式实现，可以：
-1. 直接在开发环境中使用
-2. 管理项目文档和代码
-3. 提供交互式引导
-4. 生成并维护项目知识库
-
-## 项目结构
-
-```
-VibeCopilot/
-├── docs/                      # 项目文档
-│   ├── 1_Project_Requirements_Document_PRD.md  # 项目需求文档
-│   ├── 3_Tech_Stack.md        # 技术栈选择与说明
-│   ├── 6_AI_Rules.md          # AI使用规则与最佳实践
-│   └── 7_Implementation_Plan.md # 实施计划
-├── src/                       # 源代码（待开发）
-└── README.md                  # 项目介绍
+# 或者从源码安装
+git clone https://github.com/jacobcy/VibeCopilot.git
+cd VibeCopilot
+pip install -e .
 ```
 
-## 技术栈
+## 快速开始
 
-- **后端**: Python, FastAPI
-- **前端**: TypeScript, React
-- **存储**: SQLite, 文件系统
-- **AI集成**: OpenAI API, Cursor API
-- **文档**: Markdown, Mermaid
+初始化一个新项目：
 
-## 实施路径
+```bash
+vibecopilot init --name my-awesome-project --template python-web
+```
 
-项目计划分为以下阶段实施：
+分析现有项目：
 
-1. **基础框架搭建** - 核心架构与项目初始化功能
-2. **流程引导与AI集成** - 开发阶段引导和AI工具集成
-3. **文档管理与质量检查** - 文档自动化和代码质量功能
-4. **用户界面与集成** - 完善界面和第三方服务集成
-5. **测试与发布** - 优化和公开发布
+```bash
+vibecopilot analyze /path/to/project --output markdown
+```
 
-## 如何参与
+## 文档
 
-项目正处于规划阶段，欢迎提供反馈和建议。如果您有兴趣参与开发，请：
+查看我们的[完整文档](docs/)，了解更多关于：
 
-1. 查看 `docs/1_Project_Requirements_Document_PRD.md` 了解项目需求
-2. 查看 `docs/7_Implementation_Plan.md` 了解开发计划和任务分解
-3. 提出Issues或Pull Requests贡献想法和代码
+- [项目需求文档](docs/1_Project_Requirements_Document_PRD.md)
+- [应用流程](docs/2_App_Flow.md)
+- [技术栈](docs/3_Tech_Stack.md)
+- [前端指南](docs/4_Frontend_Guidelines.md)
+- [后端结构](docs/5_Backend_Structure.md)
+- [AI规则](docs/6_AI_Rules.md)
+- [实施计划](docs/7_Implementation_Plan.md)
+- [最佳实践](docs/8_Best_Practices.md)
+- [开发路线图](docs/9_Development_Roadmap.md)
+
+## 开发
+
+设置开发环境：
+
+```bash
+# 创建并激活虚拟环境
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# 或
+.venv\Scripts\activate  # Windows
+
+# 安装开发依赖
+pip install -e ".[dev]"
+
+# 安装pre-commit钩子
+pre-commit install
+```
+
+运行测试：
+
+```bash
+pytest
+```
+
+## 贡献
+
+欢迎贡献！请查看我们的[贡献指南](CONTRIBUTING.md)了解如何参与项目。
 
 ## 许可证
 
-本项目采用 MIT 许可证 - 详见 LICENSE 文件
+本项目采用 MIT 许可证 - 详情请查看 [LICENSE](LICENSE) 文件。
