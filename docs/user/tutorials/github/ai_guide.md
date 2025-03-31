@@ -22,16 +22,19 @@ python scripts/github/list_tasks.py \
 ### 2. 分析维度
 
 #### 进度分析
+
 - 已完成任务数量和比例
 - 各状态任务分布
 - 预计完成时间偏差
 
 #### 质量分析
+
 - PR 合并率
 - 代码审查评论数量
 - 测试覆盖率变化
 
 #### 风险分析
+
 - 阻塞任务数量
 - 延期任务比例
 - 依赖项状态
@@ -127,7 +130,7 @@ def assess_risk_level(metrics):
 
 ## 更新执行
 
-### 1. 准备更新数据
+### 第1步：准备更新数据
 
 ```python
 def prepare_updates(analysis):
@@ -235,11 +238,13 @@ python scripts/github/verify_updates.py \
 ## API 参考
 
 ### 1. 分析 API
+
 ```python
 analyze_project(project_id: str) -> ProjectAnalysis
 ```
 
 ### 2. 更新 API
+
 ```python
 update_roadmap(
     project_id: str,
@@ -249,6 +254,7 @@ update_roadmap(
 ```
 
 ### 3. 验证 API
+
 ```python
 verify_updates(
     project_id: str,

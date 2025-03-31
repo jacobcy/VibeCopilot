@@ -7,6 +7,7 @@
   "MD041": false,
   "MD040": false,
   "MD007": { "indent": 2 },
+  "MD025": false,
   "no-hard-tabs": true,
   "whitespace": true,
   "MD031": false,
