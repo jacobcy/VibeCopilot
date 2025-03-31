@@ -394,10 +394,7 @@ class RoadmapGenerator:
         """生成阶段列表."""
         for phase in self.phases:
             # 添加阶段中的每个任务
-            phase_tasks = [
-                task for task in self.tasks
-                if task.get("phase") == phase["title"]
-            ]
+            phase_tasks = [task for task in self.tasks if task.get("phase") == phase["title"]]
             phase["tasks"] = phase_tasks
 
     def format_milestone_data(self, milestone_node):
