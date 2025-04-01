@@ -3,43 +3,50 @@ description: 本规则定义了VibeCopilot项目的开发工作流程和协作�
 globs:
 alwaysApply: false
 ---
-# VibeCopilot 开发工作流规范
+
+# VibeCopilot 统一开发工作流规范
 
 ## 关键规则
+
+### 项目管理与协作流程
+- 采用敏捷开发方法论与GitHub项目管理相结合的工作方式
+- 所有代码变更必须关联到GitHub Issues或Project卡片
+- 每周运行项目分析工具评估项目健康状况并生成报告
+- 每个Sprint结束后必须更新项目路线图反映实际进度
+- 使用VibeCopilot提供的集成工具进行项目管理和分析
 
 ### 分支管理
 - 使用 Git Flow 分支模型管理代码
 - `main` 分支保持稳定，只接受合并请求
 - `develop` 分支用于开发集成
-- 功能开发在 `feature/*` 分支进行
-- 缺陷修复在 `bugfix/*` 分支进行
+- 功能开发在 `feature/ISSUE-123-description` 分支进行
+- 缺陷修复在 `bugfix/ISSUE-456-description` 分支进行
 - 发布准备在 `release/*` 分支进行
 - 紧急生产修复在 `hotfix/*` 分支进行
-- 分支命名使用小写字母和连字符，例如 `feature/user-authentication`
 
 ### 提交规范
-- 使用约定式提交格式: `<type>(<scope>): <description>`
+- 使用约定式提交格式: `<type>(<scope>): <description> [#ISSUE-ID]`
 - 类型包括：feat、fix、docs、style、refactor、test、chore等
 - 范围是可选的，表示变更影响的模块
 - 描述简明扼要地说明本次提交的内容
 - 每个提交应该是独立可测试的变更
-- 避免在单个提交中混合多个不相关的变更
+- 提交消息必须引用相关Issue编号（如 `[#123]` 或 `Fixes #123`）
 
-### 开发流程
-- 每个任务必须在项目管理工具中创建对应的票据
-- 开发前先拉取最新的 `develop` 分支
-- 创建新的功能或修复分支
-- 完成开发后，进行自测和单元测试
-- 提交代码并创建合并请求（PR/MR）
-- 合并请求需至少一名团队成员审查批准
-- 合并后删除功能分支
+### 任务管理流程
+- 所有开发任务从GitHub项目看板的"待办"列创建
+- 开始任务前将卡片移至"进行中"并分配责任人
+- 任务完成后通过PR合并并将卡片移至"已完成"
+- 使用里程碑(Milestone)关联相关任务与发布计划
+- 使用项目分析工具定期评估进度和风险
+- 确保所有任务都有明确的完成标准(Definition of Done)
 
 ### 代码审查
-- 所有代码变更必须经过代码审查
+- 所有代码变更必须经过至少一位团队成员的代码审查
 - 审查重点关注代码质量、可读性和符合开发规范
 - 审查应在提交后2个工作日内完成
 - 审查意见应具体明确，避免模糊表述
 - 代码作者应及时响应审查意见
+- 重要功能或复杂变更需要更全面的审查
 
 ### 测试要求
 - 新功能必须包含单元测试
@@ -47,89 +54,198 @@ alwaysApply: false
 - 提交前运行本地测试确保通过
 - 重要功能应包含集成测试
 - 前端组件应包含基本的UI测试
+- 所有测试应易于维护和理解
+
+### 项目分析与路线图管理
+- 每周运行项目分析工具生成健康状况报告
+- 基于分析结果更新项目路线图和调整计划
+- 使用TimelineAdjuster工具调整项目时间线
+- 自动将任务进度同步至路线图时间线
+- 根据风险评估结果主动调整资源分配
+- 定期与团队分享项目状态报告并讨论优化方案
 
 ### 发布流程
-- 发布前在 `release` 分支进行最终测试和准备
+- 发布前运行项目分析评估风险
+- 使用weekly_update.sh脚本生成项目状态报告
 - 版本号遵循语义化版本（SemVer）规范
 - 每次发布必须生成变更日志（Changelog）
-- 发布需进行全面的回归测试
-- 重大版本发布前应进行内部测试
+- 发布后更新项目路线图和文档
+- 主要版本发布前必须进行全面的回归测试
+
+### 持续集成与部署
+- 所有提交都必须通过CI/CD流水线检查
+- 每日构建应部署到开发环境供测试
+- 发布分支应自动部署到预发布环境
+- 部署到生产环境前必须获得团队批准
+- 生产部署后进行基本健康检查确认
+
+## 工具使用规范
+
+### 项目分析工具
+- 使用`scripts.github.project_cli analysis analyze`命令分析项目状态
+- 定期运行`weekly_update.sh`脚本生成综合报告
+- 分析结果应保存在`reports/github/`目录下归档
+- 高风险警告必须在团队会议中讨论并制定应对措施
+
+### 路线图管理工具
+- 使用`scripts.github.project_cli analysis adjust`调整项目时间线
+- 路线图变更必须记录原因和影响
+- 重大调整需经过团队讨论并获得批准
+- 路线图应保持最新并可供所有团队成员访问
 
 ## 示例
 
 <example>
-  # 功能开发流程示例
+  # VibeCopilot工作流标准实践
 
-  1. 在项目管理工具中创建任务"添加用户登录功能"，标识为 USER-123
+  ## 1. 需求分析与任务创建
 
-  2. 拉取最新代码并创建功能分支
-     ```bash
-     git checkout develop
-     git pull
-     git checkout -b feature/user-login
-     ```
+  在GitHub项目中创建新Issue:
+  ```
+  标题: [FEATURE] 实现用户认证功能
+  描述:
+  - 开发用户登录/注册接口
+  - 实现JWT认证机制
+  - 添加权限验证中间件
+  标签: enhancement, auth
+  里程碑: v1.0.0
+  ```
 
-  3. 开发功能并编写测试
-     ```typescript
-     // 编写登录服务
-     class AuthService {
-       async login(username: string, password: string): Promise<LoginResult> {
-         // 实现登录逻辑
-       }
-     }
+  ## 2. 任务规划与追踪
 
-     // 编写测试
-     describe('AuthService', () => {
-       it('should login user with correct credentials', async () => {
-         // 测试代码
-       });
-     });
-     ```
+  将任务添加到项目看板:
+  - 将Issue添加到当前Sprint
+  - 分配责任人
+  - 设置优先级和截止日期
 
-  4. 提交变更，引用任务编号
-     ```bash
-     git add .
-     git commit -m "feat(auth): 实现用户登录功能 [USER-123]"
-     git push -u origin feature/user-login
-     ```
+  ## 3. 开发实施
 
-  5. 创建合并请求到 develop 分支
-     - 标题: "feat(auth): 实现用户登录功能 [USER-123]"
-     - 描述: 详细说明实现的功能、测试覆盖情况和注意事项
+  创建功能分支并开发:
+  ```bash
+  git checkout develop
+  git pull
+  git checkout -b feature/ISSUE-123-user-auth
 
-  6. 代码审查后合并
-     ```bash
-     # 合并后删除功能分支
-     git checkout develop
-     git pull
-     git branch -d feature/user-login
-     ```
+  # 进行开发...
+
+  git commit -m "feat(auth): 实现用户认证API [#123]"
+  git push -u origin feature/ISSUE-123-user-auth
+  ```
+
+  ## 4. 代码审查与合并
+
+  创建Pull Request:
+  ```
+  标题: feat(auth): 实现用户认证功能
+  描述:
+  - 添加了用户登录和注册API
+  - 实现了JWT令牌验证
+  - 添加了相关单元测试
+
+  Fixes #123
+  ```
+
+  ## 5. 项目分析与路线图管理
+
+  运行项目分析并更新路线图:
+  ```bash
+  # 分析项目状态
+  python -m scripts.github.project_cli analysis analyze \
+    --owner VibeCopilot \
+    --repo VibeCopilot \
+    --project-number 1 \
+    --metrics "progress,quality,risks" \
+    --output analysis.json
+
+  # 生成分析报告
+  python -m scripts.github.project_cli analysis report \
+    --input analysis.json \
+    --format markdown \
+    --output project_report.md
+
+  # 调整项目时间线
+  python -m scripts.github.project_cli analysis adjust \
+    --based-on-analysis analysis.json \
+    --update-milestones true
+  ```
+
+  ## 6. 发布管理
+
+  准备发布:
+  ```bash
+  # 运行每周更新脚本生成报告
+  ./scripts/github/weekly_update.sh
+
+  # 检查风险报告并确认是否可以发布
+  cat reports/github/suggestions_YYYYMMDD.md
+
+  # 创建发布分支
+  git checkout develop
+  git checkout -b release/v1.0.0
+
+  # 修复发现的问题并合并
+
+  # 完成发布
+  git checkout main
+  git merge release/v1.0.0
+  git tag -a v1.0.0 -m "Version 1.0.0"
+  ```
+
+  ## 7. 持续改进
+
+  每个Sprint回顾会议:
+  - 分析项目健康报告讨论改进点
+  - 回顾路线图调整原因并优化预估方法
+  - 更新工作流程文档反映新的最佳实践
 </example>
 
 <example type="invalid">
-  # 不良工作流实践
+  # 不规范的开发工作流实践
 
-  1. 直接在主分支上开发
-     ```bash
-     git checkout main
-     # 直接修改代码...
-     git commit -m "添加了登录功能"
-     git push
-     ```
+  ## 1. 脱离项目管理工具的开发
 
-  2. 混合多个功能在一个提交中
-     ```bash
-     # 同时修改了登录功能、用户资料和权限系统
-     git commit -m "一些更新"
-     ```
+  直接开始编码而不创建Issue或项目任务:
+  ```bash
+  git checkout main # 直接在主分支上开发
+  # 修改代码...
+  git commit -m "添加用户登录" # 不关联任务编号
+  ```
 
-  3. 没有任务跟踪和代码审查
-     - 直接开发而不创建任务
-     - 自行合并代码而不经过审查
-     - 不进行测试就部署到生产环境
+  ## 2. 忽略标准化工具和流程
 
-  4. 不规范的分支管理
-     - 使用不明确的分支名称如 "my-branch" 或 "temp"
-     - 长期保留已合并的分支不删除
-     - 多人在同一分支上开发不同功能
+  - 不使用VibeCopilot提供的项目管理工具
+  - 手动跟踪任务而不使用GitHub Projects
+  - 不运行项目分析工具评估状态
+  - 忽略约定式提交规范
+
+  ## 3. 不规范的分支管理
+
+  ```bash
+  # 使用随意的分支名
+  git checkout -b "chenyi-login-feature"
+
+  # 混合多个功能在一个分支
+  # 在一个分支中同时开发登录、注册和认证功能
+  ```
+
+  ## 4. 忽略代码质量和审查
+
+  - 跳过代码审查直接合并
+  - 没有编写单元测试
+  - PR描述不明确，没有关联Issue
+  - 忽略审查意见，不进行修改
+
+  ## 5. 缺乏项目进度跟踪
+
+  - 不更新任务状态
+  - 不进行项目状态分析
+  - 遇到延期不调整时间线
+  - 发布前不评估风险
+
+  ## 6. 项目管理工具使用不当
+
+  - 不使用提供的CLI工具进行项目分析
+  - 忽略分析报告中的风险警告
+  - 手动调整时间线而不使用工具记录原因
+  - 不保存历史报告用于趋势分析
 </example>
