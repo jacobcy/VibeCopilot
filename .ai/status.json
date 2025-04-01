@@ -1,9 +1,9 @@
 {
   "project": "VibeCopilot",
   "version": "1.0.0",
-  "last_updated": "2024-01-15T12:00:00Z",
+  "last_updated": "2024-01-16T10:15:00Z",
   "active_epic": "Epic-1",
-  "active_story": "Story-1",
+  "active_story": "Story-2",
   "epics": [
     {
       "id": "Epic-1",
@@ -39,7 +39,8 @@
       "id": "Task-2",
       "name": "实现roadmap.yaml文件读写",
       "story_id": "Story-2",
-      "status": "todo"
+      "status": "in_progress",
+      "assignee": "chenyi"
     },
     {
       "id": "Task-3",
@@ -49,7 +50,7 @@
     }
   ],
   "overall_progress": 10,
-  "pending_tasks": 2,
+  "pending_tasks": 1,
   "completed_tasks": 1,
   "blocked_tasks": 0,
   "development_logs": [
@@ -57,6 +58,11 @@
       "date": "2024-01-15",
       "author": "chenyi",
       "message": "完成GitHub项目管理集成PRD文档"
+    },
+    {
+      "date": "2024-01-16",
+      "author": "chenyi",
+      "message": "开始实现roadmap.yaml文件读写功能"
     }
   ]
 }
