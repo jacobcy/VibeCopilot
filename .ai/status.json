@@ -1,7 +1,7 @@
 {
   "project": "VibeCopilot",
   "version": "1.0.0",
-  "last_updated": "2024-01-16T10:15:00Z",
+  "last_updated": "2024-01-17T14:30:00Z",
   "active_epic": "Epic-1",
   "active_story": "Story-2",
   "epics": [
@@ -9,7 +9,7 @@
       "id": "Epic-1",
       "name": "GitHub项目管理集成",
       "status": "in_progress",
-      "progress": 10
+      "progress": 20
     }
   ],
   "stories": [
@@ -25,7 +25,7 @@
       "name": "基础集成功能实现",
       "epic_id": "Epic-1",
       "status": "in_progress",
-      "progress": 0
+      "progress": 33
     }
   ],
   "tasks": [
@@ -39,19 +39,20 @@
       "id": "Task-2",
       "name": "实现roadmap.yaml文件读写",
       "story_id": "Story-2",
-      "status": "in_progress",
+      "status": "completed",
       "assignee": "chenyi"
     },
     {
       "id": "Task-3",
       "name": "扩展/check命令实现",
       "story_id": "Story-2",
-      "status": "todo"
+      "status": "in_progress",
+      "assignee": "chenyi"
     }
   ],
-  "overall_progress": 10,
-  "pending_tasks": 1,
-  "completed_tasks": 1,
+  "overall_progress": 20,
+  "pending_tasks": 0,
+  "completed_tasks": 2,
   "blocked_tasks": 0,
   "development_logs": [
     {
@@ -63,6 +64,11 @@
       "date": "2024-01-16",
       "author": "chenyi",
       "message": "开始实现roadmap.yaml文件读写功能"
+    },
+    {
+      "date": "2024-01-17",
+      "author": "chenyi",
+      "message": "完成roadmap.yaml文件读写模块和CLI命令系统，开始实现/check命令扩展"
     }
   ]
 }
