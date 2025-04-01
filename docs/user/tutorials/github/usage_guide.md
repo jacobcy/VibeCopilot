@@ -1,191 +1,248 @@
 # GitHub 项目管理工具使用指南
 
-这份指南将帮助你掌握 VibeCopilot GitHub 项目管理工具的日常使用方法。
+本文档详细介绍如何使用 VibeCopilot 提供的 GitHub 项目管理工具，帮助您有效管理项目进度、分析项目健康状况并调整项目时间线。
 
-## 📋 日常任务管理
+## 前提条件
 
-### 创建新任务
+在开始使用前，请确保：
 
-#### 方式一：通过网页界面（推荐）
+1. 已安装Python 3.8+
+2. 已安装必要的依赖：`pip install -r scripts/github/requirements.txt`
+3. 配置了GitHub API访问权限
 
-1. 打开项目面板
-2. 点击 "+" 按钮
-3. 填写任务信息：
-   - 标题：简短描述任务内容
-   - 描述：详细说明任务要求
-   - 标签：选择合适的标签
-   - 优先级：设置任务优先级
+## 配置GitHub令牌
 
-#### 方式二：使用命令行
+首先，您需要设置GitHub个人访问令牌：
+
+1. 访问GitHub [Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+2. 点击"Generate new token"
+3. 勾选以下权限：
+   - `repo` (完整仓库访问权限)
+   - `project` (项目管理权限)
+   - `read:org` (如果是组织仓库)
+
+然后，设置环境变量：
 
 ```bash
-# 使用Python模块而非脚本
-python -m src.github.issues.add_issue \
-  --owner <用户名> \
-  --repo <仓库名> \
-  --title "实现登录功能" \
-  --body "添加用户登录和认证功能" \
-  --labels "priority:high,type:feature"
+export GITHUB_TOKEN=your_personal_access_token
+export GITHUB_OWNER=your_github_username_or_org
+export GITHUB_REPO=your_repository_name
+export GITHUB_PROJECT_NUMBER=1  # 项目编号，从URL获取
 ```
 
-### 更新任务状态
+或者创建`.env`文件：
 
-#### 方式一：拖拽操作（推荐）
-
-在看板视图中，直接拖拽任务卡片到对应状态列。
-
-#### 方式二：使用命令行
-
-```bash
-python -m src.github.issues.update_issue \
-  --owner <用户名> \
-  --repo <仓库名> \
-  --issue-number 123 \
-  --state "closed" \
-  --labels "status:completed"
+```
+GITHUB_TOKEN=your_personal_access_token
+GITHUB_OWNER=your_github_username_or_org
+GITHUB_REPO=your_repository_name
+GITHUB_PROJECT_NUMBER=1
 ```
 
-### 添加任务评论
+## 基本用法
 
-1. 点击任务卡片
-2. 在评论框中输入更新信息
-3. 使用特殊标记增加可读性：
-   - 📝 更新内容
-   - ❌ 遇到的问题
-   - ✅ 已解决的问题
+### 项目分析工具
 
-## 📊 项目视图使用
-
-### 看板视图（任务管理）
-
-- 查看任务状态分布
-- 拖拽卡片更新状态
-- 快速添加新任务
-
-### 表格视图（详细信息）
-
-- 查看所有任务的详细信息
-- 批量编辑任务
-- 自定义显示字段
-
-### 时间线视图（进度跟踪）
-
-- 查看项目时间线
-- 跟踪里程碑进度
-- 预览即将到期的任务
-
-## 🏷️ 使用标签系统
-
-### 常用标签
-
-- 🔴 `priority:high`: 高优先级任务
-- 🟡 `priority:medium`: 中优先级任务
-- 🟢 `priority:low`: 低优先级任务
-- 🐛 `type:bug`: 问题修复
-- ✨ `type:feature`: 新功能
-- 📚 `type:docs`: 文档相关
-
-### 标签使用技巧
-
-1. 组合使用标签，如 `type:bug` + `priority:high`
-2. 根据需要创建自定义标签
-3. 保持标签系统简洁明了
-
-## 📈 生成报告
-
-### 路线图进度报告
+#### 进行项目状态分析
 
 ```bash
-python -m src.github.projects.main generate \
-  --owner <用户名> \
-  --repo <仓库名> \
-  --project-number 1 \
-  --markdown \
-  --output-dir ./reports
-```
+# 基本用法 - JSON输出
+python -m scripts.github.project_cli analysis analyze \
+  --metrics "progress,quality,risks"
 
-### 统计报告
-
-```bash
-python -m src.github.projects.roadmap_generator \
-  --owner <用户名> \
-  --repo <仓库名> \
-  --project-number 1 \
+# 生成Markdown报告
+python -m scripts.github.project_cli analysis analyze \
   --format markdown \
-  --output ./reports/stats.md
+  --output project_analysis.md
+
+# 指定特定项目
+python -m scripts.github.project_cli analysis analyze \
+  --owner MyOrg \
+  --repo MyProject \
+  --project-number 2 \
+  --metrics "progress,velocity,risks" \
+  --output analysis.json
 ```
 
-## 🔄 数据同步
-
-### 导出项目数据
+#### 生成项目报告
 
 ```bash
-python -m src.github.projects.main export \
-  --owner <用户名> \
-  --repo <仓库名> \
-  --project-number 1 \
-  --format json \
-  --output project_backup.json
+# 从分析结果生成报告
+python -m scripts.github.project_cli analysis report \
+  --input analysis.json \
+  --format markdown \
+  --output project_report.md
 ```
 
-### 导入项目数据
+#### 调整项目时间线
 
 ```bash
-python -m src.github.projects.main import \
-  --owner <用户名> \
-  --repo <仓库名> \
-  --file project_backup.json
+# 预览调整建议
+python -m scripts.github.project_cli analysis adjust \
+  --based-on-analysis analysis.json \
+  --update-milestones false \
+  --output adjustment_preview.json
+
+# 应用调整到GitHub
+python -m scripts.github.project_cli analysis adjust \
+  --based-on-analysis analysis.json \
+  --update-milestones true
 ```
 
-## 📱 移动端使用
+### 自动化工作流
 
-1. 下载 GitHub 移动应用
-2. 登录你的账号
-3. 访问项目面板
-4. 执行基本操作：
-   - 查看任务
-   - 更新状态
-   - 添加评论
+您可以使用提供的自动化脚本执行周期性项目分析：
 
-## 💡 使用技巧
+```bash
+# 运行每周分析和报告
+./scripts/github/weekly_update.sh
+```
 
-1. **快捷键**
-   - `n`: 新建任务
-   - `c`: 创建评论
-   - `/`: 搜索
+该脚本会：
 
-2. **任务描述模板**
-   ```markdown
-   ## 目标
-   [简要描述任务目标]
+1. 分析当前项目状态
+2. 生成详细报告
+3. 提供调整建议
+4. 保存所有结果到`reports/github/`目录
 
-   ## 具体要求
-   - [ ] 要求1
-   - [ ] 要求2
+### 报告结构
 
-   ## 相关资源
-   - [相关文档]
-   - [设计稿]
-   ```
+项目分析报告包含以下关键部分：
 
-3. **高效协作**
-   - 使用 @提及 通知团队成员
-   - 关联相关任务 (#任务编号)
-   - 使用任务清单跟踪子任务
+1. **项目概览**：总体进度、健康状况评分
+2. **进度指标**：任务完成率、速度、偏差
+3. **质量指标**：代码质量、测试覆盖率、文档完整性
+4. **风险评估**：潜在延迟、依赖项风险、资源约束
+5. **建议**：时间线调整、资源分配、优先级调整
 
-## 🆘 常见操作问题
+## 高级功能
 
-1. **任务无法移动？**
-   - 检查你的权限设置
-   - 确认任务未被锁定
+### 自定义分析指标
 
-2. **找不到特定任务？**
-   - 使用搜索功能
-   - 检查筛选器设置
+您可以创建自定义分析指标：
 
-3. **报告生成失败？**
-   - 验证数据访问权限
-   - 检查命令参数
-   - 确保设置了正确的GITHUB_TOKEN环境变量
+```bash
+python -m scripts.github.project_cli analysis analyze \
+  --metrics "progress,quality,risks" \
+  --custom-metrics-file my_metrics.json
+```
 
-需要更多帮助？请查看我们的[详细文档](../../../index.md)或[联系支持](mailto:support@vibecopilot.com.md)。
+自定义指标文件格式示例：
+
+```json
+{
+  "custom_metric_name": {
+    "type": "composite",
+    "components": ["progress", "quality"],
+    "weights": [0.7, 0.3],
+    "description": "自定义项目健康指标"
+  }
+}
+```
+
+### 集成到CI/CD流程
+
+将项目分析集成到CI/CD流程：
+
+```yaml
+# .github/workflows/project-analysis.yml
+name: Project Analysis
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # 每周一上午9点
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r scripts/github/requirements.txt
+      - name: Run project analysis
+        run: ./scripts/github/weekly_update.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_PROJECT_NUMBER: 1
+      - name: Archive reports
+        uses: actions/upload-artifact@v2
+        with:
+          name: project-reports
+          path: reports/github/
+```
+
+## 常见问题解答
+
+### 常见错误及解决方案
+
+1. **API权限错误**
+   - 问题：`401 Unauthorized` 或 `403 Forbidden`
+   - 解决：检查GitHub令牌权限是否正确，确认令牌未过期
+
+2. **找不到项目**
+   - 问题：`Project with number X not found`
+   - 解决：确认项目编号是否正确，检查您是否有该项目的访问权限
+
+3. **速度过慢**
+   - 问题：分析过程耗时长
+   - 解决：使用`--fields`参数限制获取的字段，或使用`--max-items`限制处理的项目数量
+
+4. **调整失败**
+   - 问题：时间线调整未应用
+   - 解决：确认您有编辑里程碑的权限，检查`--update-milestones`是否设为`true`
+
+### 提示和技巧
+
+1. **定期分析**：设置每周自动分析以持续监控项目健康状况
+2. **差异比较**：保存历史报告以比较不同时间点的项目状态
+3. **组合报告**：对多个相关项目进行分析并生成综合报告
+4. **预警阈值**：设置关键指标阈值，当超过时发送通知
+5. **团队共享**：在团队会议中分享分析报告，共同制定改进计划
+
+## 附录
+
+### 可用分析指标
+
+| 指标名称 | 描述 | 类型 |
+|---------|------|------|
+| progress | 项目总体进度 | 复合指标 |
+| velocity | 团队开发速度 | 单一指标 |
+| quality | 代码和文档质量 | 复合指标 |
+| risks | 项目风险评估 | 复合指标 |
+| timeline | 时间线准确性 | 单一指标 |
+| resources | 资源分配情况 | 复合指标 |
+
+### 命令行参数参考
+
+```
+项目分析命令:
+  --metrics TEXT               要计算的指标列表(逗号分隔)
+  --owner TEXT                 GitHub仓库所有者
+  --repo TEXT                  GitHub仓库名称
+  --project-number INTEGER     GitHub项目编号
+  --format [json|markdown|html]  输出格式
+  --output TEXT                输出文件路径
+  --fields TEXT                要获取的字段(逗号分隔)
+  --max-items INTEGER          最大处理项目数
+  --custom-metrics-file TEXT   自定义指标配置文件
+
+时间线调整命令:
+  --based-on-analysis TEXT     分析结果文件路径
+  --update-milestones BOOLEAN  是否更新GitHub里程碑
+  --adjustment-factor FLOAT    调整系数(默认:1.2)
+  --only-future BOOLEAN        是否只调整未来里程碑
+  --output TEXT                输出文件路径
+```
+
+## 相关资源
+
+- [开发者指南](./develop_guide.md) - 如何扩展和定制项目管理工具
+- [GitHub工作流指南](../../workflow/github_workflow.md) - VibeCopilot项目的GitHub工作流程
+- [路线图工具文档](./roadmap_tool.md) - 项目路线图生成和管理工具
+- [分析工具文档](./analysis_tool.md) - 项目分析工具的技术文档

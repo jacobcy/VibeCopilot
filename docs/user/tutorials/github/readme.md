@@ -8,6 +8,8 @@
 - 📅 **跟踪项目进度**：实时了解项目完成情况
 - 📊 **生成进度报告**：自动生成美观的项目报告
 - 🔄 **同步本地和远程**：轻松在本地和 GitHub 之间同步数据
+- 📈 **项目分析评估**：智能分析项目进度、质量和风险
+- ⏱️ **路线图自动调整**：根据实际进度自动优化项目时间线
 
 ## 🌟 为什么选择这个工具？
 
@@ -15,6 +17,7 @@
 - 🚀 **效率提升**：自动化的工作流程，节省你的时间
 - 📱 **随时掌握**：随时查看项目进展，不错过任何更新
 - 🤝 **团队协作**：让团队成员轻松参与项目管理
+- 🧠 **智能决策**：基于数据分析辅助项目决策
 
 ## 📚 快速开始
 
@@ -34,14 +37,27 @@
 - 使用直观的标签系统管理任务
 - 保持任务描述简洁明了
 - 及时更新任务状态
-
-让我们开始使用这个强大的工具，让项目管理变得更简单、更有趣！🚀
+- 每周运行项目分析评估项目健康度
 
 ## 功能特点
+
+### 路线图管理
 
 - **导入路线图**：将本地YAML或Markdown格式的路线图数据导入到GitHub Projects
 - **导出路线图**：从GitHub Projects导出路线图数据为YAML或JSON格式
 - **生成报告**：生成可视化的路线图报告，支持HTML、Markdown和JSON格式
+
+### 项目分析
+
+- **进度分析**：评估项目完成率和时间进度偏差
+- **质量分析**：监控PR合并率和代码审查质量
+- **风险评估**：识别阻塞任务和延期风险
+
+### 路线图调整
+
+- **自动调整**：根据实际进度自动调整里程碑时间线
+- **调整建议**：生成智能化的项目调整建议
+- **变更跟踪**：记录和验证所有时间线调整
 
 ## 安装
 
@@ -64,6 +80,9 @@ pip install -r requirements.txt
 
 ```bash
 export GITHUB_TOKEN=your_personal_access_token
+export GITHUB_OWNER=your_github_username
+export GITHUB_REPO=your_repository_name
+export GITHUB_PROJECT_NUMBER=1
 ```
 
 ### 导入路线图
@@ -71,7 +90,7 @@ export GITHUB_TOKEN=your_personal_access_token
 将本地路线图数据导入到GitHub Projects：
 
 ```bash
-python -m scripts.github.projects.main import \
+python -m src.github.projects.main import \
   --file path/to/roadmap.yaml \
   --owner github_username \
   --repo repository_name
@@ -87,37 +106,40 @@ python -m scripts.github.projects.main import \
 从GitHub Projects生成路线图报告：
 
 ```bash
-python -m scripts.github.projects.main generate \
+python -m src.github.projects.main generate \
   --owner github_username \
   --repo repository_name \
   --project-number 1 \
   --output-dir ./outputs
 ```
 
-可以指定生成的格式：
+### 项目分析与路线图调整
 
-- `--json`: 生成JSON格式
-- `--markdown`: 生成Markdown格式
-- `--html`: 生成HTML格式
-
-如果不指定格式，默认会生成所有格式。
-
-### 导出路线图数据
-
-从GitHub Projects导出路线图数据：
+分析项目状态并生成报告：
 
 ```bash
-python -m scripts.github.projects.main export \
+# 分析项目并生成报告
+python -m scripts.github.project_cli analysis analyze \
   --owner github_username \
   --repo repository_name \
   --project-number 1 \
-  --output roadmap_export.yaml
+  --format markdown \
+  --output project_analysis.md
+
+# 根据分析结果调整时间线
+python -m scripts.github.project_cli analysis adjust \
+  --based-on-analysis analysis.json \
+  --update-milestones true
 ```
 
-支持的导出格式：
+### 自动化项目管理
 
-- YAML格式（默认）
-- JSON格式（使用 `--format json`）
+使用提供的自动化脚本定期分析项目状态：
+
+```bash
+# 设置每周自动分析
+./scripts/github/weekly_update.sh
+```
 
 ## 数据格式
 
@@ -155,3 +177,5 @@ milestones:
 - ✅ 实现基础框架
 - ✅ 开发核心功能
 ```
+
+让我们开始使用这个强大的工具，让项目管理变得更简单、更有趣！🚀

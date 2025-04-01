@@ -1,24 +1,25 @@
 {
     "mcpServers": {
-        "filesystem-npx": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@modelcontextprotocol/server-filesystem",
-                "/Users/chenyi/Public/VibeCopilot"
-            ]
-        },
-        "github-npx": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@modelcontextprotocol/server-github"
-            ],
-            "envFile": ".env.github"
-        },
-        "git-uvx": {
-            "command": "uvx",
-            "args": ["mcp-server-git", "--repository", "/Users/chenyi/Public/VibeCopilot"]
-        }
+      "git-docker": {
+        "command": "docker",
+        "args": [
+          "run",
+          "-i",
+          "--rm",
+          "--name",
+          "mcp-git",
+          "--mount",
+          "type=bind,src=/Users/chenyi/Public/VibeCopilot,dst=/Users/chenyi/Public/VibeCopilot",
+          "mcp/git"
+        ]
+      },
+      "git-uvx": {
+        "command": "uvx",
+        "args": [
+          "mcp-server-git",
+          "--repository",
+          "/Users/chenyi/Public/VibeCopilot"
+        ]
+      }
     }
-}
+  }

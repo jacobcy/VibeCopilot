@@ -33,8 +33,6 @@ env/
 .vscode/
 *.sublime-project
 *.sublime-workspace
-.cursor/rules/
-.cursor/templates/
 
 # Testing
 .pytest_cache/

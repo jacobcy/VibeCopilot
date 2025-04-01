@@ -160,6 +160,106 @@ projects_client.add_issue_to_project(
 )
 ```
 
+## 项目分析与路线图调整
+
+### 1. 项目分析器使用
+
+```python
+from src.github.projects import ProjectAnalyzer
+
+# 创建分析器实例
+analyzer = ProjectAnalyzer()
+
+# 执行项目分析
+analysis = analyzer.analyze_project(
+    owner="用户名",
+    repo="仓库名",
+    project_number=1,
+    metrics=["progress", "quality", "risks"]
+)
+
+# 获取特定维度的分析结果
+progress = analysis["progress"]
+print(f"项目完成率: {progress['completion_rate']}%")
+
+# 生成分析报告
+report = analyzer.generate_report(analysis, format_type="markdown")
+with open("analysis_report.md", "w", encoding="utf-8") as f:
+    f.write(report)
+```
+
+### 2. 时间线调整器使用
+
+```python
+from src.github.projects import TimelineAdjuster
+
+# 创建调整器实例
+adjuster = TimelineAdjuster()
+
+# 基于分析结果调整时间线
+adjustment_result = adjuster.adjust_timeline(
+    owner="用户名",
+    repo="仓库名",
+    project_number=1,
+    analysis=analysis,  # 前面获取的分析结果
+    update_milestones=True  # 是否实际应用调整
+)
+
+# 从文件应用更新
+result = adjuster.apply_updates_from_file(
+    owner="用户名",
+    repo="仓库名",
+    updates_file="updates.json",
+    dry_run=True  # 先预览不实际应用
+)
+
+# 验证更新是否应用成功
+verification = adjuster.verify_updates(
+    owner="用户名",
+    repo="仓库名",
+    updates_file="updates.json",
+    generate_diff=True
+)
+```
+
+### 3. 分析数据结构
+
+项目分析生成的数据结构概览：
+
+```python
+analysis = {
+    "progress": {
+        "completed": 25,          # 已完成任务数
+        "total": 50,              # 总任务数
+        "completion_rate": 50.0,  # 完成率
+        "status_distribution": {  # 任务状态分布
+            "open": 25,
+            "closed": 25
+        },
+        "milestones_progress": {  # 里程碑进度
+            "里程碑1": {
+                "total": 20,
+                "completed": 15,
+                "completion_rate": 75.0,
+                "due_date": "2023-12-31"
+            }
+        }
+    },
+    "quality": {
+        "pr_merge_rate": 85.5,    # PR合并率
+        "review_comments_avg": 3.2, # 平均评论数
+        "test_coverage": 78.5     # 测试覆盖率
+    },
+    "risks": {
+        "blocked_tasks": 3,       # 阻塞任务
+        "delayed_tasks": 5,       # 延期任务
+        "delayed_rate": 10.0,     # 延期率
+        "risk_level": "MEDIUM",   # 风险等级
+        "risk_score": 2           # 风险评分
+    }
+}
+```
+
 ## 自定义视图和报告
 
 ### 处理路线图数据
@@ -246,6 +346,23 @@ print(f"报告已生成: {results}")
    - Review: 代码审核中
    - Done: 已完成部署
 
+### 4. 项目分析与调整规范
+
+1. **分析周期**
+   - 每周一次完整分析
+   - 每个里程碑结束时进行深度分析
+   - 出现高风险时立即分析
+
+2. **调整审批流程**
+   - 轻微调整(<7天)：技术负责人审批
+   - 中度调整(7-14天)：项目经理审批
+   - 重大调整(>14天)：需产品和管理层共同审批
+
+3. **分析报告标准**
+   - 进度偏差超过10%需要特别标记
+   - 风险等级变化需要明确说明原因
+   - 调整建议需提供具体理由和数据支持
+
 ## 故障排除和调试
 
 ### 1. API 限制处理
@@ -322,6 +439,30 @@ def repair_project_data(owner, repo, project_number):
     return success
 ```
 
+#### 分析器与调整器问题
+
+```python
+def troubleshoot_analyzer():
+    """排查分析器问题"""
+    from src.github.projects import ProjectAnalyzer
+    analyzer = ProjectAnalyzer()
+
+    # 检查环境变量
+    import os
+    if not all([os.getenv("GITHUB_TOKEN"), os.getenv("GITHUB_OWNER"), os.getenv("GITHUB_REPO")]):
+        print("错误: 缺少必要的环境变量")
+        return False
+
+    # 尝试基本API调用
+    try:
+        basic_data = analyzer.github_client.get("rate_limit")
+        print("基本API调用成功")
+        return True
+    except Exception as e:
+        print(f"API调用失败: {e}")
+        return False
+```
+
 ## 扩展和定制
 
 ### 1. 自定义字段配置
@@ -368,6 +509,35 @@ jobs:
             }
 ```
 
+### 3. 扩展分析器和调整器
+
+```python
+from src.github.projects import ProjectAnalyzer, TimelineAdjuster
+
+class CustomAnalyzer(ProjectAnalyzer):
+    """自定义项目分析器"""
+
+    def analyze_project(self, owner, repo, project_number, metrics=None):
+        """扩展基础分析方法"""
+        # 获取基础分析结果
+        analysis = super().analyze_project(owner, repo, project_number, metrics)
+
+        # 添加自定义分析维度
+        if "resources" in (metrics or []):
+            analysis["resources"] = self.analyze_resources(owner, repo)
+
+        return analysis
+
+    def analyze_resources(self, owner, repo):
+        """分析资源使用情况"""
+        # 实现自定义资源分析逻辑
+        return {
+            "engineers": 5,
+            "utilization_rate": 85.0,
+            "overallocated": False
+        }
+```
+
 ## 性能优化建议
 
 1. **批量操作**
@@ -390,6 +560,31 @@ jobs:
    def get_project_item(item_id):
        """获取项目条目（带缓存）"""
        return fetch_item_from_api(item_id)
+   ```
+
+3. **分析优化策略**
+
+   ```python
+   # 避免重复API调用
+   def optimize_analysis_calls(owner, repo, project_number):
+       """优化分析API调用"""
+       from src.github.api import GitHubClient
+       client = GitHubClient()
+
+       # 一次性获取所有数据
+       issues = client.get(f"repos/{owner}/{repo}/issues", params={"state": "all", "per_page": 100})
+       milestones = client.get(f"repos/{owner}/{repo}/milestones", params={"state": "all"})
+       pulls = client.get(f"repos/{owner}/{repo}/pulls", params={"state": "all"})
+
+       # 将数据传递给分析器
+       analyzer = ProjectAnalyzer()
+       analysis = analyzer._analyze_with_provided_data({
+           "issues": issues,
+           "milestones": milestones,
+           "pull_requests": pulls
+       })
+
+       return analysis
    ```
 
 ## 资源和参考

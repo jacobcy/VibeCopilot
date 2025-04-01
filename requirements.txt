@@ -20,7 +20,23 @@ mkdocs-material>=9.2.5
 
 # AI integration
 langchain>=0.0.334
+langchain-openai>=0.0.2  # OpenAI集成的专用包
+langchain-community>=0.0.10  # 包含各种加载器和处理工具
 openai>=1.0.0
+
+# Vector databases and embeddings
+faiss-cpu>=1.7.4  # 高效向量搜索库
+chromadb>=0.4.18  # 另一个向量存储选项
+sentence-transformers>=2.2.2  # 本地嵌入模型支持
+
+# Document processing
+unstructured>=0.10.30  # 非结构化文档处理
+markdown>=3.4.4  # Markdown解析
+beautifulsoup4>=4.12.2  # HTML解析
+python-frontmatter>=1.0.0  # YAML前置元数据处理
 
 # Project management
 pre-commit>=3.4.0
+
+# Basic Memory integration
+sqlalchemy>=2.0.20  # 数据库ORM，用于Basic Memory存储
