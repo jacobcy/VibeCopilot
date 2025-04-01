@@ -1,3 +1,9 @@
-[submodule "scripts/docs/tools/obsidiosaurus"]
-	path = scripts/docs/tools/obsidiosaurus
+[submodule "modules/obsidiosaurus"]
+	path = modules/obsidiosaurus
 	url = https://github.com/CIMSTA/obsidiosaurus.git
+[submodule "modules/cursor-custom-agents-rules-generator"]
+	path = modules/cursor-custom-agents-rules-generator
+	url = https://github.com/jacobcy/cursor-custom-agents-rules-generator.git
+[submodule "modules/gitdiagram"]
+	path = modules/gitdiagram
+	url = https://github.com/jacobcy/gitdiagram.git

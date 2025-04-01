@@ -9,6 +9,7 @@ VibeCopilot是一个为开发者设计的智能项目管理工具，旨在通过
 - **文档生成与管理** - 自动化文档创建和更新
 - **GitHub Projects集成** - 路线图和任务管理自动化
 - **项目模板库** - 快速启动新项目的标准化模板
+- **项目结构可视化** - 利用GitDiagram生成项目架构图
 
 ## 📋 项目结构
 
@@ -19,7 +20,12 @@ VibeCopilot是一个为开发者设计的智能项目管理工具，旨在通过
 │   ├── ai                # AI读取的文档
 │   ├── human             # 人类阅读的文档
 │   └── project           # 项目规划文档
+├── modules               # 集成的外部模块
+│   ├── cursor-custom-agents-rules-generator  # Cursor规则生成器
+│   ├── gitdiagram        # 项目结构可视化工具
+│   └── obsidiosaurus     # 文档生成工具
 ├── scripts               # 工具脚本
+│   └── utils             # 工具类脚本
 ├── tools                 # 工具使用指南
 ├── templates             # 项目模板
 └── src                   # 源代码(开发中)
@@ -29,10 +35,10 @@ VibeCopilot是一个为开发者设计的智能项目管理工具，旨在通过
 
 ### 安装
 
-1. 克隆仓库:
+1. 克隆仓库(包含子模块):
 
 ```bash
-git clone https://github.com/yourusername/VibeCopilot.git
+git clone --recursive https://github.com/yourusername/VibeCopilot.git
 cd VibeCopilot
 ```
 
@@ -71,6 +77,12 @@ python scripts/setup/init_project.py --name "MyProject" --template python
 python scripts/github/create_project.py --name "项目路线图"
 ```
 
+4. **生成项目结构图**:
+
+```bash
+python scripts/utils/generate_diagram.py . --setup
+```
+
 ## 📚 文档
 
 - **用户指南**: [docs/human/guides](docs/human/guides/)
@@ -89,6 +101,20 @@ VibeCopilot采用"开发流程五步法":
 3. **制定计划** - 分解任务，设计解决方案
 4. **修改代码** - 实现功能，保证质量
 5. **总结报告** - 记录过程和结果
+
+### 集成的子模块
+
+- **cursor-custom-agents-rules-generator** - Cursor规则生成器，提供自动化规则生成和管理
+  - 作者: [jacobcy](https://github.com/jacobcy/cursor-custom-agents-rules-generator)
+  - 主要功能: 自动规则生成、标准化文档格式、AI行为控制和优化
+
+- **gitdiagram** - 项目结构可视化工具，将代码库转换为交互式架构图
+  - 作者: [jacobcy](https://github.com/jacobcy/gitdiagram)
+  - 主要功能: 即时可视化、交互式组件导航、快速生成项目架构图
+
+- **obsidiosaurus** - Obsidian与Docusaurus集成工具
+  - 作者: [CIMSTA](https://github.com/CIMSTA/obsidiosaurus)
+  - 主要功能: 将Obsidian笔记转换为Docusaurus站点文档
 
 ### 贡献指南
 

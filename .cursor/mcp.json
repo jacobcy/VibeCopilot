@@ -8,7 +8,7 @@
                 "/Users/chenyi/Public/VibeCopilot"
             ]
         },
-        "server-github-npx": {
+        "github-npx": {
             "command": "npx",
             "args": [
                 "-y",
@@ -16,7 +16,7 @@
             ],
             "envFile": ".env.github"
         },
-        "git": {
+        "git-uvx": {
             "command": "uvx",
             "args": ["mcp-server-git", "--repository", "/Users/chenyi/Public/VibeCopilot"]
         }

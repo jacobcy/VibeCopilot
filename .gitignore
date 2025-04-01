@@ -33,6 +33,8 @@ env/
 .vscode/
 *.sublime-project
 *.sublime-workspace
+.cursor/rules/
+.cursor/templates/
 
 # Testing
 .pytest_cache/
@@ -58,3 +60,9 @@ website/package-lock.json
 # Obsidian
 .obsidian/
 backups/
+
+# Private individual user cursor rules
+.cursor/rules/_*.mdc
+
+# New module path
+modules/

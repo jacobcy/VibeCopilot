@@ -1,0 +1,17 @@
+# Templates - accessible but not indexed
+.cursor/templates/
+
+# Submodules - accessible but not indexed
+modules/cursor-custom-agents-rules-generator/
+modules/gitdiagram/
+modules/obsidiosaurus/
+
+# VibeCopilot项目特有设置
+.cursor/rules/_*.mdc
+.cursor/rules/**/hidden*.mdc
+
+# 添加规则目录以避免索引问题 - 依然可访问但不会索引
+.cursor/rules/
+
+# VibeCopilot项目特有设置
+.cursor/rules/user-rules/*.mdc
