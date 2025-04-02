@@ -22,7 +22,7 @@ def test_openai_key(api_key):
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
 
     data = {
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4o-mini",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Hello, are you working?"},

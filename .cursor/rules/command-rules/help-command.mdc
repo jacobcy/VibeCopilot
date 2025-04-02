@@ -25,17 +25,12 @@ VibeCopilot 开发命令系统 v1.0
 /help    - 显示帮助信息
 /check   - 检查开发进度
 /update  - 更新开发状态
-/plan    - 管理开发计划
 /story   - 管理用户故事
 /task    - 管理开发任务
+/plan    - 管理开发计划
 /branch  - 管理Git分支
-/doc     - 管理项目文档
-/memory  - 管理基于LangChain的知识库
-
-其他常用命令:
-/status  - 显示项目当前状态
-/log     - 查看开发日志
-/report  - 生成项目报告
+/flow    - 启动和管理开发流程
+/memory  - 管理项目知识库
 
 输入 /help [命令名] 获取特定命令的详细用法。
 ```
@@ -52,7 +47,7 @@ VibeCopilot 开发命令系统 v1.0
   [命令名] - 可选，要查看详细用法的命令名称
 示例:
   /help
-  /help check
+  /help task
 ```
 
 ### /check
@@ -62,14 +57,13 @@ VibeCopilot 开发命令系统 v1.0
 用途: 检查项目开发进度和状态
 语法: /check [--type=类型] [--id=标识符] [--status=状态]
 参数:
-  --type    - 可选，检查类型(epic/story/task)，默认检查整体进度
-  --id      - 可选，特定项目标识符，如epic-001、story-002等
-  --status  - 可选，筛选特定状态，如pending、completed等
+  --type    - 可选，检查类型(epic/story/task/roadmap)，默认检查整体进度
+  --id      - 可选，特定项目标识符，如E001、S002等
+  --status  - 可选，筛选特定状态，如todo、in_progress、completed等
 示例:
   /check
   /check --type=story
-  /check --id=story-002
-  /check --type=task --status=pending
+  /check --id=S002
 ```
 
 ### /update
@@ -77,116 +71,134 @@ VibeCopilot 开发命令系统 v1.0
 ```
 命令: /update
 用途: 更新开发对象的状态、进度或相关信息
-语法: /update [--id=对象ID] [--status=新状态] [--progress=进度百分比] [--note=更新说明]
+语法: /update [子命令] [--id=对象ID] [--status=新状态] [--progress=进度百分比] [--note=更新说明]
+子命令:
+  roadmap  - 更新项目路线图
 参数:
-  --id        - 必选，要更新的对象ID，如task-001、story-002等
-  --status    - 可选，设置新状态，如pending、in-progress、completed等
+  --id        - 必选(无子命令时)，要更新的对象ID，如T001、S002等
+  --status    - 可选，设置新状态，如todo、in_progress、completed等
   --progress  - 可选，更新进度百分比，0-100的整数
   --note      - 可选，添加更新说明，简短描述更新内容
 示例:
-  /update --id=task-001 --status=completed --note="完成了基本功能实现"
-  /update --id=story-002 --progress=75
-```
-
-### /plan
-
-```
-命令: /plan
-用途: 创建或管理开发计划
-语法: /plan [--type=计划类型] [--start=开始日期] [--end=结束日期] [--epic=关联史诗]
-参数:
-  --type    - 可选，计划类型，如sprint、release等
-  --start   - 可选，开始日期，格式YYYY-MM-DD
-  --end     - 可选，结束日期，格式YYYY-MM-DD
-  --epic    - 可选，关联到的史诗ID
-示例:
-  /plan
-  /plan --type=sprint --start=2023-04-15 --end=2023-04-30
-  /plan --epic=epic-001
+  /update --id=T001 --status=completed --note="完成了基本功能实现"
+  /update roadmap
 ```
 
 ### /story
 
 ```
 命令: /story
-用途: 创建或管理用户故事
-语法: /story [--new] [--list] [--epic=史诗ID] [--title=标题] [--status=状态]
-参数:
-  --new     - 可选，创建新故事
-  --list    - 可选，列出故事
-  --epic    - 新故事时必选，关联的史诗ID
-  --title   - 新故事时必选，故事标题
-  --status  - 可选，筛选特定状态的故事
+用途: 管理用户故事
+语法: /story [子命令] [参数...]
+子命令:
+  无子命令   - 显示当前活跃故事
+  new      - 创建新故事
+  confirm  - 确认故事PRD
+  list     - 列出故事
+
+创建新故事:
+  /story new <故事标题> [--epic=史诗ID] [--milestone=里程碑ID]
+
+确认故事:
+  /story confirm <故事ID>
+
+列出故事:
+  /story list [--status=状态] [--epic=史诗ID]
 示例:
   /story
-  /story --list --epic=epic-001
-  /story --new --epic=epic-001 --title="用户登录功能"
+  /story new 用户登录功能
+  /story confirm S001
+  /story list --status=active
 ```
 
 ### /task
 
 ```
 命令: /task
-用途: 创建或管理开发任务
-语法: /task [--new] [--list] [--story=故事ID] [--title=标题] [--assign=责任人] [--priority=优先级]
-参数:
-  --new      - 可选，创建新任务
-  --list     - 可选，列出任务
-  --story    - 新任务时必选，关联的故事ID
-  --title    - 新任务时必选，任务标题
-  --assign   - 可选，任务责任人
-  --priority - 可选，任务优先级(high/medium/low)
+用途: 管理开发任务
+语法: /task [子命令] [参数...]
+子命令:
+  无子命令   - 显示当前活跃任务
+  create    - 创建标准任务
+  quick     - 创建快速任务
+  debt      - 创建技术债务任务
+  start     - 开始执行任务
+  done      - 完成任务
+  list      - 列出任务
+
+创建标准任务:
+  /task create <任务标题> [--story=故事ID] [--priority=优先级]
+
+创建快速任务:
+  /task quick <任务标题> [--type=bug|enhance|docs]
+
+创建技术债务任务:
+  /task debt <任务标题> [--scope=范围]
+
+任务管理:
+  /task start <任务ID>
+  /task done <任务ID> [--hours=实际工时]
+  /task list [--status=状态] [--story=故事ID]
 示例:
   /task
-  /task --list --story=story-001
-  /task --new --story=story-001 --title="实现登录API" --priority=high
+  /task create 实现用户登录API --story=S001
+  /task quick 修复登录按钮样式
+  /task debt 重构认证模块
+  /task start T001
+  /task done T001 --hours=4.5
+  /task list --status=in_progress
 ```
 
-### /branch
+### /flow
 
 ```
-命令: /branch
-用途: 创建或管理Git分支
-语法: /branch [--new] [--checkout] [--task=任务ID]
-参数:
-  --new      - 可选，创建新分支
-  --checkout - 可选，切换到指定分支
-  --task     - 新分支时必选，关联的任务ID
+命令: /flow
+用途: 启动和管理开发流程
+语法: /flow <流程名称> [参数...]
+流程类型:
+  story    - 需求确认与PRD生成流程
+  spec     - 开发计划制定流程
+  coding   - 代码开发流程
+  test     - 测试流程
+  review   - 审核流程
+  commit   - 代码提交流程
 示例:
-  /branch
-  /branch --new --task=task-001
-  /branch --checkout feature/task-001-login-api
-```
-
-### /doc
-
-```
-命令: /doc
-用途: 查看或更新项目文档
-语法: /doc [--view=文档类型] [--update] [--search=关键词]
-参数:
-  --view    - 可选，要查看的文档类型，如prd、arch等
-  --update  - 可选，更新文档(将进入交互模式)
-  --search  - 可选，在文档中搜索关键词
-示例:
-  /doc
-  /doc --view=prd
-  /doc --search="认证功能"
+  /flow story 用户认证功能
+  /flow coding
+  /flow commit
 ```
 
 ### /memory
 
 ```
 命令: /memory
-用途: 管理基于LangChain的知识库
-语法: /memory <操作> [参数]
-参数:
-  <操作> - 必需，操作类型，如process、query、find、export、load、list
-  [参数] - 可选，根据操作类型需要的参数
+用途: 管理项目知识库
+语法: /memory <子命令> [参数...]
+子命令:
+  save     - 保存内容到知识库
+  read     - 读取知识库内容
+  search   - 搜索知识库
+  list     - 列出知识库内容
 示例:
-  /memory process --source=docs/api --type=document
-  /memory query --query="认证流程是什么?"
-  /memory export --output=obsidian/knowledge --format=md
+  /memory save --title="API设计文档" --path=dev/api
+  /memory read --id=doc001
+  /memory search --query="认证流程"
+  /memory list --type=document
+```
+
+## 子命令通用规范
+
+所有命令都遵循以下统一的子命令格式规范：
+
+```
+命令通用格式: /<命令名称> [子命令] [参数]
+
+标准子命令:
+- 无子命令: 显示当前对象信息
+- new/create: 创建新对象
+- list: 列出对象列表
+- start: 开始执行
+- done/complete: 完成对象
 ```
 
 ## 示例
@@ -202,40 +214,53 @@ VibeCopilot 开发命令系统 v1.0
   /help    - 显示帮助信息
   /check   - 检查开发进度
   /update  - 更新开发状态
-  /plan    - 管理开发计划
   /story   - 管理用户故事
   /task    - 管理开发任务
+  /plan    - 管理开发计划
   /branch  - 管理Git分支
-  /doc     - 管理项目文档
-  /memory  - 管理基于LangChain的知识库
-
-  其他常用命令:
-  /status  - 显示项目当前状态
-  /log     - 查看开发日志
-  /report  - 生成项目报告
+  /flow    - 启动和管理开发流程
+  /memory  - 管理项目知识库
 
   输入 /help [命令名] 获取特定命令的详细说明。
   ```
 
-  用户: `/help update`
+  用户: `/help task`
 
   系统响应:
   ```
-  命令: /update
+  命令: /task
+  用途: 管理开发任务
 
-  用途: 更新开发对象的状态、进度或相关信息
+  语法: /task [子命令] [参数...]
 
-  语法: /update [--id=对象ID] [--status=新状态] [--progress=进度百分比] [--note=更新说明]
+  子命令:
+    无子命令  - 显示当前活跃任务
+    create   - 创建标准任务
+    quick    - 创建快速任务
+    debt     - 创建技术债务任务
+    start    - 开始执行任务
+    done     - 完成任务
+    list     - 列出任务
 
-  参数:
-  --id        - 必选，要更新的对象ID（如task-001、story-002等）
-  --status    - 可选，设置新状态（如pending、in-progress、completed等）
-  --progress  - 可选，更新进度百分比（0-100的整数）
-  --note      - 可选，添加更新说明（简短描述更新内容）
+  创建标准任务:
+    /task create <任务标题> [--story=故事ID] [--priority=优先级]
+
+  创建快速任务:
+    /task quick <任务标题> [--type=bug|enhance|docs]
+
+  创建技术债务任务:
+    /task debt <任务标题> [--scope=范围]
+
+  任务管理:
+    /task start <任务ID>
+    /task done <任务ID> [--hours=实际工时]
+    /task list [--status=状态] [--story=故事ID]
 
   示例:
-  /update --id=task-001 --status=completed --note="完成了基本功能实现"
-  /update --id=story-002 --progress=75
+    /task create 实现用户登录API --story=S001
+    /task quick 修复登录按钮样式
+    /task start T001
+    /task done T001 --hours=4.5
   ```
 </example>
 
@@ -244,33 +269,16 @@ VibeCopilot 开发命令系统 v1.0
 
   系统响应:
   ```
-  VibeCopilot开发系统提供以下命令:
-
-  help - 这个命令可以帮助你了解所有可用的命令。如果你想获取更详细的信息，可以使用help后面跟上具体的命令名称，例如help update。这将显示该命令的详细用法，包括所有可用的参数和选项，以及一些使用示例。此外，help命令还可以显示命令的别名和相关功能。
-
-  check - 用于检查项目的当前状态和进度。这个命令可以显示所有待完成和已完成的任务，以及当前活跃的用户故事和史诗。如果你想获取特定类型的信息，可以使用--type参数指定。
-
-  update - 这个命令用于更新任务、故事或史诗的状态。你可以使用各种参数来指定要更新的对象和新的状态值。此外，你还可以添加备注说明更新的原因或详情。
-
-  ... [继续列出所有其他命令的冗长描述] ...
+  可以使用以下命令：
+  /help - 显示帮助
+  /check - 检查状态
+  /task - 管理任务
+  /story - 管理故事
   ```
 
   问题:
-  - 输出过于冗长，不便于快速浏览
-  - 没有突出核心命令和常用命令的区分
-  - 没有清晰的格式化，难以快速找到所需信息
-
-  用户: `/help update`
-
-  系统响应:
-  ```
-  update命令用法
-
-  更新状态
-  ```
-
-  问题:
-  - 信息过于简短，缺少必要的详细说明
-  - 没有提供命令语法和参数说明
-  - 没有使用示例
+  - 帮助信息过于简略，缺少必要的说明
+  - 没有解释如何获取详细帮助
+  - 缺少格式化和分类
+  - 未包含所有可用命令
 </example>

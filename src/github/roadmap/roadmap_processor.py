@@ -21,7 +21,7 @@ class RoadmapProcessor:
         初始化路线图处理器
 
         Args:
-            roadmap_path: 路线图文件路径，默认为项目根目录下的data/roadmap.yaml
+            roadmap_path: 路线图文件路径，默认为项目根目录下的.ai/roadmap/current.yaml
         """
         self.roadmap_path = roadmap_path or os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),

@@ -227,7 +227,7 @@ Git操作:
 ## 实现细节
 
 ### 数据源
-- `data/roadmap.yaml`: 获取任务信息
+- `.ai/roadmap/current.yaml`: 获取任务信息
 - `data/branch_map.json`: 存储任务与分支的关联关系
 - Git本地仓库: 执行分支操作
 - `.ai/cache/current_branch.json`: 记录当前活跃分支

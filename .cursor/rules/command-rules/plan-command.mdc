@@ -67,7 +67,7 @@ ID: M3
 描述:
 实现VibeCopilot的高级功能模块，包括智能代码生成和深度集成能力
 
-路线图文件已更新: data/roadmap.yaml
+路线图文件已更新: .ai/roadmap/current.yaml
 GitHub项目已同步: 新的里程碑已添加到项目看板
 ```
 
@@ -86,7 +86,7 @@ ID: S3.1
 描述:
 实现代码自动生成功能，支持根据注释生成代码和根据需求创建组件
 
-路线图文件已更新: data/roadmap.yaml
+路线图文件已更新: .ai/roadmap/current.yaml
 GitHub Issue已创建: #25
 ```
 
@@ -105,7 +105,7 @@ ID: T3.1.1
 描述:
 实现基于大型语言模型的代码生成核心算法
 
-路线图文件已更新: data/roadmap.yaml
+路线图文件已更新: .ai/roadmap/current.yaml
 GitHub Issue已创建: #26
 ```
 
@@ -167,7 +167,7 @@ graph TD
   描述:
   实现VibeCopilot的高级功能模块，包括智能代码生成和深度集成能力
 
-  路线图文件已更新: data/roadmap.yaml
+  路线图文件已更新: .ai/roadmap/current.yaml
   GitHub项目已同步: 新的里程碑已添加到项目看板
   ```
 
@@ -187,7 +187,7 @@ graph TD
   描述:
   实现代码自动生成功能，支持根据注释生成代码和根据需求创建组件
 
-  路线图文件已更新: data/roadmap.yaml
+  路线图文件已更新: .ai/roadmap/current.yaml
   GitHub Issue已创建: #25
   ```
 
@@ -207,7 +207,7 @@ graph TD
   描述:
   实现基于大型语言模型的代码生成核心算法
 
-  路线图文件已更新: data/roadmap.yaml
+  路线图文件已更新: .ai/roadmap/current.yaml
   GitHub Issue已创建: #26
   ```
 </example>
@@ -231,7 +231,7 @@ graph TD
 ## 实现细节
 
 ### 数据源
-- `data/roadmap.yaml`: 主要数据源，用于获取现有项目和存储新创建的项目
+- `.ai/roadmap/current.yaml`: 主要数据源，用于获取现有项目和存储新创建的项目
 - GitHub API: 用于创建项目板卡片或Issues
 
 ### ID生成规则

@@ -6,10 +6,18 @@ alwaysApply: false
 
 # VibeCopilot 需求确认与PRD产出规范
 
+> **重要提示**：本文件为流程规则(flow-rule)，不是直接执行入口。请使用 `/flow story` 或 `/story new <故事名称>` 命令来启动此流程。不要使用 `@story-flow.mdc` 的形式引用本规则，这不会触发流程执行。
+
 role: "需求分析专家" @requirement_analyst
 
 ## 流程定位
 本规则位于VibeCopilot核心开发流程的PRE-FLOW阶段，负责需求确认和PRD产出，是后续开发的基础和前提。
+
+## 触发方式
+本流程可通过以下命令触发：
+- `/flow story` - 启动需求确认和PRD产出流程
+- `/story new <故事名称>` - 创建新用户故事并启动PRD生成流程
+- `/story confirm <故事ID>` - 确认PRD并更新状态
 
 ## 关键职责
 - 通过敏捷方法确认需求，组织为Epic-Story-Task结构

@@ -9,12 +9,12 @@ alwaysApply: false
 ## 关键规则
 
 - 当用户输入`/update`命令时，更新开发对象的状态、进度或相关信息
-- 必须指定要更新的对象ID
+- 必须指定要更新的对象ID或更新类型
 - 支持更新状态、进度百分比和添加更新说明
 - 更新完成后自动记录到开发日志
 - 自动更新相关联对象的状态和进度
 - 提供清晰的操作结果反馈
-- 支持与GitHub项目同步（通过`--github`参数）
+- 支持与GitHub项目同步
 
 ## 概念映射关系
 
@@ -23,7 +23,7 @@ graph TD
     Epic[Epic] --> Story[Story]
     Story --> Task[Task]
 
-    Milestone1[Milestone<br>roadmap.yaml] --> Task1[Task<br>roadmap.yaml]
+    Milestone1[Milestone<br>.ai/roadmap/] --> Task1[Task<br>.ai/roadmap/]
 
     Milestone2[Milestone<br>GitHub] --> Issue[Issue<br>GitHub]
 
@@ -47,7 +47,7 @@ graph TD
         Task
     end
 
-    subgraph 路线图["roadmap.yaml"]
+    subgraph 路线图[".ai/roadmap/"]
         Milestone1
         Task1
     end
@@ -58,12 +58,13 @@ graph TD
     end
 ```
 
-- **Epic ↔ Milestone**: 使用`.ai/epics/`目录存储，映射到`roadmap.yaml`中的milestone和GitHub的milestone
-- **Story**: 使用`.ai/stories/`目录存储，映射到`roadmap.yaml`中的特定task
-- **Task**: 使用`.ai/tasks/`目录存储，映射到`roadmap.yaml`中的task和GitHub的issue
+- **Epic ↔ Milestone**: 使用`.ai/epics/`目录存储，映射到`.ai/roadmap/current.yaml`中的milestone和GitHub的milestone
+- **Story**: 使用`.ai/stories/`目录存储，映射到`.ai/roadmap/current.yaml`中的特定task
+- **Task**: 使用`.ai/tasks/`目录存储，映射到`.ai/roadmap/current.yaml`中的task和GitHub的issue
 
 ## 命令格式规范
 
+### 对象状态更新命令
 基本语法: `/update [--id=对象ID] [--status=新状态] [--progress=进度百分比] [--note=更新说明] [--github]`
 
 参数说明:
@@ -76,6 +77,14 @@ graph TD
 - `--note`: 可选，添加更新说明，简短描述更新内容
 - `--github`: 可选，同步到GitHub，默认为false
 
+### 路线图更新命令
+基本语法: `/update roadmap [--init] [--check]`
+
+参数说明:
+- 无参数: 默认检查.ai目录里的story进度是否一致，不一致时检查实际代码，然后同步到GitHub
+- `--init`: 初始化操作，删除GitHub project中旧数据，使用.ai/roadmap/base.yaml的新结构
+- `--check`: 检查实际代码来更新路线图
+
 ## 命令执行流程
 
 ```mermaid
@@ -84,7 +93,7 @@ flowchart TD
     B -->|有效| C[执行状态更新]
     B -->|无效| G[显示错误]
     C --> D[级联更新相关对象]
-    D --> E1[更新roadmap.yaml]
+    D --> E1[更新.ai/roadmap/current.yaml]
     E1 --> E2[更新.ai目录文件]
     E2 --> E3{启用GitHub同步?}
     E3 -->|是| E4[同步到GitHub]
@@ -97,9 +106,9 @@ flowchart TD
 1. **验证更新请求**：检查对象ID是否存在，验证状态值是否有效
 2. **执行状态更新**：更新对象状态文件，记录变更时间和原因
 3. **级联更新**：当子对象状态变更时，自动更新父级对象的进度
-4. **更新roadmap.yaml**：通过`src.cli.roadmap`更新项目路线图
+4. **更新路线图**：更新`.ai/roadmap/current.yaml`路线图文件
 5. **更新.ai目录文件**：更新相应的Epic/Story/Task文件
-6. **同步到GitHub**：如果启用，通过`src.github.roadmap.github_sync`同步到GitHub项目
+6. **同步到GitHub**：同步到GitHub项目
 7. **记录与通知**：将更新记录到开发日志，显示操作结果反馈
 
 ## 更新结果反馈规范
@@ -134,19 +143,32 @@ story-002 "强制开发流程规范" 已标记为已完成
 [GitHub同步]: 相关任务已同步到GitHub
 ```
 
-### 阻塞状态反馈
+### 路线图更新反馈
 
 ```
-⚠️ 阻塞状态已记录!
+🔄 路线图更新成功!
 
-task-005 "Memory记录集成" 已标记为阻塞
-阻塞原因: "等待Memory API文档更新"
-
-此阻塞已被标记为风险，并通知相关人员
-请使用 `/check --id=task-005` 跟踪状态变化
+已基于.ai目录Story进度更新路线图
+- 更新了3个milestone进度
+- 调整了5个task状态
+- 新增了2个task
 
 变更已记录到开发日志
-[GitHub同步]: 已在Issue #28添加"blocked"标签
+[GitHub同步]: 项目面板已同步最新数据
+```
+
+### 路线图初始化反馈
+
+```
+⚠️ 路线图结构已改变!
+
+已基于.ai/roadmap/base.yaml初始化路线图
+- 移除了旧GitHub Project数据
+- 创建了4个新milestone
+- 添加了15个新task
+
+路线图结构变更已记录到开发日志
+[GitHub同步]: 已完成新结构同步
 ```
 
 ## 状态转换图
@@ -167,7 +189,7 @@ stateDiagram-v2
 
 ## 与其他命令的集成
 
-- `/check`: 查看状态更新后的项目进度
+- `/check roadmap`: 检查当前路线图所处的阶段
 - `/task`: 管理已更新的任务
 - `/story`: 查看更新后的开发阶段
 - `/plan`: 创建需要后续更新的新计划
@@ -190,36 +212,34 @@ stateDiagram-v2
   [GitHub同步]: 已将Issue #24标记为closed
   ```
 
-  用户: `/update --id=story-002 --status=completed --note="所有任务已完成，通过了验收测试"`
+  用户: `/update roadmap`
 
   系统响应:
   ```
-  ✅ 故事更新成功!
+  🔄 路线图更新成功!
 
-  story-002 "强制开发流程规范" 已标记为已完成
-  更新说明: "所有任务已完成，通过了验收测试"
-
-  所属史诗 epic-001 进度已更新: 85% (↑15%)
-
-  下一个活跃故事已设置为: story-003 "敏捷开发故事板"
+  已基于.ai目录Story进度更新路线图
+  - 更新了3个milestone进度
+  - 调整了5个task状态
+  - 新增了2个task
 
   变更已记录到开发日志
+  [GitHub同步]: 项目面板已同步最新数据
   ```
 
-  用户: `/update --id=task-007 --status=blocked --note="等待Memory API文档更新" --github`
+  用户: `/update roadmap --init`
 
   系统响应:
   ```
-  ⚠️ 阻塞状态已记录!
+  ⚠️ 路线图结构已改变!
 
-  task-007 "集成Memory查询功能" 已标记为阻塞
-  阻塞原因: "等待Memory API文档更新"
+  已基于.ai/roadmap/base.yaml初始化路线图
+  - 移除了旧GitHub Project数据
+  - 创建了4个新milestone
+  - 添加了15个新task
 
-  此阻塞已被标记为风险，并通知相关人员
-  请使用 `/check --id=task-007` 跟踪状态变化
-
-  变更已记录到开发日志
-  [GitHub同步]: 已在Issue #31添加"blocked"标签
+  路线图结构变更已记录到开发日志
+  [GitHub同步]: 已完成新结构同步
   ```
 </example>
 
@@ -235,12 +255,25 @@ stateDiagram-v2
   - 反馈过于简单，缺乏详细信息
   - 没有显示任务名称和相关上下文
   - 没有提供父级对象的进度更新信息
+
+  用户: `/update roadmap`
+
+  系统响应:
+  ```
+  正在更新roadmap.yaml...完成
+  ```
+
+  问题:
+  - 没有提供更新内容的明确信息
+  - 没有显示具体更新了哪些内容和变化
+  - 缺少与GitHub的同步状态反馈
 </example>
 
 ## 实现细节
 
 ### 数据源
-- `data/roadmap.yaml`: 存储项目结构和状态
+- `.ai/roadmap/base.yaml`: 路线图的基本结构文件
+- `.ai/roadmap/current.yaml`: 当前路线图状态文件
 - `.ai/epics/`: 存储Epic详细信息和文档
 - `.ai/stories/`: 存储Story详细信息和文档
 - `.ai/tasks/`: 存储Task详细信息和具体实现步骤
@@ -253,7 +286,8 @@ stateDiagram-v2
 - 进度计算：基于任务完成情况自动更新父对象进度
 - 风险标记：检测并标记风险状态
 - 下一步推荐：根据项目结构推荐下一步
-- 双向同步：确保本地文件与roadmap.yaml以及GitHub保持同步
+- 双向同步：确保本地文件与路线图文件以及GitHub保持同步
+- 代码分析：检查实际代码与路线图的一致性
 
 ### 主要依赖
 - `src.cli.roadmap`: 路线图数据处理

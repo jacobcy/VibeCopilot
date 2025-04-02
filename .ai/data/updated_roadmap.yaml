@@ -1,0 +1,331 @@
+title: "VibeCopilot更新路线图"
+description: "基于代码实际状态和GitMap分析的VibeCopilot项目开发路线图"
+last_updated: "2024-04-02"
+
+milestones:
+  - id: "M1"
+    name: "基础架构强化阶段"
+    description: "加强核心模块功能，完善基础架构"
+    start_date: "2024-04-03"
+    end_date: "2024-05-15"
+    status: "in_progress"
+    progress: 5
+
+  - id: "M2"
+    name: "AI能力集成阶段"
+    description: "开发AI辅助能力，实现智能化工作流"
+    start_date: "2024-05-16"
+    end_date: "2024-06-30"
+    status: "planned"
+    progress: 0
+
+  - id: "M3"
+    name: "自动化流程阶段"
+    description: "实现开发流程自动化，提高效率"
+    start_date: "2024-07-01"
+    end_date: "2024-08-15"
+    status: "planned"
+    progress: 0
+
+  - id: "M4"
+    name: "用户体验与生态阶段"
+    description: "改善用户界面，构建插件生态"
+    start_date: "2024-08-16"
+    end_date: "2024-09-30"
+    status: "planned"
+    progress: 0
+
+tasks:
+  # M1 基础架构强化阶段任务
+  - id: "T1.1"
+    title: "核心模块功能增强"
+    description: "完善state_manager和config模块功能，增加错误处理和性能优化"
+    milestone: "M1"
+    status: "in_progress"
+    priority: "P0"
+    assignees: []
+    files:
+      - "src/core/state_manager.py"
+      - "src/core/config.py"
+
+  - id: "T1.2"
+    title: "命令行界面完善"
+    description: "增强CLI接口功能，添加更多实用命令，提升用户体验"
+    milestone: "M1"
+    status: "todo"
+    priority: "P0"
+    assignees: []
+    files:
+      - "src/cli/commands.py"
+      - "src/cli/cursor_commands.py"
+
+  - id: "T1.3"
+    title: "测试覆盖率提高"
+    description: "编写单元测试和集成测试，确保核心功能正常工作"
+    milestone: "M1"
+    status: "todo"
+    priority: "P1"
+    assignees: []
+    files:
+      - "tests/unit/"
+      - "tests/integration/"
+
+  - id: "T1.4"
+    title: "配置系统标准化"
+    description: "统一配置管理，优化环境变量使用，简化配置流程"
+    milestone: "M1"
+    status: "todo"
+    priority: "P1"
+    assignees: []
+    files:
+      - "src/core/config.py"
+      - ".env"
+
+  - id: "T1.5"
+    title: "性能基准建立"
+    description: "建立性能测试基准，确定优化目标，提高系统响应速度"
+    milestone: "M1"
+    status: "todo"
+    priority: "P2"
+    assignees: []
+    files:
+      - "tests/performance/"
+
+  # M2 AI能力集成阶段任务
+  - id: "T2.1"
+    title: "AI模块架构设计"
+    description: "设计灵活的AI服务架构，支持多种模型和服务提供商"
+    milestone: "M2"
+    status: "planned"
+    priority: "P0"
+    assignees: []
+    files:
+      - "src/ai/providers/"
+      - "src/ai/models.py"
+      - "src/ai/client.py"
+
+  - id: "T2.2"
+    title: "Cursor规则系统扩展"
+    description: "增强.cursor/rules功能，添加更多实用规则，优化规则执行流程"
+    milestone: "M2"
+    status: "planned"
+    priority: "P0"
+    assignees: []
+    files:
+      - ".cursor/rules/"
+      - "src/cursor/"
+
+  - id: "T2.3"
+    title: "智能提示系统"
+    description: "开发上下文感知的提示系统，提高交互质量"
+    milestone: "M2"
+    status: "planned"
+    priority: "P1"
+    assignees: []
+    files:
+      - "src/ai/prompts/"
+
+  - id: "T2.4"
+    title: "代码生成功能"
+    description: "实现基于模板的代码生成功能，提高开发效率"
+    milestone: "M2"
+    status: "planned"
+    priority: "P1"
+    assignees: []
+    files:
+      - "src/ai/generators/"
+      - "src/templates/"
+
+  - id: "T2.5"
+    title: "知识库集成"
+    description: "整合项目知识库，实现智能检索和推荐"
+    milestone: "M2"
+    status: "planned"
+    priority: "P2"
+    assignees: []
+    files:
+      - "src/ai/knowledge/"
+
+  # M3 自动化流程阶段任务
+  - id: "T3.1"
+    title: "GitHub集成增强"
+    description: "完善GitHub API集成，支持PR、Issues和Projects自动化管理"
+    milestone: "M3"
+    status: "planned"
+    priority: "P0"
+    assignees: []
+    files:
+      - "src/github/"
+
+  - id: "T3.2"
+    title: "CI/CD流程优化"
+    description: "改进持续集成和部署流程，确保代码质量"
+    milestone: "M3"
+    status: "planned"
+    priority: "P1"
+    assignees: []
+    files:
+      - ".github/workflows/"
+
+  - id: "T3.3"
+    title: "路线图自动更新"
+    description: "实现路线图与项目状态的自动同步"
+    milestone: "M3"
+    status: "planned"
+    priority: "P1"
+    assignees: []
+    files:
+      - "src/github/roadmap/"
+      - ".ai/roadmap/current.yaml"
+
+  - id: "T3.4"
+    title: "文档自动生成"
+    description: "增强文档引擎，支持API文档和用户指南自动生成"
+    milestone: "M3"
+    status: "planned"
+    priority: "P2"
+    assignees: []
+    files:
+      - "src/docs_engine/"
+
+  - id: "T3.5"
+    title: "代码质量监控"
+    description: "实现代码质量自动检查和报告生成"
+    milestone: "M3"
+    status: "planned"
+    priority: "P2"
+    assignees: []
+    files:
+      - "scripts/utils/"
+
+  # M4 用户体验与生态阶段任务
+  - id: "T4.1"
+    title: "Web界面开发"
+    description: "构建用户友好的Web界面，提供可视化控制面板"
+    milestone: "M4"
+    status: "planned"
+    priority: "P0"
+    assignees: []
+    files:
+      - "website/"
+
+  - id: "T4.2"
+    title: "插件系统设计"
+    description: "开发可扩展的插件架构，支持第三方功能扩展"
+    milestone: "M4"
+    status: "planned"
+    priority: "P1"
+    assignees: []
+    files:
+      - "src/plugins/"
+
+  - id: "T4.3"
+    title: "可视化工具增强"
+    description: "改进GitDiagram等可视化工具，提供更多分析能力"
+    milestone: "M4"
+    status: "planned"
+    priority: "P1"
+    assignees: []
+    files:
+      - "scripts/gitdiagram/"
+
+  - id: "T4.4"
+    title: "用户指南完善"
+    description: "编写详细的用户指南和教程，帮助用户快速上手"
+    milestone: "M4"
+    status: "planned"
+    priority: "P2"
+    assignees: []
+    files:
+      - "docs/human/"
+
+  - id: "T4.5"
+    title: "社区贡献指南"
+    description: "完善贡献指南，促进社区参与"
+    milestone: "M4"
+    status: "planned"
+    priority: "P2"
+    assignees: []
+    files:
+      - "CONTRIBUTING.md"
+
+continuous_tasks:
+  - id: "CT1"
+    title: "代码质量维护"
+    description: "持续重构代码，确保代码质量，遵循每个文件不超过200行原则"
+    priority: "P1"
+    status: "ongoing"
+
+  - id: "CT2"
+    title: "技术债务管理"
+    description: "识别和解决技术债务，保持代码库健康"
+    priority: "P1"
+    status: "ongoing"
+
+  - id: "CT3"
+    title: "依赖更新"
+    description: "定期更新依赖，确保安全和性能"
+    priority: "P2"
+    status: "ongoing"
+
+  - id: "CT4"
+    title: "性能优化"
+    description: "持续监控和优化系统性能"
+    priority: "P2"
+    status: "ongoing"
+
+  - id: "CT5"
+    title: "文档更新"
+    description: "保持文档与代码同步更新"
+    priority: "P1"
+    status: "ongoing"
+
+performance_targets:
+  - metric: "CLI响应时间"
+    target: "< 1秒"
+    current: "未测量"
+
+  - metric: "测试覆盖率"
+    target: ">= 70%"
+    current: "约10%"
+
+  - metric: "代码文件平均长度"
+    target: "< 200行"
+    current: "约300行"
+
+  - metric: "文档完整度"
+    target: "100%"
+    current: "约40%"
+
+module_roadmaps:
+  - name: "core"
+    current_state: "基础功能已实现"
+    target_state: "高性能、可扩展的核心引擎"
+    key_improvements:
+      - "增强错误处理"
+      - "优化性能"
+      - "提高可配置性"
+
+  - name: "cli"
+    current_state: "基本命令已实现"
+    target_state: "完整、用户友好的命令行工具"
+    key_improvements:
+      - "增加更多实用命令"
+      - "改善帮助文档"
+      - "添加自动补全"
+
+  - name: "ai"
+    current_state: "基础结构已搭建"
+    target_state: "灵活、强大的AI辅助系统"
+    key_improvements:
+      - "多模型支持"
+      - "上下文管理"
+      - "结果优化"
+
+  - name: "github"
+    current_state: "基本API集成已实现"
+    target_state: "完整的GitHub工作流自动化"
+    key_improvements:
+      - "PR自动管理"
+      - "项目看板集成"
+      - "统计分析"

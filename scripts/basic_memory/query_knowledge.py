@@ -43,12 +43,12 @@ class KnowledgeQuerier:
     使用向量检索和LLM实现文档知识的自然语言查询
     """
 
-    def __init__(self, index_path=None, model="gpt-3.5-turbo"):
+    def __init__(self, index_path=None, model="gpt-4o-mini"):
         """初始化知识查询器
 
         Args:
             index_path (str, optional): 向量索引路径. Defaults to None.
-            model (str, optional): 使用的LLM模型. Defaults to "gpt-3.5-turbo".
+            model (str, optional): 使用的LLM模型. Defaults to "gpt-4o-mini".
         """
         # 设置默认路径
         self.base_path = Path(os.path.expanduser("/Users/chenyi/basic-memory"))
@@ -131,7 +131,7 @@ def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="基于向量检索的知识库查询工具")
     parser.add_argument("--index", default=None, help="向量索引路径")
-    parser.add_argument("--model", default="gpt-3.5-turbo", help="使用的LLM模型")
+    parser.add_argument("--model", default="gpt-4o-mini", help="使用的LLM模型")
     parser.add_argument("--query", help="查询问题")
 
     args = parser.parse_args()

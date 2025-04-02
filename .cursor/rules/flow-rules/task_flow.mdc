@@ -1,0 +1,191 @@
+---
+description: 当用户需要管理简单任务或Story的组成部分时,使用本规则
+globs:
+alwaysApply: false
+---
+
+# ⚠️ 重要提示
+本文件是flow规则，不是直接执行入口。要触发任务管理过程，请使用:
+- `/flow task` 或
+- `/task <子命令> [参数]`
+
+# VibeCopilot 任务管理流程定义
+
+## 核心流程
+
+1. 任务创建：通过`/task create <任务名称>`、`/task quick <任务名称>`或`/task debt <任务名称>`
+2. 任务分配：设置任务的负责人
+3. 任务跟踪：通过状态变更进行跟踪（待开始→进行中→已完成/阻塞）
+4. 任务完成：使用`/task done <任务ID>`标记完成
+
+## 任务类型定义
+
+- **标准任务**：完整功能开发，通过`/task create`创建
+- **快速任务**：小型修复，通过`/task quick`创建
+- **技术债务**：重构工作，通过`/task debt`创建
+
+## 任务状态流转
+
+```mermaid
+stateDiagram-v2
+    [*] --> todo: 创建任务
+    todo --> in_progress: /task start
+    in_progress --> completed: /task done
+    in_progress --> blocked: 更新状态
+    blocked --> in_progress: 解除阻塞
+    completed --> [*]
+```
+
+## 子命令处理规范
+
+### 创建任务 (`/task create <任务名称>`)
+
+创建新的任务:
+
+1. 生成唯一任务ID
+2. 创建任务文件，使用项目模板
+3. 设置任务状态为"待开始"
+4. 可选关联到Story
+
+### 快速任务 (`/task quick <任务名称>`)
+
+创建小型快速任务:
+
+1. 生成唯一任务ID
+2. 创建简化版任务文件
+3. 适用于小型修复和调整
+
+### 技术债务任务 (`/task debt <任务名称>`)
+
+创建技术债务任务:
+
+1. 生成唯一任务ID (TD前缀)
+2. 创建包含重构理由的任务文件
+3. 标记为技术债务类型
+
+## 任务模板使用
+
+系统使用以下预定义模板文件创建任务:
+
+1. **标准任务**: `.cursor/templates/agile/task-template-enhanced.md`
+2. **快速任务**: `.cursor/templates/agile/task-template.md`
+3. **技术债务任务**: 自定义技术债务模板
+
+### 模板变量替换
+
+创建任务时，系统会自动替换模板中的变量:
+
+```
+{{task_id}} -> 自动生成的任务ID
+{{story_id}} -> 关联的Story ID
+{{task_title}} -> 任务标题
+{{task_description}} -> 任务描述
+{{priority}} -> 优先级
+{{created_at}} -> 创建时间
+{{updated_at}} -> 更新时间
+{{assigned_to}} -> 负责人
+{{estimated_hours}} -> 估计工时
+```
+
+### 标准任务模板结构 (task-template-enhanced.md)
+
+标准任务模板包含完整的字段:
+
+- 元数据 (YAML frontmatter)
+- 任务描述
+- 实现细节
+- 实现步骤
+- 技术要点
+- 完成标准
+- 测试方法
+- 需要修改的文件
+- 相关资源
+- 技术文档
+- 注意事项
+- 进度记录
+- 变更历史
+
+### 快速任务模板结构 (task-template.md)
+
+快速任务使用精简模板:
+
+- 元数据 (YAML frontmatter)
+- 任务描述
+- 实现细节
+- 完成标准
+- 技术文档
+- 注意事项
+- 变更历史
+
+## 任务数据存储结构 (YAML格式)
+
+```yaml
+tasks:
+  T1.1:
+    id: T1.1
+    title: "实现用户登录功能"
+    status: completed
+    priority: P0
+    assignee: "张三"
+    story: S1
+    type: standard
+    created_at: "2024-01-01"
+    completed_at: "2024-01-10"
+    hours: 12.5
+
+  QT001:
+    id: QT001
+    title: "修复登录按钮样式"
+    status: in_progress
+    priority: P2
+    assignee: "李四"
+    type: quick
+    sub_type: bug
+    created_at: "2024-01-15"
+
+  TD001:
+    id: TD001
+    title: "重构认证模块"
+    status: todo
+    priority: P1
+    assignee: null
+    type: debt
+    impact: medium
+    created_at: "2024-01-16"
+```
+
+## 与其他流程集成
+
+任务流程应与以下流程强制集成：
+
+1. **Spec Flow**: 从需求规格生成任务
+2. **Review Flow**: 完成任务前进行代码审查
+3. **Commit Flow**: 提交代码时关联任务
+4. **Story Flow**: 任务属于特定用户故事
+
+## 约束与限制
+
+- 每个任务必须有唯一ID
+- 标准任务ID必须遵循特定格式（如`T{故事ID}.{序号}`）
+- 快速任务使用QT前缀（如`QT001`）
+- 技术债务任务使用TD前缀（如`TD001`）
+- 任务状态必须是预定义的值之一
+- 任务完成时必须记录实际工时
+
+## 特殊处理场景
+
+### 任务分解
+
+当一个任务过大时，可以将其分解为多个子任务:
+
+1. 将原任务设为父任务
+2. 创建多个子任务并关联到父任务
+3. 父任务完成依赖于所有子任务完成
+
+### 阻塞处理
+
+当任务被阻塞时:
+
+1. 记录阻塞原因
+2. 设置任务依赖（如果适用）
+3. 当阻塞解除时更新状态为"进行中"
