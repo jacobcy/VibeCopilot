@@ -6,23 +6,22 @@ alwaysApply: false
 
 # VibeCopilot 需求确认与PRD产出规范
 
-> **重要提示**：本文件为流程规则(flow-rule)，不是直接执行入口。请使用 `/flow story` 或 `/story new <故事名称>` 命令来启动此流程。不要使用 `@story-flow.mdc` 的形式引用本规则，这不会触发流程执行。
+> **重要提示**：本文件为流程规则(flow-rule)，不是直接执行入口。请使用 `/flow story` 或 `/story new <故事名称>` 命令来启动此流程。提及流程规则但不执行时，使用`{/flow story}`格式。
 
 role: "需求分析专家" @requirement_analyst
 
 ## 流程定位
 本规则位于VibeCopilot核心开发流程的PRE-FLOW阶段，负责需求确认和PRD产出，是后续开发的基础和前提。
 
+## 与命令规则的关系
+本流程规则与`story-command.mdc`紧密配合：
+- `story-flow.mdc`（本规则）定义故事的基本概念、结构标准和PRD产出规范
+- `story-command.mdc`定义故事管理的命令格式和执行流程
+
 ## 触发方式
-本流程可通过以下命令触发：
 - `/flow story` - 启动需求确认和PRD产出流程
 - `/story new <故事名称>` - 创建新用户故事并启动PRD生成流程
 - `/story confirm <故事ID>` - 确认PRD并更新状态
-
-## 关键职责
-- 通过敏捷方法确认需求，组织为Epic-Story-Task结构
-- 产出高质量PRD文档，作为开发基础
-- 评估需求变更，确保PRD文档及时更新
 
 ## 需求层级与PRD标准
 
@@ -47,7 +46,7 @@ role: "需求分析专家" @requirement_analyst
 1. **Draft**：初始编写阶段，内容可能不完整
 2. **Review**：完成初稿，等待相关方审核
 3. **Revision**：基于审核意见修改中
-4. **Approved**：获得正式批准，可进入开发阶段 *(必须在进入FLOW阶段前达到此状态)*
+4. **Approved**：获得正式批准，可进入开发阶段
 5. **Rejected**：被拒绝，需要重新考虑需求
 
 ### 向spec-flow衔接
@@ -67,66 +66,26 @@ role: "需求分析专家" @requirement_analyst
 ### 文件关联方式
 文件之间通过frontmatter元数据相互关联：
 - Epic文件中包含`stories`列表，指向关联的Story
-- Story文件中包含`epic_id`字段，指向所属Epic，使用`id`字段作为自身标识
+- Story文件中包含`epic_id`字段，指向所属Epic
 - Story文件中包含`tasks`列表，指向关联的Task
-- Task文件中包含`story_id`字段，指向所属Story，使用`id`字段作为自身标识
-
-### 字段命名规范
-- Epic文件：`id`, `title`, `description`, `status`, `stories`等
-- Story文件：`id`, `epic_id`, `title`, `description`, `status`, `tasks`等
-- Task文件：`id`, `story_id`, `title`, `description`, `status`等
+- Task文件中包含`story_id`字段，指向所属Story
 
 ## 模板关联定义
 
 ### Epic模板 (@epic-template.md)
-
 - **使用时机**: 创建新的史诗(Epic)，代表较大功能集合
-- **模板位置**: `.cursor/templates/agile/epic-template.md`
 - **状态流转**: planned → in-progress → completed
-- **关键字段**:
-  - `id`: 唯一标识符
-  - `title`: Epic标题
-  - `description`: 简要描述
-  - `status`: 当前状态
-  - `stories`: 关联的故事列表
-- **注意事项**:
-  - Epic创建后需通过PRD确认需求细节
-  - 所有关联Story完成后才能将Epic标记为completed
+- **关键字段**: `id`, `title`, `description`, `status`, `stories`
 
 ### Story模板 (@story-template.md)
-
 - **使用时机**: 创建用户故事，描述单一功能或特性
-- **模板位置**: `.cursor/templates/agile/story-template.md`
 - **状态流转**: draft → ready → in-progress → testing → completed
-- **关键字段**:
-  - `id`: 唯一标识符
-  - `epic_id`: 关联的Epic ID
-  - `title`: 故事标题
-  - `description`: 简要描述
-  - `status`: 当前状态
-  - `tasks`: 关联的任务列表
-- **任务分解**:
-  - 每个Story应分解为多个具体任务
-  - 使用任务清单跟踪进度
-  - 确保包含数据模型和约束条件
+- **关键字段**: `id`, `epic_id`, `title`, `description`, `status`, `tasks`
 
 ### 任务模板 (@task-template.md)
-
 - **使用时机**: 创建具体开发任务，Story的组成部分
-- **模板位置**: `.cursor/templates/agile/task-template.md`
 - **状态流转**: todo → in-progress → done
-- **关键字段**:
-  - `id`: 唯一标识符
-  - `story_id`: 关联的Story ID
-  - `title`: 任务标题
-  - `description`: 简要描述
-  - `status`: 当前状态
-  - `estimated_hours`: 估计工时
-  - `actual_hours`: 实际工时
-- **注意事项**:
-  - 任务应足够小，通常不超过4小时
-  - 完成标准应具体明确
-  - 所有任务完成后才能将Story标记为completed
+- **关键字段**: `id`, `story_id`, `title`, `description`, `status`
 
 ## 工作流程
 
@@ -142,3 +101,47 @@ flowchart TD
     H -->|是| I[完成Epic]
     H -->|否| C
 ```
+
+## 命令注释用法
+使用`{/flow story}`格式表示提及流程而非执行：
+```
+讨论故事流程时，使用{/flow story}表示提及流程而非执行，例如：
+"关于{/flow story}流程，它用于确保PRD文档的质量和完整性"
+```
+
+## 示例
+
+<example>
+  用户: `/story new 移动端支付功能`
+
+  系统响应:
+  ```
+  📝 已创建新故事
+  故事ID: S5.1
+  标题: 移动端支付功能
+  状态: Draft
+
+  正在启动PRD编写流程...
+  ```
+
+  用户: `/story confirm S5.1`
+
+  系统响应:
+  ```
+  ✅ PRD已确认
+  故事ID: S5.1
+  标题: 移动端支付功能
+  PRD状态: Approved (已更新)
+  ```
+</example>
+
+<example type="invalid">
+  用户: `使用@story-flow.mdc创建新故事`
+
+  系统响应:
+  ```
+  正在应用story-flow规则，创建新故事...
+  ```
+
+  问题: 错误地将规则引用理解为命令执行，正确做法是使用`/story`命令
+</example>

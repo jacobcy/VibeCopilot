@@ -5,11 +5,17 @@ alwaysApply: false
 ---
 # Git Commit and Push Conventions
 
+## 规则关系
+本规则与以下规则紧密配合：
+- `flow.mdc`: 遵循流程检查点，确保符合强制流程规范
+- `branch-command.mdc`: 确保在正确的分支上进行提交操作
+- `commit-flow.mdc`: 提供高层次的提交流程和标准
+
 ## Critical Rules
 
 - Always run `git add .` from the workspace root to stage changes
 - Review staged changes before committing to ensure no unintended files are included
-- Format commit titles as `type: brief description` where type is one of:
+- Format commit titles as `type(scope): brief description [task-id]` where type is one of:
   - feat: new feature
   - fix: bug fix
   - docs: documentation changes
@@ -26,15 +32,68 @@ alwaysApply: false
 - End commit message with " -Agent Generated Commit Message"
 - Push changes to the current remote branch
 
+## 分支与提交集成流程
+
+### 1. 检查工作分支
+```bash
+# 确认当前在正确的任务分支上
+git branch
+```
+
+### 2. 准备提交
+```bash
+# 查看更改内容
+git status
+git diff
+
+# 暂存更改
+git add .
+```
+
+### 3. 提交更改
+```bash
+# 使用规范格式提交
+git commit -m "feat(module): implemented feature X [T123]
+
+Detailed explanation of what was changed and why.
+Additional context or implementation details.
+
+-Agent Generated Commit Message"
+```
+
+### 4. 与远程同步
+```bash
+# 推送到远程分支
+git push origin feature/T123-feature-name
+```
+
+## 流程检查点集成
+
+- 提交前自动检查代码是否符合项目规范
+- 验证提交信息格式是否正确
+- 确保关联了正确的任务ID
+- 检查是否在正确的分支上提交
+
 ## Examples
 
 <example>
-feat: add user authentication system
+feat(auth): add user authentication system [T123]
 
 Implemented JWT-based user authentication system with secure password hashing
 and token refresh functionality. This change provides secure user sessions
 and prevents unauthorized access to protected routes. The implementation
 uses bcrypt for password hashing and includes proper token expiration handling.
+
+-Agent Generated Commit Message
+</example>
+
+<example>
+fix(login): resolve account lockout issue [T456]
+
+Fixed bug where users weren't locked out after multiple failed login attempts.
+Now accounts are automatically locked for 30 minutes after 5 consecutive
+failed attempts to prevent brute force attacks. Added unit tests to verify
+this behavior works correctly.
 
 -Agent Generated Commit Message
 </example>

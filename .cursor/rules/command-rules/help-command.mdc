@@ -1,284 +1,191 @@
 ---
-description:当用户输入/help命令时,执行帮助命令
+description: 当用户输入/help命令时,执行帮助命令，解释命令用法和显示可用命令
 globs:
 alwaysApply: false
 ---
 
 # VibeCopilot 帮助命令处理器
 
+## 命令目的
+
+`/help`命令用于显示VibeCopilot的帮助信息，包括可用命令列表、命令用法和示例。这是用户了解系统功能和使用方法的主要入口。当用户不清楚如何使用某个命令或需要了解系统功能时，可以使用该命令获取帮助。
+
 ## 关键规则
 
-- 当用户输入`/help`命令时，展示所有可用的开发命令及其简要说明
-- 当用户输入`/help [命令名]`时，展示特定命令的详细用法
-- 帮助信息应简洁明了，重点突出
-- 显示命令语法、参数说明和使用示例
-- 区分必选参数和可选参数
-- 优先展示常用命令
-- 根据用户当前上下文调整命令显示优先级
+- 当用户输入`/help`命令时，显示所有可用命令的概览
+- 当用户输入`/help [命令名]`时，显示特定命令的详细用法
+- 当用户输入`/help rules`时，显示规则系统的使用方法
+- 帮助信息应简洁明了，重点突出，易于理解
+- 帮助信息应包含命令格式、参数说明和使用示例
+- 帮助命令不应更改系统状态或执行实际操作
 
-## 可用命令列表
+## 命令格式规范
 
-```
-VibeCopilot 开发命令系统 v1.0
+基本语法: `/help [命令名称] [--detail=级别]`
 
-核心命令:
-/help    - 显示帮助信息
-/check   - 检查开发进度
-/update  - 更新开发状态
-/story   - 管理用户故事
-/task    - 管理开发任务
-/plan    - 管理开发计划
-/branch  - 管理Git分支
-/flow    - 启动和管理开发流程
-/memory  - 管理项目知识库
+参数说明:
+- `命令名称`: 可选，指定要查看的命令名称
+- `--detail`: 可选，指定帮助信息的详细程度，值为"basic"、"normal"或"full"
 
-输入 /help [命令名] 获取特定命令的详细用法。
-```
+## 执行流程
 
-## 命令详细用法
+1. 解析命令参数，确定用户查询的具体命令
+2. 如果未指定特定命令，则显示所有可用命令的概述
+3. 如果指定了特定命令，则查找并显示该命令的详细帮助信息
+4. 根据detail参数调整显示的详细程度
+5. 以易于阅读的格式呈现帮助信息
 
-### /help
+## 与规则系统集成
 
-```
-命令: /help
-用途: 显示帮助信息或查看特定命令的详细用法
-语法: /help [命令名]
-参数:
-  [命令名] - 可选，要查看详细用法的命令名称
-示例:
-  /help
-  /help task
-```
+- `/help`命令与规则系统紧密集成，可以显示规则系统的使用方法
+- 当用户输入`/help agent`时，显示专家角色系统的使用方法
+- 当用户输入`/help rule`时，显示规则管理系统的使用方法
+- 使用`{/agent}`和`{/rule}`格式可以直接激活相应的规则
 
-### /check
+## 命令示例说明
+
+以下是`/help`命令的示例：
 
 ```
-命令: /check
-用途: 检查项目开发进度和状态
-语法: /check [--type=类型] [--id=标识符] [--status=状态]
-参数:
-  --type    - 可选，检查类型(epic/story/task/roadmap)，默认检查整体进度
-  --id      - 可选，特定项目标识符，如E001、S002等
-  --status  - 可选，筛选特定状态，如todo、in_progress、completed等
-示例:
-  /check
-  /check --type=story
-  /check --id=S002
-```
-
-### /update
-
-```
-命令: /update
-用途: 更新开发对象的状态、进度或相关信息
-语法: /update [子命令] [--id=对象ID] [--status=新状态] [--progress=进度百分比] [--note=更新说明]
-子命令:
-  roadmap  - 更新项目路线图
-参数:
-  --id        - 必选(无子命令时)，要更新的对象ID，如T001、S002等
-  --status    - 可选，设置新状态，如todo、in_progress、completed等
-  --progress  - 可选，更新进度百分比，0-100的整数
-  --note      - 可选，添加更新说明，简短描述更新内容
-示例:
-  /update --id=T001 --status=completed --note="完成了基本功能实现"
-  /update roadmap
-```
-
-### /story
-
-```
-命令: /story
-用途: 管理用户故事
-语法: /story [子命令] [参数...]
-子命令:
-  无子命令   - 显示当前活跃故事
-  new      - 创建新故事
-  confirm  - 确认故事PRD
-  list     - 列出故事
-
-创建新故事:
-  /story new <故事标题> [--epic=史诗ID] [--milestone=里程碑ID]
-
-确认故事:
-  /story confirm <故事ID>
-
-列出故事:
-  /story list [--status=状态] [--epic=史诗ID]
-示例:
-  /story
-  /story new 用户登录功能
-  /story confirm S001
-  /story list --status=active
-```
-
-### /task
-
-```
-命令: /task
-用途: 管理开发任务
-语法: /task [子命令] [参数...]
-子命令:
-  无子命令   - 显示当前活跃任务
-  create    - 创建标准任务
-  quick     - 创建快速任务
-  debt      - 创建技术债务任务
-  start     - 开始执行任务
-  done      - 完成任务
-  list      - 列出任务
-
-创建标准任务:
-  /task create <任务标题> [--story=故事ID] [--priority=优先级]
-
-创建快速任务:
-  /task quick <任务标题> [--type=bug|enhance|docs]
-
-创建技术债务任务:
-  /task debt <任务标题> [--scope=范围]
-
-任务管理:
-  /task start <任务ID>
-  /task done <任务ID> [--hours=实际工时]
-  /task list [--status=状态] [--story=故事ID]
-示例:
-  /task
-  /task create 实现用户登录API --story=S001
-  /task quick 修复登录按钮样式
-  /task debt 重构认证模块
-  /task start T001
-  /task done T001 --hours=4.5
-  /task list --status=in_progress
-```
-
-### /flow
-
-```
-命令: /flow
-用途: 启动和管理开发流程
-语法: /flow <流程名称> [参数...]
-流程类型:
-  story    - 需求确认与PRD生成流程
-  spec     - 开发计划制定流程
-  coding   - 代码开发流程
-  test     - 测试流程
-  review   - 审核流程
-  commit   - 代码提交流程
-示例:
-  /flow story 用户认证功能
-  /flow coding
-  /flow commit
-```
-
-### /memory
-
-```
-命令: /memory
-用途: 管理项目知识库
-语法: /memory <子命令> [参数...]
-子命令:
-  save     - 保存内容到知识库
-  read     - 读取知识库内容
-  search   - 搜索知识库
-  list     - 列出知识库内容
-示例:
-  /memory save --title="API设计文档" --path=dev/api
-  /memory read --id=doc001
-  /memory search --query="认证流程"
-  /memory list --type=document
-```
-
-## 子命令通用规范
-
-所有命令都遵循以下统一的子命令格式规范：
-
-```
-命令通用格式: /<命令名称> [子命令] [参数]
-
-标准子命令:
-- 无子命令: 显示当前对象信息
-- new/create: 创建新对象
-- list: 列出对象列表
-- start: 开始执行
-- done/complete: 完成对象
+/help - 显示所有可用命令的概述
+/help story - 显示story命令的详细用法
+/help --detail=full - 显示所有命令的完整帮助信息
+/help agent - 显示专家角色系统的使用方法
+/help rule - 显示规则管理系统的使用方法
 ```
 
 ## 示例
 
 <example>
+  # 显示所有可用命令
+
   用户: `/help`
 
   系统响应:
   ```
-  VibeCopilot 开发命令系统 v1.0
+  📚 VibeCopilot 命令帮助
 
-  核心命令:
-  /help    - 显示帮助信息
-  /check   - 检查开发进度
-  /update  - 更新开发状态
-  /story   - 管理用户故事
-  /task    - 管理开发任务
-  /plan    - 管理开发计划
-  /branch  - 管理Git分支
-  /flow    - 启动和管理开发流程
-  /memory  - 管理项目知识库
+  可用命令列表:
+  1. /check - 检查项目状态和进度
+  2. /update - 更新对象状态和进度
+  3. /story - 管理开发故事和阶段
+  4. /task - 管理项目任务
+  5. /plan - 创建新计划和任务
+  6. /branch - 管理与任务关联的分支
+  7. /flow - 启动和管理开发流程
+  8. /memory - 管理项目知识库
+  9. /help - 显示命令帮助信息
+  10. /agent - 激活专家角色系统
+  11. /rule - 管理规则系统
 
-  输入 /help [命令名] 获取特定命令的详细说明。
+  输入 /help [命令名] 查看特定命令的详细用法
+  示例: /help story
   ```
 
-  用户: `/help task`
+  # 显示特定命令的帮助信息
+
+  用户: `/help story`
 
   系统响应:
   ```
-  命令: /task
-  用途: 管理开发任务
+  📖 Story命令帮助
 
-  语法: /task [子命令] [参数...]
+  用途: 管理开发故事和阶段
 
-  子命令:
-    无子命令  - 显示当前活跃任务
-    create   - 创建标准任务
-    quick    - 创建快速任务
-    debt     - 创建技术债务任务
-    start    - 开始执行任务
-    done     - 完成任务
-    list     - 列出任务
+  基本语法: /story [子命令] [参数]
 
-  创建标准任务:
-    /task create <任务标题> [--story=故事ID] [--priority=优先级]
+  可用子命令:
+  - new: 创建新故事 - 示例: /story new 用户认证功能
+  - confirm: 确认故事需求 - 示例: /story confirm S1.2
+  - list: 列出所有故事 - 示例: /story list
+  - status: 查看故事状态 - 示例: /story status S1.2
 
-  创建快速任务:
-    /task quick <任务标题> [--type=bug|enhance|docs]
+  常用参数:
+  - --id: 指定故事ID - 示例: /story status --id=S1.2
+  - --priority: 设置优先级 - 示例: /story new 用户认证 --priority=high
 
-  创建技术债务任务:
-    /task debt <任务标题> [--scope=范围]
+  更多信息请使用: /help story --detail=full
+  ```
 
-  任务管理:
-    /task start <任务ID>
-    /task done <任务ID> [--hours=实际工时]
-    /task list [--status=状态] [--story=故事ID]
+  # 显示规则系统帮助
 
-  示例:
-    /task create 实现用户登录API --story=S001
-    /task quick 修复登录按钮样式
-    /task start T001
-    /task done T001 --hours=4.5
+  用户: `/help rule`
+
+  系统响应:
+  ```
+  🔍 规则系统帮助
+
+  VibeCopilot规则系统允许管理和激活开发规则，包括创建、修改和删除规则。
+
+  基本命令:
+  - /rule list - 列出所有可用规则
+  - /rule view [规则名称] - 查看特定规则内容
+  - /rule activate [规则名称] - 激活特定规则
+
+  注释命令用法:
+  使用 {/rule} 格式可以表示您是提及规则系统而非执行命令。例如:
+  - “说到{/rule}命令，它用于管理规则” - 这里不会执行命令
+
+  查看所有可用规则: /rule list --type=all
+  ```
+
+  # 显示专家角色系统帮助
+
+  用户: `/help agent`
+
+  系统响应:
+  ```
+  👨‍💻 专家角色系统帮助
+
+  VibeCopilot专家角色系统允许AI扮演特定领域的专业角色，提供深度专业知识。
+
+  基本命令:
+  - /agent - 根据上下文自动选择适合的专家角色
+  - /agent [角色名称] - 激活特定专家角色
+
+  可用专家角色:
+  - frontend - 前端开发专家
+  - backend - 后端开发专家
+  - architect - 架构设计专家
+  - requirement - 需求分析专家
+  - qa - 质量保障专家
+  - document - 文档专家
+
+  注释命令用法:
+  使用 {/agent} 格式可以表示您是提及专家角色系统而非执行命令。例如:
+  - “关于{/agent}命令，它用于激活专家角色” - 这里不会执行命令
   ```
 </example>
 
 <example type="invalid">
+  # 错误示例：不正确的命令解析
+
+  用户: `/help story`
+
+  系统响应:
+  ```
+  Story命令用于创建和管理用户故事。
+
+  要创建新故事，使用以下命令:
+  /story create 名称 --description="描述"
+
+  要查看故事，使用:
+  /story view ID
+  ```
+
+  问题: 未按照标准格式提供帮助信息，子命令与实际不符，缺少必要的参数说明和示例
+
+  # 错误示例：过度复杂的帮助信息
+
   用户: `/help`
 
   系统响应:
   ```
-  可以使用以下命令：
-  /help - 显示帮助
-  /check - 检查状态
-  /task - 管理任务
-  /story - 管理故事
+  VibeCopilot帮助系统
+
+  这是一个非常强大的系统，可以做很多很多事情，包括但不限于...
+  [接下来是5页的功能说明]
   ```
 
-  问题:
-  - 帮助信息过于简略，缺少必要的说明
-  - 没有解释如何获取详细帮助
-  - 缺少格式化和分类
-  - 未包含所有可用命令
+  问题: 帮助信息过于冗长，没有突出重点，用户难以快速找到需要的信息
 </example>
