@@ -1,5 +1,5 @@
 """
-Cursor命令处理模块
+Cursor命令处理器模块
 
 负责：
 - 处理Cursor IDE命令
@@ -8,7 +8,7 @@ Cursor命令处理模块
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict
 
 from src.cli.command_parser import CommandParser
 from src.core.rule_engine import RuleEngine
@@ -17,28 +17,39 @@ logger = logging.getLogger(__name__)
 
 
 class CursorCommandHandler:
-    """Cursor命令处理器核心类"""
+    """Cursor命令处理器类"""
 
     def __init__(self):
+        """初始化命令处理器"""
         self.command_parser = CommandParser()
         self.rule_engine = RuleEngine()
+        self._register_handlers()
 
-    def handle_command(self, command_str: str) -> Dict:
-        """处理Cursor命令"""
+    def _register_handlers(self):
+        """注册命令处理器
+        注意：命令处理器现在通过CommandParser自动注册
+        """
+        pass
+
+    def handle_command(self, command: str) -> Dict[str, Any]:
+        """处理命令
+
+        Args:
+            command: 命令字符串
+
+        Returns:
+            Dict[str, Any]: 处理结果
+        """
         try:
-            # 首先通过规则引擎处理
-            rule_result = self.rule_engine.process_command(command_str)
+            # 首先尝试使用规则引擎处理
+            rule_result = self.rule_engine.process_command(command)
             if rule_result.get("handled", False):
                 return rule_result
 
-            # 如果规则引擎没有处理，则通过命令解析器处理
-            return self.command_parser.execute_command(command_str)
+            # 如果规则引擎未处理，使用命令解析器
+            return self.command_parser.execute_command(command)
 
         except Exception as e:
-            logger.error(f"处理命令失败: {e}")
-            return {"success": False, "error": f"处理命令失败: {e}"}
-
-    def register_handlers(self) -> None:
-        """注册命令处理器"""
-        # 命令处理器现在通过CommandParser自动注册
-        pass
+            error_msg = f"处理命令失败: {str(e)}"
+            logger.error(error_msg)
+            return {"success": False, "error": error_msg}
