@@ -102,6 +102,34 @@ class GitHubClient:
         response.raise_for_status()
         return response.json()
 
+    def patch(self, endpoint: str, **kwargs: Any) -> Dict[str, Any]:
+        """发送PATCH请求并返回JSON响应.
+
+        Args:
+            endpoint: API端点
+            **kwargs: 传递给requests的其他参数
+
+        Returns:
+            Dict[str, Any]: JSON响应
+        """
+        response = self._make_rest_request("PATCH", endpoint, **kwargs)
+        response.raise_for_status()
+        return response.json()
+
+    def put(self, endpoint: str, **kwargs: Any) -> Dict[str, Any]:
+        """发送PUT请求并返回JSON响应.
+
+        Args:
+            endpoint: API端点
+            **kwargs: 传递给requests的其他参数
+
+        Returns:
+            Dict[str, Any]: JSON响应
+        """
+        response = self._make_rest_request("PUT", endpoint, **kwargs)
+        response.raise_for_status()
+        return response.json()
+
     def graphql(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """发送GraphQL查询并返回JSON响应.
 

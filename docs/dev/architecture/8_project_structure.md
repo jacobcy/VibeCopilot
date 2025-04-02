@@ -1,230 +1,353 @@
-# VibeCopilot 项目结构规范
+# VibeCopilot 项目结构
 
 > **文档元数据**
-> 版本: 1.1
-> 上次更新: 2024-04-20
+> 版本: 2.0
+> 上次更新: 2024-04-25
 > 负责人: 系统架构团队
 
-## 1. 基于模块设计的目录结构
+## 1. 项目目录结构
 
-根据功能设计和模块设计文档，VibeCopilot项目采用以下标准化目录结构：
+VibeCopilot采用基于规则和脚本的组织架构，确保轻量级和高扩展性。
 
 ```
-/VibeCopilot
-├── src                      # 源代码
-│   ├── core                 # 核心引擎模块
-│   │   ├── engine.ts        # 核心引擎实现
-│   │   ├── events.ts        # 事件总线
-│   │   ├── plugin.ts        # 插件系统
-│   │   └── interfaces.ts    # 公共接口定义
-│   ├── document_sync        # 文档同步引擎模块
-│   │   ├── sync_engine.ts   # 同步引擎实现
-│   │   ├── transformer.ts   # 文档转换器
-│   │   ├── conflict.ts      # 冲突检测与解决
-│   │   └── interfaces.ts    # 模块接口定义
-│   ├── ai_rules             # AI规则生成器模块
-│   │   ├── generator.ts     # 规则生成器
-│   │   ├── templates/       # 规则模板
-│   │   ├── validator.ts     # 规则验证器
-│   │   └── interfaces.ts    # 模块接口定义
-│   ├── github               # GitHub集成模块
-│   │   ├── client.ts        # GitHub API客户端
-│   │   ├── linking.ts       # 文档与Issues关联
-│   │   ├── analyzer.ts      # 仓库分析器
-│   │   └── interfaces.ts    # 模块接口定义
-│   ├── tool_connector       # 工具连接器模块
-│   │   ├── connector.ts     # 连接器实现
-│   │   ├── adapters/        # 工具适配器
-│   │   ├── monitors.ts      # 工具状态监控
-│   │   └── interfaces.ts    # 模块接口定义
-│   ├── docusaurus           # Docusaurus发布系统模块
-│   │   ├── publisher.ts     # 发布器实现
-│   │   ├── filter.ts        # 内容筛选器
-│   │   ├── converter.ts     # 格式转换器
-│   │   └── interfaces.ts    # 模块接口定义
-│   └── infrastructure       # 基础设施层
-│       ├── storage/         # 存储管理
-│       ├── config/          # 配置系统
-│       ├── logging/         # 日志系统
-│       └── interfaces.ts    # 基础设施接口
-├── modules                  # 集成的开源模块
-│   ├── cursor-custom-agents # AI规则生成库
-│   │   ├── wrappers/        # 封装层
-│   │   └── extensions/      # 扩展功能
-│   ├── gitdiagram           # Git可视化库
-│   │   ├── wrappers/        # 封装层
-│   │   └── extensions/      # 扩展功能
-│   ├── obsidiosaurus        # 文档系统集成
-│   │   ├── wrappers/        # 封装层
-│   │   └── extensions/      # 扩展功能
-│   └── octokit              # GitHub API集成
-│       ├── wrappers/        # 封装层
-│       └── extensions/      # 扩展功能
-├── docs                     # 项目文档
-│   ├── ai                   # AI专用文档
-│   ├── dev                  # 开发者文档
-│   ├── shared               # 共享文档
-│   └── user                 # 用户文档
-├── scripts                  # 工具脚本
-├── tests                    # 测试代码
-├── config                   # 配置文件
-└── website                  # 项目网站
+VibeCopilot/
+├── docs/                     # 项目文档
+│   ├── dev/                  # 开发文档
+│   │   ├── architecture/     # 架构设计文档
+│   │   ├── guide/            # 开发指南
+│   │   └── api/              # API文档
+│   ├── user/                 # 用户文档
+│   │   ├── guide/            # 用户指南
+│   │   └── examples/         # 使用示例
+│   └── blog/                 # 博客文章
+├── rules/                    # Cursor规则目录
+│   ├── core-rules/           # 核心规则
+│   ├── command-rules/        # 命令规则
+│   ├── role-rules/           # 角色规则
+│   ├── dev-rules/            # 开发规则
+│   ├── flow-rules/           # 流程规则
+│   └── tool-rules/           # 工具规则
+├── scripts/                  # Python脚本目录
+│   ├── commands/             # 命令处理脚本
+│   │   ├── __init__.py       # 脚本初始化
+│   │   ├── memory.py         # 记忆管理命令
+│   │   ├── plan.py           # 计划管理命令
+│   │   ├── task.py           # 任务管理命令
+│   │   ├── story.py          # 故事管理命令
+│   │   ├── branch.py         # 分支管理命令
+│   │   ├── check.py          # 检查命令
+│   │   ├── help.py           # 帮助命令
+│   │   └── update.py         # 更新命令
+│   ├── integrations/         # 工具集成脚本
+│   │   ├── __init__.py       # 集成初始化
+│   │   ├── github_client.py  # GitHub集成客户端
+│   │   ├── obsidian_sync.py  # Obsidian同步工具
+│   │   └── memory_client.py  # Basic Memory客户端
+│   ├── utils/                # 工具函数
+│   │   ├── __init__.py       # 工具初始化
+│   │   ├── config.py         # 配置管理
+│   │   ├── logger.py         # 日志工具
+│   │   └── file_utils.py     # 文件操作工具
+│   └── main.py               # 主入口脚本
+├── templates/                # 模板目录
+│   ├── rules/                # 规则模板
+│   └── docs/                 # 文档模板
+├── config/                   # 配置文件目录
+│   ├── settings.json         # 应用设置
+│   └── integrations.json     # 集成配置
+├── tests/                    # 测试目录
+│   ├── unit/                 # 单元测试
+│   └── integration/          # 集成测试
+├── .github/                  # GitHub配置
+├── README.md                 # 项目简介
+├── LICENSE                   # 许可证
+└── requirements.txt          # Python依赖
 ```
 
-## 2. 模块与文件对应关系
+## 2. 核心组件结构
 
-### 核心引擎模块
+### 2.1 规则系统结构
 
-根据模块设计中的`CoreEngine`接口实现：
-
-```typescript
-// src/core/interfaces.ts
-interface CoreEngine {
-  registerModule(moduleId: string, module: Module): void;
-  getModule<T extends Module>(moduleId: string): T;
-  publishEvent(eventType: string, payload: any): void;
-  subscribeToEvent(eventType: string, handler: EventHandler): Subscription;
-  getConfig(configPath: string): any;
-}
-
-// src/core/engine.ts
-class CoreEngineImpl implements CoreEngine {
-  private modules = new Map<string, Module>();
-  private eventBus: EventBus;
-  private configSystem: ConfigurationSystem;
-
-  constructor(eventBus: EventBus, configSystem: ConfigurationSystem) {
-    this.eventBus = eventBus;
-    this.configSystem = configSystem;
-  }
-
-  // 实现接口方法...
-}
-```
-
-### 文档同步引擎模块
-
-根据模块设计中的`DocumentSyncEngine`接口实现：
-
-```typescript
-// src/document_sync/interfaces.ts
-interface DocumentSyncEngine extends Module {
-  syncDocument(docPath: string, direction: SyncDirection): Promise<SyncResult>;
-  detectAndProcessChanges(): Promise<ChangeResult[]>;
-  resolveConflict(conflict: SyncConflict, resolution: Resolution): Promise<void>;
-  getSyncStatus(docPath: string): Promise<SyncStatus>;
-}
-
-// src/document_sync/sync_engine.ts
-class DocumentSyncEngineImpl implements DocumentSyncEngine {
-  private transformer: DocumentTransformer;
-  private toolConnector: ToolConnector;
-
-  // 实现接口方法...
-}
-```
-
-## 3. 模块封装策略
-
-### 适配器模式实现
-
-对外部工具的集成采用适配器模式，提供统一接口：
-
-```typescript
-// src/tool_connector/adapters/cursor_adapter.ts
-class CursorAdapter implements ToolAdapter {
-  connect(config: ToolConfig): Promise<boolean> {
-    // 实现与Cursor的连接逻辑
-  }
-
-  execute<T>(action: string, params: any): Promise<T> {
-    // 实现对Cursor的操作执行
-  }
-
-  // 实现其他接口方法...
-}
-
-// src/tool_connector/adapters/obsidian_adapter.ts
-class ObsidianAdapter implements ToolAdapter {
-  // 实现Obsidian适配器...
-}
-```
-
-### 外部库封装示例
-
-```typescript
-// modules/cursor-custom-agents/wrappers/rule_generator.ts
-import { generateRule as originalGenerateRule } from 'cursor-custom-agents-rules-generator';
-
-export class RuleGeneratorWrapper {
-  generateRule(template: Template, variables: Record<string, string>): Promise<Rule> {
-    // 对原始库的封装与扩展
-    const baseRule = await originalGenerateRule(template.id, variables);
-    return this.enhanceRule(baseRule);
-  }
-
-  private enhanceRule(rule: any): Rule {
-    // 添加VibeCopilot特有的增强
-    return {
-      ...rule,
-      metadata: {
-        source: 'VibeCopilot',
-        version: '1.0',
-        generatedAt: new Date().toISOString()
-      }
-    };
-  }
-}
-```
-
-## 4. 主要模块依赖关系
-
-各模块间依赖关系参照模块设计文档中的依赖矩阵：
+VibeCopilot的规则系统是项目的基础，通过MDC格式定义了与Cursor交互的标准。
 
 ```mermaid
 graph TD
-    Core[核心引擎] --> DocSync[文档同步引擎]
-    Core --> AIRules[AI规则生成器]
-    Core --> ToolConn[工具连接器]
-    Core --> GitHub[GitHub集成]
-    Core --> Docusaurus[Docusaurus发布]
+    A[规则系统] --> B[核心规则]
+    A --> C[命令规则]
+    A --> D[角色规则]
+    A --> E[流程规则]
+    A --> F[开发规则]
+    A --> G[工具规则]
 
-    ToolConn --> DocSync
-    ToolConn --> AIRules
-    ToolConn --> GitHub
+    B --> B1[规则定义规则]
+    B --> B2[流程控制规则]
 
-    DocSync --> Docusaurus
-    GitHub --> DocSync
+    C --> C1[命令解析规则]
+    C --> C2[命令执行规则]
+
+    D --> D1[专家角色规则]
+    D --> D2[协作模式规则]
+
+    E --> E1[开发流程规则]
+    E --> E2[质量检查规则]
+
+    F --> F1[代码风格规则]
+    F --> F2[架构规范规则]
+
+    G --> G1[工具集成规则]
+    G --> G2[数据交换规则]
 ```
 
-## 5. 命名与组织规范
+### 2.2 命令系统结构
 
-### 命名约定
+命令系统基于Python脚本实现，负责处理用户通过Cursor发起的各类命令。
 
-1. **接口命名**: `I`前缀或描述性名称，如`DocumentSyncEngine`
-2. **实现类命名**: 接口名+`Impl`后缀，如`DocumentSyncEngineImpl`
-3. **文件命名**:
-   - TypeScript: 小驼峰，如`syncEngine.ts`
-   - 目录名: 小写下划线，如`document_sync`
-4. **常量命名**: 大写下划线，如`DEFAULT_SYNC_INTERVAL`
+```mermaid
+graph TD
+    A[命令系统] --> B[命令解析器]
+    A --> C[命令执行器]
+    A --> D[命令结果处理]
 
-### 模块内部结构
+    B --> B1[输入验证]
+    B --> B2[参数解析]
+    B --> B3[权限检查]
 
-每个功能模块保持一致的内部结构：
+    C --> C1[内部命令]
+    C --> C2[集成命令]
+    C --> C3[工具命令]
 
-1. **接口定义文件**: `interfaces.ts`
-2. **核心实现文件**: 功能名+`.ts`
-3. **工具文件**: `utils.ts`
-4. **类型定义**: `types.ts`
-5. **测试文件**: 源文件名+`.spec.ts`
+    D --> D1[格式化输出]
+    D --> D2[结果缓存]
+    D --> D3[事件通知]
+```
 
-## 6. 开发流程与模块关系
+### 2.3 集成架构
 
-新功能开发流程遵循以下顺序，确保与项目结构一致：
+集成架构通过轻量级客户端连接各种外部工具和服务。
 
-1. 在核心层定义接口
-2. 在业务层实现功能
-3. 在适配器层连接外部工具
-4. 在应用层提供用户界面
+```mermaid
+graph TD
+    A[集成架构] --> B[GitHub集成]
+    A --> C[Obsidian集成]
+    A --> D[Basic Memory集成]
 
-这种结构确保了VibeCopilot能够模块化地实现功能设计文档中定义的所有功能，同时保持代码的可维护性和可扩展性。
+    B --> B1[Issue管理]
+    B --> B2[项目看板]
+    B --> B3[代码仓库]
+
+    C --> C1[知识库同步]
+    C --> C2[图谱生成]
+    C --> C3[模板管理]
+
+    D --> D1[长期记忆存储]
+    D --> D2[上下文管理]
+    D --> D3[语义搜索]
+```
+
+## 3. 关键文件说明
+
+### 3.1 核心脚本文件
+
+| 文件路径 | 主要职责 | 关键功能 |
+|---------|---------|---------|
+| `scripts/main.py` | 脚本入口 | 命令分发、初始化流程 |
+| `scripts/commands/__init__.py` | 命令注册 | 命令系统初始化和注册 |
+| `scripts/utils/config.py` | 配置管理 | 读取和更新配置信息 |
+| `scripts/integrations/__init__.py` | 集成管理 | 工具集成初始化和配置 |
+
+### 3.2 关键规则文件
+
+| 文件路径 | 主要职责 | 适用场景 |
+|---------|---------|---------|
+| `rules/core-rules/rule.mdc` | 规则定义标准 | 创建或修改规则时 |
+| `rules/command-rules/help-command.mdc` | 帮助命令解析 | 用户需要帮助信息时 |
+| `rules/flow-rules/workflow-instruction.mdc` | 工作流定义 | 开发流程管理 |
+| `rules/role-rules/requirement_analyst.mdc` | 需求分析专家 | 需求分析和PRD编写 |
+| `rules/dev-rules/vibe_convention.mdc` | 开发约定 | 代码和文档标准化 |
+
+## 4. 配置文件结构
+
+### 4.1 主配置文件 (settings.json)
+
+```json
+{
+  "version": "2.0.0",
+  "environment": "development",
+  "logging": {
+    "level": "info",
+    "file": "./logs/vibe.log",
+    "rotate": true
+  },
+  "commands": {
+    "enabled": ["help", "memory", "plan", "task", "story", "branch", "check", "update"],
+    "aliases": {
+      "h": "help",
+      "m": "memory",
+      "p": "plan",
+      "t": "task",
+      "s": "story"
+    }
+  },
+  "rules": {
+    "directories": [
+      "./rules/core-rules",
+      "./rules/command-rules",
+      "./rules/role-rules",
+      "./rules/dev-rules",
+      "./rules/flow-rules",
+      "./rules/tool-rules"
+    ],
+    "autoload": true
+  },
+  "templates": {
+    "docs": "./templates/docs",
+    "rules": "./templates/rules"
+  }
+}
+```
+
+### 4.2 集成配置文件 (integrations.json)
+
+```json
+{
+  "github": {
+    "enabled": true,
+    "repo": "username/VibeCopilot",
+    "token_env": "GITHUB_TOKEN",
+    "issues": {
+      "enabled": true,
+      "auto_create": true,
+      "labels": ["documentation", "enhancement", "bug"]
+    },
+    "projects": {
+      "enabled": true,
+      "board_id": "PROJECT_ID",
+      "auto_sync": true
+    }
+  },
+  "obsidian": {
+    "enabled": true,
+    "vault_path": "~/Documents/VibeCopilot",
+    "templates_dir": "Templates",
+    "sync_interval": 30,
+    "exclude_patterns": ["*.tmp", "*.log"]
+  },
+  "basic_memory": {
+    "enabled": true,
+    "api_key_env": "MEMORY_API_KEY",
+    "base_url": "https://api.memory.example.com",
+    "auto_save": true,
+    "context_window": 5
+  }
+}
+```
+
+## 5. 项目扩展指南
+
+### 5.1 添加新命令
+
+要添加新命令，需要：
+
+1. 在`scripts/commands/`目录中创建新的Python文件
+2. 实现命令处理类，遵循命令接口标准
+3. 在`__init__.py`中注册命令
+4. 创建对应的命令规则文件
+5. 更新配置启用新命令
+
+**示例：添加新命令 `stats`**
+
+```python
+# scripts/commands/stats.py
+from commands.base import BaseCommand
+
+class StatsCommand(BaseCommand):
+    def __init__(self):
+        super().__init__("stats", "显示项目统计信息")
+
+    def execute(self, args):
+        # 命令实现逻辑
+        return {
+            "status": "success",
+            "data": {
+                "files": 120,
+                "rules": 25,
+                "commands": 8
+            }
+        }
+```
+
+### 5.2 添加新集成
+
+要添加新外部工具集成，需要：
+
+1. 在`scripts/integrations/`目录中创建新的Python客户端
+2. 实现标准集成接口
+3. 在配置文件中添加相关配置
+4. 可选：创建对应的工具规则
+
+**示例配置：集成新工具**
+
+```json
+"new_tool": {
+  "enabled": true,
+  "api_key_env": "NEW_TOOL_API_KEY",
+  "base_url": "https://api.newtool.com",
+  "features": ["feature1", "feature2"],
+  "timeout": 30
+}
+```
+
+### 5.3 创建新规则
+
+要创建新的Cursor规则，需要：
+
+1. 确定规则类型（核心、命令、角色、开发、流程或工具）
+2. 在对应目录创建MDC格式的规则文件
+3. 遵循规则模板标准编写规则内容
+4. 在规则系统中注册新规则
+
+**规则文件模板结构**：
+
+```
+# 规则标题
+
+> **规则元数据**
+> 类型: [规则类型]
+> 优先级: [1-5]
+> 版本: 1.0
+> 作者: [作者]
+
+## 使用场景
+
+本规则应在以下情况下应用：
+1. [场景一]
+2. [场景二]
+3. [场景三]
+
+## 规则说明
+
+[详细说明规则的内容和目的]
+
+## 实现指南
+
+[如何实现和遵循该规则]
+
+## 示例
+
+[规则应用示例]
+```
+
+## 6. 依赖关系
+
+VibeCopilot的核心依赖包括：
+
+- **Python** (>= 3.8): 主要开发语言
+- **PyGithub**: GitHub API集成
+- **Jinja2**: 模板处理
+- **Markdown**: Markdown文档处理
+- **Requests**: API调用
+- **PyYAML**: 配置文件处理
+- **Python-dotenv**: 环境变量管理
+- **pytest**: 测试框架
+
+完整依赖列表见`requirements.txt`。

@@ -1,0 +1,121 @@
+---
+description: 本规则提供了一系列简洁易用的开发命令，应在以下情况下应用：(1)需要查看可用命令时，(2)检查项目开发进度时，(3)更新开发状态时，(4)管理开发任务时，(5)创建或切换开发分支时，(6)查看或更新项目文档时。规则确保开发过程的便捷性和标准化，特别关注命令解析、响应速度和用户体验。
+globs:
+alwaysApply: false
+---
+
+# VibeCopilot 命令系统
+
+## 基本概念
+
+VibeCopilot命令系统是一套基于自然语言的开发辅助工具，集成了GitHub Projects和本地roadmap.yaml文件用于项目管理。核心设计理念是通过简单直观的命令帮助开发者跟踪、更新和管理项目进度。
+
+命令以`/`开头，支持参数和选项，同时兼容自然语言变体形式。例如，`/check --type=epic`和`请检查所有epic的状态`可能产生相同的结果。
+
+## 符号约定
+
+VibeCopilot中使用的特殊符号具有明确的含义：
+
+- **`/` 符号**：命令执行标识，用于触发命令执行
+  - 例如：`/story new 用户认证功能` - 执行创建新故事命令
+  - 所有需要执行的操作都应使用`/`开头
+
+- **`@` 符号**：引用标识，用于引用规则、模板或专家角色，不触发执行
+  - 例如：`@frontend_expert` - 引用前端专家角色
+  - 例如：`@story-template.md` - 引用故事模板
+  - 使用`@规则名称`不会触发规则执行，只是一个引用
+
+- **`--` 符号**：命令参数标识，用于传递命令参数
+  - 例如：`--id=S1.2` - 指定故事ID参数
+
+- **`#` 符号**：标签标识，用于标记内容类型或分类
+  - 例如：`#bug` - 表示这是一个bug
+
+> **重要**：不要使用`@flow-rules/story-flow.mdc`的形式来尝试执行流程，这只是引用而非执行。正确的执行方式是使用`/flow story`或`/story new`命令。
+
+## 命令架构
+
+VibeCopilot命令系统包含以下核心命令：
+
+1. **`/check`**: 检查项目状态和进度
+2. **`/update`**: 更新对象状态和进度
+3. **`/story`**: 管理开发故事和阶段
+4. **`/task`**: 管理项目任务
+5. **`/plan`**: 创建新计划和任务
+6. **`/branch`**: 管理与任务关联的分支
+7. **`/flow`**: 启动和管理开发流程
+8. **`/memory`**: 管理项目知识库
+9. **`/help`**: 显示命令帮助信息
+
+## 统一命令格式
+
+所有命令遵循一致的格式规范：
+
+```
+/命令名称 [子命令] [参数]
+```
+
+- **命令名称**: 主命令，如 story, task, flow 等
+- **子命令**: 可选，指定具体操作，如 new, list, start, done 等
+- **参数**: 可选，使用 --key=value 格式传递
+
+### 子命令标准
+
+所有命令都支持以下标准子命令格式：
+
+- **无子命令**: 显示当前对象信息（如 `/task` 显示当前任务）
+- **new/create**: 创建新对象（如 `/story new 标题`）
+- **list**: 列出对象列表（如 `/task list`）
+- **start**: 开始执行（如 `/task start T1.2`）
+- **done/complete**: 完成对象（如 `/task done T1.2`）
+
+## 流程执行规则
+
+在VibeCopilot中，命令(Command)和流程(Flow)是两个不同的概念：
+
+- **命令(Command)**：单一操作，执行特定功能，如显示信息、创建对象等
+- **流程(Flow)**：一系列步骤的集合，定义完整的工作流程
+
+流程通过两种方式启动：
+
+1. **直接流程命令**: 使用 `/flow <流程名称>` 命令
+   - 例如：`/flow story` - 启动完整故事流程
+   - 例如：`/flow commit` - 启动代码提交流程
+
+2. **隐式流程启动**: 通过特定命令的子命令
+   - 例如：`/story new 用户认证` - 创建故事并启动PRD流程
+   - 例如：`/task create 实现登录API` - 创建任务并启动任务流程
+
+> **重要**: 流程规则文件（如 story-flow.mdc）不是直接执行入口，必须通过命令来触发
+
+## 命令详细文档
+
+每个命令都有详细的文档，记录在对应的规则文件中：
+
+- [/check 命令](.cursor/rules/command-rules/check-command.mdc)
+- [/update 命令](.cursor/rules/command-rules/update-command.mdc)
+- [/story 命令](.cursor/rules/command-rules/story-command.mdc)
+- [/task 命令](.cursor/rules/command-rules/task-command.mdc)
+- [/plan 命令](.cursor/rules/command-rules/plan-command.mdc)
+- [/branch 命令](.cursor/rules/command-rules/branch-command.mdc)
+- [/flow 命令](.cursor/rules/command-rules/flow-command.mdc)
+- [/memory 命令](.cursor/rules/command-rules/memory-command.mdc)
+- [/help 命令](.cursor/rules/command-rules/help-command.mdc)
+
+## 命令速查表
+
+| 命令 | 子命令 | 用途 | 示例 |
+|------|--------|------|------|
+| `/check` | - | 检查项目状态 | `/check` |
+| `/update` | roadmap | 更新路线图 | `/update roadmap` |
+| `/story` | new, confirm, list | 管理用户故事 | `/story new 用户认证` |
+| `/task` | create, quick, debt, start, done, list | 管理任务 | `/task create 实现API` |
+| `/flow` | story, spec, coding, test, review, commit | 启动流程 | `/flow coding` |
+| `/help` | - | 显示帮助 | `/help task` |
+
+## 最佳实践
+
+1. 使用标准子命令格式创建和管理对象
+2. 任务状态变化时及时用`/update`更新并添加说明
+3. 使用`/flow`命令启动完整开发流程
+4. 不确定命令用法时使用`/help 命令名称`查看详细帮助
