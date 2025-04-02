@@ -79,4 +79,4 @@ repos:
         language: system
         types: [python]
         verbose: true
-        stages: [manual]
+        stages: [pre-commit]
