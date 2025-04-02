@@ -1,0 +1,80 @@
+---
+description: VibeCopilot项目的具体配置规则，包括技术栈、开发环境、工具用法和质量标准
+globs:
+alwaysApply: true
+---
+# VibeCopilot 项目配置规则
+
+## 项目状态
+
+- 项目当前处于演示阶段（demo）
+- 优先考虑核心功能实现而非完整性
+- 快速迭代，构建最小可行产品
+
+## 技术栈规范
+
+- **前端**：使用React + TypeScript构建
+- **后端**：使用Python (FastAPI/Flask)
+- **数据库**：优先使用MongoDB非关系型数据库
+- 保持类型安全，避免使用any类型
+- 不考虑兼容性问题，只针对最新Chrome/Safari浏览器开发
+- 服务端仅支持Node.js LTS版本和Python 3.9+
+
+## 开发环境配置
+
+- 使用ESLint进行代码质量检查
+- 使用Prettier进行代码格式化
+- 使用Jest/Vitest进行前端测试
+- 使用Pytest进行后端测试
+- 使用Husky进行提交前检查
+
+## MCP工具使用规范
+
+- 尽可能调用MCP工具执行命令，减少直接命令行操作
+- 使用MCP filesystem工具操作文件时必须使用绝对路径
+  - 示例：`/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx`
+- 在命令行操作中加入cat管道，避免交互式界面
+  - 示例：`git log | cat`
+- 使用MCP memory工具存储重要信息：
+  - 项目进度
+  - 关键决策
+  - 设计文档
+  - 技术债务
+- 执行高风险操作前先进行提示和确认
+
+## 质量标准
+
+- 代码覆盖率需达到70%以上
+- 所有公共API必须有文档注释
+- 不使用过时或弃用的API/库
+- 项目需通过所有Lint检查
+- 性能关键部分需有适当的优化和测试
+
+## 示例
+
+<example>
+  // 使用MCP filesystem工具的正确方式
+  mcp_filesystem_npx_read_file({
+    path: "/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx"
+  })
+
+  // 使用MCP memory工具存储决策记录
+  mcp_basic_memory_write_note({
+    title: "性能优化决策",
+    content: "我们决定使用React.memo包装所有列表项组件以提高渲染性能。",
+    folder: "技术决策"
+  })
+</example>
+
+<example type="invalid">
+  // 错误的文件路径用法
+  mcp_filesystem_npx_read_file({
+    path: "src/components/Button.tsx"  // 错误：使用相对路径
+  })
+
+  // 错误的命令行操作（没有使用cat管道）
+  run_terminal_cmd({
+    command: "git log",
+    is_background: false
+  })
+</example>

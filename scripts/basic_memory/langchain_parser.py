@@ -554,7 +554,11 @@ class LangChainKnowledgeProcessor:
                 )
 
             # 处理标签
-            for tag in result.get("tags", []):
+            tags = result.get("tags", [])
+            if tags is None:
+                tags = []
+
+            for tag in tags:
                 tag_name = tag.strip()
                 if not tag_name:
                     continue

@@ -1,0 +1,214 @@
+---
+description: 本规则定义代码开发标准和最佳实践。应在以下情况下应用：(1)开发新功能或组件时，(2)重构或修改现有代码时，(3)进行代码审查时，(4)讨论架构决策时，(5)创建新文件或修改现有文件结构时。规则确保代码简洁、分层合理、可读性高、易于维护。特别关注模块化设计、清晰的职责分离、一致的编码风格以及良好的性能实践。
+globs: ["*.ts", "*.tsx", "*.js", "*.jsx", "*.py"]
+alwaysApply: false
+---
+
+# VibeCopilot 代码开发规范
+
+conditionalRole:
+  conditions:
+    - pattern: "*.ts|*.tsx|*.js|*.jsx"
+      role: "前端开发专家" @frontend_expert
+    - pattern: "*.py|*.go|*.java"
+      role: "后端开发专家" @backend_expert
+
+## 流程定位
+
+本规则位于VibeCopilot核心开发流程的执行阶段：
+1. PRE-FLOW阶段由story-flow确认需求并产出PRD
+2. 由spec-flow针对PRD制定开发计划并获得批准
+3. →→ **当前阶段：coding-flow执行代码编写** ←←
+4. 后续由test-flow进行测试
+5. 由review-flow进行提交前审核
+6. 最后由commit-flow完成提交
+
+## 开发前置条件
+
+- **必须有经过批准的PRD文档**，否则必须返回到PRE-FLOW阶段
+- **必须有spec-flow制定的开发计划**，包括技术选型、架构设计和接口定义
+- 开始前应完整理解需求和设计文档，不允许基于假设进行开发
+
+## 关键规则
+
+### 代码简洁性
+- 遵循KISS原则（保持简单，愚蠢）
+- 函数应专注于单一职责，不超过30行
+- 避免重复代码，提取共用逻辑到独立函数
+- 避免嵌套超过3层的条件语句，使用提前返回或辅助函数
+- 变量和函数名应清晰表达其用途
+
+### 代码分层
+- 严格遵循前后端分离架构
+- 前端遵循UI组件、业务逻辑、数据访问的分层
+- 后端遵循控制器、服务、数据访问层的分层
+- 避免跨层直接访问，层与层之间通过定义良好的接口通信
+- 公共逻辑应放置于适当的工具类或服务中
+
+### 可读性
+- 使用有意义的变量和函数名
+- 添加必要的注释说明"为什么"而不是"做什么"
+- 复杂算法需要文档说明其工作原理
+- 使用一致的代码格式化（依赖项目的ESLint/Prettier配置）
+- 保持代码块的逻辑连贯性，相关代码应放在一起
+
+### 工程实践
+- 关键函数编写单元测试，确保功能正确性
+- 性能关键部分做好注释和性能考量说明
+- 外部API调用添加适当的错误处理和超时处理
+- 使用环境变量管理配置，避免硬编码
+- 敏感数据（如API密钥）不应提交到代码库
+
+### 项目结构规范
+- 所有代码文件控制在200行以内，超过时应拆分模块
+- 文件根据功能放置在对应目录：
+  - `/components`：UI组件
+  - `/modules`：功能模块
+  - `/utils`：工具函数
+  - `/services`：API服务
+  - `/types`：类型定义
+  - `/tests`：测试文件
+- 组件命名使用PascalCase，文件命名使用kebab-case
+- 确保模块间依赖关系清晰，避免循环依赖
+
+## 编码过程规范
+
+### 开发准备
+- 详细阅读PRD文档，理解功能需求和验收标准
+- 查看开发计划中的技术选型和架构设计
+- 在开始编码前，确保理解模块的责任边界和接口定义
+- 对于复杂功能，先绘制模块关系图或流程图
+
+### 编码实践
+- 遵循"五步法"开发流程：规范→需求→计划→编码→总结
+- 采用小步迭代，每完成一个功能点进行提交
+- 先编写测试用例，再实现功能（TDD方法）
+- 定期与最新开发分支同步，减少合并冲突
+- 使用注释记录关键决策和实现思路
+
+### 质量保障
+- 定期运行测试，确保代码质量
+- 使用ESLint/Prettier等工具保证代码风格一致
+- 自测功能是否符合PRD要求，特别关注边界情况
+- 检查代码是否符合安全最佳实践
+- 审视性能关键部分，确保性能达标
+
+## 与开发生命周期的衔接
+
+### 从spec-flow衔接
+- 确保开发计划提供了足够清晰的技术指导
+- 理解架构设计中的模块边界和交互方式
+- 明确需要开发的功能点和优先级
+- 了解已确定的技术选型和限制条件
+
+### 向test-flow衔接
+- 编写合适的单元测试，覆盖关键功能点
+- 准备测试数据和环境配置说明
+- 文档化已知限制和边界条件
+- 提供必要的测试辅助函数或工具
+
+## 示例
+
+<example>
+  # 开发流程实践示例
+
+  ## 任务准备
+
+  ```bash
+  # 1. 查看PRD和开发计划
+  $ cat docs/prd/authentication-system.md
+  $ cat docs/dev-plan/auth-components.md
+
+  # 2. 理解功能点和验收标准
+  ```
+
+  ## 代码实现
+
+  ```typescript
+  // 1. 先编写测试
+  // src/auth/middleware/__tests__/auth-middleware.test.ts
+
+  import { authMiddleware } from '../auth-middleware';
+
+  describe('Auth Middleware', () => {
+    it('should validate token and set user context', () => {
+      // 测试代码...
+    });
+
+    it('should return 401 for invalid token', () => {
+      // 测试代码...
+    });
+  });
+
+  // 2. 实现功能
+  // src/auth/middleware/auth-middleware.ts
+
+  import { Request, Response, NextFunction } from 'express';
+  import jwt from 'jsonwebtoken';
+
+  /**
+   * JWT认证中间件
+   * 验证请求头中的token，设置用户上下文
+   *
+   * 性能考量：使用非对称加密验证，验证操作为CPU密集型，
+   * 在高并发场景可考虑缓存结果或使用对称加密
+   */
+  export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    // 中间件实现...
+  };
+  ```
+
+  ## 自检与提交准备
+
+  ```bash
+  # 1. 运行测试
+  $ npm test -- --coverage
+
+  # 2. 运行代码质量检查
+  $ npm run lint
+
+  # 3. 准备提交
+  $ git status
+  ```
+</example>
+
+<example type="invalid">
+  # 不规范的开发实践
+
+  ## 违反流程规范
+
+  ```bash
+  # 未查看PRD和开发计划直接编码
+  $ vim src/auth.js
+  ```
+
+  ## 不良代码结构
+
+  ```javascript
+  // 单个文件超过200行，混合多个职责
+  // auth.js - 760行代码
+
+  function validateToken(token) {
+    // 内联实现，未分离关注点
+  }
+
+  function handleUserLogin(req, res) {
+    // 混合路由和业务逻辑
+  }
+
+  // 数据库访问直接在处理函数中
+  function registerUser(data) {
+    db.query('INSERT INTO users...');
+  }
+  ```
+
+  ## 无测试覆盖
+
+  ```javascript
+  // 直接实现功能，没有对应测试
+  // 缺少函数描述和性能考量
+  function processUserData(user) {
+    // 复杂处理逻辑...
+  }
+  ```
+</example>

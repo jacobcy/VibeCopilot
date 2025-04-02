@@ -1,0 +1,262 @@
+---
+description:当用户输入/update命令时,执行开发状态更新命令
+globs:
+alwaysApply: false
+---
+
+# VibeCopilot 开发状态更新命令处理器
+
+## 关键规则
+
+- 当用户输入`/update`命令时，更新开发对象的状态、进度或相关信息
+- 必须指定要更新的对象ID
+- 支持更新状态、进度百分比和添加更新说明
+- 更新完成后自动记录到开发日志
+- 自动更新相关联对象的状态和进度
+- 提供清晰的操作结果反馈
+- 支持与GitHub项目同步（通过`--github`参数）
+
+## 概念映射关系
+
+```mermaid
+graph TD
+    Epic[Epic] --> Story[Story]
+    Story --> Task[Task]
+
+    Milestone1[Milestone<br>roadmap.yaml] --> Task1[Task<br>roadmap.yaml]
+
+    Milestone2[Milestone<br>GitHub] --> Issue[Issue<br>GitHub]
+
+    Epic -.映射.-> Milestone1
+    Epic -.映射.-> Milestone2
+    Story -.映射.-> Task1
+    Task -.映射.-> Task1
+    Task -.映射.-> Issue
+
+    classDef local fill:#e1f5fe,stroke:#01579b
+    classDef roadmap fill:#e8f5e9,stroke:#2e7d32
+    classDef github fill:#fce4ec,stroke:#c2185b
+
+    class Epic,Story,Task local
+    class Milestone1,Task1 roadmap
+    class Milestone2,Issue github
+
+    subgraph 本地文件结构[".ai目录"]
+        Epic
+        Story
+        Task
+    end
+
+    subgraph 路线图["roadmap.yaml"]
+        Milestone1
+        Task1
+    end
+
+    subgraph GitHub平台["GitHub"]
+        Milestone2
+        Issue
+    end
+```
+
+- **Epic ↔ Milestone**: 使用`.ai/epics/`目录存储，映射到`roadmap.yaml`中的milestone和GitHub的milestone
+- **Story**: 使用`.ai/stories/`目录存储，映射到`roadmap.yaml`中的特定task
+- **Task**: 使用`.ai/tasks/`目录存储，映射到`roadmap.yaml`中的task和GitHub的issue
+
+## 命令格式规范
+
+基本语法: `/update [--id=对象ID] [--status=新状态] [--progress=进度百分比] [--note=更新说明] [--github]`
+
+参数说明:
+- `--id`: 必选，要更新的对象ID，如`task-001`、`story-002`、`epic-001`等
+- `--status`: 可选，设置新状态，值取决于对象类型
+  - Epic状态: `planned`、`in-progress`、`completed`、`cancelled`
+  - Story状态: `draft`、`ready`、`in-progress`、`review`、`completed`
+  - Task状态: `todo`、`in-progress`、`completed`、`blocked`
+- `--progress`: 可选，更新进度百分比，0-100的整数
+- `--note`: 可选，添加更新说明，简短描述更新内容
+- `--github`: 可选，同步到GitHub，默认为false
+
+## 命令执行流程
+
+```mermaid
+flowchart TD
+    A[开始] --> B{验证更新请求}
+    B -->|有效| C[执行状态更新]
+    B -->|无效| G[显示错误]
+    C --> D[级联更新相关对象]
+    D --> E1[更新roadmap.yaml]
+    E1 --> E2[更新.ai目录文件]
+    E2 --> E3{启用GitHub同步?}
+    E3 -->|是| E4[同步到GitHub]
+    E3 -->|否| F[显示更新结果]
+    E4 --> F
+    F --> H[结束]
+    G --> H
+```
+
+1. **验证更新请求**：检查对象ID是否存在，验证状态值是否有效
+2. **执行状态更新**：更新对象状态文件，记录变更时间和原因
+3. **级联更新**：当子对象状态变更时，自动更新父级对象的进度
+4. **更新roadmap.yaml**：通过`src.cli.roadmap`更新项目路线图
+5. **更新.ai目录文件**：更新相应的Epic/Story/Task文件
+6. **同步到GitHub**：如果启用，通过`src.github.roadmap.github_sync`同步到GitHub项目
+7. **记录与通知**：将更新记录到开发日志，显示操作结果反馈
+
+## 更新结果反馈规范
+
+### 任务更新反馈
+
+```
+✅ 任务更新成功!
+
+task-004 "分支管理自动化" 已标记为已完成
+更新说明: "完成了分支管理自动化"
+
+所属故事 story-002 进度已更新: 80% (↑20%)
+
+变更已记录到开发日志
+[GitHub同步]: 已同步到Issue #24
+```
+
+### 故事更新反馈
+
+```
+✅ 故事更新成功!
+
+story-002 "强制开发流程规范" 已标记为已完成
+更新说明: "所有任务已完成，通过了验收测试"
+
+所属史诗 epic-001 进度已更新: 85% (↑15%)
+
+下一个活跃故事已设置为: story-003 "敏捷开发故事板"
+
+变更已记录到开发日志
+[GitHub同步]: 相关任务已同步到GitHub
+```
+
+### 阻塞状态反馈
+
+```
+⚠️ 阻塞状态已记录!
+
+task-005 "Memory记录集成" 已标记为阻塞
+阻塞原因: "等待Memory API文档更新"
+
+此阻塞已被标记为风险，并通知相关人员
+请使用 `/check --id=task-005` 跟踪状态变化
+
+变更已记录到开发日志
+[GitHub同步]: 已在Issue #28添加"blocked"标签
+```
+
+## 状态转换图
+
+```mermaid
+stateDiagram-v2
+    [*] --> planned
+    planned --> in_progress
+    in_progress --> completed
+    in_progress --> blocked
+    blocked --> in_progress
+    in_progress --> cancelled
+    planned --> cancelled
+    blocked --> cancelled
+    completed --> [*]
+    cancelled --> [*]
+```
+
+## 与其他命令的集成
+
+- `/check`: 查看状态更新后的项目进度
+- `/task`: 管理已更新的任务
+- `/story`: 查看更新后的开发阶段
+- `/plan`: 创建需要后续更新的新计划
+
+## 示例
+
+<example>
+  用户: `/update --id=task-004 --status=completed --note="完成了分支管理自动化" --github`
+
+  系统响应:
+  ```
+  ✅ 任务更新成功!
+
+  task-004 "分支管理自动化" 已标记为已完成
+  更新说明: "完成了分支管理自动化"
+
+  所属故事 story-002 进度已更新: 80% (↑20%)
+
+  变更已记录到开发日志
+  [GitHub同步]: 已将Issue #24标记为closed
+  ```
+
+  用户: `/update --id=story-002 --status=completed --note="所有任务已完成，通过了验收测试"`
+
+  系统响应:
+  ```
+  ✅ 故事更新成功!
+
+  story-002 "强制开发流程规范" 已标记为已完成
+  更新说明: "所有任务已完成，通过了验收测试"
+
+  所属史诗 epic-001 进度已更新: 85% (↑15%)
+
+  下一个活跃故事已设置为: story-003 "敏捷开发故事板"
+
+  变更已记录到开发日志
+  ```
+
+  用户: `/update --id=task-007 --status=blocked --note="等待Memory API文档更新" --github`
+
+  系统响应:
+  ```
+  ⚠️ 阻塞状态已记录!
+
+  task-007 "集成Memory查询功能" 已标记为阻塞
+  阻塞原因: "等待Memory API文档更新"
+
+  此阻塞已被标记为风险，并通知相关人员
+  请使用 `/check --id=task-007` 跟踪状态变化
+
+  变更已记录到开发日志
+  [GitHub同步]: 已在Issue #31添加"blocked"标签
+  ```
+</example>
+
+<example type="invalid">
+  用户: `/update --id=task-004 --status=completed`
+
+  系统响应:
+  ```
+  任务已更新
+  ```
+
+  问题:
+  - 反馈过于简单，缺乏详细信息
+  - 没有显示任务名称和相关上下文
+  - 没有提供父级对象的进度更新信息
+</example>
+
+## 实现细节
+
+### 数据源
+- `data/roadmap.yaml`: 存储项目结构和状态
+- `.ai/epics/`: 存储Epic详细信息和文档
+- `.ai/stories/`: 存储Story详细信息和文档
+- `.ai/tasks/`: 存储Task详细信息和具体实现步骤
+- `.ai/status.json`: 存储当前项目状态概览
+- `.ai/logs/dev_log.json`: 记录变更历史
+- GitHub API: 同步项目状态到远程
+
+### 核心功能
+- 状态验证检查：确保状态转换有效
+- 进度计算：基于任务完成情况自动更新父对象进度
+- 风险标记：检测并标记风险状态
+- 下一步推荐：根据项目结构推荐下一步
+- 双向同步：确保本地文件与roadmap.yaml以及GitHub保持同步
+
+### 主要依赖
+- `src.cli.roadmap`: 路线图数据处理
+- `src.cli.commands`: 命令处理逻辑
+- `src.github.roadmap.github_sync`: GitHub同步
+- `src.cli.logger`: 开发日志记录

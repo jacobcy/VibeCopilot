@@ -33,22 +33,22 @@ VibeCopilot项目使用Cursor命令系统进行本地开发，使用GitHub Proje
   - 更新roadmap.yaml文件
   - 显示项目进度摘要
 - **参数**：
-  - `--github` - 同时检查GitHub项目状态
-  - `--update-roadmap` - 更新本地路线图文件
-- **示例**：`/check --update-roadmap`
+  - `--init` - 整理项目代码（该功能未开发，之后集成），初始化路线图
+  - `--update` - 更新本地路线图文件
+- **示例**：`/check --update`
 
 ### 3.2 /update 命令
 
 - **功能**：通过脚本与服务器端同步开发进度
 - **主要操作**：
-  - 同步本地.ai目录与roadmap.yaml
-  - 同步本地数据与GitHub数据
-  - 解决可能的数据冲突
+  - 同步本地.ai目录与roadmap.yaml（默认）
+  - 同步本地数据与GitHub数据（github参数）
+  - 解决可能的数据冲突( 指定id, status)
 - **参数**：
-  - `--id=<任务ID>` - 指定要更新的任务
+  - `--id=<任务ID>` - 指定要更新的任务（或任务名称）
   - `--status=<状态>` - 设置任务新状态
-  - `--github` - 同步更新到GitHub
-- **示例**：`/update --id=T2.1 --status=completed --github`
+- **示例**：`/update --id=T2.1 --status=completed`
+          先更新roadmap.yaml , 再同步.ai目录（默认），最后同步github
 
 ### 3.3 /story 命令
 
@@ -59,21 +59,19 @@ VibeCopilot项目使用Cursor命令系统进行本地开发，使用GitHub Proje
   - 分析当前开发阶段
 - **参数**：
   - `--milestone=<ID>` - 指定里程碑
-  - `--all` - 显示所有故事
+  - `--all` - 显示所有故事和状态
 - **示例**：`/story --milestone=M2`
 
 ### 3.4 /task 命令
 
-- **功能**：管理当前任务，更新本地路线图
+- **功能**：管理当前任务，检查要完成的任务
 - **主要操作**：
   - 查看当前任务状态
-  - 更新任务完成进度
-  - 修改任务分配和优先级
+  - 显示未完成的issue
 - **参数**：
-  - `--id=<任务ID>` - 指定任务
-  - `--status=<状态>` - 设置任务状态
-  - `--assignee=<用户>` - 设置任务负责人
-- **示例**：`/task --id=T2.1 --status=in_progress`
+  - `--id=<任务ID>` - 指定为当前任务
+  - `--list` - 显示未完成任务和优先级
+- **示例**：`/task --id=T2.1` （指定为当前任务）
 
 ### 3.5 /plan 命令
 
@@ -85,8 +83,7 @@ VibeCopilot项目使用Cursor命令系统进行本地开发，使用GitHub Proje
 - **参数**：
   - `--type=[milestone|task]` - 计划类型
   - `--title=<标题>` - 计划标题
-  - `--dates=<开始-结束>` - 计划时间范围
-- **示例**：`/plan --type=milestone --title="功能完善阶段" --dates=2024-03-01-2024-04-15`
+- **示例**：`/plan --type=milestone --title="功能完善阶段"
 
 ## 4. 非功能需求
 

@@ -1,0 +1,216 @@
+---
+description: 本规则提供了一系列简洁易用的开发命令，应在以下情况下应用：(1)需要查看可用命令时，(2)检查项目开发进度时，(3)更新开发状态时，(4)管理开发任务时，(5)创建或切换开发分支时，(6)查看或更新项目文档时。规则确保开发过程的便捷性和标准化，特别关注命令解析、响应速度和用户体验。
+globs:
+alwaysApply: false
+---
+
+# VibeCopilot 命令系统
+
+## 基本概念
+
+VibeCopilot命令系统是一套基于自然语言的开发辅助工具，集成了GitHub Projects和本地roadmap.yaml文件用于项目管理。核心设计理念是通过简单直观的命令帮助开发者跟踪、更新和管理项目进度。
+
+命令以`/`开头，支持参数和选项，同时兼容自然语言变体形式。例如，`/check --type=epic`和`请检查所有epic的状态`可能产生相同的结果。
+
+## 命令架构
+
+VibeCopilot命令系统包含以下核心命令：
+
+1. **`/check`**: 检查项目状态和进度
+2. **`/update`**: 更新对象状态和进度
+3. **`/story`**: 管理开发故事和阶段
+4. **`/task`**: 管理项目任务
+5. **`/plan`**: 创建新计划和任务
+6. **`/branch`**: 管理与任务关联的分支
+7. **`/memory`**: 管理项目知识库
+8. **`/help`**: 显示命令帮助信息
+
+每个命令都有详细的文档，以下是命令的简要概述：
+
+- **`/check`**: 显示项目整体进度或特定对象的详细状态
+- **`/update`**: 更新任务或故事的状态，记录变更原因和细节
+- **`/story`**: 显示当前活跃故事或列出所有故事及其进度
+- **`/task`**: 显示当前活跃任务或管理任务的状态、分配和优先级
+- **`/plan`**: 创建新的里程碑、故事或任务，并集成到项目结构中
+- **`/branch`**: 创建和管理与任务关联的Git分支
+- **`/memory`**: 管理知识库，支持内容存储、检索和关联
+- **`/help`**: 提供命令帮助和用法示例
+
+## 激活命令
+
+系统通过识别消息开头的`/`符号来激活命令处理流程。命令处理器将解析参数并执行相应操作。例如：
+
+```
+/check --type=story
+```
+
+将显示所有故事的状态概览。
+
+## 命令详细文档
+
+每个命令都有详细的文档，记录在对应的规则文件中：
+
+- [/check 命令](.cursor/rules/command-rules/check-command.mdc)
+- [/update 命令](.cursor/rules/command-rules/update-command.mdc)
+- [/story 命令](.cursor/rules/command-rules/story-command.mdc)
+- [/task 命令](.cursor/rules/command-rules/task-command.mdc)
+- [/plan 命令](.cursor/rules/command-rules/plan-command.mdc)
+- [/branch 命令](.cursor/rules/command-rules/branch-command.mdc)
+- [/memory 命令](.cursor/rules/command-rules/memory-command.mdc)
+- [/help 命令](.cursor/rules/command-rules/help-command.mdc)
+
+查看各命令的详细文档以了解完整功能和用法。
+
+## 命令交互示例
+
+### 基础检查
+
+```
+用户: /check
+AI: 🔍 项目开发状态检查
+
+当前活跃里程碑: M2 "核心功能开发阶段"
+总体进度: ██████░░░░ 60%
+
+待完成任务: 4
+已完成任务: 6
+
+关键路径任务:
+▪ T2.2 "状态管理模块" (进行中，75%)
+▪ T2.4 "AI集成基础功能" (待开始)
+
+下一步建议: 完成T2.2后开始T2.4
+```
+
+### 状态更新
+
+```
+用户: /update --id=T2.2 --status=completed --note="完成了所有核心功能"
+AI: ✅ 任务更新成功!
+
+T2.2 "状态管理模块" 已标记为已完成
+更新说明: "完成了所有核心功能"
+
+所属故事 S2 进度已更新: 75% (↑25%)
+
+变更已记录到开发日志
+```
+
+### 查看当前任务
+
+```
+用户: /task
+AI: 📝 当前活跃任务:
+
+任务ID: T2.3
+标题: 文档管理系统
+状态: 进行中
+优先级: P1
+负责人: 王五
+所属里程碑: M2 "核心功能开发阶段"
+
+描述:
+实现应用文档管理系统，包括文档存储、检索和版本控制
+
+相关任务:
+- 前置依赖: T2.1 "核心引擎实现" (已完成)
+- 后置任务: T2.4 "AI集成基础功能" (待开始)
+
+预计完成时间: 2024-01-30 (还剩10天)
+```
+
+### 创建新计划
+
+```
+用户: /plan --type=task --title="实现搜索功能" --parent=S2.1 --priority=P1
+AI: ✅ 任务创建成功!
+
+ID: T2.1.3
+标题: 实现搜索功能
+状态: 待开始
+所属故事: S2.1 "用户界面基础组件"
+优先级: P1
+负责人: 未分配
+
+路线图文件已更新: data/roadmap.yaml
+GitHub Issue已创建: #28
+```
+
+### 分支管理
+
+```
+用户: /branch --create --task=T2.1.3 --switch
+AI: ✅ 分支创建并切换成功!
+
+分支名: feature/T2.1.3-implement-search
+关联任务: T2.1.3 "实现搜索功能"
+
+Git操作:
+- 基于 develop 创建
+- 已切换到新分支
+- 远程仓库已更新
+
+当前工作分支已设置为 feature/T2.1.3-implement-search
+任务 T2.1.3 已设为活跃任务
+```
+
+### 知识库管理
+
+```
+用户: /memory save --type=document --path=dev/api --tags=auth,api --title="认证API设计文档"
+AI: 📝 准备保存文档到知识库
+
+请输入文档内容或附加文件:
+
+用户: # 认证API设计
+
+## 接口列表
+- POST /api/auth/login - 用户登录
+- GET /api/auth/profile - 获取用户资料
+- POST /api/auth/logout - 用户登出
+
+## 认证流程
+1. 客户端发送登录请求
+2. 服务器验证凭据
+3. 返回JWT令牌和用户信息
+
+AI: ✅ 文档已保存到知识库!
+
+ID: doc-001
+标题: 认证API设计文档
+路径: dev/api/auth-api-design.md
+标签: auth, api
+创建时间: 2024-05-05 14:30
+
+可以通过以下命令查看:
+/memory read --id=doc-001
+```
+
+### 获取帮助
+
+```
+用户: /help
+AI: 📘 VibeCopilot 命令帮助
+
+可用命令:
+• /check - 检查项目进度和状态
+• /update - 更新对象状态和进度
+• /story - 管理开发故事和阶段
+• /task - 管理项目任务
+• /plan - 创建新计划和任务
+• /branch - 管理与任务关联的分支
+• /memory - 管理项目知识库
+• /help - 显示此帮助信息
+
+使用 `/help 命令名称` 获取特定命令的详细帮助。
+例如: `/help check`
+```
+
+## 最佳实践
+
+1. 使用`/check`定期检查项目状态，了解整体进度
+2. 任务状态变化时及时用`/update`更新并添加说明
+3. 使用`/task --list`查看所有未完成任务
+4. 开始新任务时先使用`/branch --create`创建对应分支
+5. 使用`/memory`保存重要决策和设计文档
+6. 不确定命令用法时使用`/help 命令名称`查看详细帮助

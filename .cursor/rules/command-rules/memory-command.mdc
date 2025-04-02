@@ -1,0 +1,207 @@
+---
+description: VibeCopilot的Memory命令，用于管理知识库，支持内容存储、检索和关联
+globs:
+alwaysApply: false
+---
+
+# VibeCopilot 知识库管理命令处理器
+
+## 关键规则
+
+- 当用户输入`/memory`命令时，管理基于LangChain和FAISS的知识库
+- 支持文档处理、实体提取、关系识别和向量搜索
+- 使用Basic Memory数据模型存储实体、关系和观察记录
+- 支持内容标签化和语义检索功能
+- 可导出知识为Obsidian兼容的Markdown格式
+
+## 命令格式规范
+
+基本语法: `/memory <操作> [参数]`
+
+### 主要操作
+
+- `process`: 处理文档并提取知识
+- `query`: 查询知识库内容
+- `find`: 语义搜索知识库
+- `export`: 导出知识到Obsidian
+- `load`: 加载外部知识到系统
+- `list`: 显示知识库统计和内容
+
+### 核心参数
+
+- `--source`: 文档或目录路径
+- `--type`: 内容类型(document/code/note/entity)
+- `--query`: 搜索关键词或问题
+- `--tags`: 标签列表，逗号分隔
+- `--output`: 导出目标路径
+- `--format`: 输出格式(md/json/yaml)
+- `--depth`: 查询或导出深度
+
+## 命令执行流程
+
+```mermaid
+flowchart TD
+    A[开始] --> B{操作类型}
+    B -->|process| C[文档处理]
+    B -->|query| D[知识查询]
+    B -->|find| E[语义搜索]
+    B -->|export| F[导出知识]
+    B -->|list| G[列出内容]
+
+    C --> C1[文档加载]
+    C1 --> C2[实体提取]
+    C2 --> C3[关系识别]
+    C3 --> C4[向量索引创建]
+
+    D --> D1[创建查询链]
+    D1 --> D2[执行查询]
+
+    E --> E1[向量搜索]
+    E1 --> E2[相似度排序]
+
+    F --> F1[加载知识]
+    F1 --> F2[转换格式]
+    F2 --> F3[导出文件]
+
+    G --> G1[获取统计]
+    G1 --> G2[格式化显示]
+
+    C4 --> Z[结果显示]
+    D2 --> Z
+    E2 --> Z
+    F3 --> Z
+    G2 --> Z
+```
+
+## 与系统组件关联
+
+| 命令操作 | 使用的系统组件 | 相关脚本 |
+|---------|-------------|---------|
+| process | 文档处理层 | langchain_parser.py, openai_parser.py |
+| query | 查询层 | query_knowledge.py |
+| find | 存储层(FAISS) | - |
+| export | 导出层 | export_to_obsidian.py |
+
+## 使用示例
+
+### 处理文档 (`/memory process`)
+
+```
+用户: /memory process --source=docs/api --type=document --tags=api,reference
+
+AI: 📚 开始处理文档...
+
+📄 正在处理: docs/api/auth_api.md
+- 提取了15个实体和8个关系
+- 创建了向量索引
+
+📄 正在处理: docs/api/user_api.md
+- 提取了12个实体和6个关系
+- 更新了向量索引
+
+✅ 文档处理完成!
+- 总计: 2个文档, 27个实体, 14个关系
+- 向量索引已更新
+- 知识图谱已扩展
+```
+
+### 查询知识 (`/memory query`)
+
+```
+用户: /memory query --query="认证流程是什么?"
+
+AI: 🔍 查询结果:
+
+认证流程包含以下步骤:
+1. 客户端发送登录请求到 POST /api/auth/login 接口
+2. 服务器验证用户凭据
+3. 验证成功后返回JWT令牌和用户信息
+4. 客户端存储令牌用于后续请求
+5. 令牌过期后需要重新登录
+
+信息来源:
+- docs/api/auth_api.md (相关度: 92%)
+- 实体: "认证流程" (类型: Process)
+- 相关实体: "JWT令牌", "用户认证"
+```
+
+### 导出知识 (`/memory export`)
+
+```
+用户: /memory export --output=obsidian/knowledge --format=md
+
+AI: 📤 开始导出知识库...
+
+正在转换实体和关系为Markdown...
+- 创建节点文件: 27个
+- 创建关系链接: 14个
+- 生成索引页面
+
+✅ 导出完成!
+- 输出位置: obsidian/knowledge
+- 实体文件: 27个
+- 索引文件: 1个
+- Canvas文件: 1个
+
+你可以在Obsidian中打开此目录查看知识图谱。
+```
+
+### 知识库统计 (`/memory list`)
+
+```
+用户: /memory list
+
+AI: 📊 知识库统计:
+
+实体总数: 156
+- 文档: 24个
+- 概念: 87个
+- 代码组件: 32个
+- 接口: 13个
+
+关系总数: 218
+- 包含关系: 56个
+- 依赖关系: 42个
+- 实现关系: 35个
+- 其他: 85个
+
+向量索引:
+- 维度: 1536
+- 索引项: 487个
+- 上次更新: 2024-05-05
+```
+
+## 与其他命令的集成
+
+- `/task`: 关联知识库内容到开发任务
+- `/branch`: 分支可关联到相关知识文档
+- `/check`: 可以查看知识库统计作为项目状态的一部分
+
+## 实现细节
+
+### 核心组件
+
+文档处理使用LangChain框架:
+```python
+from langchain.document_loaders import TextLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores import FAISS
+```
+
+知识查询使用对话检索链:
+```python
+from langchain.chains import ConversationalRetrievalChain
+```
+
+数据模型遵循Basic Memory结构:
+```
+Entity(id, type, attributes)
+Relation(source_id, target_id, type, attributes)
+Observation(entity_id, attribute, value, timestamp)
+```
+
+### 性能考虑
+
+- 大型文档使用分块处理: `CharacterTextSplitter`
+- 向量检索调优参数: `k=4, fetch_k=20, score_threshold=0.75`
+- 优化数据结构减少查询时间

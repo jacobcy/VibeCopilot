@@ -4,6 +4,7 @@ Cursor命令处理模块
 处理Cursor IDE中的命令解析和执行。
 """
 
+import json
 import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
@@ -139,3 +140,32 @@ def handle_cursor_command(text: str) -> Dict[str, Any]:
         Dict[str, Any]: 命令执行结果
     """
     return cursor_cmd_processor.execute_command(text)
+
+
+def main():
+    """命令行入口点"""
+    import sys
+
+    if len(sys.argv) < 2:
+        print("错误: 请提供命令文本")
+        sys.exit(1)
+
+    # 获取命令文本
+    command_text = sys.argv[1]
+
+    # 处理命令
+    result = handle_cursor_command(command_text)
+
+    # 输出结果
+    if result.get("success"):
+        if "message" in result:
+            print(result["message"])
+        else:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(f"错误: {result.get('error', '未知错误')}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

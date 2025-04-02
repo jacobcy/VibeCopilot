@@ -234,7 +234,7 @@ class CommandProcessor:
 
     def handle_story_command(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """
-        处理故事命令，添加新故事/任务
+        处理故事命令，添加新故事/任务或查看里程碑故事
 
         Args:
             args: 命令参数
@@ -245,7 +245,52 @@ class CommandProcessor:
         # 加载当前状态
         status = self._load_status()
 
-        # 生成新故事或任务数据
+        # 如果有位置参数，则查看指定里程碑的故事
+        if "_positional" in args and args["_positional"]:
+            milestone_id = args["_positional"][0].upper()  # 转换为大写，因为里程碑ID通常是M1, M2等格式
+
+            try:
+                # 使用roadmap CLI查询里程碑信息
+                roadmap_args = ["task", "--milestone", milestone_id]
+                roadmap_result = self.roadmap_cli.run(roadmap_args)
+
+                if not roadmap_result.get("success"):
+                    return roadmap_result
+
+                # 获取里程碑下的任务
+                tasks = roadmap_result.get("tasks", [])
+
+                # 按状态分组任务
+                tasks_by_status = {"completed": [], "in_progress": [], "todo": []}
+
+                for task in tasks:
+                    tasks_by_status[task["status"]].append(task)
+
+                # 构建结果
+                result = {
+                    "success": True,
+                    "milestone": roadmap_result["milestone"],
+                    "milestone_id": milestone_id,
+                    "tasks_summary": {
+                        "total": len(tasks),
+                        "completed": len(tasks_by_status["completed"]),
+                        "in_progress": len(tasks_by_status["in_progress"]),
+                        "todo": len(tasks_by_status["todo"]),
+                    },
+                    "tasks": {
+                        "completed": tasks_by_status["completed"],
+                        "in_progress": tasks_by_status["in_progress"],
+                        "todo": tasks_by_status["todo"],
+                    },
+                }
+
+                return result
+
+            except Exception as e:
+                logger.error(f"查询里程碑故事失败: {e}")
+                return {"success": False, "error": f"查询故事失败: {e}"}
+
+        # 如果是添加新故事/任务的请求
         if args.get("type") == "task":
             # 确保必需参数
             if not args.get("title"):
