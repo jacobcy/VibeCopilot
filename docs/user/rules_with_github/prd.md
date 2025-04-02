@@ -8,13 +8,36 @@ VibeCopilot项目使用Cursor命令系统进行本地开发，使用GitHub Proje
 
 ### 1.2 目标
 
-- 扩展现有Cursor命令系统，使其与GitHub项目和roadmap.yaml文件无缝协作
+- 扩展现有命令处理系统，使其与GitHub项目和roadmap.yaml文件无缝协作
 - 保持本地路线图与GitHub Projects数据同步
 - 简化项目进度跟踪和任务管理流程
 - 通过简单命令实现项目状态检查、更新和规划
 - 提高团队协作效率和项目透明度
 
-## 2. 概念映射
+## 2. 系统架构
+
+VibeCopilot命令系统采用分层架构设计：
+
+```mermaid
+flowchart TD
+    A[Cursor IDE] -->|命令请求| B[CursorCommandHandler]
+    B -->|处理路由| C[CommandParser]
+    C --> D[RuleEngine]
+    C --> E[BaseCommand]
+    E --> F1[CheckCommand]
+    E --> F2[UpdateCommand]
+    E --> F3[StoryCommand]
+    E --> F4[TaskCommand]
+    E --> F5[PlanCommand]
+    F1 --> G[GitHub集成模块]
+    F2 --> G
+    F3 --> G
+    F4 --> G
+    F5 --> G
+    G --> H[GitHub API]
+```
+
+## 3. 概念映射
 
 为确保项目管理工具之间的一致性，我们建立以下简单的概念映射：
 
@@ -23,9 +46,9 @@ VibeCopilot项目使用Cursor命令系统进行本地开发，使用GitHub Proje
 | Milestone | Milestone | 项目里程碑，表示主要开发阶段 |
 | Task | Issue | 具体开发任务，通过标签区分类型 |
 
-## 3. 核心功能
+## 4. 核心功能
 
-### 3.1 /check 命令
+### 4.1 /check 命令
 
 - **功能**：分析本地项目进度，生成或更新标准路线图文件
 - **主要操作**：
@@ -33,24 +56,25 @@ VibeCopilot项目使用Cursor命令系统进行本地开发，使用GitHub Proje
   - 更新roadmap.yaml文件
   - 显示项目进度摘要
 - **参数**：
-  - `--init` - 整理项目代码（该功能未开发，之后集成），初始化路线图
+  - `--type=<检查类型>` - 指定检查类型（必需）
+  - `--id=<任务ID>` - 指定要检查的任务（可选）
   - `--update` - 更新本地路线图文件
-- **示例**：`/check --update`
+- **示例**：`/check --type=task --id=T2.1`
 
-### 3.2 /update 命令
+### 4.2 /update 命令
 
 - **功能**：通过脚本与服务器端同步开发进度
 - **主要操作**：
   - 同步本地.ai目录与roadmap.yaml（默认）
-  - 同步本地数据与GitHub数据（github参数）
-  - 解决可能的数据冲突( 指定id, status)
+  - 同步本地数据与GitHub数据（指定github参数）
+  - 解决可能的数据冲突
 - **参数**：
   - `--id=<任务ID>` - 指定要更新的任务（或任务名称）
   - `--status=<状态>` - 设置任务新状态
-- **示例**：`/update --id=T2.1 --status=completed`
-          先更新roadmap.yaml , 再同步.ai目录（默认），最后同步github
+  - `--github` - 同步到GitHub
+- **示例**：`/update --id=T2.1 --status=completed --github`
 
-### 3.3 /story 命令
+### 4.3 /story 命令
 
 - **功能**：查看当前处理的开发阶段和项目故事
 - **主要操作**：
@@ -62,18 +86,21 @@ VibeCopilot项目使用Cursor命令系统进行本地开发，使用GitHub Proje
   - `--all` - 显示所有故事和状态
 - **示例**：`/story --milestone=M2`
 
-### 3.4 /task 命令
+### 4.4 /task 命令
 
 - **功能**：管理当前任务，检查要完成的任务
 - **主要操作**：
   - 查看当前任务状态
   - 显示未完成的issue
+  - 更新任务信息
 - **参数**：
   - `--id=<任务ID>` - 指定为当前任务
+  - `--status=<状态>` - 设置任务状态
+  - `--assignee=<用户名>` - 指定任务负责人
   - `--list` - 显示未完成任务和优先级
-- **示例**：`/task --id=T2.1` （指定为当前任务）
+- **示例**：`/task --id=T2.1 --status=in_progress`
 
-### 3.5 /plan 命令
+### 4.5 /plan 命令
 
 - **功能**：制定新计划，更新本地路线图
 - **主要操作**：
@@ -83,42 +110,76 @@ VibeCopilot项目使用Cursor命令系统进行本地开发，使用GitHub Proje
 - **参数**：
   - `--type=[milestone|task]` - 计划类型
   - `--title=<标题>` - 计划标题
-- **示例**：`/plan --type=milestone --title="功能完善阶段"
+  - `--milestone=<里程碑ID>` - 所属里程碑（仅任务类型需要）
+  - `--priority=<优先级>` - 设置优先级（P0-P3）
+- **示例**：`/plan --type=task --title="插件系统优化" --milestone=M3 --priority=P1`
 
-## 4. 非功能需求
+## 5. 命令实现
 
-### 4.1 性能要求
+所有命令处理器继承自`BaseCommand`基类，实现统一的接口和错误处理机制：
+
+```python
+class BaseCommand:
+    """命令处理器基类"""
+
+    def __init__(self, name: str, description: str):
+        self.name = name
+        self.description = description
+
+    def validate_args(self, args: Dict[str, Any]) -> bool:
+        """验证命令参数"""
+        return True
+
+    def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """执行命令"""
+        if not self.validate_args(args):
+            return {"success": False, "error": "参数验证失败"}
+
+        try:
+            # 子类实现具体逻辑
+            return self._execute_impl(args)
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _execute_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """命令执行的具体实现"""
+        raise NotImplementedError("子类必须实现此方法")
+```
+
+## 6. 非功能需求
+
+### 6.1 性能要求
 
 - GitHub API调用应使用缓存减少延迟
 - 同步操作应优化为增量更新
 - 大型分析操作应支持后台执行
 
-### 4.2 安全要求
+### 6.2 安全要求
 
 - GitHub令牌安全存储，不明文显示
 - 支持细粒度权限控制
 - 敏感操作需确认机制
 
-### 4.3 兼容性要求
+### 6.3 兼容性要求
 
-- 与现有Cursor命令系统保持一致的使用体验
+- 与现有命令处理系统保持一致的使用体验
 - 支持所有主流GitHub项目类型
 - 兼容现有.ai目录结构
 
-### 4.4 可维护性要求
+### 6.4 可维护性要求
 
 - 采用模块化设计，便于扩展
 - 完善的错误处理和日志记录
 - 提供自诊断和故障排除功能
 
-## 5. 用户场景
+## 7. 用户场景
 
 ### 场景1：检查项目状态和更新路线图
 
 ```
 用户: @copilot
 系统: ✅ 命令模式已激活！
-用户: /check --update-roadmap
+用户: /check --type=roadmap --update
 系统:
 🔍 项目状态检查：
 
@@ -216,23 +277,30 @@ GitHub同步已完成: Issue #14 已更新
 GitHub同步: Issue #17已创建
 ```
 
-## 6. 实现计划
+## 8. 实现计划
 
-### 6.1 阶段1：基础功能
+### 8.1 阶段1：基础架构
 
+- 实现基础命令处理系统
+- 创建BaseCommand基类和CommandParser
+- 构建RuleEngine与命令系统的集成
+- 实现错误处理和日志系统
+
+### 8.2 阶段2：核心功能
+
+- 实现CheckCommand和UpdateCommand
 - 实现roadmap.yaml文件读写操作
-- 扩展/check命令以分析项目状态
 - 开发GitHub API基础集成
 - 实现简单的同步功能
 
-### 6.2 阶段2：命令扩展
+### 8.3 阶段3：功能扩展
 
-- 扩展/update命令实现状态更新功能
-- 扩展/story命令显示开发阶段
-- 扩展/task命令管理任务状态
-- 扩展/plan命令创建新计划
+- 实现StoryCommand、TaskCommand和PlanCommand
+- 增强GitHub集成功能
+- 实现冲突解决机制
+- 添加更多功能选项
 
-## 7. 验收标准
+## 9. 验收标准
 
 - 所有命令能正确处理roadmap.yaml文件
 - 命令能正确执行并返回预期结果
@@ -240,11 +308,14 @@ GitHub同步: Issue #17已创建
 - GitHub变更能同步到本地路线图
 - 命令响应及时，操作简单直观
 - 冲突情况有清晰提示和解决方案
+- 测试覆盖率达到80%以上
 
-## 8. 风险与缓解
+## 10. 风险与缓解
 
 | 风险 | 可能性 | 影响 | 缓解措施 |
 |------|--------|------|----------|
 | GitHub API限制 | 高 | 中 | 实现本地缓存减少API调用 |
 | 路线图文件冲突 | 中 | 高 | 实现文件版本对比和冲突解决 |
 | 数据格式变更 | 低 | 高 | 设计灵活的数据解析和迁移机制 |
+| 命令解析错误 | 中 | 中 | 完善参数验证和错误处理 |
+| 规则引擎冲突 | 低 | 高 | 实现规则优先级和冲突解决 |

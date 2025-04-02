@@ -2,7 +2,23 @@
 
 ## 简介
 
-VibeCopilot GitHub项目管理集成模块提供了一套Cursor命令，用于管理本地项目进度与GitHub项目的同步。它通过读写`roadmap.yaml`文件，实现了本地路线图与GitHub Issues/Projects的双向同步，让团队协作更高效。
+VibeCopilot GitHub项目管理集成模块利用命令系统架构，提供了一套与GitHub项目无缝协作的命令。它通过读写`roadmap.yaml`文件，实现了本地路线图与GitHub Issues/Projects的双向同步，让团队协作更高效。
+
+## 系统架构
+
+VibeCopilot命令系统采用分层架构设计，各组件协同工作处理GitHub集成：
+
+```mermaid
+flowchart TD
+    A[用户命令输入] -->|命令请求| B[CursorCommandHandler]
+    B -->|解析路由| C[CommandParser]
+    C --> D[RuleEngine]
+    C --> E[命令处理器]
+    E --> F1[GitHub相关命令]
+    F1 --> G[GitHub集成模块]
+    G --> H[GitHub API]
+    G --> I[本地roadmap.yaml]
+```
 
 ## 安装与配置
 
@@ -30,17 +46,21 @@ VibeCopilot GitHub项目管理集成模块提供了一套Cursor命令，用于�
 检查并分析当前项目状态，生成或更新路线图文件。
 
 ```
-/check [--init] [--update]
+/check --type=<检查类型> [--id=<任务ID>] [--update]
 ```
 
 参数：
 
-- `--init`：初始化路线图文件
-- `--update`：更新已有路线图文件
+- `--type`：检查类型（必需），可选值：
+  - `roadmap`：检查整体路线图
+  - `task`：检查特定任务
+  - `milestone`：检查里程碑
+- `--id`：指定要检查的任务或里程碑ID（当type为task或milestone时必需）
+- `--update`：更新路线图文件
 
 示例：
 ```
-/check --update
+/check --type=roadmap --update
 ```
 
 输出：
@@ -68,8 +88,11 @@ VibeCopilot GitHub项目管理集成模块提供了一套Cursor命令，用于�
 
 参数：
 
-- `--id`：任务ID或名称
-- `--status`：新状态（可选值：`todo`, `in_progress`, `completed`）
+- `--id`：任务ID或名称（必需）
+- `--status`：新状态，可选值：
+  - `todo`：待办
+  - `in_progress`：进行中
+  - `completed`：已完成
 - `--github`：同步到GitHub
 
 示例：
@@ -233,6 +256,33 @@ tasks:
   # 更多任务...
 ```
 
+## 命令实现原理
+
+### 命令处理流程
+
+1. 用户在Cursor中输入命令（如`/check --type=roadmap`）
+2. `CursorCommandHandler`接收命令并路由
+3. 首先尝试使用`RuleEngine`处理命令
+4. 若规则未处理，则使用`CommandParser`解析命令
+5. 路由到对应的命令处理器（如`CheckCommand`）
+6. 命令处理器执行具体业务逻辑
+7. 返回结果给用户
+
+### 错误处理
+
+命令系统实现了全面的错误处理：
+
+```python
+try:
+    # 命令处理逻辑
+except Exception as e:
+    logging.error(f"命令执行错误: {str(e)}")
+    return {
+        "success": False,
+        "error": f"命令执行失败: {str(e)}"
+    }
+```
+
 ## 常见问题
 
 ### Q: 如何解决同步冲突？
@@ -249,7 +299,35 @@ A: 目前暂不支持批量更新。您需要逐个使用`/update`命令更新�
 
 ### Q: 如何查看完整的项目进度报告？
 
-A: 使用`/check`命令查看基本进度，或使用`/story --all`查看更详细的进度报告。
+A: 使用`/check --type=roadmap`查看基本进度，或使用`/story --all`查看更详细的进度报告。
+
+### Q: 命令未被识别怎么办？
+
+A: 确保命令格式正确，包括以"/"开头。检查命令名称拼写是否正确，参数格式是否符合要求（使用`--key=value`或`--flag`格式）。
+
+### Q: 命令执行失败如何调试？
+
+A: 查看日志了解详细错误信息。可以使用`/check --type=debug`命令检查系统状态和配置。
+
+## 系统集成
+
+### 与其他模块集成
+
+VibeCopilot命令系统已与以下模块集成：
+
+- **GitHub模块**：实现与GitHub的数据同步
+- **路线图管理**：管理项目进度和规划
+- **任务跟踪**：跟踪和管理开发任务
+
+### 与Cursor Rules集成
+
+命令系统通过`RuleEngine`与Cursor Rules系统集成：
+
+```
+用户输入 -> CursorCommandHandler -> RuleEngine -> 命令处理
+```
+
+规则引擎优先处理命令，未匹配规则的命令才会交给命令解析器处理。
 
 ## 贡献与反馈
 
@@ -257,4 +335,4 @@ A: 使用`/check`命令查看基本进度，或使用`/story --all`查看更详�
 
 ---
 
-**注意**：本工具处于开发阶段，功能可能会有变动。请定期更新以获取最新特性。
+**注意**：本工具正在积极开发中，功能可能会有变动。请定期更新以获取最新特性。
