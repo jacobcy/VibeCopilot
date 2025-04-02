@@ -1,0 +1,107 @@
+roadmap:
+  title: "VibeCopilot 开发路线图"
+  version: "0.2.1"
+  last_updated: "2023-04-03"
+  analysis_source: "manual_update"
+
+milestones:
+  - id: "milestone-1"
+    title: "基础架构建设"
+    progress: 90
+    status: "in-progress"
+    tasks:
+      - id: "task-101"
+        title: "GitDiagram集成"
+        description: "集成GitDiagram到项目，使用脚本分析现有项目框架，生成和更新路线图"
+        status: "completed"
+        progress: 100
+        story: "Story-1"
+
+      - id: "task-102"
+        title: "命令系统开发"
+        description: "实现Cursor命令解析与处理系统，支持多种命令类型和参数处理"
+        status: "completed"
+        progress: 100
+        story: "Story-2"
+
+      - id: "task-103"
+        title: "文档引擎"
+        description: "文档引擎和Obsidian-Docusaurus集成，实现文档自动化生成和管理"
+        status: "review"
+        progress: 90
+        story: "Story-3"
+
+      - id: "task-104"
+        title: "知识库管理"
+        description: "集成langchain basic_memory作为长期记忆库，建立知识管理系统"
+        status: "completed"
+        progress: 100
+        story: "Story-4"
+
+  - id: "milestone-2"
+    title: "功能模块开发"
+    progress: 60
+    status: "in-progress"
+    tasks:
+      - id: "task-201"
+        title: "GitHub项目管理集成"
+        description: "与GitHub项目管理系统集成，实现路线图与GitHub的双向同步"
+        status: "in-progress"
+        progress: 70
+        story: "Story-2"
+
+      - id: "task-202"
+        title: "测试框架建设"
+        description: "建设测试框架，提高代码覆盖率，实现自动化测试"
+        status: "todo"
+        progress: 5
+        story: "Story-5"
+
+      - id: "task-203"
+        title: "任务管理系统"
+        description: "完成任务管理系统，支持任务创建、分配、跟踪和完成"
+        status: "in-progress"
+        progress: 60
+        story: "Story-6"
+
+  - id: "milestone-3"
+    title: "用户体验优化"
+    progress: 35
+    status: "in-progress"
+    tasks:
+      - id: "task-301"
+        title: "命令行界面优化"
+        description: "优化命令行界面，提高用户体验和交互性"
+        status: "in-progress"
+        progress: 40
+        story: "Story-7"
+
+      - id: "task-302"
+        title: "文档系统完善"
+        description: "完善文档系统，包括用户指南、开发文档和API文档"
+        status: "in-progress"
+        progress: 70
+        story: "Story-8"
+
+      - id: "task-303"
+        title: "多语言支持"
+        description: "添加多语言支持，实现国际化"
+        status: "planned"
+        progress: 0
+        story: "Story-9"
+
+metadata:
+  recently_completed:
+    - "GitDiagram集成 (Story-1)"
+    - "命令系统开发 (Story-2)"
+    - "知识库管理 (Story-4)"
+
+  in_progress:
+    - "文档引擎 (Story-3)"
+    - "GitHub项目管理集成 (Story-2)"
+    - "文档系统完善 (Story-8)"
+
+  coming_next:
+    - "测试框架建设 (Story-5)"
+    - "任务管理系统完成 (Story-6)"
+    - "命令行界面优化 (Story-7)"

@@ -74,7 +74,7 @@ def parse_with_openai(file_path, api_key):
 """
 
     data = {
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4o-mini",
         "messages": [
             {"role": "system", "content": "你是一个专业的文档分析工具，负责从文档中提取实体和关系。"},
             {"role": "user", "content": prompt},

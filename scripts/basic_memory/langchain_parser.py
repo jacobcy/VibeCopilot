@@ -51,7 +51,7 @@ def extract_api_key_from_env_file(env_path=".env"):
 class LangChainKnowledgeProcessor:
     """使用LangChain进行文档知识化并存储到Basic Memory"""
 
-    def __init__(self, source_dir: str, model: str = "gpt-3.5-turbo-0125"):
+    def __init__(self, source_dir: str, model: str = "gpt-4o-mini"):
         """初始化处理器
 
         Args:

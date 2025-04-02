@@ -39,7 +39,7 @@ def extract_api_key_from_env_file(env_path=".env"):
 class OpenAIMemoryParser:
     """使用OpenAI API解析文档并存入Basic Memory的解析器"""
 
-    def __init__(self, source_dir, model="gpt-3.5-turbo"):
+    def __init__(self, source_dir, model="gpt-4o-mini"):
         """初始化解析器
 
         Args:
