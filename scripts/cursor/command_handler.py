@@ -6,9 +6,10 @@ Cursor命令处理器
 
 import json
 import logging
+import os
 from typing import Any, Callable, Dict, List, Optional
 
-from src.cli.cursor_commands import handle_cursor_command
+from scripts.cli.cursor_commands import handle_cursor_command
 
 # 配置日志
 logging.basicConfig(
