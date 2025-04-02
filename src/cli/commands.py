@@ -9,8 +9,8 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from src.github.roadmap.cli import RoadmapCLI
-from src.github.roadmap.roadmap_processor import RoadmapProcessor
+from scripts.github.roadmap.cli import RoadmapCLI
+from scripts.github.roadmap.roadmap_processor import RoadmapProcessor
 
 # 配置日志
 logging.basicConfig(
