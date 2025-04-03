@@ -8,13 +8,10 @@
 """
 
 import logging
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.cli.base_command import BaseCommand
-from src.cli.commands.blog import BlogCommand
-from src.cli.commands.check import CheckCommand
-from src.cli.commands.github import GitHubCommand
-from src.cli.commands.update import UpdateCommand
 
 logger = logging.getLogger(__name__)
 
@@ -25,50 +22,43 @@ class CommandParser:
     def __init__(self):
         """初始化命令解析器"""
         self.commands = {}
-        self._register_default_commands()
 
-    def _register_default_commands(self):
-        """注册默认命令"""
-        self.register_command(CheckCommand())
-        self.register_command(UpdateCommand())
-        self.register_command(GitHubCommand())
-        self.register_command(BlogCommand())
-        # 注册其他命令...
-
-    def parse_command(self, command_str: str) -> Tuple[str, Dict[str, Any]]:
-        """解析命令字符串 (原始解析方法，保留以支持向后兼容)
+    def parse_args(self, args: List[str]) -> Tuple[str, Dict[str, Any]]:
+        """解析命令行参数
 
         Args:
-            command_str: 要解析的命令字符串
+            args: 命令行参数列表
 
         Returns:
             Tuple[str, Dict[str, Any]]: 命令名称和参数字典
 
         Raises:
-            ValueError: 命令格式无效
+            ValueError: 参数格式无效
         """
-        if not command_str:
+        if not args:
             raise ValueError("命令不能为空")
 
-        if not command_str.startswith("/"):
-            raise ValueError("命令必须以/开头")
+        command_name = args[0]
+        parsed_args = {}
 
-        # 移除开头的斜杠并分割命令和参数
-        parts = command_str[1:].split(" ")
-        command_name = parts[0]
-        args = {}
-
-        # 解析参数
-        for part in parts[1:]:
-            if part.startswith("--"):
-                if "=" in part:
-                    key, value = part[2:].split("=", 1)
-                    args[key] = value
+        i = 1
+        while i < len(args):
+            arg = args[i]
+            if arg.startswith("--"):
+                key = arg[2:]
+                if "=" in key:
+                    key, value = key.split("=", 1)
+                    parsed_args[key] = value
+                elif i + 1 < len(args) and not args[i + 1].startswith("--"):
+                    # 下一个参数不是选项，视为当前选项的值
+                    parsed_args[key] = args[i + 1]
+                    i += 1
                 else:
-                    key = part[2:]
-                    args[key] = True
+                    # 布尔选项
+                    parsed_args[key] = True
+            i += 1
 
-        return command_name, args
+        return command_name, parsed_args
 
     def register_command(self, command: BaseCommand):
         """注册命令处理器
@@ -134,24 +124,107 @@ class CommandParser:
             "examples": command.get_examples(),
         }
 
-    # 保留原有execute_command方法的向后兼容性实现
-    def execute_command_string(self, command_str: str) -> Dict[str, Any]:
-        """执行命令字符串（向后兼容方法）
+    def parse_and_execute(self, args: List[str]) -> int:
+        """解析参数并执行命令
 
         Args:
-            command_str: 要执行的命令字符串
+            args: 命令行参数
 
         Returns:
-            Dict[str, Any]: 执行结果
+            int: 执行结果代码，0表示成功
         """
-        try:
-            command_name, args = self.parse_command(command_str)
-            return self.execute_command(command_name, args)
-        except ValueError as e:
-            error_msg = f"处理命令失败: {str(e)}"
-            logger.error(error_msg)
-            return {"success": False, "error": error_msg}
-        except Exception as e:
-            error_msg = f"执行命令失败: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            return {"success": False, "error": error_msg}
+        if not args:
+            self._print_help()
+            return 0
+
+        command_name = args[0]
+
+        # 处理帮助命令
+        if command_name in ["-h", "--help", "help"]:
+            if len(args) > 1:
+                # 显示特定命令的帮助
+                command_help = self.get_command_help(args[1])
+                if command_help["success"]:
+                    self._print_command_help(command_help)
+                else:
+                    print(f"错误: {command_help['error']}")
+                    return 1
+            else:
+                # 显示通用帮助
+                self._print_help()
+            return 0
+
+        # 执行命令
+        if command_name not in self.commands:
+            print(f"错误: 未知命令 '{command_name}'")
+            self._print_help()
+            return 1
+
+        command_args = {}
+        if len(args) > 1:
+            try:
+                _, command_args = self.parse_args(args)
+            except ValueError as e:
+                print(f"错误: {str(e)}")
+                return 1
+
+        result = self.execute_command(command_name, command_args)
+
+        # 处理执行结果
+        if result.get("success", False):
+            if "message" in result:
+                print(result["message"])
+
+            # 如果有数据，以适当格式输出
+            if "data" in result:
+                output_format = command_args.get("format", "text")
+                self._print_data(result["data"], output_format)
+
+            return 0
+        else:
+            print(f"错误: {result.get('error', '未知错误')}")
+            return 1
+
+    def _print_help(self):
+        """打印通用帮助信息"""
+        print("VibeCopilot 命令行工具")
+        print("\n可用命令:")
+
+        commands = self.get_available_commands()
+        for cmd in commands:
+            print(f"  {cmd['name']:<12} - {cmd['description']}")
+
+        print("\n使用 '<命令> --help' 获取特定命令的帮助")
+
+    def _print_command_help(self, help_info: Dict[str, Any]):
+        """打印特定命令的帮助信息"""
+        print(f"\n命令: {help_info['command']}")
+        print(f"描述: {help_info['description']}")
+        print(f"\n用法: {help_info['usage']}")
+
+        if help_info.get("examples"):
+            print("\n示例:")
+            for example in help_info["examples"]:
+                print(f"  {example}")
+
+    def _print_data(self, data: Any, format_type: str):
+        """打印数据，根据格式类型选择不同的输出方式"""
+        if format_type == "json":
+            import json
+
+            print(json.dumps(data, ensure_ascii=False, indent=2))
+        else:
+            # 文本格式
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        for k, v in item.items():
+                            print(f"{k}: {v}")
+                        print()
+                    else:
+                        print(item)
+            elif isinstance(data, dict):
+                for k, v in data.items():
+                    print(f"{k}: {v}")
+            else:
+                print(data)
