@@ -31,6 +31,11 @@ DEFAULT_CONFIG = {
         "data_dir": "data",
         "output_dir": "output",
     },
+    "database": {
+        "path": ".ai/vibecopilot.db",
+        "type": "sqlite",
+        "debug": False,
+    },
     "ai": {
         "default_provider": "openai",
         "openai": {
