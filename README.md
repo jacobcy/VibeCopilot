@@ -48,3 +48,48 @@ python -m src.cli.main db --action=query --type=template --query="用户界面" 
 ```
 
 您可以通过环境变量`VIBECOPILOT_DB_PATH`覆盖默认路径。
+
+## GitHub集成
+
+VibeCopilot提供与GitHub的深度集成，支持项目管理、路线图同步和开发协作。
+
+### 主要功能
+
+- **项目管理**：同步GitHub Projects与本地任务
+- **路线图同步**：将本地路线图发布到GitHub项目
+- **开发协作**：自动化工作流、议题模板和CI集成
+
+### 使用方法
+
+```python
+from src.github.api.github_client import GitHubClient
+from src.github.projects.main import ProjectManager
+
+# 初始化GitHub客户端
+client = GitHubClient(token="your_github_token")
+
+# 项目管理
+project_manager = ProjectManager(client)
+project = project_manager.get_project("username/repo", "Project Name")
+
+# 导入路线图
+from src.github.roadmap.roadmap_processor import RoadmapProcessor
+processor = RoadmapProcessor()
+processor.import_from_yaml(".ai/roadmap/current.yaml")
+processor.sync_to_github(client, "username/repo")
+```
+
+### 命令行操作
+
+```bash
+# 查看GitHub项目
+python -m src.github.projects.main list --repo=username/repo
+
+# 同步路线图
+python -m src.github.roadmap.cli sync --source=.ai/roadmap/current.yaml --repo=username/repo
+```
+
+配置需要在环境变量中设置GitHub token：
+```bash
+export GITHUB_TOKEN=your_personal_access_token
+```
