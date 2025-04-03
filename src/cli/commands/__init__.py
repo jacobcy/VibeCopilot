@@ -6,8 +6,8 @@
 
 # 导入所有命令处理器
 from src.cli.commands.db import DatabaseCommand
-from src.cli.commands.db_migrate import DatabaseMigrateCommand
+
 # TODO: 添加其他命令处理器
 
 # 暴露所有命令处理器类
-__all__ = ["DatabaseCommand", "DatabaseMigrateCommand"]
+__all__ = ["DatabaseCommand"]

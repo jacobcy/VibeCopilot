@@ -26,22 +26,44 @@ T = TypeVar("T")
 
 class DatabaseService:
     """统一数据库服务类"""
-
+    
+    _instance = None
+    
+    def __new__(cls, db_path: Optional[str] = None):
+        """单例模式实现
+        
+        Args:
+            db_path: 数据库文件路径，如果不指定则使用默认路径
+            
+        Returns:
+            DatabaseService实例
+        """
+        if cls._instance is None:
+            cls._instance = super(DatabaseService, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self, db_path: Optional[str] = None):
         """初始化数据库服务
-
+        
         Args:
             db_path: 数据库文件路径，如果不指定则使用默认路径
         """
+        # 防止重复初始化
+        if getattr(self, '_initialized', False):
+            return
+            
         # 初始化数据库引擎和会话工厂
         self.engine = get_engine(db_path)
         self.session_factory = get_session_factory(self.engine)
-
+        
         # 初始化数据库
         init_db(self.engine)
-
+        
         # 初始化仓库
         self._initialize_repositories()
+        
+        self._initialized = True
 
     def _initialize_repositories(self):
         """初始化所有仓库实例"""

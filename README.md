@@ -2,9 +2,9 @@
 
 智能协作开发助手，让开发流程更高效自然。
 
-## 数据库统一
+## 数据库系统
 
-VibeCopilot现在使用统一的SQLite数据库，简化了数据访问和管理。
+VibeCopilot使用统一的SQLite数据库，简化了数据访问和管理。
 
 ### 使用方法
 
@@ -19,19 +19,20 @@ epics = db_service.list_epics()
 templates = db_service.search_templates(query="用户界面")
 ```
 
-### 数据迁移
+### 命令行操作
 
-如果您之前使用的是分离的数据库系统，可以使用迁移工具将数据迁移到新的统一数据库：
+可以使用命令行工具管理数据库：
 
 ```bash
-# 检查迁移状态
-python -m src.cli.main db-migrate --action=check
+# 初始化数据库
+python -m src.cli.main db --action=init
 
-# 执行数据迁移（先测试，不实际修改数据库）
-python -m src.cli.main db-migrate --action=migrate --dry_run=true
+# 查询数据
+python -m src.cli.main db --action=query --type=epic
+python -m src.cli.main db --action=query --type=task --id=task-001
 
-# 执行实际迁移
-python -m src.cli.main db-migrate --action=migrate
+# 搜索模板
+python -m src.cli.main db --action=query --type=template --query="用户界面" --tags="前端,组件"
 ```
 
 ## 配置
