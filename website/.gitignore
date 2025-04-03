@@ -15,8 +15,18 @@
 .env.test.local
 .env.production.local
 
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-docs/
+# Generated documentation files
+docs
+.cache
+
+# Local config
+.env*
+!.env.example
+
+# Package files
+package-lock.json

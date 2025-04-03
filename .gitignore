@@ -62,6 +62,24 @@ backups/
 
 # Private individual user cursor rules
 .cursor/rules/_*.mdc
+.cursor/.DS_Store
+.cursor/rules/.DS_Store
+.cursor/rules/*/.DS_Store
 
-# New module path
+# App specific
 modules/
+.vibecopilot/
+
+# Database and cache files
+*.db
+*.sqlite
+*.sqlite3
+
+# AI related
+.ai/logs/
+.ai/cache/
+.ai/knowledge_graph/.obsidian/
+.ai/status.json
+
+# Local configurations
+config/local*
