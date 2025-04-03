@@ -22,7 +22,7 @@ VibeCopilot/
 │   └── blog/                 # 博客文章
 ├── rules/                    # Cursor规则目录
 │   ├── core-rules/           # 核心规则
-│   ├── command-rules/        # 命令规则
+│   ├── cmd-rules/        # 命令规则
 │   ├── role-rules/           # 角色规则
 │   ├── dev-rules/            # 开发规则
 │   ├── flow-rules/           # 流程规则
@@ -160,7 +160,7 @@ graph TD
 | 文件路径 | 主要职责 | 适用场景 |
 |---------|---------|---------|
 | `rules/core-rules/rule.mdc` | 规则定义标准 | 创建或修改规则时 |
-| `rules/command-rules/help-command.mdc` | 帮助命令解析 | 用户需要帮助信息时 |
+| `rules/cmd-rules/help-cmd.mdc` | 帮助命令解析 | 用户需要帮助信息时 |
 | `rules/flow-rules/workflow-instruction.mdc` | 工作流定义 | 开发流程管理 |
 | `rules/role-rules/requirement_analyst.mdc` | 需求分析专家 | 需求分析和PRD编写 |
 | `rules/dev-rules/vibe_convention.mdc` | 开发约定 | 代码和文档标准化 |
@@ -191,7 +191,7 @@ graph TD
   "rules": {
     "directories": [
       "./rules/core-rules",
-      "./rules/command-rules",
+      "./rules/cmd-rules",
       "./rules/role-rules",
       "./rules/dev-rules",
       "./rules/flow-rules",

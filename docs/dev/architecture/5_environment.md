@@ -108,7 +108,7 @@ VibeCopilot使用Cursor的规则系统进行AI行为控制：
 
    # 确保各类规则目录存在
    ls -la rules/core-rules/
-   ls -la rules/command-rules/
+   ls -la rules/cmd-rules/
    ls -la rules/flow-rules/
    ```
 
@@ -118,7 +118,7 @@ VibeCopilot使用Cursor的规则系统进行AI行为控制：
 
 ```bash
 # 复制规则模板创建新规则
-cp templates/rules/command_rule_template.mdc rules/command-rules/new-command.mdc
+cp templates/rules/command_rule_template.mdc rules/cmd-rules/new-cmd.mdc
 
 # 根据需要编辑规则文件
 ```

@@ -60,7 +60,7 @@ VibeCopilot的规则体系采用多层次分类设计，包括：
 1. **核心规则(core-rules)**：定义基础行为和标准，如rule-generating-agent
 2. **开发规则(dev-rules)**：规范开发流程和代码质量，如vibe_convention、vibe_config
 3. **流程规则(flow-rules)**：定义开发生命周期和强制检查点，如workflow-instruction、coding-flow
-4. **命令规则(command-rules)**：实现标准化命令接口，如plan-command、task-command
+4. **命令规则(cmd-rules)**：实现标准化命令接口，如plan-cmd、task-cmd
 5. **角色规则(role-rules)**：定义专家角色和职责，如frontend_expert、backend_expert
 6. **工具规则(tool-rules)**：规范工具使用方法，如git-commit-push-agent
 

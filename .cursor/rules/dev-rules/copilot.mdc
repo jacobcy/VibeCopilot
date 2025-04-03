@@ -166,15 +166,15 @@ task-004 "用户认证功能" 已标记为已完成
 
 每个命令都有详细的文档，记录在对应的规则文件中：
 
-- [/check 命令](.cursor/rules/command-rules/check-command.mdc)
-- [/update 命令](.cursor/rules/command-rules/update-command.mdc)
-- [/story 命令](.cursor/rules/command-rules/story-command.mdc)
-- [/task 命令](.cursor/rules/command-rules/task-command.mdc)
-- [/plan 命令](.cursor/rules/command-rules/plan-command.mdc)
-- [/branch 命令](.cursor/rules/command-rules/branch-command.mdc)
-- [/flow 命令](.cursor/rules/command-rules/flow-command.mdc)
-- [/memory 命令](.cursor/rules/command-rules/memory-command.mdc)
-- [/help 命令](.cursor/rules/command-rules/help-command.mdc)
+- [/check 命令](.cursor/rules/cmd-rules/check-cmd.mdc)
+- [/update 命令](.cursor/rules/cmd-rules/update-cmd.mdc)
+- [/story 命令](.cursor/rules/cmd-rules/story-cmd.mdc)
+- [/task 命令](.cursor/rules/cmd-rules/task-cmd.mdc)
+- [/plan 命令](.cursor/rules/cmd-rules/plan-cmd.mdc)
+- [/branch 命令](.cursor/rules/cmd-rules/branch-cmd.mdc)
+- [/flow 命令](.cursor/rules/cmd-rules/flow-cmd.mdc)
+- [/memory 命令](.cursor/rules/cmd-rules/memory-cmd.mdc)
+- [/help 命令](.cursor/rules/cmd-rules/help-cmd.mdc)
 
 ## 命令速查表
 

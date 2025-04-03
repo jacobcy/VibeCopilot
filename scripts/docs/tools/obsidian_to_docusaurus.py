@@ -74,8 +74,12 @@ class ObsidianDocusaurusConverter:
 
         # 遍历所有Markdown文件
         for md_file in self.obsidian_dir.glob("**/*.md"):
-            # 跳过.obsidian目录和资源目录
-            if ".obsidian" in md_file.parts or "assets" in md_file.parts:
+            # 只跳过.obsidian配置目录和assets目录，而不是路径中包含这些名称的所有目录
+            if (
+                md_file.name == ".obsidian"
+                or md_file.parent.name == ".obsidian"
+                or md_file.parent.name == "assets"
+            ):
                 continue
 
             # 使用文件名作为键（去除扩展名）
@@ -232,8 +236,12 @@ class ObsidianDocusaurusConverter:
 
         # 遍历所有Markdown文件
         for md_file in self.obsidian_dir.glob("**/*.md"):
-            # 跳过.obsidian目录和资源目录
-            if ".obsidian" in md_file.parts or "assets" in md_file.parts:
+            # 只跳过.obsidian配置目录和assets目录，而不是路径中包含这些名称的所有目录
+            if (
+                md_file.name == ".obsidian"
+                or md_file.parent.name == ".obsidian"
+                or md_file.parent.name == "assets"
+            ):
                 continue
 
             # 计算相对路径

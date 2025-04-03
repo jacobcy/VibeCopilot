@@ -57,7 +57,7 @@ VibeCopilot规则按功能分为以下几类：
 | 核心规则 | `core-rules/` | 定义基础AI行为 | 最高 |
 | 开发规则 | `dev-rules/` | 规范开发流程和标准 | 高 |
 | 流程规则 | `flow-rules/` | 定义工作流检查点 | 高 |
-| 命令规则 | `command-rules/` | 实现命令行接口 | 中 |
+| 命令规则 | `cmd-rules/` | 实现命令行接口 | 中 |
 | 角色规则 | `role-rules/` | 定义专家角色行为 | 中 |
 | 工具规则 | `tool-rules/` | 规范工具使用方式 | 低 |
 
@@ -238,14 +238,14 @@ VibeCopilot采用简单的文件系统进行状态管理，避免复杂的数据
   "session_id": "uuid-string",
   "start_time": "ISO-datetime",
   "current_context": {
-    "command": "last-command",
+    "command": "last-cmd",
     "workspace": "current-directory",
     "active_rule": "current-rule-id"
   },
   "history": [
     {
       "timestamp": "ISO-datetime",
-      "command": "command-string",
+      "command": "cmd-string",
       "status": "success|error"
     }
   ]
@@ -280,7 +280,7 @@ VibeCopilot支持简单的插件机制，主要通过规则文件和脚本扩展
 
 新命令需要添加两个文件：
 
-1. 命令规则文件：`command-rules/new-command.md`
+1. 命令规则文件：`cmd-rules/new-cmd.md`
 2. 命令脚本：`scripts/new_command.py`
 
 ### 7.3 工具集成扩展
@@ -403,12 +403,12 @@ vibcopilot/
 │   ├── core-rules/
 │   ├── dev-rules/
 │   ├── flow-rules/
-│   ├── command-rules/
+│   ├── cmd-rules/
 │   ├── role-rules/
 │   └── tool-rules/
 ├── scripts/
-│   ├── command_handlers/
-│   ├── tool_integrations/
+│   ├── github/
+│   ├── basic_memory/
 │   ├── utils/
 │   ├── setup.py
 │   └── main.py

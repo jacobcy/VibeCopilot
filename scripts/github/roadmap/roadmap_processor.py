@@ -25,8 +25,8 @@ class RoadmapProcessor:
         """
         self.roadmap_path = roadmap_path or os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
-            "data",
-            "roadmap.yaml",
+            ".ai/roadmap",
+            "current.yaml",
         )
         self.roadmap = None
 

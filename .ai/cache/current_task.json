@@ -1,7 +1,10 @@
 {
-  "task_id": "create-directories",
-  "story_id": "example-story",
-  "title": "创建必要的目录结构",
-  "status": "done",
-  "last_updated": "2023-04-02T02:51:00Z"
+  "task_id": "TS10.1.1",
+  "title": "模板系统设计与实现",
+  "story_id": "S10.1",
+  "status": "in_progress",
+  "priority": "P0",
+  "assignee": "developer",
+  "started_at": "2025-04-03 08:04",
+  "last_updated": "2025-04-03 08:04"
 }

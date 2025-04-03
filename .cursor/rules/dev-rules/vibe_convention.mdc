@@ -3,6 +3,7 @@ description: VibeCopilot项目的通用开发约定，包括命名规范、代�
 globs:
 alwaysApply: true
 ---
+
 # VibeCopilot 通用开发约定
 
 ## 开发流程五步法
@@ -128,18 +129,24 @@ sequenceDiagram
   - `test`: 添加测试
   - `chore`: 构建过程或辅助工具变动
 
-## 命令与规则系统集成
+## 角色与组件定义
 
-- 命令和规则通过统一的接口和标准进行交互
-- 命令格式和使用规范已移至`copilot.mdc`中统一管理
-- 所有命令文档通过`/help`命令查看
-- 规则系统通过`/rule`命令管理
-- 专家角色系统通过`/agent`命令激活
+- **User**：最终用户，通过文本方式与系统交互
+- **Cursor Agent**：Cursor原生智能体，解析用户输入并调用相应规则
+- **Rules Agent**：基于规则的智能体，执行规则定义的行为和流程
+
+组件区分：
+- **Command(命令)**：以`/`开头的规则触发器，如`/task`、`/flow`，位于.cursor/rules/cmd-rules/
+- **Flow(流程)**：定义开发流程和检查点的规则，位于.cursor/rules/flow-rules/
+- **Plugin(插件)**：以`//`开头的MCP工具扩展，用于与Claude集成
+- **Scripts(脚本)**：位于scripts/目录的原始Python脚本，提供底层功能
+- **Interfaces(接口)**：位于src/cli/commands/的封装接口，提供标准化调用方式
 
 ### 规则调用符号
 
 - **`/` 符号**：命令执行标识，如`/help`、`/update`、`/story`
-- **`{/规则名称}` 格式**：命令注释标识，用于消除歧义，如`{/agent}`表示提及agent命令
+- **`//` 符号**：接口执行标识，如`//github`、`//basic_memory`
+- **`{/规则|//接口}` 格式**：注释标识，用于消除歧义，如`{/agent}`表示提及agent命令
 - **`@` 符号**：引用标识，引用规则但不执行，如`@frontend_expert`
 
 ### 命令和规则集成原则
@@ -225,15 +232,8 @@ sequenceDiagram
 - **规则变更流程**：如需变更规则，须通过`/flow cursor`命令启动正式流程
 - **紧急修复例外**：仅在修复严重bug且获得明确授权时允许直接修改
 
-### 规则结构规范
-
-- 所有规则必须遵循统一的MDC格式
-- 规则文件应保持简洁，最长不超过300行
-- 使用清晰的章节和小节划分内容
-- 提供具体示例说明规则应用
-
 <example>
-用户: "我想修改task-command.mdc规则"
+用户: "我想修改task-cmd.mdc规则"
 
 系统响应:
 ```
@@ -245,7 +245,7 @@ sequenceDiagram
 2. 修改的具体目的是什么?
 
 建议通过正式流程修改规则:
-/flow cursor --modify=task-command
+/flow rule --modify=task-cmd
 
 这将启动规则修改流程，确保变更被正确记录和审核。
 ```

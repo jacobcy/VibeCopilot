@@ -18,7 +18,7 @@ alwaysApply: false
 
 ## 角色激活规则
 
-- 角色通过`/agent`命令激活，命令详情参见`agent-command.mdc`
+- 角色通过`/agent`命令激活，命令详情参见`agent-cmd.mdc`
 - 提及专家角色系统但不激活时，使用`{/agent}`格式
 - 引用角色规则定义时，使用`@角色名称`格式，如`@frontend_expert`
 - 一次只能激活一个角色
@@ -63,7 +63,7 @@ alwaysApply: false
 
 ## 命令与规则的关系
 
-- 角色激活通过`/agent`命令完成，详细命令格式参见`agent-command.mdc`
+- 角色激活通过`/agent`命令完成，详细命令格式参见`agent-cmd.mdc`
 - 提及专家角色系统但不执行命令时，使用`{/agent}`格式
 - 直接引用角色规则定义时，使用`@角色名称`格式，如`@frontend_expert`
 

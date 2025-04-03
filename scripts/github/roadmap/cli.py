@@ -107,7 +107,7 @@ class RoadmapCLI:
 
                 # 更新任务状态
                 roadmap = self.processor.update_task_status(
-                    task_id=args.id, new_status=args.status, assignee=args.assignee
+                    task_id=args.id, status=args.status, assignee=args.assignee
                 )
 
                 # 同步到GitHub

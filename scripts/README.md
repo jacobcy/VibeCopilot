@@ -1,152 +1,102 @@
-# VibeCopilot 工具脚本
+# VibeCopilot 命令行工具
 
-本目录包含VibeCopilot项目的各种工具脚本，用于自动化项目管理和开发流程。
+本目录包含VibeCopilot项目的命令行工具，用于简化项目管理和开发流程。
 
-## 目录结构
+## 可用工具
 
-```
-/scripts
-├── github/            # GitHub相关工具
-│   ├── api/           # GitHub API封装
-│   ├── projects/      # GitHub Projects管理工具
-│   └── issues/        # Issues和PR管理工具
-├── setup/             # 环境设置和项目初始化工具
-│   ├── init_project.py # 项目初始化脚本
-│   └── ...
-├── project/           # 项目管理工具
-│   ├── docs_sync.py   # 文档同步检查
-│   └── ...
-└── utils/             # 通用工具函数
-    ├── file_operations.py # 文件操作工具
-    └── ...
-```
+### 1. GitHub CLI工具 (`github_cli.py`)
 
-## 使用方法
+简化的命令行接口，用于执行GitHub相关操作。
 
-所有脚本都设计为命令行工具，支持`--help`参数查看详细用法：
+**使用方法:**
 
 ```bash
-python scripts/<script_path>.py --help
+# 查看帮助信息
+python scripts/github_cli.py
+
+# 检查路线图状态
+python scripts/github_cli.py --action=check --type=roadmap
+
+# 列出特定里程碑的任务
+python scripts/github_cli.py --action=list --type=task --milestone=M2
+
+# 更新任务状态
+python scripts/github_cli.py --action=update --type=task --id=T2.1 --status=completed
+
+# 创建新任务
+python scripts/github_cli.py --action=story --type=task --title="实现新功能" --milestone=M2 --priority=P1
+
+# 同步数据
+python scripts/github_cli.py --action=sync --direction=to-github
 ```
 
-### 环境要求
+### 2. GitHub项目管理工具 (`github/manage_project.py`)
 
-- Python 3.8+
-- 相关依赖在`requirements.txt`中指定
+交互式项目管理工具，提供更丰富的界面和功能。
 
-### 常用脚本
-
-1. **项目初始化**
+**使用方法:**
 
 ```bash
-python scripts/setup/init_project.py --name "MyProject" --template python
+# 运行交互式模式
+python scripts/github/manage_project.py --interactive
+
+# 检查路线图状态
+python scripts/github/manage_project.py --check
+
+# 列出特定里程碑的任务
+python scripts/github/manage_project.py --list M2
+
+# 更新任务状态
+python scripts/github/manage_project.py --update T2.1 completed
+
+# 创建新任务
+python scripts/github/manage_project.py --create "实现新功能" M2 P1 "这是一个新功能的描述"
+
+# 同步数据
+python scripts/github/manage_project.py --sync to-github
 ```
 
-2. **创建GitHub项目**
+## 命令系统架构
 
-```bash
-python scripts/github/projects/create_project.py --name "项目路线图"
+这些工具基于VibeCopilot的命令处理系统实现。命令处理流程如下：
+
+1. 用户输入命令字符串（例如 `/github --action=check`）
+2. `CursorCommandHandler` 解析命令并找到对应的命令处理类
+3. 命令处理类验证参数并执行操作
+4. 返回标准化的结果
+
+## 开发新命令
+
+要添加新命令，按照以下步骤操作：
+
+1. 在 `src/cli/commands/` 目录下创建新的命令类
+2. 继承 `BaseCommand` 类并实现 `_execute_impl` 方法
+3. 在命令类的构造函数中注册命令参数
+4. 将命令类注册到 `CommandParser` 中
+
+示例：
+
+```python
+from src.cli.commands.base_command import BaseCommand
+
+class MyCommand(BaseCommand):
+    def __init__(self):
+        super().__init__("mycommand", "执行我的自定义操作")
+        self.register_parameter("action", required=True, help="要执行的操作")
+        self.register_parameter("type", required=True, help="操作类型")
+
+    def _execute_impl(self):
+        action = self.get_parameter("action")
+        type = self.get_parameter("type")
+
+        # 实现命令逻辑
+        result = {"message": f"执行了 {action} 操作，类型为 {type}"}
+
+        return result
+
+    def get_examples(self):
+        return [
+            "/mycommand --action=check --type=status",
+            "/mycommand --action=update --type=config"
+        ]
 ```
-
-3. **导入路线图**
-
-```bash
-python scripts/github/projects/import_roadmap.py --file docs/project/roadmap/development_roadmap.md
-```
-
-4. **添加Issues到项目**
-
-```bash
-python scripts/github/issues/add_to_project.py --title "实现功能X" --project-number 1
-```
-
-## 开发指南
-
-如需添加新脚本，请遵循以下规范：
-
-1. 按功能分类放置在合适的子目录中
-2. 每个脚本只处理一个主要功能
-3. 提供详细的命令行参数说明
-4. 使用`utils`中的通用函数，避免代码重复
-5. 添加适当的错误处理和日志记录
-6. 遵循项目的编码规范和文档标准
-
-## 贡献
-
-欢迎提交PR改进这些脚本。请确保所有新脚本都包含详细的文档和测试。
-
-## GitHub Projects路线图脚本
-
-`github_projects.py`脚本用于从GitHub Projects中获取VibeCopilot项目路线图数据，生成结构化报告。
-
-### 使用方法
-
-1. 设置GitHub令牌（可选，但推荐）：
-
-```bash
-# 设置环境变量
-export GITHUB_TOKEN="your-github-token"
-```
-
-2. 运行脚本生成Markdown格式报告：
-
-```bash
-python scripts/github_projects.py
-```
-
-3. 将报告保存到文件：
-
-```bash
-python scripts/github_projects.py -s reports/roadmap_status.md
-```
-
-4. 获取JSON格式数据：
-
-```bash
-python scripts/github_projects.py -f json
-```
-
-### 参数说明
-
-```
--o, --owner      仓库所有者，默认为"jacobcy"
--r, --repo       仓库名称，默认为"VibeCopilot"
--p, --project    项目编号，默认为1
--f, --format     输出格式，可选"json"或"markdown"，默认为"markdown"
--t, --token      GitHub个人访问令牌，如未提供则从GITHUB_TOKEN环境变量获取
--s, --save       保存输出到指定文件路径
-```
-
-### 示例用法
-
-1. 生成当前项目状态报告：
-
-```bash
-python scripts/github_projects.py -s reports/weekly_status.md
-```
-
-2. 查看不同仓库的路线图：
-
-```bash
-python scripts/github_projects.py -o otheruser -r otherrepo -p 2
-```
-
-3. 集成到自动化流程：
-
-```bash
-# 生成每日报告
-python scripts/github_projects.py -s reports/daily/$(date +%Y-%m-%d).md
-
-# 自动更新JSON数据源
-python scripts/github_projects.py -f json -s data/roadmap.json
-```
-
-## 其他脚本
-
-- （尚未添加其他脚本，后续会扩展）
-
-## 注意事项
-
-- 需要安装Python 3.6+
-- 依赖库：`requests`（可通过 `pip install requests` 安装）
-- 使用GitHub API可能受到请求速率限制，建议使用个人访问令牌
