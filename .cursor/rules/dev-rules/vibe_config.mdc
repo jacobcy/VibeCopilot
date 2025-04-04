@@ -28,6 +28,15 @@ alwaysApply: true
 - 使用Pytest进行后端测试
 - 使用Husky进行提交前检查
 
+## 目录结构规范
+
+- `/components`：存放所有UI组件
+- `/modules`：功能模块，每个模块为独立目录
+- `/utils`：通用工具函数
+- `/services`：API服务和数据处理
+- `/types`：类型定义
+- `/tests`：测试文件，与源文件结构对应
+
 ## MCP工具使用规范
 
 - 尽可能调用MCP工具执行命令，减少直接命令行操作

@@ -1,0 +1,10 @@
+{
+  "name": "notion-to-md",
+  "version": "1.0.0",
+  "description": "将Notion页面导出为Markdown文件",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "ts-node --transpile-only index.ts"
+  }
+}

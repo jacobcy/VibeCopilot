@@ -28,6 +28,9 @@ env/
 .env/
 .venv/
 .env
+.env.notion
+.env.github
+.notion_to_md
 
 # IDE
 .idea/

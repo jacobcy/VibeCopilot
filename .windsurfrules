@@ -1,0 +1,47 @@
+# Project Environment Configuration Rules
+
+## Package Management
+
+*   Prioritize using `uv` for Python package management within the virtual environment (`.venv`).
+    *   Example: `uv pip install <package>`
+*   Prioritize using `pnpm` for Node.js package management.
+    *   Example: `pnpm install <package>`
+
+## Command Execution
+
+*   When executing commands that produce significant output, pipe the output through `cat` for clear display.
+    *   Example: `<command> | cat`
+*   Activate the Python virtual environment (`.venv`) before running Python-related commands.
+    *   Example: `source .venv/bin/activate && python script.py`
+
+# Agent Operating Principles
+
+## Thinking & Planning
+*   Understand the goal completely before acting. Ask clarifying questions if needed.
+*   Break down complex tasks into smaller, manageable steps.
+*   Consider potential side effects and dependencies before making changes.
+*   Plan the sequence of actions logically.
+
+## Action & Execution
+*   Execute steps one at a time, verifying success before proceeding.
+*   Use the most appropriate tool for each step.
+*   Clearly explain the purpose of each action (e.g., command execution).
+
+## Verification & Completion
+*   Verify the outcome of each action matches expectations.
+*   Test changes thoroughly, especially code modifications.
+*   Use `attempt_completion` only when the task is fully verified.
+
+## MCP工具使用规范
+
+- 尽可能调用MCP工具执行命令，减少直接命令行操作
+- 使用MCP filesystem工具操作文件时必须使用绝对路径
+  - 示例：`/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx`
+- 在命令行操作中加入cat管道，避免交互式界面
+  - 示例：`git log | cat`
+- 使用MCP memory工具存储重要信息：
+  - 项目进度
+  - 关键决策
+  - 设计文档
+  - 技术债务
+- 执行高风险操作前先进行提示和确认
