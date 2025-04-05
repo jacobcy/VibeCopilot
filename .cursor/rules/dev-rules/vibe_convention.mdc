@@ -1,12 +1,11 @@
 ---
 description: VibeCopilot项目的通用开发约定，包括命名规范、代码组织和提交标准
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
+# 通用开发约定与规范
 
-# VibeCopilot 通用开发约定
-
-## 开发流程五步法
+## 通用开发流程五步法
 
 1. **遵守规范**：严格遵循项目规范和编码标准
 2. **确认需求**：明确目标和范围，理解业务价值
@@ -14,21 +13,24 @@ alwaysApply: true
 4. **修改代码**：一次只实现一个功能点，保持小步快速迭代
 5. **总结报告**：记录开发过程和结果，沉淀经验
 
-## 沟通原则
+## 通用开发沟通原则
 
 - 主动确认不明确的需求，避免基于假设开发
 - 修改前说明将要改动的内容和潜在影响
 - 及时反馈问题和进展，不隐藏风险
 - 保持专业和谨慎的态度，注重团队协作
+- 复杂问题使用系统化思考方法分析
 
-## 代码组织规范
+## 通用代码结构规范
 
 - 所有代码文件应控制在200行以内，超过时应拆分为多个模块
 - 代码应简洁明了，避免过度工程化
 - 遵循单一职责原则，每个模块只负责一项功能
 - 相关功能应放在同一目录下，便于查找和维护
+- 前端优先使用TypeScript而非JavaScript，保持类型安全
+- 后端遵循PEP 8 Python代码风格指南
 
-## 命名规范
+## 通用命名规范
 
 - **文件命名**：使用小写字母，单词间用连字符（kebab-case）分隔
   - 示例：`user-authentication.ts`, `data-processor.py`
@@ -40,56 +42,72 @@ alwaysApply: true
   - 示例：`userData`, `paymentStatus`
 - **常量命名**：全部大写，单词间用下划线分隔
   - 示例：`MAX_RETRY_COUNT`, `API_BASE_URL`
+- **CSS类命名**：使用BEM命名法
+  - 示例：`.button__icon--large`
+- **数据库字段**：使用下划线分隔（snake_case）
+  - 示例：`user_id`, `created_at`
 
-## 图形化表示规范
+## 通用文档与图表规范
 
+- **使用Markdown**：所有文档使用Markdown格式编写
+- **README规范**：每个主要目录都应有README.md说明文件
+- **文档结构**：使用层级标题（#, ##, ###）组织内容
 - **使用Mermaid语法**：所有流程图、类图、时序图必须使用Mermaid语法
-- **在Markdown中嵌入**：使用```mermaid代码块包裹图表定义
-- **保持简洁**：图表应专注于关键元素，避免过度复杂
+- **图表简洁性**：图表应专注于关键元素，避免过度复杂
 - **增加注释**：为复杂节点或连线添加说明
-- **常用图表类型**：
-  - 流程图：用于描述业务流程或算法
-  - 时序图：用于展示组件交互
-  - 类图：用于展示代码结构
-  - 状态图：用于描述状态转换
 
-### Mermaid图表示例
+### 通用Mermaid图表示例
 ```mermaid
 flowchart LR
-    A[开始] --> B{是否有PRD?}
-    B -->|是| C[开发计划]
-    B -->|否| D[需求确认]
-    D --> B
-    C --> E[编码实现]
-    E --> F[测试验证]
-    F --> G[代码审核]
-    G --> H[提交发布]
+    A[开始] --> B{条件判断}
+    B -->|条件为真| C[执行操作1]
+    B -->|条件为假| D[执行操作2]
+    C --> E[结束]
+    D --> E
 ```
 
-```mermaid
-sequenceDiagram
-    participant 用户
-    participant 前端
-    participant API
-    participant 数据库
-
-    用户->>前端: 请求登录
-    前端->>API: 发送凭据
-    API->>数据库: 验证用户
-    数据库-->>API: 返回结果
-    API-->>前端: 返回令牌
-    前端-->>用户: 显示成功
-```
-
-## 代码质量标准
+## 通用代码质量标准
 
 - 每个功能点应有基本的单元测试覆盖
 - 优先使用异步/非阻塞操作，避免性能瓶颈
 - 使用适当的数据结构和算法确保性能
 - 安全敏感操作必须有适当的保护措施
 - 遵循DRY原则，避免代码重复
+- 错误处理必须明确，避免吞掉异常
+- 尽量避免副作用，保持函数纯净
 
-## 避免的反模式
+## 通用软件包管理规范
+
+- 前端包管理优先使用pnpm
+- 后端包管理优先使用uv
+- 明确指定依赖版本，避免使用最新版（^latest）
+- 记录依赖更新原因和影响范围
+- 定期更新依赖包并进行全面测试
+- 使用lockfile确保依赖一致性
+
+## 通用工具使用规范
+
+- 优先使用MCP工具执行操作而非直接命令行
+- 文件操作使用绝对路径确保一致性
+- 在命令行操作中加入cat管道，避免交互式界面
+- 使用memory工具记录开发日志和决策
+- 使用time工具获取和转换时间信息
+- 使用git工具进行版本控制操作
+- 使用sequential thinking工具进行复杂分析
+
+## 通用设计模式应用
+
+- **前端组件设计**：
+  - 使用组合优于继承
+  - 使用高阶组件(HOC)或自定义Hook增强功能
+  - 使用容器/展示组件模式分离关注点
+
+- **后端设计**：
+  - 使用依赖注入降低耦合
+  - 采用仓储模式分离数据访问
+  - 使用服务层封装业务逻辑
+
+## 通用编程反模式避免
 
 1. **不添加猜测性业务逻辑**：
    - 不基于假设添加业务层可能需要的功能
@@ -107,7 +125,15 @@ sequenceDiagram
    - 不为简单操作创建复杂抽象
    - 保持接口简单直观
 
-## Git提交规范
+5. **避免全局状态**：
+   - 减少使用全局变量
+   - 状态应该局部化和容器化
+
+6. **避免回调地狱**：
+   - 使用Promise、async/await代替嵌套回调
+   - 保持代码的可读性和可维护性
+
+## 通用Git提交规范
 
 - 提交消息必须遵循约定式提交规范（Conventional Commits）
 - 格式：`<类型>[可选的作用域]: <描述>`
@@ -119,33 +145,9 @@ sequenceDiagram
   - `refactor`: 代码重构
   - `test`: 添加测试
   - `chore`: 构建过程或辅助工具变动
-
-## 角色与组件定义
-
-- **User**：最终用户，通过文本方式与系统交互
-- **Cursor Agent**：Cursor原生智能体，解析用户输入并调用相应规则
-- **Rules Agent**：基于规则的智能体，执行规则定义的行为和流程
-
-组件区分：
-- **Command(命令)**：以`/`开头的规则触发器，如`/task`、`/flow`，位于.cursor/rules/cmd-rules/
-- **Flow(流程)**：定义开发流程和检查点的规则，位于.cursor/rules/flow-rules/
-- **Plugin(插件)**：以`//`开头的MCP工具扩展，用于与Claude集成
-- **Scripts(脚本)**：位于scripts/目录的原始Python脚本，提供底层功能
-- **Interfaces(接口)**：位于src/cli/commands/的封装接口，提供标准化调用方式
-
-### 规则调用符号
-
-- **`/` 符号**：命令执行标识，如`/help`、`/update`、`/story`
-- **`//` 符号**：接口执行标识，如`//github`、`//basic_memory`
-- **`{/规则|//接口}` 格式**：注释标识，用于消除歧义，如`{/agent}`表示提及agent命令
-- **`@` 符号**：引用标识，引用规则但不执行，如`@frontend_expert`
-
-### 命令和规则集成原则
-
-- 命令作为规则的触发入口，保持简洁统一
-- 命令激活对应规则时必须明确确认
-- 规则之间的交互必须清晰可追踪
-- 当命令不生效时，应明确提示使用`/copilot`规则激活命令系统
+- 每次提交只做一件事
+- 提交前检查代码质量和测试
+- 及时推送变更，避免长时间未同步
 
 ## 示例
 
@@ -153,30 +155,32 @@ sequenceDiagram
   // 良好的代码组织示例
   // user-service.ts
   export async function fetchUserData(userId: string): Promise<UserData> {
-    const response = await api.get(`/users/${userId}`);
-    return response.data;
+    try {
+      const response = await api.get(`/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to fetch user data: ${error.message}`);
+      throw new UserDataError('Failed to fetch user data', error);
+    }
   }
 
   // 好的Git提交消息
-  "feat: 添加用户认证功能"
-  "fix: 修复首页加载缓慢问题"
-  "docs: 更新README安装说明"
+  "feat(auth): 添加用户认证功能"
+  "fix(ui): 修复移动端按钮显示问题"
+  "docs: 更新API文档和使用示例"
 
-  // 遵循五步法的开发进度报告
-  "1. 已确认需求：实现用户认证
-   2. 计划：使用JWT实现，通过单元测试验证
-   3. 已实现：登录接口、token验证
-   4. 测试结果：覆盖率85%，通过所有边界条件
-   5. 完成状态：功能完整可用"
+  // 使用MCP工具进行文件操作
+  mcp_filesystem_docker_read_file({
+    path: "/absolute/path/to/project/src/components/Button.tsx"
+  })
 
-  // 使用Mermaid图表表示组件关系
-  ```mermaid
-  flowchart TD
-    A[认证组件] --> B[用户服务]
-    A --> C[令牌管理]
-    B --> D[(用户数据库)]
-    C --> E[权限检查]
-  ```
+  // 使用sequential thinking进行复杂分析
+  mcp_sequential_thinking_sequentialthinking({
+    thought: "分析API设计方案的性能影响",
+    thoughtNumber: 1,
+    totalThoughts: 5,
+    nextThoughtNeeded: true
+  })
 </example>
 
 <example type="invalid">
@@ -200,44 +204,26 @@ sequenceDiagram
     }
   }
 
-  // 反模式：过度封装
-  class StringUtils {
-    static capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
-    // 为简单操作创建不必要的复杂结构
+  // 直接使用命令行而非MCP工具
+  run_terminal_cmd({
+    command: "git status",
+    is_background: false
+  })
+
+  // 过度嵌套的条件判断
+  function processPayment(order) {
+    if (order.isValid) {
+      if (order.hasItems) {
+        if (order.paymentMethod === 'credit') {
+          if (order.creditCard.isValid) {
+            // 处理逻辑
+          } else {
+            // 处理错误
+          }
+        } else if (order.paymentMethod === 'paypal') {
+          // ...更多嵌套
+        }
+      }
+    }
   }
-
-  // 使用ASCII艺术而非Mermaid图表
-  /*
-   +--------+     +--------+
-   | 组件A  | --> | 组件B  |
-   +--------+     +--------+
-  */
-</example>
-
-## Rules 规则约定
-
-### 规则修改限制
-
-- **严格授权原则**：除非用户明确指定或批准，否则不得擅自修改现有cursor rules或创建新的cursor rules
-- **修改警告**：未经授权修改rules将被记录警告，可能导致系统不稳定
-- **规则变更流程**：如需变更规则，须通过`/flow cursor`命令启动正式流程
-- **紧急修复例外**：仅在修复严重bug且获得明确授权时允许直接修改
-
-<example>
-用户: "我想修改task-cmd.mdc规则"
-
-系统响应:
-```
-⚠️ 注意: 修改cursor rules需要明确授权
-
-您希望修改任务命令规则。在进行修改前，我需要确认:
-
-1. 您是否确认需要修改此规则文件?
-2. 修改的具体目的是什么?
-
-建议通过正式流程修改规则:
-/flow rule --modify=task-cmd
-
-这将启动规则修改流程，确保变更被正确记录和审核。
-```
 </example>

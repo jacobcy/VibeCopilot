@@ -1,47 +1,92 @@
-# Project Environment Configuration Rules
+# VibeCopilot 项目特定配置规则
 
-## Package Management
+## 项目定位与状态
 
-*   Prioritize using `uv` for Python package management within the virtual environment (`.venv`).
-    *   Example: `uv pip install <package>`
-*   Prioritize using `pnpm` for Node.js package management.
-    *   Example: `pnpm install <package>`
+- 项目当前处于演示阶段（demo）
+- VibeCopilot定位为AI辅助开发工具
+- 优先考虑核心功能实现而非完整性
+- 快速迭代，构建最小可行产品
 
-## Command Execution
+## 技术栈与包管理
 
-*   When executing commands that produce significant output, pipe the output through `cat` for clear display.
-    *   Example: `<command> | cat`
-*   Activate the Python virtual environment (`.venv`) before running Python-related commands.
-    *   Example: `source .venv/bin/activate && python script.py`
+- **前端**：React 18 + TypeScript 5.0+
+  - 使用`pnpm`进行包管理：`pnpm install <package>`
+  - 优先使用TypeScript而非JavaScript
+  - 示例：`*.ts`和`*.tsx`而非`*.js`和`*.jsx`
 
-# Agent Operating Principles
+- **后端**：Python 3.9+ (FastAPI/Flask)
+  - 使用`uv`进行包管理：`uv pip install <package>`
+  - 在虚拟环境(`.venv`)中运行Python命令
+  - 示例：`source .venv/bin/activate && python script.py`
 
-## Thinking & Planning
-*   Understand the goal completely before acting. Ask clarifying questions if needed.
-*   Break down complex tasks into smaller, manageable steps.
-*   Consider potential side effects and dependencies before making changes.
-*   Plan the sequence of actions logically.
+## VibeCopilot专用工具链
 
-## Action & Execution
-*   Execute steps one at a time, verifying success before proceeding.
-*   Use the most appropriate tool for each step.
-*   Clearly explain the purpose of each action (e.g., command execution).
+- **前端开发**：
+  - Vite 4.0+ 构建工具
+  - React Router 6+ 路由
+  - zustand/Redux 状态管理
+  - tailwindcss 样式解决方案
 
-## Verification & Completion
-*   Verify the outcome of each action matches expectations.
-*   Test changes thoroughly, especially code modifications.
-*   Use `attempt_completion` only when the task is fully verified.
+- **后端开发**：
+  - FastAPI 0.95+ API框架
+  - pymongo 数据库连接
+  - pytest 测试框架
+
+- **质量与部署**：
+  - ESLint + Prettier 前端质量控制
+  - black + isort 后端代码格式化
+  - Jest/Vitest 前端测试
+
+## 命令执行规范
+
+- 当执行产生大量输出的命令时，通过`cat`管道进行清晰显示
+  - 示例：`<command> | cat`
+- 执行Python相关命令前，激活Python虚拟环境(`.venv`)
+  - 示例：`source .venv/bin/activate && python script.py`
+
+## 项目目录结构
+
+- `/app`：前端React应用
+- `/server`：后端Python API
+- `/scripts`：脚本工具
+- `/.cursor`：Cursor规则和配置
+- `/docs`：项目文档
 
 ## MCP工具使用规范
 
-- 尽可能调用MCP工具执行命令，减少直接命令行操作
-- 使用MCP filesystem工具操作文件时必须使用绝对路径
-  - 示例：`/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx`
-- 在命令行操作中加入cat管道，避免交互式界面
+- **基本原则**：尽可能使用MCP工具执行命令，减少直接命令行操作
+- **文件操作**：使用绝对路径访问VibeCopilot项目文件
+  - 正确：`/Users/chenyi/Public/VibeCopilot/app/components/Button.tsx`
+  - 错误：`app/components/Button.tsx`
+- **命令执行**：添加cat管道避免交互式界面
   - 示例：`git log | cat`
-- 使用MCP memory工具存储重要信息：
+- **信息记录**：使用memory工具存储重要信息
   - 项目进度
   - 关键决策
   - 设计文档
   - 技术债务
-- 执行高风险操作前先进行提示和确认
+- **时间管理**：使用time工具跟踪时间和里程碑
+- **版本控制**：使用git工具进行版本管理操作
+- **复杂分析**：使用sequential thinking工具分析复杂问题
+  - 必须包含：问题定义、方案比较、决策理由
+- **风险操作**：执行高风险操作前先进行提示和确认
+
+## Agent操作原则
+
+### 思考与规划
+- 使用sequential thinking工具进行复杂问题分析
+- 在采取行动前完全理解目标，必要时提出澄清问题
+- 将复杂任务分解为更小、可管理的步骤
+- 考虑潜在的副作用和依赖关系
+- 逻辑性地规划行动顺序
+
+### 执行与操作
+- 一次执行一个步骤，在继续下一步前验证成功
+- 使用最适合每个步骤的工具
+- 清晰解释每个操作的目的
+- 优先使用MCP工具而非直接命令行
+
+### 验证与完成
+- 验证每个行动的结果是否符合预期
+- 彻底测试更改，特别是代码修改
+- 仅在任务完全验证后使用`attempt_completion`

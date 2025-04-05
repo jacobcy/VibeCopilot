@@ -1,0 +1,23 @@
+[global]
+# 使用Python 3.13作为默认解释器
+python = "/opt/homebrew/opt/python@3.13/bin/python3"
+
+[venv]
+# 指定虚拟环境目录
+path = ".venv"
+# 包含Python版本号
+include-python-version = true
+
+[pip]
+# 默认安装位置设置为用户目录
+user = false
+# 默认不重复安装依赖
+no-deps = false
+
+[project]
+# 优先使用pyproject.toml
+require-pyproject = true
+
+[commands]
+# 超时设置(秒)
+timeout = 120

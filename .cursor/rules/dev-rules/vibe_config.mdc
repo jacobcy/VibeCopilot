@@ -1,89 +1,192 @@
 ---
 description: VibeCopilot项目的具体配置规则，包括技术栈、开发环境、工具用法和质量标准
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
-# VibeCopilot 项目配置规则
+# VibeCopilot 项目特定配置规则
 
-## 项目状态
+## 项目定位与状态
 
 - 项目当前处于演示阶段（demo）
+- VibeCopilot定位为AI辅助开发工具
 - 优先考虑核心功能实现而非完整性
 - 快速迭代，构建最小可行产品
 
-## 技术栈规范
+## VibeCopilot特定技术栈
 
-- **前端**：使用React + TypeScript构建
-- **后端**：使用Python (FastAPI/Flask)
-- **数据库**：优先使用MongoDB非关系型数据库
-- 保持类型安全，避免使用any类型
-- 不考虑兼容性问题，只针对最新Chrome/Safari浏览器开发
-- 服务端仅支持Node.js LTS版本和Python 3.9+
+- **前端**：React 18 + TypeScript 5.0+
+- **后端**：Python 3.9+ (FastAPI/Flask)
+- **数据库**：MongoDB 6.0+
+- **AI集成**：Claude API
+- **版本控制**：Git (GitHub)
+- **CI/CD**：GitHub Actions
 
-## 开发环境配置
+## VibeCopilot专用工具链
 
-- 使用ESLint进行代码质量检查
-- 使用Prettier进行代码格式化
-- 使用Jest/Vitest进行前端测试
-- 使用Pytest进行后端测试
-- 使用Husky进行提交前检查
+- **前端开发**：
+  - pnpm 8.0+ 包管理
+  - Vite 4.0+ 构建工具
+  - React Router 6+ 路由
+  - zustand/Redux 状态管理
+  - tailwindcss 样式解决方案
 
-## 目录结构规范
+- **后端开发**：
+  - uv 包管理工具
+  - FastAPI 0.95+ API框架
+  - pymongo 数据库连接
+  - pytest 测试框架
 
-- `/components`：存放所有UI组件
-- `/modules`：功能模块，每个模块为独立目录
-- `/utils`：通用工具函数
-- `/services`：API服务和数据处理
-- `/types`：类型定义
-- `/tests`：测试文件，与源文件结构对应
+- **质量与部署**：
+  - ESLint + Prettier 前端质量控制
+  - black + isort 后端代码格式化
+  - Jest/Vitest 前端测试
+  - Docker 容器化
+  - Vercel/Netlify 前端部署
+  - Python Anywhere 后端部署
 
-## MCP工具使用规范
+## VibeCopilot目录结构规范
 
-- 尽可能调用MCP工具执行命令，减少直接命令行操作
-- 使用MCP filesystem工具操作文件时必须使用绝对路径
-  - 示例：`/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx`
-- 在命令行操作中加入cat管道，避免交互式界面
-  - 示例：`git log | cat`
-- 使用MCP memory工具存储重要信息：
-  - 项目进度
-  - 关键决策
-  - 设计文档
-  - 技术债务
-- 执行高风险操作前先进行提示和确认
+- `/app`：前端React应用
+  - `/components`：UI组件
+  - `/hooks`：自定义React钩子
+  - `/pages`：页面组件
+  - `/services`：API服务
+  - `/store`：状态管理
+  - `/utils`：工具函数
 
-## 质量标准
+- `/server`：后端Python API
+  - `/api`：API路由
+  - `/models`：数据模型
+  - `/services`：业务逻辑
+  - `/utils`：工具函数
+
+- `/scripts`：脚本工具
+  - `/setup`：环境设置脚本
+  - `/deploy`：部署脚本
+
+- `/.cursor`：Cursor规则和配置
+  - `/rules`：Cursor规则文件
+  - `/templates`：代码模板
+
+- `/docs`：项目文档
+  - `/dev`：开发文档
+  - `/user`：用户文档
+  - `/arch`：架构文档
+
+## VibeCopilot项目特定集成
+
+- **Claude集成**：
+  - 使用Claude API提供代码生成和分析
+  - 使用prompt模板定制AI输出
+  - 使用规则引导AI行为
+
+- **GitHub集成**：
+  - 使用GitHub Projects管理任务
+  - 使用GitHub Actions自动化测试和部署
+  - 使用GitHub Pages托管文档
+
+- **GitDiagram集成**：
+  - 使用GitDiagram生成代码可视化
+  - 基于提交历史分析项目演进
+
+## VibeCopilot质量标准
 
 - 代码覆盖率需达到70%以上
-- 所有公共API必须有文档注释
-- 不使用过时或弃用的API/库
-- 项目需通过所有Lint检查
-- 性能关键部分需有适当的优化和测试
+- 前端组件必须有Storybook文档
+- 后端API必须有Swagger/OpenAPI文档
+- CI通过率必须达到100%
+- 代码审查必须有至少1位审阅者批准
+- 关键功能必须有端到端测试
+- 性能关键路径需有性能基准测试
+
+## VibeCopilot专属MCP工具使用规范
+
+- **文件操作**：使用绝对路径访问VibeCopilot项目文件
+  - 正确：`/Users/chenyi/Public/VibeCopilot/app/components/Button.tsx`
+  - 错误：`app/components/Button.tsx`
+
+- **信息记录**：使用memory工具记录VibeCopilot开发日志
+  - 必须包含：日期、功能点、开发者、状态
+
+- **时间管理**：使用time工具跟踪项目里程碑
+  - 记录预计完成时间和实际完成时间
+
+- **思考分析**：使用sequential thinking分析复杂架构决策
+  - 必须包含：问题定义、方案比较、决策理由
+
+- **Git同步**：使用git工具维护版本历史
+  - 关联提交与GitHub Issue
+  - 使用GitDiagram可视化代码演进
 
 ## 示例
 
 <example>
-  // 使用MCP filesystem工具的正确方式
-  mcp_filesystem_npx_read_file({
-    path: "/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx"
+  // VibeCopilot前端组件示例
+  // app/components/CommandInput.tsx
+  import React, { useState } from 'react';
+  import { useCommandProcessor } from '../hooks/useCommandProcessor';
+
+  interface CommandInputProps {
+    onCommandExecuted: (result: CommandResult) => void;
+  }
+
+  export const CommandInput: React.FC<CommandInputProps> = ({ onCommandExecuted }) => {
+    const [command, setCommand] = useState('');
+    const { processCommand, isProcessing } = useCommandProcessor();
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const result = await processCommand(command);
+      onCommandExecuted(result);
+      setCommand('');
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="command-input">
+        <input
+          type="text"
+          value={command}
+          onChange={(e) => setCommand(e.target.value)}
+          placeholder="/command [args]"
+          disabled={isProcessing}
+        />
+        <button type="submit" disabled={isProcessing}>
+          {isProcessing ? 'Processing...' : 'Execute'}
+        </button>
+      </form>
+    );
+  };
+
+  // VibeCopilot MCP工具使用示例
+  // 项目文件操作
+  mcp_filesystem_docker_read_file({
+    path: "/Users/chenyi/Public/VibeCopilot/app/components/CommandInput.tsx"
   })
 
-  // 使用MCP memory工具存储决策记录
+  // 项目进度记录
   mcp_basic_memory_write_note({
-    title: "性能优化决策",
-    content: "我们决定使用React.memo包装所有列表项组件以提高渲染性能。",
-    folder: "技术决策"
+    title: "CommandInput组件开发",
+    content: "完成了命令输入组件的基本功能，支持命令历史和自动完成。",
+    folder: "VibeCopilot/开发日志"
   })
 </example>
 
 <example type="invalid">
-  // 错误的文件路径用法
-  mcp_filesystem_npx_read_file({
-    path: "src/components/Button.tsx"  // 错误：使用相对路径
+  // 违反VibeCopilot项目规范的错误示例
+
+  // 使用相对路径操作文件
+  mcp_filesystem_docker_read_file({
+    path: "app/components/Button.tsx"  // 错误：未使用绝对路径
   })
 
-  // 错误的命令行操作（没有使用cat管道）
-  run_terminal_cmd({
-    command: "git log",
-    is_background: false
-  })
+  // 使用JavaScript而非TypeScript
+  function processCommand(cmd) {  // 错误：未使用TypeScript类型
+    // 处理逻辑
+  }
+
+  // 目录结构错误
+  // src/Button.js  // 错误：不符合VibeCopilot目录规范
+
+  // 未记录开发日志
+  // 直接修改代码而未使用memory工具记录决策原因
 </example>

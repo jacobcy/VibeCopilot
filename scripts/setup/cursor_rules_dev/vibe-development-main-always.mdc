@@ -8,9 +8,11 @@ alwaysApply: true
 ## 关键规则
 
 - 项目处于演示阶段（demo），优先考虑核心功能实现而非完整性
-- 所有代码文件不超过300行，超过时应拆分为多个模块
+- 所有代码文件不超过200行，超过时应拆分为多个模块
 - 不考虑兼容性问题，只针对最新Chrome/Safari浏览器和Node.js LTS版本开发
-- 使用TypeScript进行开发，保持类型安全
+- 使用TypeScript进行开发，保持类型安全，避免JavaScript
+- 前端包管理优先使用pnpm
+- 后端包管理优先使用uv
 - 代码应简洁明了，避免过度工程化
 - 遵循项目的目录结构和命名约定
 - Git提交消息必须遵循约定式提交规范（Conventional Commits）
@@ -20,9 +22,13 @@ alwaysApply: true
 - 安全敏感操作必须有适当的保护措施
 
 ### 工具使用规范
-- 尽可能调用mcp工具执行命令
+- 尽可能调用MCP工具执行命令，减少直接命令行操作
 - 使用MCP filesystem工具操作文件时必须使用绝对路径
-- 在命令行操作中加入cat管道
+- 在命令行操作中加入cat管道，避免交互式界面
+- 使用MCP memory工具存储重要日志和决策信息
+- 使用MCP time工具获取最新时间信息和时区转换
+- 使用MCP git工具进行版本控制操作
+- 使用sequential thinking工具进行复杂问题分析
 - 执行高风险操作前先进行提示和确认
 
 ## 示例
@@ -38,6 +44,19 @@ alwaysApply: true
   "feat: 添加用户认证功能"
   "fix: 修复首页加载缓慢问题"
   "docs: 更新README安装说明"
+
+  // 使用MCP工具的正确方式
+  mcp_filesystem_docker_read_file({
+    path: "/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx"
+  })
+
+  // 使用sequential thinking进行复杂分析
+  mcp_sequential_thinking_sequentialthinking({
+    thought: "分析API设计方案",
+    thoughtNumber: 1,
+    totalThoughts: 5,
+    nextThoughtNeeded: true
+  })
 </example>
 
 <example type="invalid">
@@ -52,4 +71,15 @@ alwaysApply: true
   "添加了些东西"
   "修复bug"
   "更新"
+
+  // 错误的命令行操作（没有使用cat管道）
+  run_terminal_cmd({
+    command: "git log",
+    is_background: false
+  })
+
+  // 错误的文件路径用法
+  mcp_filesystem_docker_read_file({
+    path: "src/components/Button.tsx"  // 错误：使用相对路径
+  })
 </example>

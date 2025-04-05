@@ -1,0 +1,11 @@
+[tool]
+# 工具配置
+[tool.uv]
+excludes = [".git", "__pycache__", "*.pyc", ".tox", ".venv"]
+
+[venv]
+python-version = "3.13"
+prompt-template = "(cddrg) "
+
+[pip]
+index-url = "https://pypi.org/simple"

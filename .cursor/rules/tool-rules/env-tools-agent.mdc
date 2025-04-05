@@ -1,0 +1,73 @@
+---
+description: "This rule governs the usage of development tools and environment configuration across the project. It should be applied whenever: (1) Setting up a new development environment, (2) Installing or updating dependencies, (3) Running commands that interact with the package managers, (4) Executing scripts or commands in the terminal. The rule ensures consistent tooling usage, proper file path handling, and standardized command execution. It's particularly important for maintaining a unified development experience and preventing environment-specific issues."
+globs:
+alwaysApply: false
+---
+
+# Environment Tools Usage Guidelines
+
+## Critical Rules
+
+- Always use `uv` for Python package management within the virtual environment
+- Always use `pnpm` for Node.js package management, avoiding npm and yarn
+- Use TypeScript (`.ts`) instead of JavaScript (`.js`) for all new code
+- When using MCP filesystem tools, always use absolute paths (e.g., `/Users/chenyi/Public/VibeCopilot/src/file.ts`)
+- Append `| cat` to terminal commands that might produce interactive output
+- Use MCP sequential thinking for complex problem-solving
+- Use MCP time tools to get accurate timestamps
+- Use Git for version control with proper commit messages
+- Store logs and important information using MCP memory tools
+- Activate the Python virtual environment (`.venv`) before running Python commands
+
+## Command Examples
+
+- Python package installation: `uv pip install <package>`
+- Node.js package installation: `pnpm add <package>`
+- Running Git commands: `git status | cat`
+- Activating virtual environment: `source .venv/bin/activate`
+- TypeScript compilation: `pnpm tsc`
+- Using absolute paths: `/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx`
+- Getting current time: `mcp_time_docker_get_current_time({timezone: "UTC"})`
+
+## Examples
+
+<example>
+  // Correct package installation
+  uv pip install langchain-openai
+  pnpm add @types/react
+
+  // Correct file operations
+  mcp_filesystem_docker_read_file({
+    path: "/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx"
+  })
+
+  // Correct command execution
+  git log --oneline | cat
+
+  // Correct time usage
+  mcp_time_docker_get_current_time({timezone: "UTC"})
+
+  // Correct memory usage
+  mcp_basic_memory_write_note({
+    title: "Environment Setup",
+    content: "Completed environment setup with uv and pnpm",
+    folder: "Development Logs"
+  })
+</example>
+
+<example type="invalid">
+  // Incorrect package installation
+  pip install langchain-openai
+  npm install react
+
+  // Incorrect file operations
+  mcp_filesystem_docker_read_file({
+    path: "src/components/Button.tsx"  // Missing absolute path
+  })
+
+  // Incorrect command execution
+  git log  // Missing cat pipe
+
+  // Incorrect memory usage
+  console.log("Environment setup completed")  // Not using memory tools
+</example>
