@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from datetime import datetime
 
-from src.models.template import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
+from src.models.db import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
 from src.templates.core.template_manager import TemplateManager
 
 
