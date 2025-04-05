@@ -1,10 +1,18 @@
 {
+  "type": "module",
   "scripts": {
     "lint:md": "markdownlint --fix \"**/*.md\" --ignore \"**/node_modules/**\"",
     "lint:docs": "markdownlint --fix \"docs/**/*.md\"",
     "lint:md:project": "markdownlint --fix \"**/*.md\" --ignore \"**/node_modules/**\" --ignore \"website/**\""
   },
   "devDependencies": {
-    "markdownlint-cli": "^0.44.0"
+    "@types/dotenv": "^8.2.3",
+    "@types/node": "^22.14.0",
+    "markdownlint-cli": "^0.44.0",
+    "notion-to-md": "4.0.0-alpha.4"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.3.0",
+    "dotenv": "^16.4.7"
   }
 }

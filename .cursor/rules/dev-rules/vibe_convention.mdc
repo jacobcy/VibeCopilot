@@ -41,15 +41,6 @@ alwaysApply: true
 - **常量命名**：全部大写，单词间用下划线分隔
   - 示例：`MAX_RETRY_COUNT`, `API_BASE_URL`
 
-## 目录结构规范
-
-- `/components`：存放所有UI组件
-- `/modules`：功能模块，每个模块为独立目录
-- `/utils`：通用工具函数
-- `/services`：API服务和数据处理
-- `/types`：类型定义
-- `/tests`：测试文件，与源文件结构对应
-
 ## 图形化表示规范
 
 - **使用Mermaid语法**：所有流程图、类图、时序图必须使用Mermaid语法
