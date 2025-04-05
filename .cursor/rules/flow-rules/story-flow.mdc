@@ -14,9 +14,9 @@ role: "需求分析专家" @requirement_analyst
 本规则位于VibeCopilot核心开发流程的PRE-FLOW阶段，负责需求确认和PRD产出，是后续开发的基础和前提。
 
 ## 与命令规则的关系
-本流程规则与`story-command.mdc`紧密配合：
+本流程规则与`story-cmd.mdc`紧密配合：
 - `story-flow.mdc`（本规则）定义故事的基本概念、结构标准和PRD产出规范
-- `story-command.mdc`定义故事管理的命令格式和执行流程
+- `story-cmd.mdc`定义故事管理的命令格式和执行流程
 
 ## 触发方式
 - `/flow story` - 启动需求确认和PRD产出流程

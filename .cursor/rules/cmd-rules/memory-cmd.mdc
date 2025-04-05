@@ -1,0 +1,264 @@
+---
+description: VibeCopilot的Memory命令，用于管理知识库，支持内容存储、检索和关联
+globs:
+alwaysApply: false
+---
+
+# VibeCopilot 知识库管理命令处理器
+
+## 命令目的
+
+`/memory`命令用于管理VibeCopilot的知识库系统，实现内容的存储、检索、关联和同步。基于Basic Memory工具，支持文档处理、实体提取、关系识别和向量搜索。
+
+## 关键规则
+
+- 当用户输入`/memory`命令时，管理基于Basic Memory的知识库系统
+- 使用MCP工具保存对话内容和即时笔记
+- 使用本地脚本处理文档导入和Obsidian同步
+- 支持文档处理、实体提取、关系识别和向量搜索
+- 使用Basic Memory数据模型存储实体、关系和观察记录
+
+## 命令格式规范
+
+基本语法: `/memory <操作> [参数]`
+
+### MCP工具操作
+
+- `write`: 保存对话内容到知识库
+  - `--title`: 文档标题(必填)
+  - `--folder`: 存储目录(必填)
+  - `--tags`: 标签列表，逗号分隔(可选)
+
+- `read`: 读取知识库内容
+  - `--path`: 文档路径或标识符(必填)
+
+- `search`: 语义搜索知识库
+  - `--query`: 搜索关键词(必填)
+  - `--type`: 内容类型(可选)
+
+### 本地脚本操作
+
+- `import`: 导入本地文档到知识库
+  - 使用脚本: `scripts/basic_memory/import_docs.py`
+  - 参数: `<source_dir>` 源文档目录
+
+- `export`: 导出知识库到Obsidian
+  - 使用脚本: `scripts/basic_memory/export_to_obsidian.py`
+  - 参数:
+    - `--db`: 数据库路径
+    - `--output`: Obsidian输出目录
+
+- `sync`: 同步Obsidian和标准文档
+  - 使用脚本: `scripts/docs/obsidian/sync.py`
+  - 子命令:
+    - `to-obsidian`: 同步到Obsidian
+    - `to-docs`: 同步回标准文档
+    - `watch`: 监控变化自动同步
+
+## 命令执行流程
+
+```mermaid
+flowchart TD
+    A[开始] --> B{操作类型}
+
+    B -->|MCP工具| C[对话内容处理]
+    C --> C1[write]
+    C --> C2[read]
+    C --> C3[search]
+
+    B -->|本地脚本| D[文档处理]
+    D --> D1[import]
+    D --> D2[export]
+    D --> D3[sync]
+
+    C1 --> C1A[调用write_note]
+    C2 --> C2A[调用read_note]
+    C3 --> C3A[调用search_notes]
+
+    D1 --> D1A[运行import_docs.py]
+    D2 --> D2A[运行export_to_obsidian.py]
+    D3 --> D3A[运行sync.py]
+
+    C1A --> E[结果显示]
+    C2A --> E
+    C3A --> E
+    D1A --> E
+    D2A --> E
+    D3A --> E
+```
+
+## 命令输出格式规范
+
+### 成功响应格式
+
+```
+✅ 执行命令: /memory <操作> [参数]
+
+[操作结果标题]
+[详细结果信息]
+[相关统计或影响]
+```
+
+### 错误响应格式
+
+```
+❌ 命令执行失败: /memory <操作> [参数]
+
+错误原因: [具体错误说明]
+解决方案: [建议的解决步骤]
+```
+
+## 命令注释用法
+
+使用`{/memory}`格式表示提及命令而非执行：
+
+```
+讨论知识库命令时，使用{/memory}表示提及命令而非执行，例如：
+"关于{/memory}命令，它用于管理VibeCopilot的知识库系统"
+```
+
+## 自然语言命令解析
+
+支持自然语言形式的命令输入：
+
+```
+用户: "将这个对话保存到知识库，标题是Git分支管理，放在开发目录下"
+
+系统响应:
+✅ 执行命令: /memory write --title="Git分支管理" --folder="development" --tags=git,conversation
+
+📝 内容已保存!
+存储位置: development/Git分支管理.md
+标签: git, conversation
+字数: 1250字
+```
+
+## 使用示例
+
+### 保存对话内容 (`/memory write`)
+
+```
+用户: /memory write --title="Git分支管理优化" --folder="development/git" --tags=git,optimization
+
+系统响应:
+✅ 执行命令: /memory write --title="Git分支管理优化" --folder="development/git" --tags=git,optimization
+
+📝 内容已保存!
+存储位置: development/git/Git分支管理优化.md
+标签: git, optimization
+字数: 1350字
+新增实体: git, 分支管理, 优化
+```
+
+### 导入本地文档 (`/memory import`)
+
+```
+用户: /memory import ./docs/dev
+
+系统响应:
+✅ 执行命令: /memory import ./docs/dev
+
+📚 文档导入完成!
+处理文件: 32个
+新增实体: 28个
+新增关系: 45个
+总处理内容: 85,421字
+```
+
+### 导出到Obsidian (`/memory export`)
+
+```
+用户: /memory export
+
+系统响应:
+✅ 执行命令: /memory export
+
+📤 导出完成!
+导出文档: 156个
+导出概念: 87个
+导出标签: 32个
+目标位置: ~/basic-memory/vault
+```
+
+### 同步文档 (`/memory sync`)
+
+```
+用户: /memory sync to-obsidian
+
+系统响应:
+✅ 执行命令: /memory sync to-obsidian
+
+🔄 同步完成!
+同步文件: 32个
+新增文件: 5个
+更新文件: 12个
+目标位置: ~/basic-memory/vault
+```
+
+## 错误处理与纠正示例
+
+### 参数缺失错误
+
+```
+用户: /memory write --title="Git分支管理"
+
+系统响应:
+❌ 命令执行失败: /memory write --title="Git分支管理"
+
+错误原因: 缺少必要参数 --folder (存储目录)
+解决方案:
+1. 请提供存储目录参数，例如：
+   /memory write --title="Git分支管理" --folder="development/git"
+2. 或指定默认目录：
+   /memory write --title="Git分支管理" --folder="default"
+```
+
+### 路径错误
+
+```
+用户: /memory read --path="不存在的文档.md"
+
+系统响应:
+❌ 命令执行失败: /memory read --path="不存在的文档.md"
+
+错误原因: 找不到指定的文档路径
+解决方案:
+1. 检查文档名称是否正确
+2. 使用 "/memory search --query=关键词" 查找相关文档
+3. 使用完整路径尝试访问: "/memory read --path=目录/文档名称.md"
+
+可能相关的文档:
+- development/git/Git分支管理.md
+- development/git/Git工作流.md
+```
+
+### 命令拼写错误
+
+```
+用户: /memroy write --title="会议记录" --folder="meetings"
+
+系统响应:
+⚠️ 命令拼写错误: "/memroy write" 应为 "/memory write"
+
+您是否想执行: /memory write --title="会议记录" --folder="meetings" ?
+请确认或重新输入正确命令。
+```
+
+## 与其他命令的集成
+
+- `/task`: 关联知识库内容到开发任务
+- `/branch`: 分支可关联到相关知识文档
+- `/check`: 可以查看知识库统计作为项目状态的一部分
+
+## 配置路径说明
+
+```yaml
+# Basic Memory数据库
+db_path: /Users/chenyi/basic-memory/main.db
+
+# Obsidian知识库
+vault_path: /Users/chenyi/basic-memory/vault
+
+# 标准文档目录
+docs_path: /Users/chenyi/Public/VibeCopilot/docs
+```

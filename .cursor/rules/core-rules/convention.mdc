@@ -1,7 +1,7 @@
 ---
 description: VibeCopilot项目的通用开发约定，包括命名规范、代码组织和提交标准
 globs:
-alwaysApply: false
+alwaysApply: true
 ---
 # 通用开发约定与规范
 
@@ -21,31 +21,13 @@ alwaysApply: false
 - 保持专业和谨慎的态度，注重团队协作
 - 复杂问题使用系统化思考方法分析
 
-## 通用代码结构规范
-
-- 所有代码文件应控制在200行以内，超过时应拆分为多个模块
-- 代码应简洁明了，避免过度工程化
-- 遵循单一职责原则，每个模块只负责一项功能
-- 相关功能应放在同一目录下，便于查找和维护
-- 前端优先使用TypeScript而非JavaScript，保持类型安全
-- 后端遵循PEP 8 Python代码风格指南
-
 ## 通用命名规范
 
-- **文件命名**：使用小写字母，单词间用连字符（kebab-case）分隔
-  - 示例：`user-authentication.ts`, `data-processor.py`
-- **组件命名**：使用大驼峰命名法（PascalCase）
-  - 示例：`UserProfile`, `DataTable`
-- **函数/方法命名**：使用小驼峰命名法（camelCase），动词开头
-  - 示例：`getUserData()`, `processPayment()`
-- **变量命名**：使用小驼峰命名法，名词开头，具有描述性
-  - 示例：`userData`, `paymentStatus`
-- **常量命名**：全部大写，单词间用下划线分隔
-  - 示例：`MAX_RETRY_COUNT`, `API_BASE_URL`
-- **CSS类命名**：使用BEM命名法
-  - 示例：`.button__icon--large`
-- **数据库字段**：使用下划线分隔（snake_case）
-  - 示例：`user_id`, `created_at`
+- 文件、变量、函数等命名应清晰表达其用途和含义
+- 避免使用缩写，除非是约定俗成的缩写
+- 不同编程语言遵循其各自的命名规范
+- 项目中保持一致的命名风格
+- 避免使用无意义的名称如temp、foo等
 
 ## 通用文档与图表规范
 
@@ -76,36 +58,23 @@ flowchart LR
 - 错误处理必须明确，避免吞掉异常
 - 尽量避免副作用，保持函数纯净
 
-## 通用软件包管理规范
+## VibeCopilot质量标准
 
-- 前端包管理优先使用pnpm
-- 后端包管理优先使用uv
-- 明确指定依赖版本，避免使用最新版（^latest）
-- 记录依赖更新原因和影响范围
-- 定期更新依赖包并进行全面测试
-- 使用lockfile确保依赖一致性
+- 代码覆盖率需达到70%以上
+- CI通过率必须达到100%
+- 代码审查必须有至少1位审阅者批准
+- 关键功能必须有端到端测试
+- 性能关键路径需有性能基准测试
+- 所有文件行数应控制在合理范围内
+- 文档必须及时更新，与代码保持同步
 
 ## 通用工具使用规范
 
-- 优先使用MCP工具执行操作而非直接命令行
-- 文件操作使用绝对路径确保一致性
-- 在命令行操作中加入cat管道，避免交互式界面
-- 使用memory工具记录开发日志和决策
-- 使用time工具获取和转换时间信息
-- 使用git工具进行版本控制操作
-- 使用sequential thinking工具进行复杂分析
-
-## 通用设计模式应用
-
-- **前端组件设计**：
-  - 使用组合优于继承
-  - 使用高阶组件(HOC)或自定义Hook增强功能
-  - 使用容器/展示组件模式分离关注点
-
-- **后端设计**：
-  - 使用依赖注入降低耦合
-  - 采用仓储模式分离数据访问
-  - 使用服务层封装业务逻辑
+- 优先使用项目推荐的工具链
+- 工具使用应有明确的目的和价值
+- 避免引入过多的外部依赖
+- 定期更新工具版本，修复安全漏洞
+- 记录工具使用的最佳实践
 
 ## 通用编程反模式避免
 
@@ -130,7 +99,7 @@ flowchart LR
    - 状态应该局部化和容器化
 
 6. **避免回调地狱**：
-   - 使用Promise、async/await代替嵌套回调
+   - 使用现代异步处理方式
    - 保持代码的可读性和可维护性
 
 ## 通用Git提交规范
@@ -152,63 +121,25 @@ flowchart LR
 ## 示例
 
 <example>
-  // 良好的代码组织示例
-  // user-service.ts
-  export async function fetchUserData(userId: string): Promise<UserData> {
-    try {
-      const response = await api.get(`/users/${userId}`);
-      return response.data;
-    } catch (error) {
-      logger.error(`Failed to fetch user data: ${error.message}`);
-      throw new UserDataError('Failed to fetch user data', error);
-    }
-  }
-
   // 好的Git提交消息
   "feat(auth): 添加用户认证功能"
   "fix(ui): 修复移动端按钮显示问题"
   "docs: 更新API文档和使用示例"
-
-  // 使用MCP工具进行文件操作
-  mcp_filesystem_docker_read_file({
-    path: "/absolute/path/to/project/src/components/Button.tsx"
-  })
-
-  // 使用sequential thinking进行复杂分析
-  mcp_sequential_thinking_sequentialthinking({
-    thought: "分析API设计方案的性能影响",
-    thoughtNumber: 1,
-    totalThoughts: 5,
-    nextThoughtNeeded: true
-  })
 </example>
 
 <example type="invalid">
-  // 不良实践 - 过度复杂且无组织
-  function getData(x) {
-    var temp;
-    // 300+ 行代码...
-    return temp;
-  }
-
   // 不良Git提交消息
   "添加了些东西"
   "修复bug"
   "更新"
 
-  // 反模式：猜测性业务逻辑
+  // 猜测性业务逻辑
   function processUserData(user) {
     // 假设用户可能需要这个特性
     if (user.role === 'admin') {
       enableSecretFeatures(); // 未在需求中明确的功能
     }
   }
-
-  // 直接使用命令行而非MCP工具
-  run_terminal_cmd({
-    command: "git status",
-    is_background: false
-  })
 
   // 过度嵌套的条件判断
   function processPayment(order) {
@@ -220,8 +151,6 @@ flowchart LR
           } else {
             // 处理错误
           }
-        } else if (order.paymentMethod === 'paypal') {
-          // ...更多嵌套
         }
       }
     }

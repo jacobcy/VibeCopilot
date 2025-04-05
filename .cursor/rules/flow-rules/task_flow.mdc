@@ -9,9 +9,9 @@ alwaysApply: false
 > **重要提示**：本文件为流程规则(flow-rule)，不是直接执行入口。请使用 `/flow task` 或 `/task <子命令> [参数]` 命令来启动此流程。提及流程规则但不执行时，使用`{/flow task}`格式。
 
 ## 与命令规则的关系
-本流程规则与`task-command.mdc`紧密配合：
+本流程规则与`task-cmd.mdc`紧密配合：
 - `task_flow.mdc`（本规则）定义任务的基本概念、类型标准和流程规范
-- `task-command.mdc`定义任务管理的命令格式和执行流程
+- `task-cmd.mdc`定义任务管理的命令格式和执行流程
 
 ## 核心流程
 1. 任务创建：通过`/task create <任务名称>`、`/task quick <任务名称>`或`/task debt <任务名称>`

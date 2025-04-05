@@ -90,6 +90,24 @@ python scripts/setup/init_project.py
 - 为不同平台提供适当的安装指令
 - 自动处理路径和环境变量差异
 
+## IDE设置建议
+
+为了获得最佳的规则编辑体验，我们强烈建议更新您的Cursor设置：
+
+```json
+"workbench.editorAssociations": {
+  "*.mdc": "default"
+}
+```
+
+这一设置可以：
+
+- 防止.mdc文件在自定义规则表单中出现UI渲染问题
+- 确保正确的保存功能
+- 使查看实际规则内容更容易（特别是查看隐藏的FrontMatter部分）
+
+您可以在Cursor设置中手动添加此配置，或使用设置UI界面进行添加。
+
 ## 安装后
 
 安装完成后，您可以：

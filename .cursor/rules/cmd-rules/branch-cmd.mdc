@@ -13,7 +13,7 @@ alwaysApply: false
 本命令规则与以下规则紧密配合：
 - `flow.mdc`: 遵循流程检查点要求，确保分支操作符合强制流程
 - `commit-flow.mdc`: 确保分支创建后的提交符合规范
-- `task-command.mdc`: 与任务管理系统集成，维护任务与分支的关联
+- `task-cmd.mdc`: 与任务管理系统集成，维护任务与分支的关联
 
 ## 命令格式规范
 基本语法: `/branch [参数]`

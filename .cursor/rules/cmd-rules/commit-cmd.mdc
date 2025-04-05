@@ -12,7 +12,7 @@ alwaysApply: false
 ## 规则关系
 本命令规则与以下规则紧密配合：
 - `flow.mdc`: 遵循流程检查点，确保提交前满足强制检查
-- `branch-command.mdc`: 确保在正确的任务分支上进行提交
+- `branch-cmd.mdc`: 确保在正确的任务分支上进行提交
 - `commit-flow.mdc`: 实现提交流程规范
 - `git-commit-push-agent.mdc`: 应用具体的Git提交格式规范
 

@@ -8,7 +8,7 @@ alwaysApply: false
 ## 规则关系
 本规则与以下规则紧密配合：
 - `flow.mdc`: 遵循流程检查点，确保符合强制流程规范
-- `branch-command.mdc`: 确保在正确的分支上进行提交操作
+- `branch-cmd.mdc`: 确保在正确的分支上进行提交操作
 - `commit-flow.mdc`: 提供高层次的提交流程和标准
 
 ## Critical Rules

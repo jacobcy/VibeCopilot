@@ -1,0 +1,194 @@
+---
+description: VibeCopilot项目的后端开发规范，包括API设计、服务架构和Python编码标准
+globs: "**.py,**/api/**"
+alwaysApply: false
+---
+
+# 后端开发规范
+
+## Python编码标准
+
+- 遵循PEP 8编码风格指南
+- 使用Python 3.9+的新特性，包括类型注解
+- 模块、类和函数必须有文档字符串(docstring)
+- 使用black和isort自动格式化代码
+- 行长度控制在88字符以内（black默认）
+- 变量名使用snake_case，类名使用PascalCase
+- 使用pylint或flake8进行静态代码分析
+
+```python
+def calculate_score(user_id: str, answers: list[dict]) -> float:
+    """计算用户的答题得分
+
+    Args:
+        user_id: 用户ID
+        answers: 用户的答题列表，每个答案为dict格式
+
+    Returns:
+        计算后的得分
+
+    Raises:
+        ValueError: 当answers格式不正确时
+    """
+    if not answers:
+        return 0.0
+
+    # 计算逻辑
+    total_score = sum(answer.get('score', 0) for answer in answers)
+    return round(total_score / len(answers), 2)
+```
+
+## 项目结构
+
+- 使用模块化设计，遵循关注点分离原则
+- 按功能组织代码（而非类型）
+- 核心业务逻辑与框架代码分离
+- 共享工具函数放在utils包中
+- 配置与代码分离，使用环境变量或配置文件
+- 测试代码与源码分离，保持相同的目录结构
+
+## API设计规范
+
+- 遵循RESTful设计原则
+- URL使用名词而非动词，如`/users`而非`/getUsers`
+- 使用HTTP方法表示操作（GET, POST, PUT, DELETE）
+- 使用标准HTTP状态码表示结果
+- API版本控制使用URL前缀，如`/api/v1/`
+- 支持分页、排序和过滤
+- 避免深度嵌套的路由，最多2-3层
+
+### API响应格式
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "123",
+    "name": "示例"
+  },
+  "message": "操作成功"
+}
+```
+
+```json
+{
+  "status": "error",
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "输入参数无效"
+  }
+}
+```
+
+## 异常处理
+
+- 使用自定义异常类表示业务错误
+- 全局异常处理器转换为一致的API响应
+- 严格区分客户端错误和服务器错误
+- 记录所有未预期的异常
+- 避免在异常处理中吞掉异常
+- 提供有意义的错误消息和错误代码
+
+```python
+class BusinessError(Exception):
+    """业务逻辑错误基类"""
+    def __init__(self, message, error_code=None):
+        self.message = message
+        self.error_code = error_code
+        super().__init__(self.message)
+
+class ResourceNotFoundError(BusinessError):
+    """资源未找到错误"""
+    def __init__(self, resource_type, resource_id):
+        message = f"找不到{resource_type}: {resource_id}"
+        super().__init__(message, "RESOURCE_NOT_FOUND")
+```
+
+## 性能优化
+
+- 使用异步IO处理I/O密集型操作
+- 实现适当的缓存策略
+- 避免N+1查询问题
+- 大型计算任务使用后台任务队列
+- 实现请求节流和限流机制
+- 监控并优化慢API端点
+
+## 安全最佳实践
+
+- 输入验证与参数检查
+- API授权与认证
+- 敏感数据加密存储
+- 防止SQL注入和XSS攻击
+- 实现API速率限制
+- 使用HTTPS协议
+- 遵循OWASP安全指南
+
+## 代码质量与测试
+
+- 单元测试覆盖率至少70%
+- 测试应包括正常路径和异常路径
+- 使用`pytest`进行测试
+- 集成测试覆盖关键业务流程
+- 使用mock隔离外部依赖
+- CI流程强制代码质量检查
+- 定期进行代码审查
+
+```python
+# 单元测试示例
+def test_calculate_score():
+    # 准备测试数据
+    user_id = "test_user"
+    answers = [{"score": 5}, {"score": 3}, {"score": 4}]
+
+    # 执行被测试的函数
+    result = calculate_score(user_id, answers)
+
+    # 验证结果
+    assert result == 4.0
+
+    # 测试边界条件
+    assert calculate_score(user_id, []) == 0.0
+
+    # 测试异常情况
+    with pytest.raises(ValueError):
+        calculate_score(user_id, [{"wrong_key": 5}])
+```
+
+## 日志规范
+
+- 使用结构化日志格式（JSON）
+- 设置适当的日志级别（DEBUG, INFO, WARNING, ERROR, CRITICAL）
+- 记录关键操作和异常
+- 包含足够的上下文信息
+- 避免记录敏感信息
+- 使用日志聚合服务便于分析
+
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+def process_payment(user_id, amount):
+    logger.info("处理支付请求", extra={
+        "user_id": user_id,
+        "amount": amount,
+        "operation": "payment"
+    })
+
+    try:
+        # 支付处理逻辑
+        pass
+    except Exception as e:
+        logger.error("支付处理失败",
+                    exc_info=True,
+                    extra={"user_id": user_id})
+        raise
+```
+
+## 依赖管理
+
+- 使用uv进行依赖管理
+- 所有依赖都应有确定的版本号
+- 使用requirements.txt或pyproject.toml管理依赖
+- 分离开发依赖和运行依赖
+- 定期更新依赖以修复安全问题
+- 避免使用过于实验性的库

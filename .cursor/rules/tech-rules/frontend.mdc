@@ -1,0 +1,273 @@
+---
+description: VibeCopilot项目的前端开发规范，包括React组件设计、TypeScript类型使用和UI设计标准
+globs: "**.tsx,**.ts,**.jsx,**.js,**.css"
+alwaysApply: false
+---
+
+# 前端开发规范
+
+## TypeScript使用规范
+
+- 使用TypeScript 5.0+版本
+- 优先使用类型安全的编码方式
+- 避免使用`any`类型，必要时使用`unknown`
+- 组件props必须定义明确的接口
+- 使用类型别名（type）表示联合类型
+- 复杂数据结构使用接口（interface）
+- 组件状态必须有明确的类型定义
+
+```typescript
+// 定义类型
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  settings?: UserSettings;
+}
+
+// 使用类型
+function getUserInfo(userId: string): Promise<User> {
+  return api.get(`/users/${userId}`);
+}
+```
+
+## React组件设计
+
+- 优先使用函数组件和React Hooks
+- 每个组件只负责一个功能（单一职责）
+- 组件文件不超过150行，超过时应拆分
+- 使用命名导出，而非默认导出
+- 组件按职责分为容器组件和展示组件
+- 避免过深的组件嵌套（最多3-4层）
+- 使用React.memo优化渲染性能
+- 表单组件使用受控模式
+
+```tsx
+// 良好的组件设计
+export function UserCard({ user, onEdit }: UserCardProps) {
+  return (
+    <div className="user-card">
+      <Avatar src={user.avatarUrl} alt={user.name} />
+      <div className="user-info">
+        <h3>{user.name}</h3>
+        <p>{user.email}</p>
+      </div>
+      <Button onClick={() => onEdit(user.id)}>编辑</Button>
+    </div>
+  );
+}
+```
+
+## 状态管理
+
+- 简单组件使用useState和useReducer
+- 跨组件状态使用Context API
+- 复杂应用状态使用Zustand或Redux
+- 避免在全局状态中存储可计算的数据
+- 异步操作使用React Query或SWR
+- 表单状态使用React Hook Form
+- 避免直接修改状态，使用immutable更新
+
+```tsx
+// Zustand状态管理示例
+import create from 'zustand';
+
+interface UserStore {
+  users: User[];
+  loading: boolean;
+  error: string | null;
+  fetchUsers: () => Promise<void>;
+  addUser: (user: User) => void;
+}
+
+const useUserStore = create<UserStore>((set) => ({
+  users: [],
+  loading: false,
+  error: null,
+
+  fetchUsers: async () => {
+    set({ loading: true, error: null });
+    try {
+      const users = await api.get('/users');
+      set({ users, loading: false });
+    } catch (err) {
+      set({ error: err.message, loading: false });
+    }
+  },
+
+  addUser: (user) => {
+    set((state) => ({ users: [...state.users, user] }));
+  }
+}));
+```
+
+## 代码结构与文件组织
+
+- 按功能或页面组织组件
+- 共享组件放在`components/common`目录
+- 每个页面组件对应一个路由
+- 工具函数放在`utils`目录
+- API调用集中在`services`目录
+- 常量和配置放在`constants`目录
+- 样式使用CSS Modules或Tailwind CSS
+
+```
+src/
+  components/
+    common/
+      Button.tsx
+      Input.tsx
+    users/
+      UserList.tsx
+      UserCard.tsx
+  pages/
+    Home.tsx
+    Dashboard.tsx
+  hooks/
+    useAuth.ts
+    useForm.ts
+  services/
+    api.ts
+    userService.ts
+  utils/
+    format.ts
+    validation.ts
+```
+
+## UI与样式
+
+- 使用Tailwind CSS实现一致的样式系统
+- 遵循移动优先的响应式设计
+- 使用rem或em单位，避免使用px
+- 组件设计遵循BEM命名约定
+- 避免内联样式，除非动态计算
+- 颜色和间距使用预定义的设计tokens
+- 禁止使用`!important`
+
+```tsx
+// 使用Tailwind样式
+<button
+  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+  onClick={handleClick}
+>
+  提交
+</button>
+```
+
+## 性能优化
+
+- 使用React.memo避免不必要的重渲染
+- 使用useCallback缓存回调函数
+- 使用useMemo缓存计算结果
+- 长列表使用虚拟滚动
+- 代码分割和懒加载大型组件
+- 优化图片和资源加载
+- 按需导入大型库
+
+```tsx
+// 性能优化示例
+import { memo, useCallback, useMemo } from 'react';
+
+export const UserList = memo(function UserList({ users, onSelect }) {
+  // 缓存回调函数
+  const handleSelect = useCallback((id) => {
+    onSelect(id);
+  }, [onSelect]);
+
+  // 缓存计算结果
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => a.name.localeCompare(b.name));
+  }, [users]);
+
+  return (
+    <ul>
+      {sortedUsers.map(user => (
+        <UserItem
+          key={user.id}
+          user={user}
+          onSelect={handleSelect}
+        />
+      ))}
+    </ul>
+  );
+});
+```
+
+## 可访问性 (A11y)
+
+- 所有表单控件必须有关联的label
+- 使用语义化HTML元素
+- 确保合适的色彩对比度
+- 实现键盘导航支持
+- 提供ARIA属性辅助屏幕阅读器
+- 支持响应式字体大小
+- 测试不同辅助技术的兼容性
+
+```tsx
+// 可访问性示例
+<div>
+  <label htmlFor="username">用户名</label>
+  <input
+    id="username"
+    name="username"
+    type="text"
+    aria-required="true"
+    aria-invalid={!!errors.username}
+  />
+  {errors.username && (
+    <p role="alert">{errors.username}</p>
+  )}
+</div>
+```
+
+## 错误处理
+
+- 使用错误边界捕获渲染错误
+- 为API调用实现统一的错误处理
+- 显示用户友好的错误消息
+- 提供重试机制
+- 记录客户端错误
+- 处理网络错误和离线状态
+
+## 测试
+
+- 使用Jest和React Testing Library
+- 编写组件单元测试
+- 关注用户行为而非实现细节
+- 模拟API请求和外部依赖
+- 编写集成测试验证关键流程
+- 包含可访问性测试
+- 保持测试独立性
+
+```tsx
+// 组件测试示例
+import { render, screen, fireEvent } from '@testing-library/react';
+import { UserForm } from './UserForm';
+
+test('提交表单时调用onSubmit', () => {
+  const handleSubmit = jest.fn();
+
+  render(<UserForm onSubmit={handleSubmit} />);
+
+  fireEvent.change(screen.getByLabelText('用户名'), {
+    target: { value: 'testuser' }
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: '提交' }));
+
+  expect(handleSubmit).toHaveBeenCalledWith({
+    username: 'testuser'
+  });
+});
+```
+
+## 构建与部署
+
+- 使用Vite作为构建工具
+- 启用代码分割和懒加载
+- 优化资源加载顺序
+- 实现缓存策略
+- 配置CDN加速静态资源
+- 启用GZIP/Brotli压缩
+- 监控前端性能指标

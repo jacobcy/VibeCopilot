@@ -1,0 +1,115 @@
+---
+description: VibeCopilot项目的数据库开发规范，包括数据模型设计、查询优化和事务处理
+globs: "**.sql,**.py"
+alwaysApply: false
+---
+
+# 数据库开发规范
+
+## 数据库技术选型
+
+- **元数据存储**：使用SQLite关系型数据库
+- **向量数据库**：使用Chroma向量数据库
+
+## 数据模型设计原则
+
+- 遵循第三范式 (3NF)，避免数据冗余
+- 表名使用小写复数名词，如`users`、`rules`
+- 字段名使用下划线命名法 (snake_case)
+- 必须包含`created_at`和`updated_at`时间戳字段
+- 使用UUID作为主键，而非自增ID
+- 外键命名为`{关联表名}_id`，如`user_id`
+
+## SQLite最佳实践
+
+- 为频繁查询的字段创建索引
+- 使用参数化查询避免SQL注入
+- 长事务应拆分为多个小事务
+- 避免在循环中执行SQL语句
+- 定期执行VACUUM操作优化数据库
+- 使用外键约束确保数据完整性
+- 敏感数据应当加密存储
+
+```python
+# 参数化查询示例
+cursor.execute(
+    "SELECT * FROM users WHERE username = ?",
+    (username,)
+)
+
+# 批量插入示例
+cursor.executemany(
+    "INSERT INTO logs (message, level) VALUES (?, ?)",
+    logs_data
+)
+```
+
+## 向量数据库使用规范
+
+- 向量维度统一使用1536维
+- 查询使用余弦相似度 (cosine similarity)
+- 元数据字段保持精简，避免存储大对象
+- 文本长度应控制在512-1024字符以内
+- 批量处理向量操作提高性能
+- 定期重建索引优化搜索性能
+
+```python
+# 向量数据库查询示例
+results = vector_db.similarity_search(
+    query_text,
+    k=5,
+    filter={"rule_type": "core-rule"}
+)
+```
+
+## 数据迁移与版本控制
+
+- 使用版本化的迁移脚本管理数据库架构
+- 迁移脚本必须包含向上 (upgrade) 和向下 (downgrade) 操作
+- 每次迁移只进行一个逻辑变更
+- 迁移脚本应有明确的命名：`V{版本号}_{描述}.sql`
+- 避免直接修改生产环境数据库
+
+## 数据查询优化
+
+- 查询只返回必要的列，避免`SELECT *`
+- 复杂查询应使用解释计划 (EXPLAIN) 分析
+- 避免嵌套子查询，优先使用JOIN
+- 大数据集分页查询使用游标或LIMIT/OFFSET
+- 频繁使用的复杂查询考虑创建视图
+- 针对特定查询模式优化索引
+
+## 异常处理规范
+
+- 捕获并记录所有数据库异常
+- 提供具体的错误消息便于调试
+- 数据库异常应转换为应用级异常
+- 事务失败时确保回滚所有更改
+- 重试策略应使用退避算法
+- 连接错误应有自动重连机制
+
+```python
+try:
+    with conn:  # 自动管理事务
+        cursor.execute("INSERT INTO logs (message) VALUES (?)", ("操作成功",))
+except sqlite3.Error as e:
+    logger.error(f"数据库错误: {e}")
+    raise DatabaseError("无法写入日志") from e
+```
+
+## 安全性规范
+
+- 避免直接在SQL语句中拼接用户输入
+- 数据库凭证不应硬编码在源代码中
+- 生产环境数据库应限制网络访问
+- 定期审计数据库访问日志
+- 敏感数据查询应记录访问来源
+- 按照最小权限原则设计数据库用户权限
+
+## 性能监控
+
+- 记录并监控慢查询
+- 设置关键查询的性能基准
+- 监控数据库连接池利用率
+- 定期检查索引使用情况
+- 大型查询应设置超时机制
