@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from datetime import datetime
 
-from src.models.db import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
+# 使用src.models.template中定义的Pydantic模型来运行测试
+from src.models.template import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
 from src.templates.core.template_engine import TemplateEngine
 
 
