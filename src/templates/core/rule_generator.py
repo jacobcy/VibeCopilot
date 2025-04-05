@@ -10,9 +10,9 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from src.models.db import Rule, RuleMetadata, RuleType, Template
+
 from ..core.template_engine import TemplateEngine
-from ..models.rule import Rule, RuleMetadata, RuleType
-from ..models.template import Template
 from ..utils.template_utils import normalize_template_id
 
 logger = logging.getLogger(__name__)
