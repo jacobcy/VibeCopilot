@@ -63,7 +63,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "vibecopilot=vibecopilot.main:app",
+            "vibecopilot=src.cli.main:main",
         ],
     },
     include_package_data=True,

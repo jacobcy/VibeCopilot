@@ -11,6 +11,7 @@ from typing import List
 
 from src.cli.command_parser import CommandParser
 from src.cli.commands import *  # 导入所有命令
+from src.cli.commands.rule_command import RuleCommand
 
 # 配置日志
 logging.basicConfig(
@@ -39,6 +40,7 @@ def main(args: List[str] = None) -> int:
     from src.cli.commands.db import DatabaseCommand
 
     parser.register_command(DatabaseCommand())
+    parser.register_command(RuleCommand())  # 注册规则命令
 
     # 解析并执行命令
     return parser.parse_and_execute(args)

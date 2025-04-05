@@ -1,24 +1,40 @@
 {
     "mcpServers": {
-      "git-docker": {
-        "command": "docker",
+      "filesystem": {
+        "command": "npx",
         "args": [
-          "run",
-          "-i",
-          "--rm",
-          "--name",
-          "mcp-git",
-          "--mount",
-          "type=bind,src=/Users/chenyi/Public/VibeCopilot,dst=/Users/chenyi/Public/VibeCopilot",
-          "mcp/git"
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "~/Public/VibeCopilot"
         ]
       },
-      "git-uvx": {
+      "sequential-thinking": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-sequential-thinking"
+        ]
+      },
+      "time": {
+        "command": "uvx",
+        "args": [
+          "mcp-server-time",
+          "--local-timezone",
+          "Asia/Shanghai"]
+      },
+      "basic-memory": {
+        "command": "uvx",
+        "args": [
+          "basic-memory",
+          "mcp"
+        ]
+      },
+      "git": {
         "command": "uvx",
         "args": [
           "mcp-server-git",
           "--repository",
-          "/Users/chenyi/Public/VibeCopilot"
+          "~/Public/VibeCopilot"
         ]
       }
     }

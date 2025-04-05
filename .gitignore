@@ -31,6 +31,7 @@ env/
 .env.notion
 .env.github
 .notion_to_md
+config/default/.env.notion
 
 # IDE
 .idea/
@@ -42,6 +43,8 @@ env/
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
 
 # Jupyter
 .ipynb_checkpoints
@@ -51,6 +54,8 @@ htmlcov/
 *.log
 logs/
 .cache/
+temp/
+.cline/
 
 # Node.js / Docusaurus
 node_modules/
@@ -58,6 +63,8 @@ website/node_modules/
 website/.docusaurus/
 website/build/
 website/package-lock.json
+package-lock.json
+pnpm-lock.yaml
 
 # Obsidian
 .obsidian/
@@ -71,6 +78,7 @@ backups/
 
 # App specific
 modules/
+!scripts/setup/modules/
 .vibecopilot/
 
 # Database and cache files
@@ -86,3 +94,18 @@ modules/
 
 # Local configurations
 config/local*
+
+# UV tool related
+.uvconfig
+.uv/
+
+# Build artifacts and distribution
+dist/
+build/
+*.tar.gz
+*.zip
+
+# Local certificates
+*.pem
+*.crt
+*.key

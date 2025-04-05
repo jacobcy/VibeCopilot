@@ -1,0 +1,7 @@
+packages:
+  # 主网站
+  - 'website'
+  # 适配器
+  - 'adapters/notion_to_md'
+  # 未来可能添加的包
+  - 'adapters/*'

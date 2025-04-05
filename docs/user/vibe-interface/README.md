@@ -1,158 +1,80 @@
-# VibeCopilot 命令系统
+# VibeCopilot 界面指南
 
-VibeCopilot的命令系统提供了一个统一的接口，用于执行各种操作和管理项目。本文档介绍命令系统的设计、实现和使用方法。
+VibeCopilot 提供两种不同的命令使用方式，分别针对不同的使用场景。本指南将帮助您理解这两种方式的区别和适用场景。
 
-## 核心组件
+## 两种命令使用方式
 
-命令系统由以下核心组件组成：
+### 1. Cursor IDE 中的智能助手命令（`/command`）
 
-### 1. 命令处理器 (`CursorCommandHandler`)
+这种方式是在 Cursor IDE 的智能助手对话框中使用斜杠命令，例如 `/rule`、`/task` 等。
 
-`CursorCommandHandler` 是命令系统的入口点，负责接收命令字符串，解析命令，并调用相应的命令处理类。
+**特点：**
 
-**主要职责：**
+- 在 Cursor IDE 的聊天界面中使用
+- 以斜杠（`/`）开头的命令
+- 由 Cursor Rules 系统处理和路由
+- 提供与 AI 助手的交互式体验
 
-- 接收和解析命令字符串
-- 查找对应的命令处理类
-- 执行命令并返回结果
-- 提供命令帮助信息
+**实现方式：**
 
-### 2. 命令解析器 (`CommandParser`)
+- 通过 `.cursor/rules/` 目录下的规则配置文件定义
+- 规则定义了命令的解析和处理逻辑
+- 由 AI 助手理解命令并调用本地接口
 
-`CommandParser` 负责解析命令字符串，并找到对应的命令处理类。
-
-**主要职责：**
-
-- 注册可用命令
-- 解析命令字符串和参数
-- 验证命令格式和参数
-- 提供命令列表和帮助信息
-
-### 3. 基础命令类 (`BaseCommand`)
-
-`BaseCommand` 是所有命令处理类的基类，提供了参数处理、验证和执行的通用逻辑。
-
-**主要职责：**
-
-- 定义命令接口和生命周期
-- 管理命令参数（注册、验证、获取）
-- 提供帮助和示例信息
-- 实现命令执行流程
-
-### 4. 具体命令类
-
-每个具体命令都是 `BaseCommand` 的子类，实现特定的命令逻辑。
-
-**常见命令：**
-
-- `CheckCommand`: 检查项目状态
-- `UpdateCommand`: 更新项目信息
-- `GitHubCommand`: 执行GitHub相关操作
-
-## 命令执行流程
-
-1. 用户输入命令字符串（如 `/github --action=check`）
-2. `CursorCommandHandler` 接收命令并转发给 `CommandParser`
-3. `CommandParser` 解析命令，找到对应的命令处理类（如 `GitHubCommand`）
-4. 命令处理类验证参数并执行 `_execute_impl` 方法
-5. 返回标准化的结果
-
-## 命令格式
-
-命令遵循以下格式：
+**示例：**
 
 ```
-/命令名 --参数1=值1 --参数2=值2 ...
+/rule create cmd git-commit --interactive
+/task list --status=pending
 ```
 
-例如：
+### 2. 命令行工具（`vibecopilot`）
 
-```
-/github --action=check --type=roadmap
-/github --action=list --type=task --milestone=M2
-/update --id=T2.1 --status=completed
-```
+这种方式是直接在终端中使用 `vibecopilot` 命令行工具。
 
-## 标准化结果
+**特点：**
 
-所有命令都返回标准化的结果格式：
+- 在系统终端中使用
+- 标准命令行界面
+- 直接调用本地代码，不依赖 AI 助手
+- 适用于脚本和自动化场景
 
-```json
-{
-  "success": true|false,
-  "command": "命令名",
-  "data": {
-    // 命令的执行结果
-  },
-  "error": "错误信息（如果失败）"
-}
-```
+**实现方式：**
 
-## 添加新命令
+- 通过 Python CLI 模块实现
+- 命令处理逻辑定义在 `src/cli/commands/` 目录
+- 使用 `setup.py` 注册为系统命令
 
-要添加新命令，需要执行以下步骤：
+**示例：**
 
-1. 在 `src/cli/commands/` 目录下创建新的命令类
-2. 继承 `BaseCommand` 类
-3. 在 `__init__` 方法中注册命令和参数
-4. 实现 `_execute_impl` 方法
-5. 实现 `get_examples` 方法
-
-示例：
-
-```python
-from typing import List, Dict, Any
-from src.cli.commands.base_command import BaseCommand
-
-class NewCommand(BaseCommand):
-    def __init__(self):
-        super().__init__("newcomm", "执行新命令操作")
-
-        # 注册参数
-        self.register_parameter("action", required=True, help="要执行的操作")
-        self.register_parameter("id", required=False, help="操作ID")
-
-    def _execute_impl(self) -> Dict[str, Any]:
-        # 获取参数
-        action = self.get_parameter("action")
-        item_id = self.get_parameter("id")
-
-        # 执行命令逻辑
-        result = {
-            "message": f"执行了 {action} 操作"
-        }
-
-        if item_id:
-            result["id"] = item_id
-
-        return result
-
-    def get_examples(self) -> List[str]:
-        return [
-            "/newcomm --action=test",
-            "/newcomm --action=run --id=123"
-        ]
+```bash
+vibecopilot rule list
+vibecopilot rule create cmd git-commit --vars='{"description":"Git提交规范"}'
 ```
 
-6. 在 `CommandParser` 中注册新命令：
+## 文档索引
 
-```python
-parser.register_command(NewCommand())
+本文档目录包含以下内容：
+
+1. [命令系统概述](command-system.md) - 命令系统的基本概念和架构
+2. [命令开发指南](command-development.md) - 如何开发和扩展VibeCopilot命令
+3. [术语表](glossary.md) - 重要概念和术语说明
+
+## 选择合适的使用方式
+
+- **在IDE内开发时**：使用 Cursor IDE 中的 `/command` 方式，获得AI辅助和上下文感知
+- **自动化脚本**：使用命令行工具 `vibecopilot command`
+- **频繁重复的操作**：命令行工具更高效
+- **需要复杂分析或建议**：IDE内命令可提供更智能的响应
+
+## 开始使用
+
+请参阅各文档了解详细信息，或使用以下命令获取帮助：
+
+```bash
+# 命令行帮助
+vibecopilot --help
+
+# IDE内帮助
+/help
 ```
-
-## 使用工具
-
-VibeCopilot提供了两个主要工具来使用命令系统：
-
-1. **GitHub CLI工具** (`scripts/github_cli.py`)：简化的命令行接口
-2. **GitHub项目管理工具** (`scripts/github/manage_project.py`)：交互式项目管理工具
-
-详细使用方法请参考 `scripts/README.md`。
-
-## 最佳实践
-
-1. **命令参数验证**：在执行命令前，确保所有必需参数都已提供
-2. **错误处理**：命令执行时捕获异常，确保返回友好的错误信息
-3. **参数命名**：使用清晰一致的参数命名规范
-4. **命令文档**：提供完整的命令描述和示例
-5. **测试**：对每个命令编写单元测试，确保功能正确性

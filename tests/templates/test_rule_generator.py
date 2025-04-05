@@ -8,10 +8,10 @@ import tempfile
 import unittest
 from datetime import datetime
 
-from src.rule_templates.core.rule_generator import RuleGenerator
-from src.rule_templates.core.template_engine import TemplateEngine
-from src.rule_templates.models.rule import Rule, RuleType
-from src.rule_templates.models.template import (
+from src.templates.core.rule_generator import RuleGenerator
+from src.templates.core.template_engine import TemplateEngine
+from src.templates.models.rule import Rule, RuleType
+from src.templates.models.template import (
     Template,
     TemplateMetadata,
     TemplateVariable,

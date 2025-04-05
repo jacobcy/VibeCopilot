@@ -9,8 +9,8 @@ import tempfile
 import unittest
 from datetime import datetime
 
-from src.rule_templates.core.template_manager import TemplateManager
-from src.rule_templates.models.template import (
+from src.templates.core.template_manager import TemplateManager
+from src.templates.models.template import (
     Template,
     TemplateMetadata,
     TemplateVariable,

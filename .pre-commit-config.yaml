@@ -30,7 +30,7 @@ repos:
     -   id: markdownlint
         name: markdownlint
         description: "Checks Markdown files for style and syntax"
-        entry: markdownlint
+        entry: pnpm exec markdownlint
         language: node
         types: [markdown]
         args: ["--fix"]
@@ -43,7 +43,7 @@ repos:
     -   id: docs-links-check
         name: Docs links checker
         description: "Checks documentation links validity"
-        entry: node scripts/hooks/check_docs_links.js
+        entry: pnpm exec node scripts/hooks/check_docs_links.js
         language: node
         # 仅在修改Markdown文件时运行
         types: [markdown]
