@@ -152,6 +152,9 @@ class Label(Base):
 
     # 关系
     tasks = relationship("Task", secondary=task_label, back_populates="labels")
+    workflows = relationship(
+        "Workflow", secondary="workflow_label_association", back_populates="labels"
+    )
 
     def to_dict(self):
         """转换为字典"""
