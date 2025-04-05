@@ -1,15 +1,11 @@
 """
-数据库模型模块
+数据库模型模块 (已重定向)
 
-定义VibeCopilot统一数据库模型，包括：
-1. 数据库基础设施
-2. 业务实体模型
+注意: 此模块已被重定向到src.models.db
+请使用 from src.models.db import Base 替代 from src.db.models import Base
 """
 
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-
-Base = declarative_base()
+# 为保持向后兼容，从新位置导入
+from src.models.db import Base
 
 __all__ = ["Base"]
