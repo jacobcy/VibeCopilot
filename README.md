@@ -62,8 +62,8 @@ VibeCopilot提供与GitHub的深度集成，支持项目管理、路线图同步
 ### 使用方法
 
 ```python
-from src.github.api.github_client import GitHubClient
-from src.github.projects.main import ProjectManager
+from scripts.github_project.api.github_client import GitHubClient
+from scripts.github_project.projects.main import ProjectManager
 
 # 初始化GitHub客户端
 client = GitHubClient(token="your_github_token")
@@ -73,7 +73,7 @@ project_manager = ProjectManager(client)
 project = project_manager.get_project("username/repo", "Project Name")
 
 # 导入路线图
-from src.github.roadmap.roadmap_processor import RoadmapProcessor
+from scripts.github_project.projects.roadmap_processor import RoadmapProcessor
 processor = RoadmapProcessor()
 processor.import_from_yaml(".ai/roadmap/current.yaml")
 processor.sync_to_github(client, "username/repo")

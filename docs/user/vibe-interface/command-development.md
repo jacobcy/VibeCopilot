@@ -302,7 +302,7 @@ def _prepare_args(self, args: Dict[str, Any]) -> Dict[str, Any]:
 
 ```python
 from src.core.config import ConfigManager
-from src.github.github_client import GitHubClient
+from scripts.github_project.api.github_client import GitHubClient
 
 def _execute_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
     """执行更新命令"""
@@ -558,7 +558,7 @@ import logging
 from typing import Dict, Any
 
 from src.cli.base_command import BaseCommand
-from src.github.github_client import GitHubClient
+from scripts.github_project.api.github_client import GitHubClient
 from src.core.config import ConfigManager
 
 class GitHubCommand(BaseCommand):

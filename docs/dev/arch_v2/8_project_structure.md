@@ -10,54 +10,58 @@
 VibeCopilot采用基于规则和脚本的组织架构，确保轻量级和高扩展性。
 
 ```
-VibeCopilot/
-├── docs/                     # 项目文档
-│   ├── dev/                  # 开发文档
-│   │   ├── architecture/     # 架构设计文档
-│   │   ├── guide/            # 开发指南
-│   │   └── api/              # API文档
-│   ├── user/                 # 用户文档
-│   │   ├── guide/            # 用户指南
-│   │   └── examples/         # 使用示例
-│   └── blog/                 # 博客文章
-├── rules/                    # Cursor规则目录
-│   ├── core-rules/           # 核心规则
-│   ├── cmd-rules/        # 命令规则
-│   ├── role-rules/           # 角色规则
-│   ├── dev-rules/            # 开发规则
-│   ├── flow-rules/           # 流程规则
-│   └── tool-rules/           # 工具规则
-├── scripts/                  # Python脚本目录
-│   ├── commands/             # 命令处理脚本
-│   │   ├── __init__.py       # 脚本初始化
-│   │   ├── memory.py         # 记忆管理命令
-│   │   ├── plan.py           # 计划管理命令
-│   │   ├── task.py           # 任务管理命令
-│   │   ├── story.py          # 故事管理命令
-│   │   ├── branch.py         # 分支管理命令
-│   │   ├── check.py          # 检查命令
-│   │   ├── help.py           # 帮助命令
-│   │   └── update.py         # 更新命令
-│   ├── integrations/         # 工具集成脚本
-│   │   ├── __init__.py       # 集成初始化
-│   │   ├── github_client.py  # GitHub集成客户端
-│   │   ├── obsidian_sync.py  # Obsidian同步工具
-│   │   └── memory_client.py  # Basic Memory客户端
-│   ├── utils/                # 工具函数
-│   │   ├── __init__.py       # 工具初始化
-│   │   ├── config.py         # 配置管理
-│   │   ├── logger.py         # 日志工具
-│   │   └── file_utils.py     # 文件操作工具
-│   └── main.py               # 主入口脚本
-├── templates/                # 模板目录
-│   ├── rules/                # 规则模板
-│   └── docs/                 # 文档模板
-├── config/                   # 配置文件目录
-│   ├── settings.json         # 应用设置
-│   └── integrations.json     # 集成配置
-├── tests/                    # 测试目录
-│   ├── unit/                 # 单元测试
-│   └── integration/          # 集成测试
+/VibeCopilot
+├── .ai/                    # Cursor agent产出物，workflow状态文档
+├── .cursor/                # 静态规则存放目录
+├── config/                 # 配置文件目录
+│   ├── default/            # 默认配置
+│   ├── development/        # 开发环境配置
+│   └── production/         # 生产环境配置
+├── docs/                   # 开发文档
+│   ├── blog/               # 开发日志
+│   ├── dev/                # 开发文档
+│   │   ├── arch/           # 系统架构
+│   │   ├── guides/         # 开发指南
+│   │   ├── issues/         # 开发任务
+│   │   ├── references/     # 外部参考
+│   │   └── research/       # 研究报告
+│   └── user/               # 用户文档
+│       ├── commands/       # 命令参考
+│       ├── modules/        # 模块使用指南
+│       └── tutorials/      # 教程和示例
+├── src/                    # 核心模块
+│   ├── adapters/           # 适配器模块
+│   │   ├── github/         # GitHub适配器
+│   │   ├── n8n/            # n8n适配器
+│   │   └── status_sync/    # 状态同步适配器
+│   ├── core/               # 核心功能
+│   │   ├── config/         # 配置管理
+│   │   ├── engine/         # 核心引擎
+│   │   └── logging/        # 日志系统
+│   ├── cli/                # 命令行接口
+│   ├── db/                 # 数据库模型和操作
+│   │   ├── models/         # 数据模型
+│   │   └── repositories/   # 数据仓库
+│   ├── services/           # 服务层
+│   │   ├── api/            # API服务
+│   │   └── data/           # 数据处理服务
+│   ├── types/              # 类型定义
+│   └── utils/              # 通用工具函数
+├── modules/                # 外部导入的模块
+├── scripts/                # 脚本目录
+│   ├── setup/              # 环境设置脚本
+│   ├── tools/              # 开发工具脚本
+│   └── ci/                 # CI/CD脚本
+├── tests/                  # 测试目录
+│   ├── unit/               # 单元测试
+│   ├── integration/        # 集成测试
+│   └── e2e/                # 端到端测试
+├── example/                # 范例代码
+├── website/                # 文档网站前端
+│   └── docusaurus/         # Docusaurus配置
+└── infra/                  # 基础设施模块
+    ├── docker/             # Docker配置
+    └── deployment/         # 部署配置
 ├── .github/                  # GitHub配置
 ├── README.md                 # 项目简介
 ├── LICENSE                   # 许可证

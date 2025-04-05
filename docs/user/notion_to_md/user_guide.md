@@ -32,7 +32,7 @@ Notion 导出工具是一个高效的命令行工具，用于将 Notion 页面�
    - 添加您刚刚创建的集成
 
 3. **配置环境变量**
-   - 复制 `.env.notion.example` 为 `.env.notion`
+   - 复制 `config/default/.env.notion.example` 为 `config/default/.env.notion`
    - 填入您的 Notion API 密钥和页面 ID
 
 ### 基本使用

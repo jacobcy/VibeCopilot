@@ -7,7 +7,7 @@
 3. 填写集成名称（例如 "VibeCopilot Export"）
 4. 选择关联的工作区
 5. 设置适当的权限（至少需要 "Read content" 权限）
-6. 创建集成并复制生成的 API 密钥（已配置在 `.env.notion` 文件中）
+6. 创建集成并复制生成的 API 密钥（已配置在 `config/default/.env.notion` 文件中）
 
 ## 2. 授予集成访问页面的权限
 

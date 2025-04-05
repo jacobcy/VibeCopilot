@@ -23,14 +23,15 @@ if [ ! -f "$RUN_SCRIPT" ]; then
 fi
 
 # 检查环境变量配置文件是否存在
-ENV_FILE=".env.notion"
+ENV_FILE="config/default/.env.notion"
 if [ ! -f "$ENV_FILE" ]; then
     echo -e "${YELLOW}警告: 找不到环境变量配置文件 $ENV_FILE${NC}"
     echo -e "${BLUE}创建示例配置文件 $ENV_FILE.example 供参考${NC}"
     
     # 如果示例文件不存在，创建一个
-    if [ ! -f "$ENV_FILE.example" ]; then
-        cat > "$ENV_FILE.example" << EOF
+    EXAMPLE_FILE="config/default/.env.notion.example"
+    if [ ! -f "$EXAMPLE_FILE" ]; then
+        cat > "$EXAMPLE_FILE" << EOF
 # Notion Export Configuration
 
 # Notion API Key (必填)

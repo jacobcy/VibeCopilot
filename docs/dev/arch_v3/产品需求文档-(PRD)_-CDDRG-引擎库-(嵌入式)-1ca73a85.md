@@ -1,6 +1,4 @@
-# 产品需求文档 (PRD): CDDRG 引擎库 (嵌入式)
-
----
+**产品需求文档 (PRD): CDDRG 引擎库 (嵌入式) - v1.0 (最终草案)**
 
 **版本:** 1.0
 **日期:** 2023年10月27日
@@ -9,218 +7,138 @@
 **1. 概述 (Overview)**
 
 **1.1 背景:**
-静态规则库在指导 AI 智能体（Agent）时面临维护复杂、适应性差和上下文感知弱的挑战。为了克服这些限制，我们提出了一种创新的“命令驱动的动态规则生成”（CDDRG）范式。
+静态规则库难以维护且适应性差，而直接应用 LLM 进行自动化任务则易陷入失控的“Vibe Coding”和“幻觉”风险。为实现 **受控的、负责任的 AI 驱动自动化**，我们提出“命令驱动的动态规则生成”（CDDRG）范式，并遵循 **“文档 -> 规则 -> 代码”** 的核心工作流。此范式强调人类在目标设定（文档）、流程方法设计（规则）及关键决策（计划确认）中的核心作用，并通过 **知识循环** 实现持续改进。
 
 **1.2 目标产品:**
-本产品是一个名为 `**cddrg_engine**` 的 **Python 库 (Package)**。它封装了 CDDRG 范式的核心逻辑，使 Python 应用程序（Agent）能够通过简单的函数调用，根据输入的命令和上下文，动态地从本地知识源生成执行规则。该库旨在提供一个轻量级、易于集成、本地运行的解决方案，赋能开发者构建更智能、更具适应性的 Agent。
+本产品是一个名为 **`cddrg_engine`** 的 **Python 库 (Package)**。它作为 CDDRG 范式的核心技术支撑，封装了根据输入命令和上下文，动态生成**行动指南/执行计划**的逻辑。Agent 应用程序通过简单的函数调用嵌入此库，使其能够在人类的监督和确认下，基于丰富的知识源（包含规则、背景知识和历史日志）执行任务。
 
-**1.3 核心架构:**`cddrg_engine` 作为一个可嵌入的库运行在 Agent 应用程序的同一进程中。它直接访问本地文件系统上的知识源、配置文件、本地向量数据库（如 ChromaDB）和元数据存储（如 SQLite）。它通过网络调用外部 LLM API 进行推理。这种架构简化了部署，降低了集成复杂度，并优化了本地运行性能。
+**1.3 核心架构:**
+`cddrg_engine` 设计为嵌入式库，在 Agent 应用进程内运行。它直接访问本地文件系统的知识源、配置文件、本地向量数据库（ChromaDB）和元数据存储（SQLite），并通过网络与外部 LLM API 通信。此架构旨在简化集成、优化本地性能，并支持明确的 **人机交互模式**（指令 -> 查询规划 -> 人类确认 -> 执行报告 -> 知识存储）。
 
 **1.4 解决的问题:**
 
-- 为 Agent 应用提供一种按需、上下文感知的规则生成机制。
-- 简化 Agent 的规则管理，避免维护庞大的静态规则文件。
-- 提供一个易于集成到现有 Python 应用中的规则生成解决方案。
-- 支持本地开发、测试和运行，无需额外部署服务。
+* 为 Agent 提供按需、上下文感知且符合既定规则和背景知识的行动计划生成能力。
+* 支持“文档 -> 规则 -> 代码”开发流程，强化人类在规则设计和计划审核阶段的控制力。
+* 通过知识循环机制，使 Agent 能利用历史经验持续改进。
+* 提供一个易于集成、本地优先的解决方案，降低 AI 自动化应用的开发门槛和运行风险。
+
 **2. 目标与目的 (Goals and Objectives)**
 
-- **主要目标:** 提供一个稳定、可靠、易于使用的 `cddrg_engine` Python 库，实现 CDDRG 范式的核心功能。
-- **次要目标:**
-- 支持通过配置文件灵活配置知识源、数据库路径、模型和 Prompt。
-- 提供清晰的 API 接口 (`initialize`, `generate_rules`)。
-- 实现高效的本地知识索引和检索。
-- 确保与主流 LLM API 的兼容性。
-- 提供全面的日志记录能力，方便调试和监控。
-- **衡量指标 (示例):**
-- `generate_rules` 函数平均本地处理时间（不含 LLM 网络延迟） < 500ms。
-- 知识库索引（首次）时间与知识库大小成合理比例。
-- API 接口文档覆盖率 > 95%。
-- 单元测试覆盖率 > 80%。
-- 成功集成到至少一个示例 Agent 应用中。
+* **主要目标:** 提供稳定、可靠、易用的 `cddrg_engine` Python 库，实现 CDDRG 范式下行动计划的动态生成。
+* **次要目标:**
+  * 支持从多样化本地知识源（规则、文档、日志）中进行有效检索。
+  * 生成结构化、清晰的行动计划，便于人类审核和 Agent 执行。
+  * 提供灵活的配置选项（模型、路径、模板等）。
+  * 实现高效的本地知识索引（支持增量更新）。
+  * 提供全面的 API 文档和单元测试。
+  * 确保日志记录充分，支持可追溯性和调试。
+* **衡量指标:** (保持不变，参考上一版 PRD)
+
 **3. 目标用户 (Target Audience)**
 
-- **主要用户:** 使用 Python 开发 AI Agent 或自动化脚本的开发者。
-- **次要用户:** 需要为特定应用定制规则生成逻辑的技术研究人员或架构师。
+* **主要用户:** 使用 Python 开发 AI Agent、自动化脚本、或需要将 AI 能力整合进现有工作流的开发者。
+* **次要用户:** 负责设计和维护规则、知识库，并希望通过 AI 提升流程效率和可靠性的知识工程师、流程设计师。
+
 **4. 范围 (Scope)**
 
 **4.1 In-Scope (库提供的功能):**
 
-- **配置加载:** 从指定文件加载配置 (YAML 或 .env)。
-- **知识索引管道 (Knowledge Indexing Pipeline):**
-- 扫描本地文件系统指定的知识源目录。
-- 对文本文件进行分块 (Chunking)。
-- 调用 Embedding 模型进行向量化。
-- 将向量和元数据存入本地向量数据库 (ChromaDB)。
-- 将文件的元数据（路径、处理时间等）存入本地 SQLite 数据库。
-- **核心 API 函数:**
-- `initialize(config_path)`: 加载配置，初始化连接，运行（或检查）知识索引。
-- `generate_rules(command, parameters, context)`: 接收命令、参数和上下文，执行规则生成流程。
-- **内部逻辑组件:**
-- 知识检索器 (Knowledge Retriever): 根据输入从向量库和元数据存储中检索相关知识片段。
-- Prompt 引擎 (Prompt Engine): 使用模板，将命令、上下文和检索到的知识组装成发送给 LLM 的 Prompt。
-- LLM 客户端 (LLM Client): 与配置的外部 LLM API 进行交互（发送 Prompt，接收响应，处理错误）。
-- 响应格式化器 (Response Formatter): 解析 LLM 响应，将其格式化为预定义的结构（如 JSON、指令列表）返回给调用者。
-- **本地存储交互:** 与本地 ChromaDB 文件和 SQLite 文件进行交互。
-- **日志记录:** 提供可配置的日志记录功能。
+* **配置加载与验证:** (同上一版)
+* **知识索引管道:**
+  * 扫描、处理（分块、向量化）并索引本地知识源文件（**支持区分规则、文档、日志等类型**）。
+  * 存入本地向量库 (ChromaDB) 和元数据存储 (SQLite)。
+  * **支持基于文件变化（修改时间/哈希）的增量索引**。
+* **核心 API 函数:**
+  * `initialize(config_path, force_reindex=False)`: 初始化，管理索引。
+  * `generate_action_plan(command, parameters, context)`: **核心函数，生成结构化的行动计划**。
+* **内部逻辑组件:**
+  * 知识检索器: **能检索并区分规则、背景知识、历史日志等**。
+  * Prompt 引擎: 使用模板组装包含多样化信息的 Prompt，**目标是生成行动计划**。
+  * LLM 客户端: (同上一版)
+  * 响应格式化器: **解析 LLM 响应，格式化为结构化的行动计划（如 JSON）**。
+* **本地存储交互:** (同上一版)
+* **日志记录:** (同上一版)
+
 **4.2 Out-of-Scope (库不负责的功能):**
 
-- **Agent 应用程序本身:** 调用 `cddrg_engine` 的宿主应用程序的逻辑。
-- **用户界面 (UI/CLI):** 任何用户交互界面都由 Agent 应用程序提供。
-- **知识源内容的创建和管理:** 库只负责读取和索引，不负责内容的编写。
-- **规则冲突的自动解决:** 库可能在 Prompt 中要求 LLM 识别冲突，但本身不实现解决逻辑。
-- **规则执行:** 库只生成规则，不负责执行。
-- **网络服务部署与管理:** 本库设计为嵌入式，不作为独立服务运行。
-- **复杂的访问控制或多租户:** 假设在单用户或受信任的环境中运行。
+* **Agent 应用程序逻辑:** (同上一版)
+* **用户界面 (UI/CLI) / 人机交互流程的具体实现:** 库只提供生成计划的函数，如何呈现给用户、获取确认由 Agent 负责。
+* **知识源内容的创建与管理:** (同上一版)
+* **行动计划的执行:** (同上一版)
+* **知识循环中日志等信息的自动捕获与写入:** 库负责索引已有的知识源，Agent 或其他系统负责将新产生的日志等信息放入知识源目录。
+* **规则冲突的自动解决:** (同上一版)
+* **网络服务部署、复杂权限管理:** (同上一版)
+
 **5. 用例 (Use Cases)**
 
-- **UC-01: 初始化 CDDRG 引擎**
-- **Actor:** Agent 应用程序 (启动时) 或 维护脚本
-- **Preconditions:** 配置文件存在，知识源文件存在。
-- **Flow:**
-1. Agent 代码调用 `cddrg_engine.initialize(config_path='path/to/config.yaml')`。
-1. 库加载配置。
-1. 库检查本地向量库和元数据存储的状态（或根据配置强制重新索引）。
-1. **如果需要索引:**
-a. 库启动知识索引管道。
-b. 扫描知识源目录。
-c. 处理文件（分块、向量化）。
-d. 写入向量库 (ChromaDB) 和元数据存储 (SQLite)。
-e. 记录索引过程日志。
-1. 库完成初始化，准备接收 `generate_rules` 调用。
-1. (可选) `initialize` 返回状态信息（如索引是否运行，知识库大小等）。
-- **UC-02: Agent 请求动态规则**
-- **Actor:** Agent 应用程序 (执行任务时)
-- **Preconditions:** `cddrg_engine` 已成功初始化。
-- **Flow:**
-1. Agent 准备好 `command` (e.g., "/create_prd"), `parameters` (e.g., `{'project': 'X', 'features': ['A', 'B']}`), `context` (e.g., `{'user_role': 'architect', 'timestamp': ...}`).
-1. Agent 代码调用 `ruleset = cddrg_engine.generate_rules(command, parameters, context)`。
-1. 库接收输入。
-1. **知识检索器:** 根据输入查询向量库和元数据存储，获取相关知识片段。
-1. **Prompt 引擎:** 使用配置的模板，将命令、参数、上下文和检索到的知识组装成最终的 Prompt。
-1. **LLM 客户端:** 将 Prompt 发送给外部 LLM API。
-1. LLM API 返回响应。
-1. **响应格式化器:** 解析 LLM 响应，提取或转换成预定义的规则格式（如 JSON）。
-1. 库将格式化后的 `ruleset` 返回给 Agent。
-1. Agent 使用 `ruleset` 继续执行任务。
-1. 库记录本次调用的关键信息和结果日志。
-- **UC-03: 更新知识源**
-- **Actor:** 规则/知识维护者
-- **Flow:**
-1. 维护者在文件系统中添加、修改或删除知识源文件。
-1. 维护者运行一个脚本（或 Agent 的某个管理功能）再次调用 `cddrg_engine.initialize()`，可能带有强制重新索引的参数。
-1. 库重新执行知识索引管道，更新向量库和元数据存储以反映变化。
+* **UC-01: 初始化 CDDRG 引擎 (包含索引):** (基本同上一版，强调增量索引逻辑)
+* **UC-02: Agent 请求行动计划 (核心流程):**
+  * **Actor:** Agent 应用程序 (响应人类指令后，确认前)
+  * **Preconditions:** `cddrg_engine` 已初始化。
+  * **Flow:**
+        1. Agent 收到人类指令，解析出 `command`, `parameters`, `context`。
+        2. Agent 调用 `action_plan_json = cddrg_engine.generate_action_plan(command, parameters, context)`。
+        3. 库执行内部流程：
+            a.  **知识检索器:** 查询向量库和元数据，获取与命令和上下文相关的**规则、背景文档摘要、相关历史日志条目**等。
+            b.  **Prompt 引擎:** 组装 Prompt，明确要求 LLM 基于提供的规则和背景知识，为执行该命令生成一个详细、安全的行动计划。
+            c.  **LLM 客户端:** 与 LLM API 交互。
+            d.  **响应格式化器:** 解析 LLM 响应，生成结构化的 `action_plan` (JSON)。
+        4. 库返回 `action_plan_json` 给 Agent。
+        5. **Agent 将此 `action_plan` 呈现给人类用户进行审核和确认。**
+        6. (后续步骤由 Agent 完成) Agent 收到确认后，按照计划执行，记录日志。
+* **UC-03: 更新知识源并重新索引:** (基本同上一版，强调触发增量索引)
+
 **6. 功能需求 (Functional Requirements)**
 
-- **FR-LIB-INIT-01: **`**initialize**`** 函数:**
-- 必须接受配置文件路径作为参数。
-- 必须加载并验证配置。
-- 必须根据配置初始化向量库和元数据存储客户端。
-- 必须触发或管理知识索引管道的执行（根据策略：首次运行、强制更新、检查更新）。
-- 必须处理初始化过程中的错误（如配置错误、路径无效）并返回或抛出异常。
-- **FR-LIB-GEN-01: **`**generate_rules**`** 函数:**
-- 必须接受 `command` (str), `parameters` (dict), `context` (dict) 作为输入。
-- 必须按顺序调用内部组件：知识检索器 -> Prompt 引擎 -> LLM 客户端 -> 响应格式化器。
-- 必须能处理内部组件可能发生的错误（如检索失败、LLM API 错误）。
-- 必须返回格式化后的规则集（格式需可配置，默认为 JSON）。
-- 必须是线程安全的（如果 Agent 应用是多线程的）。
-- **FR-IDX-01: 知识索引 - 文件扫描:** 必须能递归扫描配置文件中指定的本地知识源目录。
-- **FR-IDX-02: 知识索引 - 文件处理:** 必须支持处理常见的文本文件格式 (e.g., .md, .txt)。必须根据配置的策略进行文本分块。
-- **FR-IDX-03: 知识索引 - 向量化:** 必须使用配置的 Embedding 模型（通过 Langchain 或类似库）生成向量。
-- **FR-IDX-04: 知识索引 - 存储:** 必须将向量和元数据（来源文件、chunk ID 等）写入配置的本地 ChromaDB 实例。必须将文件级元数据写入配置的本地 SQLite 数据库。
-- **FR-IDX-05: 知识索引 - 增量更新 (可选):** 理想情况下，索引管道应能识别已更改的文件并只更新相关的索引，而非每次都全量重建（需要基于文件修改时间或内容哈希）。
-- **FR-CONF-01: 配置加载:** 必须支持从 YAML 或 .env 文件加载配置。
-- **FR-CONF-02: 配置项:** 必须支持配置项如：知识源路径、向量库路径、SQLite 路径、Embedding 模型名称/端点、LLM 模型名称/端点/API Key、Prompt 模板路径或内容、检索 Top-K 值、日志级别等。
-- **FR-RET-01: 知识检索:** 必须实现基于输入向量在 ChromaDB 中执行相似性搜索的逻辑。
-- **FR-RET-02: 知识检索 - 过滤 (可选):** 必须支持在检索时结合元数据（从 SQLite 或向量库本身获取）进行过滤。
-- **FR-PROM-01: Prompt 引擎:** 必须支持从文件或配置中加载 Prompt 模板。必须能将变量（命令、参数、上下文、检索到的知识）注入模板。
-- **FR-LLM-01: LLM 客户端:** 必须支持与 OpenAI API 兼容的接口或其他配置的 LLM API。必须处理 API 请求、响应和常见错误（如超时、认证失败、速率限制）。必须能配置重试逻辑。
-- **FR-RESP-01: 响应格式化:** 必须能解析 LLM 返回的文本（通常是 JSON 字符串或 Markdown），并将其转换为 Python 对象（如 dict, list）。必须能处理解析错误。
-- **FR-LOG-01: 日志记录:** 必须使用标准的 Python `logging` 模块。必须记录关键操作、配置信息、错误和警告。日志级别必须可配置。
-- **FR-ERR-01: 错误处理:** 库函数应通过返回特定错误代码/对象或抛出自定义异常来向调用者报告错误。
+* **FR-LIB-INIT-01 (`initialize`):** (同上一版，增加 `force_reindex` 参数)
+* **FR-LIB-GEN-01 (`generate_action_plan`):**
+  * **输入:** `command` (str), `parameters` (dict), `context` (dict)。
+  * **核心功能:** 按序调用内部组件，最终目标是生成行动计划。
+  * **输出:** 返回结构化的行动计划 (推荐 JSON 格式，Schema 需定义)。
+  * (其他同上一版)
+* **FR-IDX-01/02 (索引 - 文件处理):**
+  * 必须能根据配置或文件元数据**区分知识源类型**（rule, doc, log等）。
+  * 必须支持对不同类型文件采用不同的分块或预处理策略（可选）。
+* **FR-IDX-03/04 (索引 - 向量化与存储):** (同上一版，元数据中需包含知识源类型)
+* **FR-IDX-05 (索引 - 增量更新):** **必须**实现基于文件修改时间或内容哈希的增量索引机制，避免不必要的全量重建。
+* **FR-CONF-01/02 (配置):** (同上一版，需增加配置项区分知识源类型及其处理方式，以及行动计划输出格式定义)
+* **FR-RET-01 (知识检索):**
+  * 必须能执行混合检索，结合向量相似度和元数据过滤（如按知识源类型、时间范围过滤日志）。
+  * 必须能区分检索结果的来源类型，并可能根据类型调整其在 Prompt 中的优先级或展示方式。
+* **FR-PROM-01 (Prompt 引擎):**
+  * 模板必须能清晰地组织不同类型的输入（命令、上下文、规则约束、背景信息、历史参考）。
+  * **Prompt 的核心目标必须是引导 LLM 生成一个结构化、可执行、包含检查点的行动计划**。
+* **FR-LLM-01 (LLM 客户端):** (同上一版)
+* **FR-RESP-01 (响应格式化):**
+  * **核心要求: 必须能将 LLM 的（通常是自然语言或 Markdown 格式的）响应，稳定地解析并转换为预定义的结构化行动计划格式 (JSON Schema 需明确定义)**。
+  * 需要具备一定的鲁棒性，能处理 LLM 输出格式的轻微偏差。
+* **FR-LOG-01 (日志):** (同上一版，需确保记录了生成行动计划的关键输入和检索到的知识摘要)
+* **FR-ERR-01 (错误处理):** (同上一版)
+
 **7. 非功能需求 (Non-Functional Requirements)**
 
-- **NFR-PERF-01: 性能:** `generate_rules` 的本地处理时间应尽可能短，不应成为 Agent 响应的瓶颈。索引性能应在可接受范围内。
-- **NFR-ACC-01: 准确性:** 规则生成的准确性高度依赖于知识源质量、Prompt 设计和 LLM 能力。库本身应确保流程正确执行。
-- **NFR-REL-01: 可靠性:** 库应能稳定运行，妥善处理文件 I/O 和网络 API 错误。
-- **NFR-USAB-01: API 易用性:** `initialize` 和 `generate_rules` 接口应简单直观，文档清晰。
-- **NFR-MAINT-01: 可维护性:** 代码应遵循 Python 最佳实践，模块化，包含单元测试。
-- **NFR-SEC-01: 安全性:** API Keys 等敏感信息必须通过安全的配置方式（如环境变量、配置文件权限）管理，不应硬编码。库不应引入额外的安全风险。
-- **NFR-PORT-01: 可移植性:** 库应能在主流操作系统（Linux, macOS, Windows）上运行。
+* (保持不变，参考上一版 PRD，特别强调性能、可靠性、API易用性、可维护性、安全性)
+
 **8. 数据需求 (Data Requirements)**
 
-- **配置文件 (YAML 示例):**
-```yaml
-knowledge_source:
-  path: ./knowledge_base
-  include_patterns: ["*.md", "*.txt"]
-vector_store:
-  provider: chromadb
-  path: ./db/chroma_db
-  collection_name: cddrg_rules
-metadata_store:
-  provider: sqlite
-  path: ./db/metadata.db
-embeddings:
-  provider: openai # or huggingface, etc.
-  model: text-embedding-ada-002
-  # api_key: $OPENAI_API_KEY (loaded from env)
-llm:
-  provider: openai
-  model: gpt-4-turbo-preview
-  # api_key: $OPENAI_API_KEY
-  temperature: 0.5
-prompt:
-  template_file: ./prompts/rule_gen_template.txt
-retrieval:
-  top_k: 5
-logging:
-  level: INFO
-  file: ./logs/cddrg_engine.log
-
-```
-
-- **SQLite Schema (示例):**
-- `indexed_files` (file_path TEXT PRIMARY KEY, last_modified REAL, content_hash TEXT, indexed_at TIMESTAMP)
-- `knowledge_chunks` (chunk_id TEXT PRIMARY KEY, file_path TEXT, chunk_text TEXT, vector_id TEXT) -- 可选，如果向量库不存文本
-- **Vector Store (ChromaDB) Schema:**
-- Collection: `cddrg_rules` (可配置)
-- Stored Objects: Vectors, IDs
-- Metadata per vector: `rule_id` (or `chunk_id`), `source_file`, `node` (if available from source), `item` (if available) etc.
-- **输出规则格式 (示例 JSON):**
-```json
-{
-  "status": "success", // or "error"
-  "rules": [
-    {"step": 1, "instruction": "Use the PRD template located at /templates/prd_v2.md", "severity": "mandatory"},
-    {"step": 2, "check": "Ensure 'Non-Functional Requirements' section exists", "severity": "mandatory"},
-    {"step": 3, "action": "Store final document in /docs/prd/{year}/", "parameters": {"year": 2023}, "severity": "mandatory"},
-    {"step": 4, "action": "Request review from 'Product Manager'", "severity": "recommended"}
-  ],
-  "errors": null // or error message if status is "error"
-  "raw_llm_response": "..." // optional, for debugging
-}
-
-```
+* **配置文件:** (参考上一版，增加知识源类型定义、行动计划 Schema 定义或路径)
+* **SQLite Schema (示例 - 增强):**
+  * `knowledge_sources` (source_id TEXT PRIMARY KEY, file_path TEXT, source_type TEXT, last_modified REAL, content_hash TEXT, indexed_at TIMESTAMP)
+  * `knowledge_chunks` (chunk_id TEXT PRIMARY KEY, source_id TEXT, chunk_text TEXT, vector_id TEXT, metadata_json TEXT) -- metadata 可存 chunk 类型等
+  * `action_plan_log` (log_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TIMESTAMP, command TEXT, context_json TEXT, generated_plan_json TEXT, raw_llm_response TEXT, retrieved_knowledge_ids_json TEXT) -- 用于审计和调试
+* **Vector Store Schema:** (元数据需包含 `source_id`, `source_type`)
+* **输出行动计划格式 (JSON Schema - 需详细定义，示例见上一版 PRD)**: 必须包含步骤列表，每个步骤应有描述、引用（规则/知识源 ID）、检查点等。
 
 **9. 假设与依赖 (Assumptions and Dependencies)**
 
-- **假设:**
-- Agent 应用程序使用 Python 3.8+。
-- 运行环境具有访问本地文件系统的权限。
-- 运行环境具有访问外部 LLM API 的网络连接。
-- 知识源主要是文本格式。
-- **依赖:**
-- Python 3.8+
-- 核心库: `langchain` (或类似框架用于集成), `openai` (或其他 LLM SDK), `chromadb-client`, `sqlite3`, `pyyaml` (或 `python-dotenv`), `tiktoken` (或相应 tokenizer)。
-- 有效的 LLM API Key 和 Embedding 模型访问权限。
+* (基本同上一版)
+* **新增假设:** Agent 应用程序负责实现将行动计划呈现给用户并获取确认的交互逻辑。
+
 **10. 未来的考虑/开放问题 (Future Considerations / Open Questions)**
 
-- 如何优化索引策略以支持大规模知识库和快速增量更新？
-- 是否需要支持除 ChromaDB 和 SQLite 之外的其他本地存储选项？
-- 如何更好地处理 LLM 的幻觉或不准确的响应？(增加验证层？)
-- 是否应该在库内部提供更明确的冲突标记（基于 LLM 的判断）？
-- 如何打包和分发这个库 (`setup.py`, PyPI)？
-- 是否需要异步版本的 `generate_rules` 函数 (`async def`)？
-- 如何支持本地运行的 Embedding 和 LLM 模型？
----
-
+* 如何设计健壮的“响应格式化器”以应对 LLM 输出的多样性？(使用 Pydantic 等库进行结构化输出约束？二次 LLM 调用进行格式化？)
+* 如何优化知识检索策略以平衡规则的强制性与背景知识的参考性？
+* 行动计划 Schema 如何设计才能兼顾通用性与特定任务的细节需求？
+* 如何更自动化地将 Agent 执行日志纳入知识循环（格式标准化、自动归档）？
+* 库是否需要提供校验行动计划有效性（如资源可用性）的辅助函数？
+* 如何评估和持续改进 RGI 生成行动计划的质量和安全性？
