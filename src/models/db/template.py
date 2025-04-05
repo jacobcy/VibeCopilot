@@ -6,12 +6,14 @@
 
 import json
 from datetime import datetime
+from typing import List, Optional
 
+from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import relationship
 
 from ...models import template as template_models
-from .base import Base
+from .base import Base, BaseMetadata, TemplateVariableType
 
 # 模板与变量关联表
 template_variable_association = Table(
@@ -128,3 +130,25 @@ class Template(Base):
             version=model.metadata.version,
             tags=json.dumps(model.metadata.tags),
         )
+
+
+class TemplateMetadata(BaseMetadata):
+    """模板元数据模型，扩展基础元数据"""
+
+    author: str = Field(..., description="作者")
+    tags: List[str] = Field(default_factory=list, description="标签")
+    version: str = Field(default="1.0.0", description="版本")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="创建时间")
+    updated_at: datetime = Field(default_factory=datetime.utcnow, description="更新时间")
+
+
+class TemplateRepository(BaseModel):
+    """模板仓库设置"""
+
+    id: str = Field(..., description="模板仓库ID")
+    name: str = Field(..., description="仓库名称")
+    url: str = Field(..., description="仓库URL")
+    description: Optional[str] = Field(None, description="仓库描述")
+    auth_required: bool = Field(default=False, description="是否需要认证")
+    templates_path: str = Field(default="templates", description="模板在仓库中的路径")
+    is_default: bool = Field(default=False, description="是否为默认仓库")

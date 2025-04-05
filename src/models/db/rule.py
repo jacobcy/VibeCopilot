@@ -6,12 +6,13 @@
 
 import json
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import relationship
 
 from ...models import rule as rule_models
-from .base import Base
+from .base import Base, RuleType
 
 # 规则与规则条目关联表
 rule_item_association = Table(
@@ -87,6 +88,54 @@ class RuleExample(Base):
         )
 
 
+class RuleMetadata(Base):
+    """规则元数据模型，扩展基础元数据"""
+
+    __tablename__ = "rule_metadata"
+
+    id = Column(String, primary_key=True)
+    author = Column(String, nullable=False)
+    tags = Column(Text, nullable=True)  # 存储为JSON格式的字符串
+    version = Column(String, default="1.0.0")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    dependencies = Column(Text, nullable=True)  # 存储为JSON格式的字符串
+    usage_count = Column(Integer, default=0)
+    effectiveness = Column(Integer, default=0)
+
+
+class RuleApplication(Base):
+    """规则应用记录"""
+
+    __tablename__ = "rule_applications"
+
+    id = Column(String, primary_key=True)
+    rule_id = Column(String, ForeignKey("rules.id", ondelete="CASCADE"), nullable=False)
+    applied_at = Column(DateTime, default=datetime.now)
+    file_patterns = Column(Text, nullable=True)  # 存储为JSON格式的字符串
+    success = Column(Boolean, default=True)
+    feedback = Column(Text, nullable=True)  # 存储为JSON格式的字符串
+
+    # 关系
+    rule = relationship("Rule", back_populates="applications")
+
+
+class RuleDependency(Base):
+    """规则依赖关系"""
+
+    __tablename__ = "rule_dependencies"
+
+    id = Column(String, primary_key=True)
+    source_rule_id = Column(String, ForeignKey("rules.id", ondelete="CASCADE"), nullable=False)
+    target_rule_id = Column(String, ForeignKey("rules.id", ondelete="CASCADE"), nullable=False)
+    dependency_type = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+
+    # 关系
+    source_rule = relationship("Rule", foreign_keys=[source_rule_id])
+    target_rule = relationship("Rule", foreign_keys=[target_rule_id])
+
+
 class Rule(Base):
     """规则数据库模型"""
 
@@ -120,6 +169,7 @@ class Rule(Base):
         back_populates="rules",
         cascade="all, delete",
     )
+    applications = relationship("RuleApplication", back_populates="rule")
 
     def to_pydantic(self) -> rule_models.Rule:
         """转换为Pydantic模型"""
@@ -163,3 +213,7 @@ class Rule(Base):
             usage_count=model.metadata.usage_count,
             effectiveness=model.metadata.effectiveness,
         )
+
+
+# 向后兼容别名
+Example = RuleExample

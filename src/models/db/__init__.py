@@ -4,21 +4,38 @@
 导出所有数据库模型供外部使用
 """
 
-from .base import Base
+from .base import Base, BaseMetadata, RuleType, TemplateVariableType
 from .roadmap import Epic, Label, Story, Task
-from .rule import Rule, RuleExample, RuleItem
-from .template import Template, TemplateVariable
+from .rule import (
+    Example,
+    Rule,
+    RuleApplication,
+    RuleDependency,
+    RuleExample,
+    RuleItem,
+    RuleMetadata,
+)
+from .template import Template, TemplateMetadata, TemplateRepository, TemplateVariable
 from .workflow import Workflow, WorkflowExecution, WorkflowStep, WorkflowStepExecution
 
 __all__ = [
     "Base",
+    "BaseMetadata",
+    "RuleType",
+    "TemplateVariableType",
     # Rule models
     "Rule",
     "RuleItem",
     "RuleExample",
+    "RuleMetadata",
+    "RuleApplication",
+    "RuleDependency",
+    "Example",
     # Template models
     "Template",
     "TemplateVariable",
+    "TemplateMetadata",
+    "TemplateRepository",
     # Roadmap models
     "Epic",
     "Story",
