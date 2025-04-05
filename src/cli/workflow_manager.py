@@ -19,13 +19,13 @@ from sqlalchemy.orm import Session
 
 from src.adapters.n8n_adapter import N8nAdapter
 from src.adapters.status_sync_adapter import StatusSyncAdapter
-from src.db.models.workflow import Workflow, WorkflowExecution, WorkflowStep
 from src.db.repositories.workflow_repository import (
     WorkflowExecutionRepository,
     WorkflowRepository,
     WorkflowStepRepository,
 )
 from src.db.session import SessionLocal
+from src.models.db import Workflow, WorkflowExecution, WorkflowStep
 
 # 配置日志
 logging.basicConfig(
@@ -380,7 +380,9 @@ def main() -> None:
     update_parser.add_argument("id", help="工作流ID")
     update_parser.add_argument("-n", "--name", help="工作流名称")
     update_parser.add_argument("-d", "--description", help="工作流描述")
-    update_parser.add_argument("-s", "--status", choices=["active", "inactive", "archived"], help="工作流状态")
+    update_parser.add_argument(
+        "-s", "--status", choices=["active", "inactive", "archived"], help="工作流状态"
+    )
     update_parser.add_argument("--n8n-id", help="关联的n8n工作流ID")
     update_parser.set_defaults(func=update_workflow)
 

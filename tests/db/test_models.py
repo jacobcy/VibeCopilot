@@ -12,7 +12,7 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.db.models import Base, Epic, Label, Story, Task, task_label_association
+from src.models.db import Base, Epic, Label, Story, Task, task_label_association
 
 
 class TestModels(unittest.TestCase):

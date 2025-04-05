@@ -9,7 +9,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, ForeignKey, String, Table, Text
 from sqlalchemy.orm import relationship
 
-from . import Base
+from .base import Base
 
 # 任务标签关联表
 task_label = Table(
@@ -152,6 +152,9 @@ class Label(Base):
 
     # 关系
     tasks = relationship("Task", secondary=task_label, back_populates="labels")
+    workflows = relationship(
+        "Workflow", secondary="workflow_label_association", back_populates="labels"
+    )
 
     def to_dict(self):
         """转换为字典"""

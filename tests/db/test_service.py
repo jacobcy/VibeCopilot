@@ -10,8 +10,8 @@ import tempfile
 import unittest
 from datetime import datetime
 
-from src.db.models import Epic, Label, Story, Task
 from src.db.service import DatabaseService
+from src.models.db import Epic, Label, Story, Task
 
 
 class TestDatabaseService(unittest.TestCase):

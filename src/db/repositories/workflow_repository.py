@@ -8,14 +8,8 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db.models.roadmap import Label
-from src.db.models.workflow import (
-    Workflow,
-    WorkflowExecution,
-    WorkflowStep,
-    WorkflowStepExecution,
-)
 from src.db.repository import Repository
+from src.models.db import Label, Workflow, WorkflowExecution, WorkflowStep, WorkflowStepExecution
 
 
 class WorkflowRepository(Repository[Workflow]):
@@ -49,7 +43,9 @@ class WorkflowRepository(Repository[Workflow]):
         Returns:
             工作流对象或None
         """
-        return self.session.query(Workflow).filter(Workflow.n8n_workflow_id == n8n_workflow_id).first()
+        return (
+            self.session.query(Workflow).filter(Workflow.n8n_workflow_id == n8n_workflow_id).first()
+        )
 
     def get_active_workflows(self) -> List[Workflow]:
         """获取所有活跃的工作流

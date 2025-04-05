@@ -7,10 +7,10 @@
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Table, Text
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import relationship
 
-from . import Base
+from .base import Base
 
 # 工作流标签关联表
 workflow_label = Table(
@@ -38,7 +38,9 @@ class Workflow(Base):
 
     # 关系
     steps = relationship("WorkflowStep", back_populates="workflow", cascade="all, delete-orphan")
-    executions = relationship("WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan")
+    executions = relationship(
+        "WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan"
+    )
     labels = relationship("Label", secondary=workflow_label, back_populates="workflows")
 
     def to_dict(self):
@@ -87,7 +89,9 @@ class WorkflowStep(Base):
 
     # 关系
     workflow = relationship("Workflow", back_populates="steps")
-    executions = relationship("WorkflowStepExecution", back_populates="step", cascade="all, delete-orphan")
+    executions = relationship(
+        "WorkflowStepExecution", back_populates="step", cascade="all, delete-orphan"
+    )
 
     def to_dict(self):
         """转换为字典"""
@@ -135,7 +139,9 @@ class WorkflowExecution(Base):
 
     # 关系
     workflow = relationship("Workflow", back_populates="executions")
-    step_executions = relationship("WorkflowStepExecution", back_populates="workflow_execution", cascade="all, delete-orphan")
+    step_executions = relationship(
+        "WorkflowStepExecution", back_populates="workflow_execution", cascade="all, delete-orphan"
+    )
 
     def to_dict(self):
         """转换为字典"""
@@ -175,7 +181,9 @@ class WorkflowStepExecution(Base):
     __tablename__ = "workflow_step_executions"
 
     id = Column(String, primary_key=True)
-    workflow_execution_id = Column(String, ForeignKey("workflow_executions.id", ondelete="CASCADE"), nullable=False)
+    workflow_execution_id = Column(
+        String, ForeignKey("workflow_executions.id", ondelete="CASCADE"), nullable=False
+    )
     step_id = Column(String, ForeignKey("workflow_steps.id", ondelete="CASCADE"), nullable=False)
     status = Column(String, nullable=False)  # pending, running, completed, failed, skipped
     started_at = Column(DateTime, default=datetime.utcnow)

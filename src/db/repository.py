@@ -8,7 +8,7 @@ from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from sqlalchemy.orm import Session
 
-from .models import Base
+from src.models.db import Base
 
 # 定义泛型类型T，限制为Base的子类
 T = TypeVar("T", bound=Base)

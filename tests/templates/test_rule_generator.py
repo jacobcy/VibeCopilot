@@ -2,21 +2,18 @@
 规则生成器单元测试
 """
 
+import json
 import os
 import shutil
 import tempfile
 import unittest
 from datetime import datetime
 
+# 使用原始Pydantic模型来运行测试
+from src.models.rule import Rule, RuleType
+from src.models.template import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
 from src.templates.core.rule_generator import RuleGenerator
 from src.templates.core.template_engine import TemplateEngine
-from src.templates.models.rule import Rule, RuleType
-from src.templates.models.template import (
-    Template,
-    TemplateMetadata,
-    TemplateVariable,
-    TemplateVariableType,
-)
 
 
 class RuleGeneratorTests(unittest.TestCase):
@@ -210,8 +207,6 @@ alwaysApply: {{ always_apply|default(false) }}
         self.assertTrue(os.path.exists(output_path))
 
         # 验证JSON内容
-        import json
-
         rule_dict = json.loads(rule_json)
 
         self.assertEqual(rule_dict["name"], "测试规则JSON")

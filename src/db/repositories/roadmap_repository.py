@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db.models.roadmap import Epic, Label, Story, Task
 from src.db.repository import Repository
+from src.models.db import Epic, Label, Story, Task
 
 
 class EpicRepository(Repository[Epic]):
