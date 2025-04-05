@@ -2,10 +2,12 @@
 task_id: T-MM-01
 title: "模型统一迁移 - 更新导入路径"
 description: "将原有规则和模板的数据模型实现迁移到统一模型，第一阶段：更新导入路径"
-status: todo
+status: completed
 priority: P1
 created_at: 2024-06-01
+completed_at: 2024-06-01
 estimated_hours: 4
+actual_hours: 2
 assignees: ["jacobcy"]
 tags: ["refactoring", "model-migration"]
 ---

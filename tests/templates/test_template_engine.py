@@ -8,13 +8,8 @@ import tempfile
 import unittest
 from datetime import datetime
 
+from src.models.template import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
 from src.templates.core.template_engine import TemplateEngine
-from src.templates.models.template import (
-    Template,
-    TemplateMetadata,
-    TemplateVariable,
-    TemplateVariableType,
-)
 
 
 class TemplateEngineTests(unittest.TestCase):

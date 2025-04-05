@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db.models.template import Template, TemplateVariable
 from src.db.repository import Repository
+from src.models.db import Template, TemplateVariable
 
 
 class TemplateRepository(Repository[Template]):

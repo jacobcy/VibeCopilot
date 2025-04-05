@@ -8,15 +8,10 @@ import tempfile
 import unittest
 from datetime import datetime
 
+from src.models.rule import Rule, RuleType
+from src.models.template import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
 from src.templates.core.rule_generator import RuleGenerator
 from src.templates.core.template_engine import TemplateEngine
-from src.templates.models.rule import Rule, RuleType
-from src.templates.models.template import (
-    Template,
-    TemplateMetadata,
-    TemplateVariable,
-    TemplateVariableType,
-)
 
 
 class RuleGeneratorTests(unittest.TestCase):

@@ -12,7 +12,7 @@ from src.cli.commands.rule_command_utils import (
     prepare_variables,
     validate_single_rule,
 )
-from src.templates.models.template import Template
+from src.models.template import Template
 
 logger = logging.getLogger(__name__)
 
