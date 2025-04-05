@@ -15,8 +15,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from sqlalchemy.orm import Session
 
 from src.adapters.n8n_adapter import N8nAdapter
-from src.db.models.workflow import Workflow, WorkflowExecution, WorkflowStep
 from src.db.repositories.workflow_repository import WorkflowExecutionRepository, WorkflowRepository
+from src.models.db import Workflow, WorkflowExecution, WorkflowStep
 
 logger = logging.getLogger(__name__)
 
@@ -44,15 +44,16 @@ class StatusSyncAdapter:
         self.execution_repo = WorkflowExecutionRepository(db_session)
 
         # 初始化n8n适配器
-        self.n8n_adapter = n8n_adapter or N8nAdapter(
-            base_url=n8n_base_url, api_key=n8n_api_key
-        )
+        self.n8n_adapter = n8n_adapter or N8nAdapter(base_url=n8n_base_url, api_key=n8n_api_key)
 
         # 状态映射配置
         self.status_map = {
             "pending": {"n8n_workflow": "notification_workflow", "payload": {"status": "pending"}},
             "running": {"n8n_workflow": "execution_workflow", "payload": {"status": "running"}},
-            "completed": {"n8n_workflow": "completion_workflow", "payload": {"status": "completed"}},
+            "completed": {
+                "n8n_workflow": "completion_workflow",
+                "payload": {"status": "completed"},
+            },
             "failed": {"n8n_workflow": "failure_workflow", "payload": {"status": "failed"}},
         }
 
@@ -123,16 +124,22 @@ class StatusSyncAdapter:
             payload = self.status_map[status].get("payload", {}).copy()
 
             # 添加执行上下文到负载
-            payload.update({
-                "execution_id": execution.id,
-                "workflow_id": execution.workflow_id,
-                "workflow_name": workflow.name,
-                "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
-                "result": execution.result,
-                "error": execution.error,
-                "context": execution.context,
-            })
+            payload.update(
+                {
+                    "execution_id": execution.id,
+                    "workflow_id": execution.workflow_id,
+                    "workflow_name": workflow.name,
+                    "started_at": execution.started_at.isoformat()
+                    if execution.started_at
+                    else None,
+                    "completed_at": execution.completed_at.isoformat()
+                    if execution.completed_at
+                    else None,
+                    "result": execution.result,
+                    "error": execution.error,
+                    "context": execution.context,
+                }
+            )
 
             # 如果有n8n工作流ID，则触发对应的工作流
             if workflow.n8n_workflow_id and workflow_key:
@@ -160,15 +167,13 @@ class StatusSyncAdapter:
         """
         try:
             # 获取所有状态为pending或running的执行
-            pending_executions = self.execution_repo.filter(
-                status=["pending", "running"]
-            )
-            
+            pending_executions = self.execution_repo.filter(status=["pending", "running"])
+
             success_count = 0
             for execution in pending_executions:
                 if self.sync_execution_status(execution.id):
                     success_count += 1
-            
+
             return success_count
         except Exception as e:
             logger.exception(f"同步待处理执行状态失败: {str(e)}")
@@ -290,7 +295,7 @@ class StatusSyncAdapter:
                     "n8n_workflow_url": f"{self.n8n_adapter.base_url}/workflow/{n8n_id}",
                     "config": n8n_workflow,
                 }
-                
+
                 self.workflow_repo.create(workflow_data)
                 import_count += 1
                 logger.info(f"成功导入n8n工作流: {n8n_id}")
