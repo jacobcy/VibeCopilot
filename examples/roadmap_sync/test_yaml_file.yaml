@@ -1,0 +1,58 @@
+# 这是一个包含常见错误的测试YAML文件
+# 目的是用于测试YAML验证工具的功能
+
+# 错误1: 缺少必填字段"description"
+title: 测试路线图
+# description: 这是一个测试路线图
+
+# 错误2: 缺少可选字段
+# version: 1.0
+# author: Tester
+
+# 错误3: 错误的状态值
+theme: test-theme
+last_updated: 2024-06-01
+
+# 错误4: 里程碑缺少必填字段
+milestones:
+  - title: 里程碑1
+    # 缺少description
+    status: invalid_status  # 错误的状态值，应为 planned, in_progress, completed
+    progress: 120  # 错误的进度值，应为0-100
+    start_date: 2024-01-01
+    end_date: 2024-02-01
+  - # 错误: 空对象
+  - title: 里程碑2
+    description: 这是第二个里程碑
+    # 状态缺失
+
+# 错误5: 史诗列表为空
+epics: []
+
+# 错误6: 用户故事包含无效关联
+stories:
+  - title: 故事1
+    description: 这是第一个故事
+    status: completed
+    milestone: 不存在的里程碑  # 关联的里程碑不存在
+    epic: 不存在的史诗  # 关联的史诗不存在
+  - title: 故事2
+    description: 这是第二个故事
+    progress: 不是数字  # 进度不是数字
+
+# 错误7: 任务包含无效字段值
+tasks:
+  - title: 任务1
+    description: 这是第一个任务
+    status: todo
+    priority: P4  # 无效的优先级，应为 P0, P1, P2, P3
+    milestone: 里程碑1
+    epic: 不存在的史诗
+    story: 故事1
+    assignee: 用户1
+    estimate: 2d
+  - title: 任务2
+    # 缺少description
+    labels:
+      - bug
+      - frontend

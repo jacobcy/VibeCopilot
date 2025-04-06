@@ -27,7 +27,7 @@ ENV_FILE="config/default/.env.notion"
 if [ ! -f "$ENV_FILE" ]; then
     echo -e "${YELLOW}警告: 找不到环境变量配置文件 $ENV_FILE${NC}"
     echo -e "${BLUE}创建示例配置文件 $ENV_FILE.example 供参考${NC}"
-    
+
     # 如果示例文件不存在，创建一个
     EXAMPLE_FILE="config/default/.env.notion.example"
     if [ ! -f "$EXAMPLE_FILE" ]; then
@@ -50,7 +50,7 @@ OUTPUT_FILENAME=notion_export.md
 OUTPUT_DIR=exports
 EOF
     fi
-    
+
     echo -e "${YELLOW}请先配置 $ENV_FILE 文件，参考 $ENV_FILE.example${NC}"
     echo -e "${BLUE}配置示例:${NC}"
     echo -e "${BLUE}NOTION_API_KEY=your_notion_api_key_here${NC}"

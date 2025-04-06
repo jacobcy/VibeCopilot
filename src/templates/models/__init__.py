@@ -1,26 +1,18 @@
-"""规则模板模型定义 (已重定向)
+"""
+模板模型包 (重定向)
 
-注意: 模板相关模型已移至src.models.db目录
-请使用以下导入替代:
-- from src.models.db import Template, TemplateVariable, TemplateMetadata
-- from src.models.db import Rule, RuleMetadata
-- from src.models.db import RuleType, TemplateVariableType
+注意: 此包中的模型已迁移到src.models包
+请使用以下导入方式替代本包导入:
+- 使用 from src.models.template import Template 替代 from src.templates.models.template import Template
+- 使用 from src.models.rule import Rule 替代 from src.templates.models.rule import Rule
+
+此包内的模块仅为兼容性保留，将在未来版本中移除
 """
 
-# 重定向导入
-from src.models.db import (
-    BaseMetadata,
-    Rule,
-    RuleApplication,
-    RuleDependency,
-    RuleMetadata,
-    RuleType,
-    Template,
-    TemplateMetadata,
-    TemplateRepository,
-    TemplateVariable,
-    TemplateVariableType,
-)
+from src.models.rule import Rule
+
+# 为兼容性保留，从新位置重新导出
+from src.models.template import Template, TemplateMetadata, TemplateRepository, TemplateVariable
 
 __all__ = [
     "Template",
@@ -28,10 +20,4 @@ __all__ = [
     "TemplateMetadata",
     "TemplateRepository",
     "Rule",
-    "RuleMetadata",
-    "RuleApplication",
-    "RuleDependency",
-    "RuleType",
-    "TemplateVariableType",
-    "BaseMetadata",
 ]

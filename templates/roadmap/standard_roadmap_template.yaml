@@ -1,0 +1,272 @@
+# ================================================
+# VibeCopilot 标准路线图YAML模板
+# ================================================
+#
+# 本模板提供了创建符合VibeCopilot系统要求的路线图YAML文件的标准格式
+# 请按照模板格式创建路线图，确保必填字段完整，遵循字段格式要求
+#
+# 使用说明:
+# 1. 复制本模板并根据实际需求修改
+# 2. 保留所有必填字段，可以增加可选字段
+# 3. 保持正确的缩进结构和数据类型
+# 4. 使用标准的状态值和优先级
+#
+# ID字段说明:
+# - 导入系统时会自动生成ID，无需手动指定
+# - 关联关系可以使用名称而非ID
+
+# ================================================
+# 路线图基本信息 (顶层字段)
+# ================================================
+
+# [必填] 路线图标题
+title: "标准路线图模板"
+
+# [必填] 路线图描述
+description: "这是VibeCopilot标准路线图模板，定义了路线图数据的标准格式与字段"
+
+# [可选] 版本号
+version: "1.0"
+
+# [可选] 作者
+author: "VibeCopilot团队"
+
+# [可选] 主题/GitHub项目ID
+# 用于GitHub同步，可以是GitHub项目的数字ID
+theme: "github-project-id"
+
+# [可选] 最后更新日期 (YYYY-MM-DD)
+last_updated: "2024-06-01"
+
+# ================================================
+# 里程碑列表
+# ================================================
+milestones:
+  # 里程碑1
+  - # [必填] 里程碑标题
+    title: "需求分析"
+
+    # [必填] 里程碑描述
+    description: "收集和分析用户需求，确定项目范围"
+
+    # [可选] 状态 (枚举值: planned, in_progress, completed)
+    status: "planned"
+
+    # [可选] 进度百分比 (0-100)
+    progress: 0
+
+    # [可选] 开始日期 (YYYY-MM-DD)
+    start_date: "2024-06-01"
+
+    # [可选] 结束日期 (YYYY-MM-DD)
+    end_date: "2024-06-15"
+
+    # [可选] 与此里程碑关联的史诗ID列表
+    epic_ids: []
+
+  # 里程碑2
+  - title: "设计阶段"
+    description: "设计系统架构和用户界面"
+    status: "planned"
+    progress: 0
+    start_date: "2024-06-16"
+    end_date: "2024-06-30"
+
+  # 里程碑3
+  - title: "开发阶段"
+    description: "实现系统功能和模块"
+    status: "planned"
+    progress: 0
+    start_date: "2024-07-01"
+    end_date: "2024-07-31"
+
+  # 里程碑4
+  - title: "测试阶段"
+    description: "进行系统测试和验收"
+    status: "planned"
+    progress: 0
+    start_date: "2024-08-01"
+    end_date: "2024-08-15"
+
+  # 里程碑5
+  - title: "发布阶段"
+    description: "系统部署和上线"
+    status: "planned"
+    progress: 0
+    start_date: "2024-08-16"
+    end_date: "2024-08-31"
+
+# ================================================
+# 史诗列表
+# ================================================
+epics:
+  # 史诗1
+  - # [必填] 史诗标题
+    title: "需求收集"
+
+    # [必填] 史诗描述
+    description: "收集和整理用户需求"
+
+    # [可选] 状态 (枚举值: planned, in_progress, completed)
+    status: "planned"
+
+    # [可选] 进度百分比 (0-100)
+    progress: 0
+
+  # 史诗2
+  - title: "系统架构设计"
+    description: "设计整体系统架构和技术选型"
+    status: "planned"
+    progress: 0
+
+  # 史诗3
+  - title: "核心功能开发"
+    description: "实现系统的核心功能模块"
+    status: "planned"
+    progress: 0
+
+  # 史诗4
+  - title: "测试与质量保障"
+    description: "确保系统质量和稳定性"
+    status: "planned"
+    progress: 0
+
+  # 史诗5
+  - title: "部署与运维"
+    description: "系统部署和运维支持"
+    status: "planned"
+    progress: 0
+
+# ================================================
+# 用户故事列表
+# ================================================
+stories:
+  # 故事1
+  - # [必填] 故事标题
+    title: "用户注册"
+
+    # [必填] 故事描述
+    description: "作为新用户，我希望能够注册账号，以便使用系统功能"
+
+    # [可选] 状态 (枚举值: planned, in_progress, completed)
+    status: "planned"
+
+    # [可选] 进度百分比 (0-100)
+    progress: 0
+
+    # [可选] 关联的里程碑标题
+    milestone: "开发阶段"
+
+    # [可选] 关联的史诗标题
+    epic: "核心功能开发"
+
+  # 故事2
+  - title: "用户登录"
+    description: "作为注册用户，我希望能够登录系统，以便访问我的账户"
+    status: "planned"
+    progress: 0
+    milestone: "开发阶段"
+    epic: "核心功能开发"
+
+  # 故事3
+  - title: "用户资料管理"
+    description: "作为登录用户，我希望能够查看和编辑我的个人资料"
+    status: "planned"
+    progress: 0
+    milestone: "开发阶段"
+    epic: "核心功能开发"
+
+# ================================================
+# 任务列表
+# ================================================
+tasks:
+  # 任务1
+  - # [必填] 任务标题
+    title: "设计数据库模型"
+
+    # [必填] 任务描述
+    description: "设计和实现用户相关的数据库模型"
+
+    # [可选] 状态 (枚举值: todo, in_progress, completed)
+    status: "todo"
+
+    # [可选] 优先级 (枚举值: P0, P1, P2, P3)
+    priority: "P1"
+
+    # [可选] 关联的里程碑标题
+    milestone: "设计阶段"
+
+    # [可选] 关联的史诗标题
+    epic: "系统架构设计"
+
+    # [可选] 关联的故事标题
+    story: "用户注册"
+
+    # [可选] 任务负责人
+    assignee: "开发者1"
+
+    # [可选] 预估工时（小时）
+    estimate: "2d"
+
+    # [可选] 标签列表
+    labels: ["数据库", "设计"]
+
+  # 任务2
+  - title: "实现用户注册API"
+    description: "开发用户注册的后端API接口"
+    status: "todo"
+    priority: "P1"
+    milestone: "开发阶段"
+    epic: "核心功能开发"
+    story: "用户注册"
+    assignee: "开发者2"
+    estimate: "3d"
+    labels: ["后端", "API"]
+
+  # 任务3
+  - title: "实现注册界面"
+    description: "设计和实现用户注册的前端界面"
+    status: "todo"
+    priority: "P1"
+    milestone: "开发阶段"
+    epic: "核心功能开发"
+    story: "用户注册"
+    assignee: "开发者3"
+    estimate: "2d"
+    labels: ["前端", "UI"]
+
+  # 任务4
+  - title: "编写单元测试"
+    description: "为用户注册功能编写单元测试"
+    status: "todo"
+    priority: "P2"
+    milestone: "测试阶段"
+    epic: "测试与质量保障"
+    story: "用户注册"
+    assignee: "测试人员1"
+    estimate: "1d"
+    labels: ["测试", "单元测试"]
+
+  # 任务5
+  - title: "编写集成测试"
+    description: "为用户注册功能编写集成测试"
+    status: "todo"
+    priority: "P2"
+    milestone: "测试阶段"
+    epic: "测试与质量保障"
+    story: "用户注册"
+    assignee: "测试人员2"
+    estimate: "1d"
+    labels: ["测试", "集成测试"]
+
+# ================================================
+# 注意事项:
+# ================================================
+# 1. ID字段会在导入时自动生成，无需手动指定
+# 2. 关联关系可使用名称引用（如milestone, epic, story）
+# 3. 日期格式必须为ISO格式：YYYY-MM-DD
+# 4. 状态字段必须使用指定的枚举值
+#    - 里程碑/史诗/故事: planned, in_progress, completed
+#    - 任务: todo, in_progress, completed
+# 5. 优先级必须使用指定的枚举值: P0, P1, P2, P3
+# 6. 进度值必须是0-100之间的整数

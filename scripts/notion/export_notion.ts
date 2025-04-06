@@ -78,7 +78,7 @@ function validateConfig(config: NotionExportConfig): void {
     if (!config.pageId) {
         throw new Error("Invalid configuration: pageId is required");
     }
-    
+
     // 注意这里不清理ID，因为我们在exportNotionPage函数中处理
     if (!/^[a-f0-9]{32}$/.test(config.pageId.replace(/[\s-]/g, ''))) {
         console.warn(`警告: 页面ID格式可能不正确: ${config.pageId}`);
@@ -96,11 +96,11 @@ function extractSubpageIds(content: string): string[] {
     const regex = /\[.*?\]\(([a-f0-9]{32})\)/g;
     const matches = [];
     let match;
-    
+
     while ((match = regex.exec(content)) !== null) {
-        matches.push(match[1]); 
+        matches.push(match[1]);
     }
-    
+
     return matches;
 }
 
@@ -123,8 +123,8 @@ interface ExportResult {
  * @throws {Error} 如果导出失败
  */
 async function exportNotionPageRecursive(
-    config: NotionExportConfig, 
-    currentDepth: number = 0, 
+    config: NotionExportConfig,
+    currentDepth: number = 0,
     processedIds: Set<string> = new Set<string>()
 ): Promise<void> {
     // 防止重复处理同一页面（处理循环引用）
@@ -132,40 +132,40 @@ async function exportNotionPageRecursive(
         console.log(`跳过已处理的页面: ${config.pageId}`);
         return;
     }
-    
+
     // 记录当前页面ID为已处理
     processedIds.add(config.pageId);
-    
+
     // 检查是否超过最大深度（如果设置了）
     if (config.maxDepth && currentDepth > config.maxDepth) {
         console.log(`达到最大递归深度 ${config.maxDepth}，停止递归`);
         return;
     }
-    
+
     console.log(`导出页面 (深度 ${currentDepth}): ${config.pageId}`);
-    
+
     // 导出当前页面
     const result = await exportSinglePage(config);
-    
+
     // 如果启用了递归导出
     if (config.recursive && result) {
         // 从原始数据中提取子页面ID
         const subpageIds = extractSubpageIds(result.rawData || result.content);
-        
+
         if (subpageIds.length > 0) {
             console.log(`发现 ${subpageIds.length} 个子页面: ${subpageIds.join(', ')}`);
-            
+
             // 递归导出每个子页面
             for (const subpageId of subpageIds) {
                 console.log(`处理子页面: ${subpageId}`);
-                
+
                 // 为子页面创建新的配置
                 const subpageConfig: NotionExportConfig = {
                     ...config,
                     pageId: subpageId,
                     outputFilename: `${subpageId}.md` // 使用页面ID作为文件名
                 };
-                
+
                 try {
                     // 递归导出子页面
                     await exportNotionPageRecursive(subpageConfig, currentDepth + 1, processedIds);
@@ -194,11 +194,11 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
         // 处理页面ID
         // Notion API要求页面ID不带连字符，但在调用时会自动添加连字符
         const cleanPageId = config.pageId.replace(/[\s-]/g, '');
-        
+
         console.log(`原始页面ID: ${config.pageId}`);
         console.log(`处理后的页面ID: ${cleanPageId}`);
         console.log(`尝试获取Notion页面内容...`);
-        
+
         // 更新配置中的页面ID
         config.pageId = cleanPageId;
 
@@ -214,26 +214,26 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
 
         // 使用NotionConverter API
         const converter = new NotionConverter(notion);
-        
+
         // 创建一个导出器，将内容写入文件并返回内容供递归处理
         let exportedContent: any = null;
         let rawData: any = null;
-        
+
         const markdownExporter = {
             export: async (data: any): Promise<void> => {
                 // 保存原始数据用于子页面提取
                 rawData = data;
-                
+
                 // 尝试使用默认渲染器生成Markdown
                 let markdown = '';
-                
+
                 if (data.renderer && typeof data.renderer.output === 'string') {
                     markdown = data.renderer.output;
                 } else if (data.output && typeof data.output === 'string') {
                     markdown = data.output;
                 } else {
                     console.warn('警告: 无法找到渲染后的Markdown内容，尝试手动构建');
-                    
+
                     // 手动构建简单的Markdown
                     try {
                         markdown = convertToMarkdown(data);
@@ -243,16 +243,16 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
                         markdown = JSON.stringify(data, null, 2);
                     }
                 }
-                
+
                 // 保存内容用于返回
                 exportedContent = markdown;
-                
+
                 // 写入文件
                 await fs.writeFile(outputPath, markdown, 'utf-8');
                 console.log(`成功导出到 ${outputPath}`);
             }
         };
-        
+
         /**
          * 手动将Notion数据转换为Markdown
          * @param data - Notion数据
@@ -260,7 +260,7 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
          */
         function convertToMarkdown(data: any): string {
             let markdown = '';
-            
+
             // 如果有页面标题，添加为一级标题
             if (data.pageId && data.blockTree && data.blockTree.properties && data.blockTree.properties.title) {
                 const titleBlock = data.blockTree.properties.title;
@@ -269,13 +269,13 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
                     markdown += `# ${titleText}\n\n`;
                 }
             }
-            
+
             // 递归处理块
             function processBlocks(blocks: any[]) {
                 if (!blocks || !Array.isArray(blocks)) return '';
-                
+
                 let result = '';
-                
+
                 for (const block of blocks) {
                     // 根据块类型处理
                     switch (block.type) {
@@ -326,22 +326,22 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
                                 result += `[Unsupported block type: ${block.type}]\n\n`;
                             }
                     }
-                    
+
                     // 如果块有子块，递归处理
                     if (block.children && Array.isArray(block.children) && block.children.length > 0) {
                         result += processBlocks(block.children);
                     }
                 }
-                
+
                 return result;
             }
-            
+
             // 处理段落
             function processParagraph(block: any): string {
                 if (!block.paragraph) return '';
                 return processRichText(block.paragraph.rich_text || block.paragraph.text || []);
             }
-            
+
             // 处理标题
             function processHeading(block: any, level: number): string {
                 const headingKey = `heading_${level}`;
@@ -349,14 +349,14 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
                 const prefix = '#'.repeat(level) + ' ';
                 return prefix + processRichText(block[headingKey].rich_text || block[headingKey].text || []);
             }
-            
+
             // 处理富文本
             function processRichText(richTextArray: any[]): string {
                 if (!richTextArray || !Array.isArray(richTextArray)) return '';
-                
+
                 return richTextArray.map(textObj => {
                     let content = textObj.plain_text || textObj.text?.content || '';
-                    
+
                     // 应用文本样式
                     if (textObj.annotations) {
                         if (textObj.annotations.bold) content = `**${content}**`;
@@ -365,49 +365,49 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
                         if (textObj.annotations.code) content = `\`${content}\``;
                         if (textObj.annotations.underline) content = `<u>${content}</u>`;
                     }
-                    
+
                     // 处理链接
                     if (textObj.href || textObj.text?.link) {
                         const link = textObj.href || textObj.text.link.url;
                         content = `[${content}](${link})`;
                     }
-                    
+
                     return content;
                 }).join('');
             }
-            
+
             // 处理无序列表项
             function processBulletedListItem(block: any): string {
                 if (!block.bulleted_list_item) return '';
                 return `- ${processRichText(block.bulleted_list_item.rich_text || block.bulleted_list_item.text || [])}`;
             }
-            
+
             // 处理有序列表项
             function processNumberedListItem(block: any): string {
                 if (!block.numbered_list_item) return '';
                 return `1. ${processRichText(block.numbered_list_item.rich_text || block.numbered_list_item.text || [])}`;
             }
-            
+
             // 处理待办事项
             function processToDo(block: any): string {
                 if (!block.to_do) return '';
                 const checkbox = block.to_do.checked ? '[x]' : '[ ]';
                 return `${checkbox} ${processRichText(block.to_do.rich_text || block.to_do.text || [])}`;
             }
-            
+
             // 处理折叠块
             function processToggle(block: any): string {
                 if (!block.toggle) return '';
                 return `<details>\n<summary>${processRichText(block.toggle.rich_text || block.toggle.text || [])}</summary>\n\n${block.children ? processBlocks(block.children) : ''}\n</details>`;
             }
-            
+
             // 处理子页面
             function processChildPage(block: any): string {
                 const pageTitle = block.child_page?.title || 'Untitled';
                 const pageId = block.id;
                 return `[📏 ${pageTitle}](${pageId})`;
             }
-            
+
             // 处理代码块
             function processCode(block: any): string {
                 if (!block.code) return '';
@@ -415,25 +415,25 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
                 const code = processRichText(block.code.rich_text || block.code.text || []);
                 return `\`\`\`${language}\n${code}\n\`\`\``;
             }
-            
+
             // 处理引用
             function processQuote(block: any): string {
                 if (!block.quote) return '';
                 return `> ${processRichText(block.quote.rich_text || block.quote.text || [])}`;
             }
-            
+
             // 处理提示块
             function processCallout(block: any): string {
                 if (!block.callout) return '';
                 const emoji = block.callout.icon?.emoji || '';
                 return `> ${emoji} ${processRichText(block.callout.rich_text || block.callout.text || [])}`;
             }
-            
+
             // 处理主要内容
             if (data.blockTree && data.blockTree.blocks) {
                 markdown += processBlocks(data.blockTree.blocks);
             }
-            
+
             return markdown;
         }
 
@@ -453,7 +453,7 @@ async function exportSinglePage(config: NotionExportConfig): Promise<ExportResul
             return { content: exportedContent || '', rawData }; // 返回导出的内容和原始数据
         } catch (conversionError) {
             console.error(`转换过程中出错:`, conversionError);
-            
+
             // 尝试使用另一种格式的页面ID
             try {
                 // 尝试添加连字符格式
@@ -489,7 +489,7 @@ async function exportNotionPage(config: NotionExportConfig): Promise<void> {
     try {
         validateEnvironment();
         validateConfig(config);
-        
+
         if (config.recursive) {
             console.log(`启用递归导出，最大深度: ${config.maxDepth || '无限制'}`);
             await exportNotionPageRecursive(config);

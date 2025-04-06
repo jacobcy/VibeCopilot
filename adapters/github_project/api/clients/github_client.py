@@ -221,12 +221,26 @@ class GitHubClientBase:
             raise
 
 
+class GitHubClient(GitHubClientBase):
+    """GitHub API客户端，继承基类功能，可扩展特定功能."""
+
+    def __init__(self, token: Optional[str] = None, base_url: str = "https://api.github.com"):
+        """初始化GitHub API客户端.
+
+        Args:
+            token: GitHub个人访问令牌，如果未提供，将从环境变量获取
+            base_url: GitHub API的基础URL
+        """
+        super().__init__(token, base_url)
+        self.logger = logging.getLogger(__name__)
+
+
 if __name__ == "__main__":
     # 配置日志
     logging.basicConfig(level=logging.DEBUG)
 
     # 简单的使用示例
-    client = GitHubClientBase()
+    client = GitHubClient()
     try:
         # 获取当前用户信息
         user_info = client.get("user")

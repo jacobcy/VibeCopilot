@@ -104,3 +104,52 @@ MIT
 ## 贡献
 
 欢迎提交问题和合并请求。
+
+## LangChain解析器
+
+VibeCopilot现在包含一个强大的LangChain解析器，支持文档知识化处理和基础内存功能。
+
+### 主要功能
+
+- 文档加载和分割
+- 向量化存储与检索
+- 知识实体和关系提取
+- 知识图谱构建
+
+### 使用方法
+
+1. **基本用法**
+
+   使用CLI命令导入文档:
+
+   ```bash
+   python -m adapters.basic_memory.cli import langchain ./docs
+   ```
+
+2. **高级选项**
+
+   自定义数据库路径和模型:
+
+   ```bash
+   python -m adapters.basic_memory.cli import langchain ./docs \
+     --db ./knowledge.db \
+     --model gpt-4
+   ```
+
+3. **导出知识**
+
+   将处理结果导出到Obsidian:
+
+   ```bash
+   python -m adapters.basic_memory.cli export ./knowledge.db --format obsidian
+   ```
+
+### 开发说明
+
+LangChain解析器位于`adapters/basic_memory/parsers/langchain_parser.py`，它提供了一个简单的接口来处理文档并提取结构化知识。
+
+要扩展功能，请完善以下模块:
+
+- `document_loader.py`: 文档加载和分割
+- `knowledge_extractor.py`: 知识提取
+- `vector_store.py`: 向量存储管理
