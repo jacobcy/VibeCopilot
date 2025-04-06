@@ -19,8 +19,8 @@ src/roadmap/
 │   └── roadmap_service.py      # 综合服务
 └── sync/                       # 同步功能
     ├── __init__.py             # 同步模块接口
-    ├── github.py               # GitHub同步
-    └── yaml.py                 # YAML文件同步
+    ├── github_sync.py          # GitHub同步
+    └── yaml_sync.py            # YAML文件同步
 ```
 
 ## 模块职责
@@ -43,8 +43,8 @@ src/roadmap/
 
 同步模块处理与外部系统的数据交换：
 
-1. **GitHubSyncService** (`github.py`): 处理路线图数据与GitHub项目的同步
-2. **YamlSyncService** (`yaml.py`): 处理路线图数据与YAML文件的导入导出
+1. **GitHubSyncService** (`github_sync.py`): 处理路线图数据与GitHub项目的同步
+2. **YamlSyncService** (`yaml_sync.py`): 处理路线图数据与YAML文件的导入导出
 
 ## 优点
 
