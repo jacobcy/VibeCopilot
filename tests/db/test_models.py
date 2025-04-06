@@ -12,7 +12,7 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.models.db import Base, Epic, Label, Story, Task, task_label_association
+from src.models.db import Base, Epic, Story, Task
 
 
 class TestModels(unittest.TestCase):
@@ -104,32 +104,6 @@ class TestModels(unittest.TestCase):
         self.assertEqual(saved_task.name, "测试Task")
         self.assertEqual(saved_task.story_id, "S1001")
         self.assertEqual(saved_task.story.name, "测试Story")
-
-    def test_label_association(self):
-        """测试Task和Label的多对多关联"""
-        # 创建Labels
-        label1 = Label(id="L1001", name="Bug")
-        label2 = Label(id="L1002", name="Feature")
-
-        # 创建Task
-        task = Task(id="T1001", name="测试Task")
-
-        # 关联Labels
-        task.labels.append(label1)
-        task.labels.append(label2)
-
-        # 添加到会话并提交
-        self.session.add_all([label1, label2, task])
-        self.session.commit()
-
-        # 查询
-        saved_task = self.session.query(Task).filter_by(id="T1001").first()
-
-        # 断言
-        self.assertIsNotNone(saved_task)
-        self.assertEqual(len(saved_task.labels), 2)
-        self.assertEqual(saved_task.labels[0].name, "Bug")
-        self.assertEqual(saved_task.labels[1].name, "Feature")
 
     def test_cascading_delete(self):
         """测试级联删除"""

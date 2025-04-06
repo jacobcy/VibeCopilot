@@ -11,7 +11,7 @@ import unittest
 from datetime import datetime
 
 from src.db.service import DatabaseService
-from src.models.db import Epic, Label, Story, Task
+from src.models.db import Epic, Story, Task
 
 
 class TestDatabaseService(unittest.TestCase):
@@ -100,10 +100,6 @@ class TestDatabaseService(unittest.TestCase):
         story_data = {"name": "测试Story"}
         story = self.db_service.create_story(story_data)
 
-        # 创建Label
-        label_data = {"name": "Bug"}
-        label = self.db_service.create_label(label_data)
-
         # 创建Task
         task_data = {
             "name": "测试Task",
@@ -111,7 +107,7 @@ class TestDatabaseService(unittest.TestCase):
             "status": "todo",
             "story_id": story.id,
         }
-        task = self.db_service.create_task(task_data, [label.id])
+        task = self.db_service.create_task(task_data)
 
         # 获取Task
         retrieved_task = self.db_service.get_task(task.id)
@@ -120,8 +116,6 @@ class TestDatabaseService(unittest.TestCase):
         self.assertIsNotNone(retrieved_task)
         self.assertEqual(retrieved_task.name, "测试Task")
         self.assertEqual(retrieved_task.story_id, story.id)
-        self.assertEqual(len(retrieved_task.labels), 1)
-        self.assertEqual(retrieved_task.labels[0].name, "Bug")
 
         # 更新Task
         update_data = {"status": "in_progress"}

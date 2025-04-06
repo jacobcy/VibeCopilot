@@ -13,12 +13,12 @@ from sqlalchemy.orm import relationship
 from .base import Base
 
 # 工作流标签关联表
-workflow_label = Table(
-    "workflow_label_association",
-    Base.metadata,
-    Column("workflow_id", String, ForeignKey("workflows.id", ondelete="CASCADE")),
-    Column("label_id", String, ForeignKey("labels.id", ondelete="CASCADE")),
-)
+# workflow_label = Table(
+#     "workflow_label_association",
+#     Base.metadata,
+#     Column("workflow_id", String, ForeignKey("workflows.id", ondelete="CASCADE")),
+#     Column("label_id", String, ForeignKey("labels.id", ondelete="CASCADE")),
+# )
 
 
 class Workflow(Base):
@@ -41,7 +41,8 @@ class Workflow(Base):
     executions = relationship(
         "WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan"
     )
-    labels = relationship("Label", secondary=workflow_label, back_populates="workflows")
+    # 移除标签关系
+    # labels = relationship("Label", secondary=workflow_label, back_populates="workflows")
 
     def to_dict(self):
         """转换为字典"""
@@ -55,7 +56,8 @@ class Workflow(Base):
             "n8n_workflow_id": self.n8n_workflow_id,
             "n8n_workflow_url": self.n8n_workflow_url,
             "config": self.config,
-            "labels": [label.name for label in self.labels] if self.labels else [],
+            # 移除标签属性
+            # "labels": [label.name for label in self.labels] if self.labels else [],
         }
 
     @classmethod
