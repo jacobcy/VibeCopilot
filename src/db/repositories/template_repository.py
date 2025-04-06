@@ -1,7 +1,7 @@
 """
-模板数据访问对象模块
+模板仓库模块
 
-提供Template和TemplateVariable等实体的数据访问接口。
+提供Template和TemplateVariable数据访问实现，使用统一的Repository模式。
 """
 
 import uuid
@@ -14,7 +14,7 @@ from src.models.db import Template, TemplateVariable
 
 
 class TemplateRepository(Repository[Template]):
-    """Template仓库"""
+    """Template仓库类"""
 
     def __init__(self, session: Session):
         """初始化Template仓库
@@ -25,7 +25,7 @@ class TemplateRepository(Repository[Template]):
         super().__init__(session, Template)
 
     def get_by_name(self, name: str) -> Optional[Template]:
-        """通过名称获取模板
+        """根据名称获取模板
 
         Args:
             name: 模板名称
@@ -35,88 +35,70 @@ class TemplateRepository(Repository[Template]):
         """
         return self.session.query(Template).filter(Template.name == name).first()
 
-    def search(
-        self, query: Optional[str] = None, tags: Optional[List[str]] = None
-    ) -> List[Template]:
-        """搜索模板
+    def get_by_type(self, template_type: str) -> List[Template]:
+        """根据类型获取模板
 
         Args:
-            query: 搜索关键词
+            template_type: 模板类型
+
+        Returns:
+            Template对象列表
+        """
+        return self.session.query(Template).filter(Template.type == template_type).all()
+
+    def search_by_tags(self, tags: List[str]) -> List[Template]:
+        """根据标签搜索模板
+
+        Args:
             tags: 标签列表
 
         Returns:
-            匹配的模板列表
+            匹配的Template对象列表
         """
-        search_query = self.session.query(Template)
+        # 注意：因为tags存储为JSON字符串，这个实现需要根据实际情况调整
+        # 简化实现，实际使用时可能需要更复杂的JSON查询
+        templates = self.get_all()
+        if not tags:
+            return templates
 
-        # 添加关键词过滤
-        if query:
-            search_query = search_query.filter(
-                Template.name.ilike(f"%{query}%") | Template.description.ilike(f"%{query}%")
-            )
-
-        # 获取所有结果
-        templates = search_query.all()
-
-        # 如果需要根据标签过滤，则在Python中过滤
-        # 这是因为我们将标签存储为JSON，无法在SQL层面直接过滤
-        if tags and len(tags) > 0:
+        results = []
+        for template in templates:
             import json
 
-            filtered_templates = []
-            for template in templates:
-                if template.tags:
-                    template_tags = json.loads(template.tags)
-                    # 如果模板的标签与搜索标签有交集，则添加到结果中
-                    if any(tag in template_tags for tag in tags):
-                        filtered_templates.append(template)
-            return filtered_templates
+            template_tags = json.loads(template.tags) if template.tags else []
+            if any(tag in template_tags for tag in tags):
+                results.append(template)
 
-        return templates
+        return results
 
-    def create(self, data: Dict[str, Any]) -> Template:
-        """创建模板
+    def create_template(
+        self, template_data: Dict[str, Any], variables: List[Dict[str, Any]]
+    ) -> Template:
+        """创建模板及其变量
 
         Args:
-            data: 模板数据
+            template_data: 模板数据
+            variables: 变量数据列表
 
         Returns:
-            创建的模板
+            创建的Template对象
         """
-        # 生成ID如果不存在
-        if not data.get("id"):
-            data["id"] = str(uuid.uuid4())
+        # 创建模板
+        template = self.create(template_data)
 
-        # 创建模板实例
-        template = Template.from_dict(data)
+        # 创建变量
+        var_repo = TemplateVariableRepository(self.session)
+        for var_data in variables:
+            var_data["template_id"] = template.id
+            variable = var_repo.create(var_data)
+            template.variables.append(variable)
 
-        # 处理变量
-        if "variables" in data and data["variables"]:
-            variable_repo = TemplateVariableRepository(self.session)
-            for var_data in data["variables"]:
-                # 生成变量ID如果不存在
-                if not var_data.get("id"):
-                    var_data["id"] = str(uuid.uuid4())
-
-                # 创建或获取变量
-                variable = variable_repo.get_by_id(var_data["id"])
-                if not variable:
-                    variable = variable_repo.create(var_data)
-                else:
-                    variable = variable_repo.update(var_data["id"], var_data)
-
-                # 添加到模板的变量列表
-                template.variables.append(variable)
-
-        # 保存模板
-        self.session.add(template)
         self.session.commit()
-
         return template
 
 
 class TemplateVariableRepository(Repository[TemplateVariable]):
-    """TemplateVariable仓库"""
+    """TemplateVariable仓库类"""
 
     def __init__(self, session: Session):
         """初始化TemplateVariable仓库
@@ -126,28 +108,33 @@ class TemplateVariableRepository(Repository[TemplateVariable]):
         """
         super().__init__(session, TemplateVariable)
 
-    def get_by_name(self, name: str) -> Optional[TemplateVariable]:
-        """通过名称获取模板变量
-
-        Args:
-            name: 变量名称
-
-        Returns:
-            TemplateVariable对象或None
-        """
-        return self.session.query(TemplateVariable).filter(TemplateVariable.name == name).first()
-
     def get_by_template(self, template_id: str) -> List[TemplateVariable]:
-        """获取指定模板的所有变量
+        """获取模板的所有变量
 
         Args:
             template_id: 模板ID
 
         Returns:
-            变量列表
+            TemplateVariable对象列表
         """
-        template = self.session.query(Template).filter(Template.id == template_id).first()
-        if not template:
-            return []
+        return (
+            self.session.query(TemplateVariable)
+            .filter(TemplateVariable.templates.any(id=template_id))
+            .all()
+        )
 
-        return template.variables
+    def get_by_name_and_template(self, name: str, template_id: str) -> Optional[TemplateVariable]:
+        """根据名称和模板ID获取变量
+
+        Args:
+            name: 变量名称
+            template_id: 模板ID
+
+        Returns:
+            TemplateVariable对象或None
+        """
+        return (
+            self.session.query(TemplateVariable)
+            .filter(TemplateVariable.name == name, TemplateVariable.templates.any(id=template_id))
+            .first()
+        )

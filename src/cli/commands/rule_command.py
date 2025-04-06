@@ -2,10 +2,16 @@
 规则管理命令处理器
 """
 
+import json
 import logging
-from typing import Any, Dict
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy.orm import Session
 
 from src.cli.base_command import BaseCommand
+from src.cli.command import Command
 from src.cli.commands.rule_command_handlers import (
     create_rule,
     delete_rule,
@@ -20,71 +26,242 @@ from src.cli.commands.rule_command_utils import convert_result, show_help
 from src.templates.core.rule_generator import RuleGenerator
 from src.templates.core.template_engine import TemplateEngine
 from src.templates.core.template_manager import TemplateManager
+from src.workflow.workflow_manager import get_session
 
 logger = logging.getLogger(__name__)
 
 
-class RuleCommand(BaseCommand):
+class RuleCommand(BaseCommand, Command):
     """规则管理命令处理器"""
 
     def __init__(self):
         super().__init__("rule", "规则管理命令")
         self.template_engine = TemplateEngine()
-        self.template_manager = TemplateManager()
+        # 获取数据库会话并使用它初始化TemplateManager
+        self.session = get_session()
+        self.template_manager = TemplateManager(session=self.session)
         self.rule_generator = RuleGenerator(template_engine=self.template_engine)
 
-    def setup_arguments(self, parser):
-        """设置命令参数"""
-        subparsers = parser.add_subparsers(dest="rule_action", help="规则操作")
+    # 实现新接口
+    @classmethod
+    def get_command(cls) -> str:
+        return "rule"
 
-        # create 命令
-        create_parser = subparsers.add_parser("create", help="创建新规则")
-        create_parser.add_argument("template_type", help="模板类型")
-        create_parser.add_argument("name", help="规则名称")
-        create_parser.add_argument("--template-dir", help="模板目录")
-        create_parser.add_argument("--output-dir", help="输出目录")
-        create_parser.add_argument("--vars", help="变量值（JSON格式）")
-        create_parser.add_argument("--interactive", action="store_true", help="使用交互模式")
+    @classmethod
+    def get_description(cls) -> str:
+        return "规则管理命令"
 
-        # list 命令
-        list_parser = subparsers.add_parser("list", help="列出规则")
-        list_parser.add_argument("--type", help="规则类型")
+    @classmethod
+    def get_help(cls) -> str:
+        return """
+        规则管理命令
 
-        # show 命令
-        show_parser = subparsers.add_parser("show", help="显示规则详情")
-        show_parser.add_argument("rule_id", help="规则ID")
+        用法:
+            rule list                  列出所有规则
+            rule list --type=core      列出特定类型的规则
+            rule show <rule_id>        显示规则详情
+            rule create <template_type> <name>  创建新规则
+            rule edit <rule_id>        编辑规则
+            rule delete <rule_id>      删除规则
+            rule validate <rule_id>    验证规则
+            rule export <rule_id>      导出规则
+            rule import <rule_file>    导入规则
 
-        # edit 命令
-        edit_parser = subparsers.add_parser("edit", help="编辑规则")
-        edit_parser.add_argument("rule_id", help="规则ID")
+        参数:
+            <rule_action>              规则操作(list/show/create/edit/delete/validate/export/import)
+            <rule_id>                  规则ID
+            <template_type>            模板类型
+            <name>                     规则名称
+            <rule_file>                规则文件路径
 
-        # delete 命令
-        delete_parser = subparsers.add_parser("delete", help="删除规则")
-        delete_parser.add_argument("rule_id", help="规则ID")
+        选项:
+            --type <type>              规则类型
+            --template-dir <dir>       模板目录
+            --output-dir <dir>         输出目录
+            --vars <json>              变量值（JSON格式）
+            --interactive              使用交互模式
+            --all                      处理所有规则
+        """
 
-        # validate 命令
-        validate_parser = subparsers.add_parser("validate", help="验证规则")
-        validate_parser.add_argument("rule_id", help="规则ID")
-        validate_parser.add_argument("--all", action="store_true", help="验证所有规则")
+    def parse_args(self, args: List[str]) -> Dict:
+        """解析命令参数"""
+        parsed = {"command": self.get_command()}
 
-        # export 命令
-        export_parser = subparsers.add_parser("export", help="导出规则")
-        export_parser.add_argument("rule_id", help="规则ID")
-        export_parser.add_argument("output_path", nargs="?", help="输出路径")
+        if not args:
+            parsed["rule_action"] = "list"
+            return parsed
 
-        # import 命令
-        import_parser = subparsers.add_parser("import", help="导入规则")
-        import_parser.add_argument("rule_file", help="规则文件路径")
+        # 处理规则操作
+        rule_action = args.pop(0)
+        parsed["rule_action"] = rule_action
 
-    def execute(self, args) -> Dict[str, Any]:
-        """执行命令"""
+        # 根据不同操作处理参数
+        if rule_action == "list":
+            # 处理list参数
+            self._parse_list_args(args, parsed)
+        elif rule_action == "show":
+            # 处理show参数
+            if args:
+                parsed["rule_id"] = args.pop(0)
+        elif rule_action == "create":
+            # 处理create参数
+            if len(args) >= 2:
+                parsed["template_type"] = args.pop(0)
+                parsed["name"] = args.pop(0)
+            # 处理选项
+            self._parse_create_options(args, parsed)
+        elif rule_action == "edit":
+            # 处理edit参数
+            if args:
+                parsed["rule_id"] = args.pop(0)
+        elif rule_action == "delete":
+            # 处理delete参数
+            if args:
+                parsed["rule_id"] = args.pop(0)
+        elif rule_action == "validate":
+            # 处理validate参数
+            if args and not args[0].startswith("--"):
+                parsed["rule_id"] = args.pop(0)
+            # 检查--all选项
+            if "--all" in args:
+                parsed["all"] = True
+                args.remove("--all")
+        elif rule_action == "export":
+            # 处理export参数
+            if args:
+                parsed["rule_id"] = args.pop(0)
+                if args:
+                    parsed["output_path"] = args.pop(0)
+        elif rule_action == "import":
+            # 处理import参数
+            if args:
+                parsed["rule_file"] = args.pop(0)
+
+        return parsed
+
+    def _parse_list_args(self, args: List[str], parsed: Dict) -> None:
+        """解析list命令的参数"""
+        # 处理--type选项
+        i = 0
+        while i < len(args):
+            if args[i] == "--type" and i + 1 < len(args):
+                parsed["type"] = args[i + 1]
+                i += 2
+            elif args[i].startswith("--type="):
+                parsed["type"] = args[i].split("=", 1)[1]
+                i += 1
+            else:
+                i += 1
+
+    def _parse_create_options(self, args: List[str], parsed: Dict) -> None:
+        """解析create命令的选项"""
+        i = 0
+        while i < len(args):
+            if args[i] == "--template-dir" and i + 1 < len(args):
+                parsed["template_dir"] = args[i + 1]
+                i += 2
+            elif args[i].startswith("--template-dir="):
+                parsed["template_dir"] = args[i].split("=", 1)[1]
+                i += 1
+            elif args[i] == "--output-dir" and i + 1 < len(args):
+                parsed["output_dir"] = args[i + 1]
+                i += 2
+            elif args[i].startswith("--output-dir="):
+                parsed["output_dir"] = args[i].split("=", 1)[1]
+                i += 1
+            elif args[i] == "--vars" and i + 1 < len(args):
+                parsed["vars"] = args[i + 1]
+                i += 2
+            elif args[i].startswith("--vars="):
+                parsed["vars"] = args[i].split("=", 1)[1]
+                i += 1
+            elif args[i] == "--interactive":
+                parsed["interactive"] = True
+                i += 1
+            else:
+                i += 1
+
+    def execute(self, parsed_args: Dict) -> None:
+        """执行命令 - 适配新接口"""
         # 处理字典参数
-        if isinstance(args, dict):
-            rule_action = args.get("rule_action")
-            show_help_flag = args.get("help", False)
+        if isinstance(parsed_args, dict):
+            rule_action = parsed_args.get("rule_action")
+            show_help_flag = parsed_args.get("help", False)
         else:
-            rule_action = getattr(args, "rule_action", None)
-            show_help_flag = getattr(args, "help", False)
+            return  # 不支持非字典参数
+
+        # 处理帮助
+        if show_help_flag:
+            result = show_help()
+        # 如果没有指定操作，默认为list
+        elif rule_action is None:
+            result = list_rules(self.template_manager, parsed_args)
+            result = convert_result(result)
+        # 处理具体操作
+        elif rule_action == "create":
+            result = create_rule(self.template_manager, self.rule_generator, parsed_args)
+            result = convert_result(result)
+        elif rule_action == "list":
+            result = list_rules(self.template_manager, parsed_args)
+            result = convert_result(result)
+        elif rule_action == "show":
+            result = show_rule(self.template_manager, parsed_args)
+            result = convert_result(result)
+        elif rule_action == "edit":
+            result = edit_rule(self.template_manager, parsed_args)
+            result = convert_result(result)
+        elif rule_action == "delete":
+            result = delete_rule(self.template_manager, parsed_args)
+            result = convert_result(result)
+        elif rule_action == "validate":
+            result = validate_rule(self.template_manager, parsed_args)
+            result = convert_result(result)
+        elif rule_action == "export":
+            result = export_rule(self.template_manager, parsed_args)
+            result = convert_result(result)
+        elif rule_action == "import":
+            result = import_rule(self.template_manager, parsed_args)
+            result = convert_result(result)
+        else:
+            logger.error("未知的规则操作: %s", rule_action)
+            result = {"success": False, "error": f"未知的规则操作: {rule_action}"}
+
+        # 格式化输出
+        if isinstance(result, dict):
+            if result.get("success", False):
+                # 输出结果
+                if "message" in result:
+                    print(result["message"])
+
+                # 处理数据
+                if "data" in result:
+                    data = result["data"]
+                    if isinstance(data, list):
+                        # 列表结果
+                        for item in data:
+                            if isinstance(item, dict) and "id" in item and "name" in item:
+                                print(f"{item['id']}: {item['name']}")
+                            else:
+                                print(item)
+                    elif isinstance(data, dict):
+                        # 字典结果
+                        if "content" in data:
+                            print(data["content"])
+                        else:
+                            print(json.dumps(data, indent=2, ensure_ascii=False))
+                    else:
+                        print(data)
+            else:
+                # 错误信息
+                print(f"错误: {result.get('error', '未知错误')}")
+        else:
+            logger.error("未知的命令结果格式: %s", type(result))
+
+    def _execute_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """命令执行的具体实现"""
+        # 处理字典参数
+        rule_action = args.get("rule_action")
+        show_help_flag = args.get("help", False)
 
         # 处理帮助
         if show_help_flag:
@@ -93,27 +270,25 @@ class RuleCommand(BaseCommand):
         # 如果没有指定操作，默认为list
         if rule_action is None:
             result = list_rules(self.template_manager, args)
-            return convert_result(result)
+            return result
 
         # 处理具体操作
         if rule_action == "create":
-            result = create_rule(self.template_manager, self.rule_generator, args)
+            return create_rule(self.template_manager, self.rule_generator, args)
         elif rule_action == "list":
-            result = list_rules(self.template_manager, args)
+            return list_rules(self.template_manager, args)
         elif rule_action == "show":
-            result = show_rule(self.template_manager, args)
+            return show_rule(self.template_manager, args)
         elif rule_action == "edit":
-            result = edit_rule(self.template_manager, args)
+            return edit_rule(self.template_manager, args)
         elif rule_action == "delete":
-            result = delete_rule(self.template_manager, args)
+            return delete_rule(self.template_manager, args)
         elif rule_action == "validate":
-            result = validate_rule(self.template_manager, args)
+            return validate_rule(self.template_manager, args)
         elif rule_action == "export":
-            result = export_rule(self.template_manager, args)
+            return export_rule(self.template_manager, args)
         elif rule_action == "import":
-            result = import_rule(self.template_manager, args)
+            return import_rule(self.template_manager, args)
         else:
             logger.error("未知的规则操作: %s", rule_action)
             return {"success": False, "error": f"未知的规则操作: {rule_action}"}
-
-        return convert_result(result)

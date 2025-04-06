@@ -10,12 +10,13 @@ import os
 from typing import Any, Dict, List
 
 from src.cli.base_command import BaseCommand
+from src.cli.command import Command
 from src.db.service import DatabaseService
 
 logger = logging.getLogger(__name__)
 
 
-class DatabaseCommand(BaseCommand):
+class DatabaseCommand(BaseCommand, Command):
     """数据库命令处理器"""
 
     def __init__(self):
@@ -298,6 +299,111 @@ class DatabaseCommand(BaseCommand):
         except Exception as e:
             logger.error(f"删除失败: {e}")
             return {"success": False, "error": f"删除失败: {e}"}
+
+    # 实现新接口
+    @classmethod
+    def get_command(cls) -> str:
+        return "db"
+
+    @classmethod
+    def get_description(cls) -> str:
+        return "管理数据库"
+
+    @classmethod
+    def get_help(cls) -> str:
+        return """
+        数据库管理命令
+
+        用法:
+            db init                    初始化数据库
+            db query --type=epic       查询所有epic
+            db query --type=epic --id=123  查询特定epic
+            db create --type=task --data='{"name":"测试任务"}'  创建任务
+            db update --type=task --id=123 --data='{"status":"completed"}'  更新任务
+            db delete --type=task --id=123  删除任务
+
+        参数:
+            action                     要执行的操作(init/query/create/update/delete)
+
+        选项:
+            --type <type>              实体类型(epic/story/task/label/template)
+            --id <id>                  实体ID
+            --data <json>              JSON格式的数据
+            --format <format>          输出格式(text/json)
+            --query <query>            查询字符串
+            --tags <tags>              标签列表，逗号分隔
+        """
+
+    def parse_args(self, args: List[str]) -> Dict:
+        """解析命令参数"""
+        parsed = {"command": self.get_command()}
+
+        if not args:
+            return parsed
+
+        # 处理action参数
+        parsed["action"] = args.pop(0)
+
+        # 处理选项
+        i = 0
+        while i < len(args):
+            arg = args[i]
+
+            if arg.startswith("--"):
+                option = arg[2:]  # 去掉--前缀
+
+                if "=" in option:
+                    # 处理--option=value形式
+                    option_name, option_value = option.split("=", 1)
+                    parsed[option_name] = option_value
+                    i += 1
+                elif i + 1 < len(args) and not args[i + 1].startswith("--"):
+                    # 处理--option value形式
+                    parsed[option] = args[i + 1]
+                    i += 2
+                else:
+                    # 处理--option形式（布尔选项）
+                    parsed[option] = True
+                    i += 1
+            else:
+                # 跳过未识别的参数
+                i += 1
+
+        return parsed
+
+    def execute(self, parsed_args: Dict) -> None:
+        """执行命令 - 适配新接口"""
+        result = super().execute(parsed_args)
+
+        # 如果是字典结果，格式化输出
+        if isinstance(result, dict):
+            if result.get("success", False):
+                # 成功结果
+                if "message" in result:
+                    print(result["message"])
+
+                # 输出数据
+                if "data" in result:
+                    data = result["data"]
+                    output_format = parsed_args.get("format", "text")
+
+                    if output_format == "json":
+                        # JSON格式输出
+                        print(json.dumps(data, indent=2, ensure_ascii=False))
+                    else:
+                        # 文本格式输出
+                        if isinstance(data, list):
+                            for item in data:
+                                print(json.dumps(item, ensure_ascii=False))
+                        else:
+                            print(json.dumps(data, indent=2, ensure_ascii=False))
+            else:
+                # 错误结果
+                print(f"错误: {result.get('error', '未知错误')}")
+
+                # 如果有帮助信息，显示
+                if "help" in result:
+                    print(result["help"])
 
 
 # 命令实例

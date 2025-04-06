@@ -5,7 +5,7 @@
 """
 
 from .base import Base, BaseMetadata, RuleType, TemplateVariableType
-from .roadmap import Epic, Label, Story, Task
+from .roadmap import Epic, Milestone, Roadmap, Story, Task
 from .rule import (
     Example,
     Rule,
@@ -40,7 +40,8 @@ __all__ = [
     "Epic",
     "Story",
     "Task",
-    "Label",
+    "Milestone",
+    "Roadmap",
     # Workflow models
     "Workflow",
     "WorkflowStep",

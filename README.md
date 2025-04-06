@@ -1,95 +1,106 @@
 # VibeCopilot
 
-智能协作开发助手，让开发流程更高效自然。
+VibeCopilot是一个AI辅助开发工具，致力于优化开发流程，提高开发效率。当前处于演示阶段，专注于核心功能的实现。
 
-## 数据库系统
+## 主要功能
 
-VibeCopilot使用统一的SQLite数据库，简化了数据访问和管理。
+- **规则系统**：定义和管理开发规则和最佳实践
+- **文档引擎**：管理、解析和检索项目文档
+- **工作流管理**：规范化开发流程和任务管理
+- **AI集成**：与OpenAI和Ollama等AI服务集成，增强开发能力
 
-### 使用方法
+## 快速开始
 
-```python
-from src.db.service import DatabaseService
-
-# 创建数据库服务实例
-db_service = DatabaseService()
-
-# 使用高级API
-epics = db_service.list_epics()
-templates = db_service.search_templates(query="用户界面")
-```
-
-### 命令行操作
-
-可以使用命令行工具管理数据库：
+1. 克隆项目
 
 ```bash
-# 初始化数据库
-python -m src.cli.main db --action=init
-
-# 查询数据
-python -m src.cli.main db --action=query --type=epic
-python -m src.cli.main db --action=query --type=task --id=task-001
-
-# 搜索模板
-python -m src.cli.main db --action=query --type=template --query="用户界面" --tags="前端,组件"
+git clone https://github.com/jacobcy/VibeCopilot.git
+cd VibeCopilot
 ```
 
-## 配置
-
-数据库配置位于`src/core/config.py`中：
-
-```python
-"database": {
-    "path": ".ai/vibecopilot.db",
-    "type": "sqlite",
-    "debug": False,
-}
-```
-
-您可以通过环境变量`VIBECOPILOT_DB_PATH`覆盖默认路径。
-
-## GitHub集成
-
-VibeCopilot提供与GitHub的深度集成，支持项目管理、路线图同步和开发协作。
-
-### 主要功能
-
-- **项目管理**：同步GitHub Projects与本地任务
-- **路线图同步**：将本地路线图发布到GitHub项目
-- **开发协作**：自动化工作流、议题模板和CI集成
-
-### 使用方法
-
-```python
-from scripts.github_project.api.github_client import GitHubClient
-from scripts.github_project.projects.main import ProjectManager
-
-# 初始化GitHub客户端
-client = GitHubClient(token="your_github_token")
-
-# 项目管理
-project_manager = ProjectManager(client)
-project = project_manager.get_project("username/repo", "Project Name")
-
-# 导入路线图
-from scripts.github_project.projects.roadmap_processor import RoadmapProcessor
-processor = RoadmapProcessor()
-processor.import_from_yaml(".ai/roadmap/current.yaml")
-processor.sync_to_github(client, "username/repo")
-```
-
-### 命令行操作
+2. 设置环境变量
 
 ```bash
-# 查看GitHub项目
-python -m src.github.projects.main list --repo=username/repo
-
-# 同步路线图
-python -m src.github.roadmap.cli sync --source=.ai/roadmap/current.yaml --repo=username/repo
+cp config/.env.example .env
+# 编辑.env文件，填入你的配置
 ```
 
-配置需要在环境变量中设置GitHub token：
+3. 安装依赖
+
 ```bash
-export GITHUB_TOKEN=your_personal_access_token
+pip install -e .
 ```
+
+4. 运行项目
+
+```bash
+vibecopilot --help
+```
+
+## 内容解析工具
+
+VibeCopilot提供了统一的内容解析工具，支持解析规则文件和Markdown文档：
+
+```bash
+# 解析文件（自动检测内容类型）
+content-parser parse path/to/file.md
+
+# 解析规则文件
+content-parser parse path/to/rule.mdc --type rule
+
+# 解析文档文件
+content-parser parse path/to/document.md --type document
+
+# 解析文本内容
+content-parser parse-content "# 文档标题\n\n文档内容" --type document
+
+# 从文件读取内容并解析
+content-parser parse-content path/to/file.md --from-file --type document
+
+# 检查环境配置
+content-parser check-env
+```
+
+## 项目结构
+
+```
+VibeCopilot/
+├── adapters/              # 外部服务适配器
+│   ├── content_parser/    # 统一内容解析模块
+│   ├── rule_engine.py     # 规则引擎接口
+│   └── docs_engine.py     # 文档引擎接口
+├── src/                   # 核心源代码
+│   ├── cli/               # 命令行接口
+│   ├── core/              # 核心功能模块
+│   ├── db/                # 数据库层
+│   ├── docs_engine/       # 文档引擎
+│   ├── models/            # 数据模型
+│   └── workflow/          # 工作流管理
+├── bin/                   # 可执行脚本
+├── config/                # 配置文件
+├── data/                  # 数据存储
+├── docs/                  # 项目文档
+└── tests/                 # 测试代码
+```
+
+## 环境变量
+
+主要环境变量配置：
+
+| 变量名 | 描述 | 默认值 |
+|---------|-------------|---------|
+| VIBE_CONTENT_PARSER | 内容解析引擎 | openai |
+| VIBE_OPENAI_MODEL | OpenAI模型 | gpt-4o-mini |
+| VIBE_OLLAMA_MODEL | Ollama模型 | mistral |
+| OPENAI_API_KEY | OpenAI API密钥 | - |
+| DOCS_ENGINE_DB_PATH | 文档引擎数据库路径 | data/docs_engine.db |
+
+详细配置请参考`.env.example`文件。
+
+## 许可证
+
+MIT
+
+## 贡献
+
+欢迎提交问题和合并请求。

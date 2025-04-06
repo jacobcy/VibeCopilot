@@ -13,7 +13,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from .models import Base
+from src.models.db import Base  # 直接从模型模块导入Base
 
 # 默认数据库配置
 DEFAULT_DB_PATH = os.path.join(Path.home(), ".vibecopilot", "database.sqlite")
@@ -77,4 +77,32 @@ def init_db(engine=None, create_tables=True):
     return engine
 
 
-__all__ = ["get_engine", "get_session_factory", "init_db", "Base"]
+from .repositories import (
+    BlockRepository,
+    DocumentRepository,
+    EpicRepository,
+    LinkRepository,
+    MilestoneRepository,
+    RoadmapRepository,
+    StoryRepository,
+    TaskRepository,
+)
+
+# 导出API
+from .repository import Repository
+
+__all__ = [
+    "get_engine",
+    "get_session_factory",
+    "init_db",
+    "Base",
+    "Repository",
+    "EpicRepository",
+    "MilestoneRepository",
+    "RoadmapRepository",
+    "StoryRepository",
+    "TaskRepository",
+    "DocumentRepository",
+    "BlockRepository",
+    "LinkRepository",
+]

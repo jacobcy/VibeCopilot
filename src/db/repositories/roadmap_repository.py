@@ -1,7 +1,7 @@
 """
 路线图数据访问对象模块
 
-提供Epic、Story、Task和Label等实体的数据访问接口。
+提供Roadmap、Epic、Milestone、Story、Task等实体的数据访问接口。
 """
 
 from typing import Any, Dict, List, Optional
@@ -9,7 +9,124 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
-from src.models.db import Epic, Label, Story, Task
+from src.models.db import Epic, Milestone, Roadmap, Story, Task
+
+
+class RoadmapRepository(Repository[Roadmap]):
+    """Roadmap仓库"""
+
+    def __init__(self, session: Session):
+        """初始化Roadmap仓库
+
+        Args:
+            session: SQLAlchemy会话对象
+        """
+        super().__init__(session, Roadmap)
+
+    def get_with_related(self, roadmap_id: str) -> Optional[Roadmap]:
+        """获取Roadmap及其所有关联数据
+
+        Args:
+            roadmap_id: Roadmap ID
+
+        Returns:
+            Roadmap对象或None
+        """
+        return self.session.query(Roadmap).filter(Roadmap.id == roadmap_id).first()
+
+    def get_by_name(self, name: str) -> Optional[Roadmap]:
+        """通过名称获取路线图
+
+        Args:
+            name: 路线图名称
+
+        Returns:
+            Roadmap对象或None
+        """
+        return self.session.query(Roadmap).filter(Roadmap.name == name).first()
+
+    def get_stats(self, roadmap_id: str) -> Dict[str, Any]:
+        """获取路线图统计信息
+
+        Args:
+            roadmap_id: 路线图ID
+
+        Returns:
+            统计信息
+        """
+        roadmap = self.get_by_id(roadmap_id)
+        if not roadmap:
+            return {"error": "Roadmap not found"}
+
+        # 获取统计数据
+        milestone_count = (
+            self.session.query(Milestone).filter(Milestone.roadmap_id == roadmap_id).count()
+        )
+        epic_count = self.session.query(Epic).filter(Epic.roadmap_id == roadmap_id).count()
+        story_count = self.session.query(Story).filter(Story.roadmap_id == roadmap_id).count()
+        task_count = self.session.query(Task).filter(Task.roadmap_id == roadmap_id).count()
+
+        # 计算完成进度
+        completed_milestones = (
+            self.session.query(Milestone)
+            .filter(Milestone.roadmap_id == roadmap_id, Milestone.status == "completed")
+            .count()
+        )
+
+        completed_tasks = (
+            self.session.query(Task)
+            .filter(Task.roadmap_id == roadmap_id, Task.status == "completed")
+            .count()
+        )
+
+        milestone_progress = (
+            (completed_milestones / milestone_count * 100) if milestone_count > 0 else 0
+        )
+        task_progress = (completed_tasks / task_count * 100) if task_count > 0 else 0
+
+        return {
+            "milestone_count": milestone_count,
+            "epic_count": epic_count,
+            "story_count": story_count,
+            "task_count": task_count,
+            "milestone_progress": milestone_progress,
+            "task_progress": task_progress,
+            "overall_progress": (milestone_progress + task_progress) / 2,
+        }
+
+
+class MilestoneRepository(Repository[Milestone]):
+    """Milestone仓库"""
+
+    def __init__(self, session: Session):
+        """初始化Milestone仓库
+
+        Args:
+            session: SQLAlchemy会话对象
+        """
+        super().__init__(session, Milestone)
+
+    def get_by_roadmap(self, roadmap_id: str) -> List[Milestone]:
+        """获取指定路线图下的所有里程碑
+
+        Args:
+            roadmap_id: 路线图ID
+
+        Returns:
+            Milestone对象列表
+        """
+        return self.session.query(Milestone).filter(Milestone.roadmap_id == roadmap_id).all()
+
+    def get_with_epics(self, milestone_id: str) -> Optional[Milestone]:
+        """获取里程碑及其关联的Epics
+
+        Args:
+            milestone_id: 里程碑ID
+
+        Returns:
+            Milestone对象或None
+        """
+        return self.session.query(Milestone).filter(Milestone.id == milestone_id).first()
 
 
 class EpicRepository(Repository[Epic]):
@@ -134,95 +251,3 @@ class TaskRepository(Repository[Task]):
             Task对象列表
         """
         return self.session.query(Task).filter(Task.story_id == story_id).all()
-
-    def add_label(self, task_id: str, label_id: str) -> bool:
-        """为任务添加标签
-
-        Args:
-            task_id: 任务ID
-            label_id: 标签ID
-
-        Returns:
-            是否添加成功
-        """
-        try:
-            task = self.get_by_id(task_id)
-            label = self.session.query(Label).filter(Label.id == label_id).first()
-
-            if not task or not label:
-                return False
-
-            if label not in task.labels:
-                task.labels.append(label)
-                self.session.commit()
-                return True
-
-            return False
-        except Exception as e:
-            self.session.rollback()
-            raise e
-
-    def remove_label(self, task_id: str, label_id: str) -> bool:
-        """移除任务标签
-
-        Args:
-            task_id: 任务ID
-            label_id: 标签ID
-
-        Returns:
-            是否移除成功
-        """
-        try:
-            task = self.get_by_id(task_id)
-            label = self.session.query(Label).filter(Label.id == label_id).first()
-
-            if not task or not label:
-                return False
-
-            if label in task.labels:
-                task.labels.remove(label)
-                self.session.commit()
-                return True
-
-            return False
-        except Exception as e:
-            self.session.rollback()
-            raise e
-
-
-class LabelRepository(Repository[Label]):
-    """Label仓库"""
-
-    def __init__(self, session: Session):
-        """初始化Label仓库
-
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, Label)
-
-    def get_by_name(self, name: str) -> Optional[Label]:
-        """通过名称获取标签
-
-        Args:
-            name: 标签名称
-
-        Returns:
-            Label对象或None
-        """
-        return self.session.query(Label).filter(Label.name == name).first()
-
-    def get_tasks(self, label_id: str) -> List[Task]:
-        """获取使用指定标签的所有任务
-
-        Args:
-            label_id: 标签ID
-
-        Returns:
-            Task对象列表
-        """
-        label = self.get_by_id(label_id)
-        if not label:
-            return []
-
-        return label.tasks

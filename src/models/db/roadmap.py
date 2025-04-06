@@ -1,176 +1,88 @@
 """
-路线图数据模型模块
+路线图数据模型
 
-从roadmap模块迁移的数据模型，包括Epic、Story、Task和Label等实体。
+定义路线图相关的数据库模型。
 """
 
+from dataclasses import dataclass
 from datetime import datetime
-
-from sqlalchemy import Column, DateTime, ForeignKey, String, Table, Text
-from sqlalchemy.orm import relationship
-
-from .base import Base
-
-# 任务标签关联表
-task_label = Table(
-    "task_label_association",
-    Base.metadata,
-    Column("task_id", String, ForeignKey("tasks.id", ondelete="CASCADE")),
-    Column("label_id", String, ForeignKey("labels.id", ondelete="CASCADE")),
-)
+from typing import List, Optional
 
 
-class Epic(Base):
-    """Epic实体模型"""
+@dataclass
+class Roadmap:
+    """路线图"""
 
-    __tablename__ = "epics"
-
-    id = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
-    status = Column(String, default="in_progress")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # 关系
-    stories = relationship("Story", back_populates="epic", cascade="all, delete-orphan")
-
-    def to_dict(self):
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "status": self.status,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
-
-    @classmethod
-    def from_dict(cls, data):
-        """从字典创建实例"""
-        return cls(
-            id=data.get("id"),
-            name=data.get("name", ""),
-            description=data.get("description", ""),
-            status=data.get("status", "in_progress"),
-        )
+    id: str
+    name: str
+    description: Optional[str] = None
+    is_active: bool = False
+    created_at: datetime = None
+    updated_at: datetime = None
 
 
-class Story(Base):
-    """Story实体模型"""
+@dataclass
+class Epic:
+    """史诗"""
 
-    __tablename__ = "stories"
-
-    id = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
-    status = Column(String, default="in_progress")
-    epic_id = Column(String, ForeignKey("epics.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # 关系
-    epic = relationship("Epic", back_populates="stories")
-    tasks = relationship("Task", back_populates="story", cascade="all, delete-orphan")
-
-    def to_dict(self):
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "status": self.status,
-            "epic_id": self.epic_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
-
-    @classmethod
-    def from_dict(cls, data):
-        """从字典创建实例"""
-        return cls(
-            id=data.get("id"),
-            name=data.get("name", ""),
-            description=data.get("description", ""),
-            status=data.get("status", "in_progress"),
-            epic_id=data.get("epic_id"),
-        )
+    id: str
+    name: str
+    roadmap_id: str  # 关联的路线图ID
+    description: Optional[str] = None
+    status: str = "planned"  # planned, in_progress, completed
+    progress: int = 0
+    created_at: datetime = None
+    updated_at: datetime = None
 
 
-class Task(Base):
-    """Task实体模型"""
+@dataclass
+class Milestone:
+    """里程碑"""
 
-    __tablename__ = "tasks"
-
-    id = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
-    status = Column(String, default="in_progress")
-    story_id = Column(String, ForeignKey("stories.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # 关系
-    story = relationship("Story", back_populates="tasks")
-    labels = relationship("Label", secondary=task_label, back_populates="tasks")
-
-    def to_dict(self):
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "status": self.status,
-            "story_id": self.story_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "labels": [label.name for label in self.labels] if self.labels else [],
-        }
-
-    @classmethod
-    def from_dict(cls, data):
-        """从字典创建实例"""
-        return cls(
-            id=data.get("id"),
-            name=data.get("name", ""),
-            description=data.get("description", ""),
-            status=data.get("status", "in_progress"),
-            story_id=data.get("story_id"),
-        )
+    id: str
+    name: str
+    roadmap_id: str  # 关联的路线图ID
+    description: Optional[str] = None
+    status: str = "planned"  # planned, in_progress, completed
+    progress: int = 0
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    epic_id: Optional[str] = None
+    created_at: datetime = None
+    updated_at: datetime = None
 
 
-class Label(Base):
-    """标签实体模型"""
+@dataclass
+class Story:
+    """用户故事"""
 
-    __tablename__ = "labels"
+    id: str
+    title: str
+    roadmap_id: str  # 关联的路线图ID
+    description: Optional[str] = None
+    status: str = "planned"  # planned, in_progress, completed
+    progress: int = 0
+    milestone_id: Optional[str] = None
+    epic_id: Optional[str] = None
+    created_at: datetime = None
+    updated_at: datetime = None
 
-    id = Column(String, primary_key=True)
-    name = Column(String, nullable=False, unique=True)
-    color = Column(String, default="#0366d6")
-    description = Column(Text, nullable=True)
 
-    # 关系
-    tasks = relationship("Task", secondary=task_label, back_populates="labels")
-    workflows = relationship(
-        "Workflow", secondary="workflow_label_association", back_populates="labels"
-    )
+@dataclass
+class Task:
+    """任务"""
 
-    def to_dict(self):
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "color": self.color,
-            "description": self.description,
-        }
-
-    @classmethod
-    def from_dict(cls, data):
-        """从字典创建实例"""
-        return cls(
-            id=data.get("id"),
-            name=data.get("name", ""),
-            color=data.get("color", "#0366d6"),
-            description=data.get("description", ""),
-        )
+    id: str
+    title: str
+    roadmap_id: str  # 关联的路线图ID
+    description: Optional[str] = None
+    status: str = "todo"  # todo, in_progress, completed
+    priority: str = "P2"  # P0, P1, P2, P3
+    milestone: Optional[str] = None
+    story_id: Optional[str] = None
+    epic: Optional[str] = None
+    assignee: Optional[str] = None
+    estimate: int = 8  # 估计工时
+    labels: List[str] = None
+    created_at: datetime = None
+    updated_at: datetime = None

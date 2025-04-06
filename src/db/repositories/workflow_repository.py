@@ -1,7 +1,7 @@
 """
 工作流数据访问对象模块
 
-提供Workflow、WorkflowStep、WorkflowExecution等实体的数据访问接口。
+提供Workflow、WorkflowStep等实体的数据访问接口。
 """
 
 from typing import Any, Dict, List, Optional
@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
-from src.models.db import Label, Workflow, WorkflowExecution, WorkflowStep, WorkflowStepExecution
+from src.models.db import Workflow, WorkflowStep
 
 
 class WorkflowRepository(Repository[Workflow]):
@@ -54,60 +54,6 @@ class WorkflowRepository(Repository[Workflow]):
             工作流对象列表
         """
         return self.session.query(Workflow).filter(Workflow.status == "active").all()
-
-    def add_label(self, workflow_id: str, label_id: str) -> bool:
-        """为工作流添加标签
-
-        Args:
-            workflow_id: 工作流ID
-            label_id: 标签ID
-
-        Returns:
-            是否添加成功
-        """
-        try:
-            workflow = self.get_by_id(workflow_id)
-            label = self.session.query(Label).filter(Label.id == label_id).first()
-
-            if not workflow or not label:
-                return False
-
-            if label not in workflow.labels:
-                workflow.labels.append(label)
-                self.session.commit()
-                return True
-
-            return False
-        except Exception as e:
-            self.session.rollback()
-            raise e
-
-    def remove_label(self, workflow_id: str, label_id: str) -> bool:
-        """移除工作流标签
-
-        Args:
-            workflow_id: 工作流ID
-            label_id: 标签ID
-
-        Returns:
-            是否移除成功
-        """
-        try:
-            workflow = self.get_by_id(workflow_id)
-            label = self.session.query(Label).filter(Label.id == label_id).first()
-
-            if not workflow or not label:
-                return False
-
-            if label in workflow.labels:
-                workflow.labels.remove(label)
-                self.session.commit()
-                return True
-
-            return False
-        except Exception as e:
-            self.session.rollback()
-            raise e
 
 
 class WorkflowStepRepository(Repository[WorkflowStep]):
@@ -165,107 +111,3 @@ class WorkflowStepRepository(Repository[WorkflowStep]):
         except Exception as e:
             self.session.rollback()
             raise e
-
-
-class WorkflowExecutionRepository(Repository[WorkflowExecution]):
-    """工作流执行仓库"""
-
-    def __init__(self, session: Session):
-        """初始化工作流执行仓库
-
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, WorkflowExecution)
-
-    def get_by_workflow(self, workflow_id: str) -> List[WorkflowExecution]:
-        """获取指定工作流的所有执行记录
-
-        Args:
-            workflow_id: 工作流ID
-
-        Returns:
-            工作流执行对象列表
-        """
-        return (
-            self.session.query(WorkflowExecution)
-            .filter(WorkflowExecution.workflow_id == workflow_id)
-            .order_by(WorkflowExecution.started_at.desc())
-            .all()
-        )
-
-    def get_by_n8n_execution_id(self, n8n_execution_id: str) -> Optional[WorkflowExecution]:
-        """根据n8n执行ID获取工作流执行记录
-
-        Args:
-            n8n_execution_id: n8n执行ID
-
-        Returns:
-            工作流执行对象或None
-        """
-        return (
-            self.session.query(WorkflowExecution)
-            .filter(WorkflowExecution.n8n_execution_id == n8n_execution_id)
-            .first()
-        )
-
-    def get_recent_executions(self, limit: int = 10) -> List[WorkflowExecution]:
-        """获取最近的工作流执行记录
-
-        Args:
-            limit: 返回记录数量限制
-
-        Returns:
-            工作流执行对象列表
-        """
-        return (
-            self.session.query(WorkflowExecution)
-            .order_by(WorkflowExecution.started_at.desc())
-            .limit(limit)
-            .all()
-        )
-
-
-class WorkflowStepExecutionRepository(Repository[WorkflowStepExecution]):
-    """工作流步骤执行仓库"""
-
-    def __init__(self, session: Session):
-        """初始化工作流步骤执行仓库
-
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, WorkflowStepExecution)
-
-    def get_by_workflow_execution(self, workflow_execution_id: str) -> List[WorkflowStepExecution]:
-        """获取指定工作流执行的所有步骤执行记录
-
-        Args:
-            workflow_execution_id: 工作流执行ID
-
-        Returns:
-            工作流步骤执行对象列表
-        """
-        return (
-            self.session.query(WorkflowStepExecution)
-            .filter(WorkflowStepExecution.workflow_execution_id == workflow_execution_id)
-            .all()
-        )
-
-    def get_current_step(self, workflow_execution_id: str) -> Optional[WorkflowStepExecution]:
-        """获取当前正在执行的步骤
-
-        Args:
-            workflow_execution_id: 工作流执行ID
-
-        Returns:
-            当前步骤执行对象或None
-        """
-        return (
-            self.session.query(WorkflowStepExecution)
-            .filter(
-                WorkflowStepExecution.workflow_execution_id == workflow_execution_id,
-                WorkflowStepExecution.status == "running",
-            )
-            .first()
-        )
