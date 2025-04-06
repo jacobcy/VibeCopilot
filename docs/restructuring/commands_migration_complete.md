@@ -21,7 +21,7 @@
 1. **CheckRoadmapCommand**: 检查路线图或元素状态
 2. **UpdateRoadmapCommand**: 更新路线图元素状态
 3. **SyncRoadmapCommand**: 同步本地和GitHub之间的路线图数据
-4. **PlanCommand**: 创建新的里程碑、故事或任务
+4. **CreateCommand**: 创建新的里程碑、故事或任务
 5. **StoryCommand**: 查看路线图中的故事信息
 
 所有命令都遵循新的Command基类接口，实现了以下方法：

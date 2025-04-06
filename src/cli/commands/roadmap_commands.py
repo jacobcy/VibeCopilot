@@ -8,7 +8,7 @@
 # 导入所有路线图命令
 from src.cli.commands.roadmap import (
     CheckRoadmapCommand,
-    PlanCommand,
+    CreateCommand,
     RoadmapListCommand,
     StoryCommand,
     SwitchCommand,
@@ -20,7 +20,7 @@ __all__ = [
     "CheckRoadmapCommand",
     "UpdateRoadmapCommand",
     "SyncCommand",
-    "PlanCommand",
+    "CreateCommand",
     "StoryCommand",
     "SwitchCommand",
     "RoadmapListCommand",
@@ -85,7 +85,7 @@ class RoadmapCommands(Command):
             "list": RoadmapListCommand,
             "check": CheckRoadmapCommand,
             "update": UpdateRoadmapCommand,
-            "plan": PlanCommand,
+            "plan": CreateCommand,
             "story": StoryCommand,
         }
 

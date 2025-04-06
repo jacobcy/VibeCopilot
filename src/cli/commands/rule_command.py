@@ -1,5 +1,7 @@
 """
-规则管理命令处理器
+规则管理命令模块
+
+处理规则相关的命令，包括创建、查看、修改、删除规则等操作。
 """
 
 import json
@@ -26,7 +28,7 @@ from src.cli.commands.rule_command_utils import convert_result, show_help
 from src.templates.core.rule_generator import RuleGenerator
 from src.templates.core.template_engine import TemplateEngine
 from src.templates.core.template_manager import TemplateManager
-from src.workflow.workflow_manager import get_session
+from src.workflow.workflow_utils import get_session
 
 logger = logging.getLogger(__name__)
 

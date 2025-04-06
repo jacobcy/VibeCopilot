@@ -8,11 +8,7 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from scripts.docs.utils.obsidian.checker.utils import (
-    create_line_map,
-    get_line_col,
-    resolve_link_path,
-)
+from adapters.obsidian.checker.utils import create_line_map, get_line_col, resolve_link_path
 
 
 class ObsidianSyntaxChecker:

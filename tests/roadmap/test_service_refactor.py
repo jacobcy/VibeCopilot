@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 
 from sqlalchemy.orm import Session
 
-from src.roadmap.service.roadmap_service import RoadmapService
+from src.roadmap import RoadmapService
 
 
 class TestRoadmapServiceRefactor(unittest.TestCase):

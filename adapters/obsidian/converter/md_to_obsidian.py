@@ -8,8 +8,8 @@ import re
 from pathlib import Path
 from typing import Optional, Set, Tuple
 
-from scripts.docs.utils.converter.constants import DEFAULT_EXCLUDE_PATTERNS
-from scripts.docs.utils.converter.utils import split_frontmatter
+from adapters.obsidian.converter.constants import DEFAULT_EXCLUDE_PATTERNS
+from adapters.obsidian.converter.utils import split_frontmatter
 
 
 class MDToObsidian:

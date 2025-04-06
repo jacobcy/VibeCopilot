@@ -86,6 +86,10 @@ from .repositories import (
     RoadmapRepository,
     StoryRepository,
     TaskRepository,
+    TemplateRepository,
+    TemplateVariableRepository,
+    WorkflowRepository,
+    WorkflowStepRepository,
 )
 
 # 导出API
@@ -105,4 +109,8 @@ __all__ = [
     "DocumentRepository",
     "BlockRepository",
     "LinkRepository",
+    "TemplateRepository",
+    "TemplateVariableRepository",
+    "WorkflowRepository",
+    "WorkflowStepRepository",
 ]

@@ -6,8 +6,8 @@
 - ObsidianToMD：将Obsidian Wiki风格转换为标准Markdown
 """
 
-from scripts.docs.utils.converter.constants import DEFAULT_EXCLUDE_PATTERNS
-from scripts.docs.utils.converter.md_to_obsidian import MDToObsidian
-from scripts.docs.utils.converter.obsidian_to_md import ObsidianToMD
+from adapters.obsidian.converter.constants import DEFAULT_EXCLUDE_PATTERNS
+from adapters.obsidian.converter.md_to_obsidian import MDToObsidian
+from adapters.obsidian.converter.obsidian_to_md import ObsidianToMD
 
 __all__ = ["MDToObsidian", "ObsidianToMD", "DEFAULT_EXCLUDE_PATTERNS"]

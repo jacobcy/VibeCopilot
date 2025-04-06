@@ -42,7 +42,7 @@
 - UpdateCommand: 更新路线图元素状态
 - StoryCommand: 管理故事
 - TaskCommand: 管理任务
-- PlanCommand: 创建计划
+- CreateCommand: 创建计划
 - SyncCommand: 同步路线图数据
 
 ### 步骤2: 创建新的命令实现
@@ -185,7 +185,7 @@ class RoadmapTaskCommand(BaseCommand):
     """任务管理命令"""
     pass
 
-class RoadmapPlanCommand(BaseCommand):
+class RoadmapCreateCommand(BaseCommand):
     """计划创建命令"""
     pass
 
@@ -315,7 +315,7 @@ from src.cli.commands.roadmap_commands import (
     RoadmapUpdateCommand,
     RoadmapStoryCommand,
     RoadmapTaskCommand,
-    RoadmapPlanCommand,
+    RoadmapCreateCommand,
     RoadmapSyncCommand
 )
 
@@ -327,7 +327,7 @@ __all__ = [
     "RoadmapUpdateCommand",
     "RoadmapStoryCommand",
     "RoadmapTaskCommand",
-    "RoadmapPlanCommand",
+    "RoadmapCreateCommand",
     "RoadmapSyncCommand"
 ]
 ```

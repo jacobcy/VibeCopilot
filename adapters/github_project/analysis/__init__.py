@@ -1,6 +1,10 @@
-"""GitHub项目分析模块.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-提供与项目分析和路线图更新相关的功能模块。
+"""
+GitHub项目分析包.
+
+提供项目分析、报告生成和时间线调整功能。
 """
 
 from .analyzer import ProjectAnalyzer

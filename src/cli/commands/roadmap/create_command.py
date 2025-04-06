@@ -10,12 +10,12 @@ from src.cli.command import Command
 from src.roadmap import RoadmapService
 
 
-class PlanCommand(Command):
+class CreateCommand(Command):
     """计划创建命令"""
 
     @classmethod
     def get_command(cls) -> str:
-        return "plan"
+        return "create"
 
     @classmethod
     def get_description(cls) -> str:
@@ -27,9 +27,9 @@ class PlanCommand(Command):
         创建路线图计划元素
 
         用法:
-            plan milestone "发布1.0版本"          创建新的里程碑
-            plan story "登录功能" -m M1          在里程碑M1下创建新的故事
-            plan task "设计用户界面" -m M1 -p P1  创建新的高优先级任务
+            create milestone "发布1.0版本"          创建新的里程碑
+            create story "登录功能" -m M1          在里程碑M1下创建新的故事
+            create task "设计用户界面" -m M1 -p P1  创建新的高优先级任务
 
         参数:
             milestone <标题>            创建新的里程碑

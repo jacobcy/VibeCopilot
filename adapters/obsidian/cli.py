@@ -96,13 +96,9 @@ def main():
 
                 # 如果指定了输出文件，保存报告
                 if args.output:
-                    from src.docs_engine.utils import generate_report
+                    from src.docs_engine.utils import generate_html_report
 
-                    report = generate_report(args.file, issues)
-
-                    with open(args.output, "w", encoding="utf-8") as f:
-                        f.write(report)
-
+                    report = generate_html_report(issues, args.output)
                     print(f"报告已保存到: {args.output}")
             else:
                 print("错误: 必须指定要检查的文件")

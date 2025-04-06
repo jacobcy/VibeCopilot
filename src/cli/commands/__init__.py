@@ -8,7 +8,7 @@
 from src.cli.commands.db import DatabaseCommand
 from src.cli.commands.roadmap import (
     CheckRoadmapCommand,
-    PlanCommand,
+    CreateCommand,
     RoadmapListCommand,
     StoryCommand,
     SwitchCommand,
@@ -27,7 +27,7 @@ __all__ = [
     "CheckRoadmapCommand",
     "UpdateRoadmapCommand",
     "SyncCommand",
-    "PlanCommand",
+    "CreateCommand",
     "StoryCommand",
     "SwitchCommand",
     "RoadmapListCommand",

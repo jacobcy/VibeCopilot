@@ -14,7 +14,7 @@ from typing import Dict, Type
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.cli.command import Command
-from src.cli.commands import RoadmapCommands
+from src.cli.commands import RoadmapCommands, RuleCommand
 
 # 配置日志
 logging.basicConfig(
@@ -41,7 +41,7 @@ def main():
     command_name = args.pop(0)
 
     # 注册所有命令
-    commands: Dict[str, Type[Command]] = {"roadmap": RoadmapCommands}
+    commands: Dict[str, Type[Command]] = {"roadmap": RoadmapCommands, "rule": RuleCommand}
 
     # 检查命令是否存在
     if command_name not in commands:
@@ -68,11 +68,13 @@ def print_help():
     print("VibeCopilot CLI工具")
     print("\n可用命令:")
     print("  roadmap     路线图管理命令")
+    print("  rule        规则管理命令")
 
     print("\n用法:")
     print("  vibecopilot <命令> [参数]")
     print("  vibecopilot roadmap sync github push")
     print("  vibecopilot roadmap story S1")
+    print("  vibecopilot rule list")
 
 
 if __name__ == "__main__":

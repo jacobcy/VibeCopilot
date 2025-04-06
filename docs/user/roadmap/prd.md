@@ -28,7 +28,7 @@ flowchart TD
     E --> F2[UpdateCommand]
     E --> F3[StoryCommand]
     E --> F4[TaskCommand]
-    E --> F5[PlanCommand]
+    E --> F5[CreateCommand]
     F1 --> G[GitHub集成模块]
     F2 --> G
     F3 --> G
@@ -295,7 +295,7 @@ GitHub同步: Issue #17已创建
 
 ### 8.3 阶段3：功能扩展
 
-- 实现StoryCommand、TaskCommand和PlanCommand
+- 实现StoryCommand、TaskCommand和CreateCommand
 - 增强GitHub集成功能
 - 实现冲突解决机制
 - 添加更多功能选项

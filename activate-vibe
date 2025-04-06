@@ -1,0 +1,16 @@
+#!/bin/bash
+# 激活VibeCopilot环境并设置快捷命令
+
+# 源代码路径
+VIBECOPILOT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 激活虚拟环境
+source "$VIBECOPILOT_PATH/.venv/bin/activate"
+
+# 设置别名
+alias vc="vibecopilot"
+
+# 提示用户
+echo "VibeCopilot环境已激活!"
+echo "您可以使用 'vc' 作为 'vibecopilot' 的快捷命令"
+echo "示例: vc roadmap sync"

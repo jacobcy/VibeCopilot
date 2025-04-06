@@ -10,16 +10,50 @@
 """
 
 import logging
-import warnings
 
-from scripts.docs.utils.converter import DEFAULT_EXCLUDE_PATTERNS, MDToObsidian, ObsidianToMD
-
-# 废弃警告
-warnings.warn(
-    "converter.py已重构为模块化结构，请直接从scripts.docs.utils.converter导入所需类",
-    DeprecationWarning,
-    stacklevel=2,
-)
+from adapters.obsidian.converter.constants import DEFAULT_EXCLUDE_PATTERNS
+from adapters.obsidian.converter.md_to_obsidian import MDToObsidian
+from adapters.obsidian.converter.obsidian_to_md import ObsidianToMD
 
 # 为了保持向后兼容性，导出所有类和常量
 __all__ = ["MDToObsidian", "ObsidianToMD", "DEFAULT_EXCLUDE_PATTERNS"]
+
+
+def convert_markdown(content, format_type="obsidian", **kwargs):
+    """
+    转换Markdown内容。
+
+    Args:
+        content: 要转换的内容
+        format_type: 转换目标格式，支持"obsidian"或"markdown"
+        **kwargs: 传递给具体转换器的参数
+
+    Returns:
+        str: 转换后的内容
+    """
+    if format_type == "obsidian":
+        converter = MDToObsidian(**kwargs)
+        return converter.convert_content(content, "", "")
+    else:
+        converter = ObsidianToMD(**kwargs)
+        return converter.convert_content(content, "", "")
+
+
+def convert_wikilinks(content, to_standard=True, **kwargs):
+    """
+    转换Wiki链接。
+
+    Args:
+        content: 要转换的内容
+        to_standard: 如果为True，将Wiki链接转换为标准链接；否则反之
+        **kwargs: 传递给具体转换器的参数
+
+    Returns:
+        str: 转换后的内容
+    """
+    if to_standard:
+        converter = ObsidianToMD(**kwargs)
+        return converter.convert_content(content, "", "")
+    else:
+        converter = MDToObsidian(**kwargs)
+        return converter.convert_content(content, "", "")

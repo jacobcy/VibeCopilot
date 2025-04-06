@@ -16,7 +16,7 @@ src/cli/commands/roadmap/
 ├── check_command.py
 ├── update_command.py
 ├── sync_command.py
-├── plan_command.py
+├── create_command.py
 └── story_command.py
 ```
 
@@ -27,7 +27,7 @@ src/cli/commands/roadmap/
 1. **`check_command.py`**: 包含`CheckRoadmapCommand`类，用于检查路线图状态
 2. **`update_command.py`**: 包含`UpdateRoadmapCommand`类，用于更新路线图元素
 3. **`sync_command.py`**: 包含`SyncRoadmapCommand`类，用于同步本地和GitHub数据
-4. **`plan_command.py`**: 包含`PlanCommand`类，用于创建新的里程碑、故事或任务
+4. **`create_command.py`**: 包含`CreateCommand`类，用于创建新的里程碑、故事或任务
 5. **`story_command.py`**: 包含`StoryCommand`类，用于查看故事信息
 
 ### 3. 导入更新

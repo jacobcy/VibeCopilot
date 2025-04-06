@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
-from src.models.db import Workflow, WorkflowStep
+from src.models.db import Workflow, WorkflowExecution, WorkflowStep
 
 
 class WorkflowRepository(Repository[Workflow]):
@@ -111,3 +111,62 @@ class WorkflowStepRepository(Repository[WorkflowStep]):
         except Exception as e:
             self.session.rollback()
             raise e
+
+
+class WorkflowExecutionRepository(Repository[WorkflowExecution]):
+    """工作流执行仓库"""
+
+    def __init__(self, session: Session):
+        """初始化工作流执行仓库
+
+        Args:
+            session: SQLAlchemy会话对象
+        """
+        super().__init__(session, WorkflowExecution)
+
+    def get_by_workflow(self, workflow_id: str, limit: int = 10) -> List[WorkflowExecution]:
+        """获取指定工作流的执行记录
+
+        Args:
+            workflow_id: 工作流ID
+            limit: 返回记录的数量限制，默认为10
+
+        Returns:
+            工作流执行对象列表
+        """
+        return (
+            self.session.query(WorkflowExecution)
+            .filter(WorkflowExecution.workflow_id == workflow_id)
+            .order_by(WorkflowExecution.started_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_n8n_execution_id(self, n8n_execution_id: str) -> Optional[WorkflowExecution]:
+        """根据n8n执行ID获取执行记录
+
+        Args:
+            n8n_execution_id: n8n执行ID
+
+        Returns:
+            工作流执行对象或None
+        """
+        return (
+            self.session.query(WorkflowExecution)
+            .filter(WorkflowExecution.n8n_execution_id == n8n_execution_id)
+            .first()
+        )
+
+    def filter(self, status: Optional[List[str]] = None) -> List[WorkflowExecution]:
+        """根据状态筛选执行记录
+
+        Args:
+            status: 状态列表，如["pending", "running"]
+
+        Returns:
+            工作流执行对象列表
+        """
+        query = self.session.query(WorkflowExecution)
+        if status:
+            query = query.filter(WorkflowExecution.status.in_(status))
+        return query.all()

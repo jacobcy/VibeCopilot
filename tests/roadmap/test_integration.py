@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from src.db.service import DatabaseService
 from src.db.sync import DataSynchronizer
-from src.roadmap.service.roadmap_service import RoadmapService
+from src.roadmap import RoadmapService
 
 
 class TestRoadmapIntegration(unittest.TestCase):

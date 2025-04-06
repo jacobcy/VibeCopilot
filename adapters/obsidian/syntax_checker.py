@@ -10,16 +10,10 @@ import os
 import sys
 from pathlib import Path
 
-# 添加项目根目录到模块搜索路径
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
-
 # 导入重构后的模块
-from scripts.docs.utils.obsidian.checker import (
-    ObsidianSyntaxChecker,
-    generate_report,
-    setup_logging,
-)
+from adapters.obsidian.checker.checker import ObsidianSyntaxChecker
+from adapters.obsidian.checker.logger import setup_logging
+from adapters.obsidian.checker.report import generate_report
 
 
 def main():

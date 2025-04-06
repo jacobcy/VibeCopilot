@@ -7,8 +7,8 @@ import os
 import re
 from typing import Optional, Set
 
-from scripts.docs.utils.converter.constants import DEFAULT_EXCLUDE_PATTERNS
-from scripts.docs.utils.converter.utils import split_frontmatter
+from adapters.obsidian.converter.constants import DEFAULT_EXCLUDE_PATTERNS
+from adapters.obsidian.converter.utils import split_frontmatter
 
 
 class ObsidianToMD:

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 from src.db.service import DatabaseService
 from src.db.sync import DataSynchronizer
-from src.roadmap.service.roadmap_service import RoadmapService
+from src.roadmap import RoadmapService
 
 
 class TestRoadmapService(unittest.TestCase):
