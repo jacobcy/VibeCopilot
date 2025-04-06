@@ -6,6 +6,7 @@ jinja2>=3.1.2
 pyyaml>=6.0.0
 python-dotenv>=1.0.0
 requests>=2.31.0  # HTTP请求，用于GitHub API等
+tenacity>=8.2.0  # 重试机制，用于API调用
 
 # Development and testing
 pytest>=7.4.0
