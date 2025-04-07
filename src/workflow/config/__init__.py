@@ -13,6 +13,9 @@ PROJECT_ROOT = Path(__file__).parents[3]
 # 工作流模板目录
 TEMPLATE_DIR = os.environ.get("VIBECOPILOT_TEMPLATE_DIR", str(PROJECT_ROOT / "templates" / "flow"))
 
+# 工作流文件存储目录
+WORKFLOW_DIR = os.environ.get("VIBECOPILOT_WORKFLOW_DIR", str(PROJECT_ROOT / "workflows"))
+
 # 模板文件扩展名
 TEMPLATE_EXTENSION = ".json"
 

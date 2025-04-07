@@ -1,11 +1,11 @@
 """
 数据库命令基础模块
 
-提供数据库命令的基础功能和服务初始化
+提供数据库命令处理器的基础类
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from src.cli.base_command import BaseCommand
 from src.cli.command import Command
@@ -15,17 +15,47 @@ logger = logging.getLogger(__name__)
 
 
 class BaseDatabaseCommand(BaseCommand, Command):
-    """数据库命令基类"""
+    """数据库命令基础处理器"""
 
     def __init__(self):
-        """初始化数据库命令"""
+        """初始化基础处理器"""
         super().__init__(name="db", description="管理数据库")
-        self.db_service = None
+        self._db_service = None
 
     def _init_services(self) -> None:
         """初始化数据库服务"""
         if not self.db_service:
-            self.db_service = DatabaseService()
+            self._db_service = DatabaseService()
+
+    def _execute_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """实现命令执行逻辑
+
+        Args:
+            args: 命令参数
+
+        Returns:
+            执行结果
+        """
+        result_code = self.handle(args)
+        return {"success": result_code == 0, "code": result_code}
+
+    @property
+    def db_service(self) -> Optional[DatabaseService]:
+        """获取数据库服务
+
+        Returns:
+            数据库服务实例
+        """
+        return self._db_service
+
+    @db_service.setter
+    def db_service(self, service: DatabaseService):
+        """设置数据库服务
+
+        Args:
+            service: 数据库服务实例
+        """
+        self._db_service = service
 
     @classmethod
     def get_command(cls) -> str:
@@ -45,28 +75,13 @@ class BaseDatabaseCommand(BaseCommand, Command):
         """
         return "管理数据库，包括初始化、查询、创建、更新和删除操作"
 
-    @classmethod
-    def get_help(cls) -> str:
-        """获取命令帮助信息
+    def handle(self, args: Dict) -> int:
+        """处理命令
+
+        Args:
+            args: 命令参数
 
         Returns:
-            命令帮助信息
+            执行结果代码
         """
-        return """
-数据库管理命令
-
-用法:
-  vibecopilot db init                        - 初始化数据库
-  vibecopilot db query --type=<类型>         - 查询实体列表或单个实体
-  vibecopilot db create --type=<类型> --data='json字符串' - 创建实体
-  vibecopilot db update --type=<类型> --id=<ID> --data='json字符串' - 更新实体
-  vibecopilot db delete --type=<类型> --id=<ID> - 删除实体
-
-参数:
-  --type      实体类型(epic/story/task/label/template)
-  --id        实体ID
-  --data      JSON格式的数据
-  --format    输出格式(text/json)，默认为text
-  --query     查询字符串
-  --tags      标签列表，逗号分隔
-        """
+        raise NotImplementedError("子类必须实现此方法")

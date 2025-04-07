@@ -1,10 +1,7 @@
 """
-数据库模块
+数据库服务包
 
-提供VibeCopilot统一数据库访问层，包括：
-1. 数据库连接管理
-2. 数据访问对象(Repository)
-3. 事务处理
+提供数据库访问和实体管理功能
 """
 
 import os
@@ -13,12 +10,17 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.db.repositories.flow_session_repository import (
+    FlowSessionRepository,
+    StageInstanceRepository,
+    WorkflowDefinitionRepository,
+)
+from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
 from src.models.db import Base  # 直接从模型模块导入Base
-
-# 默认数据库配置
-DEFAULT_DB_PATH = os.path.join(Path.home(), ".vibecopilot", "database.sqlite")
+from src.models.db.init_db import get_db_path, init_db  # 导入数据库初始化相关函数
 
 
+# 从本模块定义基础数据库函数
 def get_engine(db_path=None):
     """获取数据库引擎
 
@@ -29,10 +31,8 @@ def get_engine(db_path=None):
         SQLAlchemy引擎实例
     """
     if not db_path:
-        from src.core.config import get_config
-
-        config = get_config()
-        db_path = config.get("database.path", DEFAULT_DB_PATH)
+        # 使用统一的获取数据库路径函数
+        db_path = get_db_path()
 
     # 确保目录存在
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -57,66 +57,18 @@ def get_session_factory(engine=None):
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def init_db(engine=None, create_tables=True):
-    """初始化数据库
-
-    Args:
-        engine: SQLAlchemy引擎实例，如果不指定则创建新实例
-        create_tables: 是否创建表结构
-
-    Returns:
-        SQLAlchemy引擎实例
-    """
-    if not engine:
-        engine = get_engine()
-
-    if create_tables:
-        # 创建表结构
-        Base.metadata.create_all(bind=engine)
-
-    return engine
-
-
-from .repositories import (
-    BlockRepository,
-    DocumentRepository,
-    EpicRepository,
-    FlowSessionRepository,
-    LinkRepository,
-    MilestoneRepository,
-    RoadmapRepository,
-    StageInstanceRepository,
-    StoryRepository,
-    TaskRepository,
-    TemplateRepository,
-    TemplateVariableRepository,
-    WorkflowDefinitionRepository,
-    WorkflowRepository,
-    WorkflowStepRepository,
-)
-
-# 导出API
-from .repository import Repository
-
+# 导出模块API - 不导入其他模块，避免循环导入
 __all__ = [
+    "init_db",
     "get_engine",
     "get_session_factory",
-    "init_db",
     "Base",
-    "Repository",
-    "EpicRepository",
-    "MilestoneRepository",
-    "RoadmapRepository",
-    "StoryRepository",
-    "TaskRepository",
-    "DocumentRepository",
-    "BlockRepository",
-    "LinkRepository",
     "TemplateRepository",
     "TemplateVariableRepository",
-    "WorkflowRepository",
-    "WorkflowStepRepository",
-    "WorkflowDefinitionRepository",
     "FlowSessionRepository",
     "StageInstanceRepository",
+    "WorkflowDefinitionRepository",
 ]
+
+# 注意: 不要在此处导入 service.py 或其他依赖 src.db 的模块，
+# 避免循环导入。service.py 会直接导入所需的仓库类。

@@ -9,6 +9,7 @@ from src.cli.commands.db import DatabaseCommand
 from src.cli.commands.memory.memory_command import MemoryCommand
 from src.cli.commands.roadmap import (
     CreateCommand,
+    RoadmapCommand,
     RoadmapListCommand,
     StoryCommand,
     SwitchCommand,

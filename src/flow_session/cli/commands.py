@@ -184,7 +184,8 @@ def delete_session_cmd(session_id, force, verbose, agent_mode):
 
 
 def register_commands(parser):
-    """注册命令到CLI组
+    """
+    注册会话管理命令
 
     Args:
         parser: 命令解析器或命令组
@@ -193,10 +194,9 @@ def register_commands(parser):
         注册后的解析器或None
     """
     # 检测是否是argparse子解析器
-    if isinstance(parser, argparse.ArgumentParser) or hasattr(parser, "add_parser"):
-        # 创建session子命令解析器
-        session_parser = parser.add_parser("session", help="管理工作流会话")
-        session_subparsers = session_parser.add_subparsers(dest="action", help="会话操作")
+    if isinstance(parser, argparse.ArgumentParser):
+        # 创建session子命令的子解析器
+        session_subparsers = parser.add_subparsers(dest="action", help="会话操作")
 
         # 创建list子命令
         list_parser = session_subparsers.add_parser("list", help="列出所有会话")
@@ -249,7 +249,7 @@ def register_commands(parser):
         delete_parser.add_argument("--verbose", "-v", action="store_true", help="显示详细信息")
         delete_parser.add_argument("--agent-mode", action="store_true", help="程序处理模式，输出JSON格式")
 
-        return session_parser
+        return parser
     else:
         # 如果是click组，直接添加命令组
         parser.add_command(session_group)

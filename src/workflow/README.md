@@ -1,4 +1,4 @@
-# Workflow 模块
+# Workflow 模块 (已废弃，执行的flow的方法由flow-session处理)
 
 ## 概述
 

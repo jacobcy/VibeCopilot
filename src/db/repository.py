@@ -41,8 +41,25 @@ class Repository(Generic[T]):
                 # 使用from_dict方法创建实例
                 instance = self.model_class.from_dict(data)
             else:
-                # 直接使用参数创建实例
-                instance = self.model_class(**data)
+                # 使用关键字参数拆包创建实例
+                # 防止字典内部有多余的键或特殊字符的键导致初始化失败
+                model_attrs = {}
+                # 获取模型类的__init__所需的参数
+                if hasattr(self.model_class, "__init__"):
+                    import inspect
+
+                    init_params = inspect.signature(self.model_class.__init__).parameters
+                    allowed_params = set(init_params.keys()) - {"self"}
+
+                    # 仅保留模型初始化所需的参数
+                    for key, value in data.items():
+                        if key in allowed_params:
+                            model_attrs[key] = value
+                else:
+                    # 如果无法获取参数信息，直接使用全部数据
+                    model_attrs = data
+
+                instance = self.model_class(**model_attrs)
 
             self.session.add(instance)
             self.session.commit()

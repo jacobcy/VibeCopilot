@@ -1,9 +1,9 @@
 """
-数据库命令模块
+数据库命令包
 
-提供数据库管理操作的命令接口
+包含数据库初始化、更新等命令
 """
 
-from .command import DatabaseCommand
+from src.cli.commands.db.command import DatabaseCommand
 
 __all__ = ["DatabaseCommand"]

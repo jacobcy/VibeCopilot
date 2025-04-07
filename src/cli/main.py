@@ -18,9 +18,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from src.cli.command import Command
 from src.cli.command_parser import CommandParser
 from src.cli.commands import RoadmapCommands
+from src.cli.commands.db import DatabaseCommand
 from src.cli.commands.flow.flow_command import FlowCommand
 from src.cli.commands.help.help_command import HelpCommand
+from src.cli.commands.memory import MemoryCommand
 from src.cli.commands.rule import RuleCommand
+from src.cli.commands.status import StatusCommand
 
 # 配置日志
 logging.basicConfig(
@@ -41,6 +44,9 @@ def main():
         "roadmap": RoadmapCommands,
         "rule": RuleCommand,
         "flow": FlowCommand,
+        "status": StatusCommand,
+        "memory": MemoryCommand,
+        "db": DatabaseCommand,
         "help": HelpCommand,
         # 可以添加更多命令
     }
@@ -69,16 +75,22 @@ def print_help():
     """打印帮助信息"""
     print("VibeCopilot CLI工具")
     print("\n可用命令:")
+    print("  help        显示帮助信息")
     print("  roadmap     路线图管理命令")
     print("  rule        规则管理命令")
-    print("  flow        流程管理命令")
+    print("  flow        工作流管理命令")
+    print("  status      状态管理命令")
+    print("  db          数据库管理命令")
+    print("  memory      知识库管理命令")
 
     print("\n用法:")
     print("  vibecopilot <命令> [参数]")
-    print("  vibecopilot roadmap sync github push")
+    print("  vibecopilot help [命令]")
     print("  vibecopilot roadmap story S1")
     print("  vibecopilot rule list")
-    print("  vibecopilot flow start")
+    print("  vibecopilot flow test")
+    print("  vibecopilot status show")
+    print("  vibecopilot db init")
 
 
 if __name__ == "__main__":

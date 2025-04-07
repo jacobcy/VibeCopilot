@@ -5,8 +5,11 @@
 """
 
 from src.cli.commands.memory.handlers.mcp_handlers import (
+    handle_delete_note,
+    handle_list_notes,
     handle_read_note,
     handle_search_notes,
+    handle_update_note,
     handle_write_note,
 )
 from src.cli.commands.memory.handlers.script_handlers import (
@@ -22,4 +25,7 @@ __all__ = [
     "handle_export",
     "handle_import",
     "handle_sync",
+    "handle_list_notes",
+    "handle_update_note",
+    "handle_delete_note",
 ]
