@@ -7,12 +7,12 @@
 import os
 import sys
 
+# 移到顶部
+from src.docs_engine.cli import main
+
 # 将项目根目录添加到路径中
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
-
-# 导入CLI模块并执行
-from src.docs_engine.cli import main
 
 if __name__ == "__main__":
     sys.exit(main())

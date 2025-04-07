@@ -10,11 +10,7 @@ from typing import Any, Dict, List, Tuple
 from src.cli.command_parser import CommandParser
 from src.core.rule_engine import RuleEngine
 from src.cursor.command.formatter import enhance_result_for_agent
-from src.cursor.command.suggestions import (
-    get_command_suggestions,
-    get_error_suggestions,
-    get_verbose_error_info,
-)
+from src.cursor.command.suggestions import get_command_suggestions, get_error_suggestions, get_verbose_error_info
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +68,7 @@ class CursorCommandHandler:
                 "error": error_msg,
                 "error_type": "ValueError",
                 "suggestions": self._get_command_suggestions(command),
-                "verbose": self._get_verbose_error_info(ve),
+                "verbose": get_verbose_error_info(ve),
             }
         except Exception as e:
             error_msg = f"处理命令失败: {str(e)}"
@@ -83,7 +79,7 @@ class CursorCommandHandler:
                 "error": error_msg,
                 "error_type": type(e).__name__,
                 "suggestions": get_error_suggestions(e),
-                "verbose": self._get_verbose_error_info(e),
+                "verbose": get_verbose_error_info(e),
             }
 
     def _parse_command(self, command: str) -> Tuple[str, List[str]]:
@@ -142,32 +138,28 @@ class CursorCommandHandler:
 
         return commands
 
-    def _get_verbose_error_info(self, error: Exception) -> Dict[str, Any]:
-        """获取详细错误信息
+    def get_command_help(self, command_name: str) -> Dict[str, Any]:
+        """获取命令帮助信息
 
         Args:
-            error: 异常对象
+            command_name: 命令名称
 
         Returns:
-            Dict[str, Any]: 详细错误信息
+            Dict[str, Any]: 帮助信息
         """
-        error_type = type(error).__name__
-        error_msg = str(error)
-        error_info = {
-            "error_type": error_type,
-            "error_message": error_msg,
-            "context": "命令处理器",
-        }
+        available_commands = self.get_available_commands()
+        command_info = next((cmd for cmd in available_commands if cmd["name"] == command_name), None)
 
-        # 添加异常详细信息
-        if hasattr(error, "__dict__"):
-            # 过滤掉内置属性
-            error_attrs = {
-                k: v
-                for k, v in error.__dict__.items()
-                if not k.startswith("__") and not k.endswith("__")
+        if not command_info:
+            return {
+                "success": False,
+                "error": f"未知命令: {command_name}",
+                "suggestions": ["使用 '/help' 查看所有可用命令", "检查命令名称是否正确"],
             }
-            if error_attrs:
-                error_info["error_details"] = error_attrs
 
-        return error_info
+        return {
+            "success": True,
+            "command": command_info["name"],
+            "description": command_info["description"],
+            "handler": command_info["handler"],
+        }

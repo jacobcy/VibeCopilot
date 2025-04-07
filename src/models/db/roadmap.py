@@ -1,150 +1,141 @@
-"""
-路线图数据模型
+# src/models/db/roadmap.py (New Content)
 
-定义路线图相关的数据库模型。
-"""
-
+import datetime
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Union
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
-# 创建基础类，单个实例用于所有模型
-Base = declarative_base()
+from .base import Base  # Assuming Base is correctly defined elsewhere
 
-
-@dataclass
-class Roadmap:
-    """路线图"""
-
-    id: str
-    name: str
-    description: Optional[str] = None
-    status: str = "active"  # active, archived
-    owner: Optional[str] = None
-    created_at: datetime = None
-    updated_at: datetime = None
+# Import the new Task model for relationship typing hint, use string for relationship()
+# from .task import Task # Not strictly needed for relationship string definition
 
 
-@dataclass
-class Epic:
-    """史诗"""
-
-    id: str
-    title: str
-    roadmap_id: str
-    description: str = ""
-    status: str = "draft"  # draft, in_progress, completed
-    tasks: List[str] = field(default_factory=list)
-    milestone: str = ""
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+def generate_uuid():
+    """生成UUID字符串"""
+    return str(uuid.uuid4())
 
 
-@dataclass
-class Milestone:
-    """里程碑"""
+# Association table for Epic <-> Task (if needed, maybe Task directly links to Epic/Story?)
+# epic_task_association = Table('epic_task_association', Base.metadata,
+#     Column('epic_id', String, ForeignKey('epics.id'), primary_key=True),
+#     Column('task_id', String, ForeignKey('tasks.id'), primary_key=True)
+# )
 
-    id: str
-    title: str
-    roadmap_id: str
-    description: str = ""
-    status: str = "planned"  # planned, in_progress, completed
-    due_date: Optional[datetime] = None
-    tasks: List[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+# Association table for Milestone <-> Task (if needed)
+# milestone_task_association = Table('milestone_task_association', Base.metadata,
+#     Column('milestone_id', String, ForeignKey('milestones.id'), primary_key=True),
+#     Column('task_id', String, ForeignKey('tasks.id'), primary_key=True)
+# )
 
 
-@dataclass
-class Story:
-    """用户故事"""
+class Roadmap(Base):
+    """路线图 SQLAlchemy 模型"""
 
-    id: str
-    title: str
-    roadmap_id: str
-    description: str = ""
-    epic_id: str = ""
-    status: str = "draft"  # draft, in_progress, completed
-    tasks: List[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    __tablename__ = "roadmaps"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String, default="active", nullable=False)  # active, archived
+    owner = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    epics = relationship("Epic", back_populates="roadmap", cascade="all, delete-orphan")
+    milestones = relationship("Milestone", back_populates="roadmap", cascade="all, delete-orphan")
+    stories = relationship("Story", back_populates="roadmap", cascade="all, delete-orphan")  # Direct relationship if stories belong to roadmap
+
+    def __repr__(self):
+        return f"<Roadmap(id='{self.id}', name='{self.name}')>"
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
-# Task类改为SQLAlchemy模型
-class Task(Base):
-    """任务"""
+class Milestone(Base):
+    """里程碑 SQLAlchemy 模型"""
 
-    __tablename__ = "tasks"
+    __tablename__ = "milestones"
 
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=generate_uuid)
     title = Column(String, nullable=False)
-    roadmap_id = Column(String, nullable=True, index=True)
-    description = Column(String, default="")
-    status = Column(String, default="todo")  # todo, in_progress, completed
-    priority = Column(String, default="P2")  # P0, P1, P2, P3
-    milestone = Column(String, default="")
-    story_id = Column(String, nullable=True)
-    epic = Column(String, default="")
-    assignee = Column(String, default="")
-    estimate = Column(Integer, default=0)  # 估计工时，单位小时
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    roadmap_id = Column(String, ForeignKey("roadmaps.id"), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    status = Column(String, default="planned", nullable=False)  # planned, in_progress, completed
+    due_date = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def __init__(
-        self,
-        id: str,
-        title: str,
-        roadmap_id: Optional[str] = None,
-        description: str = "",
-        status: str = "todo",
-        priority: str = "P2",
-        milestone: str = "",
-        story_id: Optional[str] = None,
-        epic: str = "",
-        assignee: str = "",
-        estimate: int = 0,
-        **kwargs,
-    ):
-        self.id = id
-        self.title = title
-        self.roadmap_id = roadmap_id
-        self.description = description
-        self.status = status
-        self.priority = priority
-        self.milestone = milestone
-        self.story_id = story_id
-        self.epic = epic
-        self.assignee = assignee
-        self.estimate = estimate
+    # Relationships
+    roadmap = relationship("Roadmap", back_populates="milestones")
+    stories = relationship("Story", back_populates="milestone")  # Stories assigned to this milestone
+    # tasks = relationship("Task", secondary=milestone_task_association, back_populates="milestones") # If Task links to Milestone
 
-        # 使用当前时间初始化时间戳
-        self.created_at = datetime.now()
-        self.updated_at = datetime.now()
+    def __repr__(self):
+        return f"<Milestone(id='{self.id}', title='{self.title}')>"
 
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典表示
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-        Returns:
-            字典表示
-        """
-        return {
-            "id": self.id,
-            "title": self.title,
-            "roadmap_id": self.roadmap_id,
-            "description": self.description,
-            "status": self.status,
-            "priority": self.priority,
-            "milestone": self.milestone,
-            "story_id": self.story_id,
-            "epic": self.epic,
-            "assignee": self.assignee,
-            "estimate": self.estimate,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
+
+class Epic(Base):
+    """史诗 SQLAlchemy 模型"""
+
+    __tablename__ = "epics"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    title = Column(String, nullable=False)
+    roadmap_id = Column(String, ForeignKey("roadmaps.id"), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    status = Column(String, default="draft", nullable=False)  # draft, in_progress, completed
+    # milestone_id = Column(String, ForeignKey("milestones.id"), nullable=True) # Optional: If Epic belongs to a Milestone
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    roadmap = relationship("Roadmap", back_populates="epics")
+    stories = relationship("Story", back_populates="epic", cascade="all, delete-orphan")
+    # milestone = relationship("Milestone", back_populates="epics") # If Epic belongs to a Milestone
+    # tasks = relationship("Task", secondary=epic_task_association, back_populates="epics") # If Task links to Epic
+
+    def __repr__(self):
+        return f"<Epic(id='{self.id}', title='{self.title}')>"
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+
+class Story(Base):
+    """用户故事 SQLAlchemy 模型"""
+
+    __tablename__ = "stories"  # Changed from 'roadmap_items' used in Task foreign key? Align this. Let's assume 'stories' for now.
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    title = Column(String, nullable=False)
+    roadmap_id = Column(String, ForeignKey("roadmaps.id"), nullable=False, index=True)  # Story belongs to a Roadmap
+    epic_id = Column(String, ForeignKey("epics.id"), nullable=True, index=True)  # Optional: Story belongs to an Epic
+    milestone_id = Column(String, ForeignKey("milestones.id"), nullable=True, index=True)  # Optional: Story belongs to a Milestone
+    description = Column(Text, nullable=True)
+    status = Column(String, default="draft", nullable=False)  # draft, refinement, in_progress, completed, rejected
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    roadmap = relationship("Roadmap", back_populates="stories")
+    epic = relationship("Epic", back_populates="stories")
+    milestone = relationship("Milestone", back_populates="stories")
+
+    # Relationship to the NEW Task model
+    # The foreign key 'roadmap_item_id' in Task points to Story.id
+    # We need to ensure Task's ForeignKey targets 'stories.id'
+    tasks = relationship("Task", back_populates="roadmap_item", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Story(id='{self.id}', title='{self.title}')>"
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}

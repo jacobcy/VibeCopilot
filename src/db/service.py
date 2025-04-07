@@ -11,7 +11,8 @@ from typing import Any, Dict, List, Optional
 from src.db import get_engine, get_session_factory
 from src.db.core.entity_manager import EntityManager
 from src.db.core.mock_storage import MockStorage
-from src.db.repositories.roadmap_repository import EpicRepository, StoryRepository, TaskRepository
+from src.db.repositories.roadmap_repository import EpicRepository, StoryRepository
+from src.db.repositories.task_repository import TaskRepository
 from src.db.specific_managers.epic_manager import EpicManager
 from src.db.specific_managers.story_manager import StoryManager
 from src.db.specific_managers.task_manager import TaskManager
@@ -92,9 +93,7 @@ class DatabaseService:
         """
         return self.entity_manager.create_entity(entity_type, data)
 
-    def update_entity(
-        self, entity_type: str, entity_id: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def update_entity(self, entity_type: str, entity_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """通用更新实体方法
 
         Args:

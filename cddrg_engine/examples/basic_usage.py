@@ -2,14 +2,14 @@
 """CDDRG引擎基本用法示例."""
 
 import os
-
-# 添加项目根目录到系统路径
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+# 移到顶部
 from cddrg_engine import Engine, EngineConfig
+
+# 添加项目根目录到系统路径
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def main():

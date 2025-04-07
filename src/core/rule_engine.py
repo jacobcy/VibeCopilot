@@ -82,9 +82,7 @@ class RuleEngine:
                         with open(file_path, "r", encoding="utf-8") as f:
                             rule_def = yaml.safe_load(f)
                             if self._validate_rule(rule_def):
-                                self.add_rule(
-                                    rule_def["name"], rule_def, priority=rule_def.get("priority", 0)
-                                )
+                                self.add_rule(rule_def["name"], rule_def, priority=rule_def.get("priority", 0))
         except Exception as e:
             raise RuleError(f"加载规则失败: {str(e)}", "E201")
 
@@ -126,12 +124,7 @@ class RuleEngine:
                 matching_rules.append((name, rule))
 
         # 按优先级排序
-        return [
-            rule
-            for _, rule in sorted(
-                matching_rules, key=lambda x: self.rule_priorities[x[0]], reverse=True
-            )
-        ]
+        return [rule for _, rule in sorted(matching_rules, key=lambda x: self.rule_priorities[x[0]], reverse=True)]
 
     def process_command(self, command: str) -> Dict[str, Any]:
         """处理命令
@@ -163,3 +156,21 @@ class RuleEngine:
             error_msg = f"规则引擎处理失败: {str(e)}"
             logger.error(error_msg)
             return {"handled": True, "success": False, "error": error_msg}
+
+    def get_available_commands(self) -> List[Dict[str, Any]]:
+        """获取可用命令列表
+
+        Returns:
+            List[Dict[str, Any]]: 可用命令列表
+        """
+        commands = []
+        for name, rule in self.rules.items():
+            if "command" in rule:
+                commands.append(
+                    {
+                        "name": name,
+                        "description": rule.get("description", "无描述"),
+                        "handler": rule.get("action", {}).get("handler", "unknown"),
+                    }
+                )
+        return commands

@@ -10,20 +10,17 @@ import io
 import logging
 import sys
 from contextlib import redirect_stdout
+from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple
 
+from rich.console import Console
+from rich.table import Table
+
 from src.db import get_session_factory, init_db
-from src.flow_session.cli import (
-    abort_session,
-    create_session,
-    delete_session,
-    list_sessions,
-    pause_session,
-    resume_session,
-    show_session,
-)
+from src.flow_session.cli import abort_session, create_session, delete_session, list_sessions, pause_session, resume_session, show_session
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
@@ -37,7 +34,30 @@ def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any
         包含状态、消息和数据的元组
     """
     if not hasattr(args, "action") or not args.action:
-        return False, "未指定会话操作，可用操作: list, show, create, pause, resume, abort, delete", None
+        # 创建一个更友好的错误提示
+        message = StringIO()
+        console = Console(file=message)
+
+        console.print("\n[bold red]错误:[/bold red] 请指定一个会话操作\n")
+
+        # 创建表格展示可用操作
+        table = Table(show_header=False, box=None, padding=(0, 2))
+        table.add_column("Command", style="cyan")
+        table.add_column("Description")
+
+        table.add_row("list", "列出所有工作流会话")
+        table.add_row("show", "查看指定会话的详细信息")
+        table.add_row("create", "创建新的工作流会话")
+        table.add_row("pause", "暂停指定的工作流会话")
+        table.add_row("resume", "恢复已暂停的工作流会话")
+        table.add_row("abort", "中止指定的工作流会话")
+        table.add_row("delete", "删除指定的工作流会话")
+
+        console.print("可用的会话操作:")
+        console.print(table)
+        console.print("\n使用 [cyan]vibecopilot flow session <操作> --help[/cyan] 获取具体操作的帮助信息")
+
+        return False, message.getvalue(), None
 
     # 捕获标准输出
     captured_output = io.StringIO()

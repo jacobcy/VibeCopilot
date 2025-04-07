@@ -25,3 +25,13 @@ class Command(ABC):
             命令执行结果状态码
         """
         pass
+
+    @classmethod
+    def get_help(cls) -> str:
+        """
+        获取命令的帮助信息
+
+        Returns:
+            命令的帮助文本
+        """
+        return cls.__doc__ or "暂无帮助信息"

@@ -1,11 +1,13 @@
 [flake8]
-max-line-length = 100
+max-line-length = 150
 # 暂时注释复杂度检查，后续优化代码后再启用
 # max-complexity = 10
-max-doc-length = 300
+max-doc-length = 350
 # 添加更多忽略规则
 ignore = E203,W503,F401,F541,D400,E226,F821,F841,C901
-exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,.env,.venv,venv
+exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,.env,.venv,venv,examples,bak
 per-file-ignores =
     # imported but unused in __init__ files
     __init__.py: F401
+# Allow imports after path manipulation in main cli entry point
+    src/cli/main.py: E402

@@ -86,9 +86,7 @@ class RuleGenerator:
 
         return rule
 
-    def generate_rule_file(
-        self, template: Template, variables: Dict[str, Any], output_path: str
-    ) -> Rule:
+    def generate_rule_file(self, template: Template, variables: Dict[str, Any], output_path: str) -> Rule:
         """
         生成规则文件
 
@@ -165,7 +163,6 @@ class RuleGenerator:
                 rule_json = rule.model_dump_json(exclude_none=True, indent=2)
         except Exception as e:
             # 最后的兜底方案 - 直接使用JSON库序列化
-            import json
 
             rule_dict = {
                 "id": getattr(rule, "id", "unknown"),
@@ -190,9 +187,7 @@ class RuleGenerator:
 
         return rule_json
 
-    def batch_generate_rules(
-        self, template_configs: List[Dict[str, Any]], base_output_dir: str
-    ) -> List[Rule]:
+    def batch_generate_rules(self, template_configs: List[Dict[str, Any]], base_output_dir: str) -> List[Rule]:
         """
         批量生成规则
 

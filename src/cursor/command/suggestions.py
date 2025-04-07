@@ -123,3 +123,30 @@ def get_error_suggestions_from_message(error_msg: str) -> List[str]:
         suggestions.append("使用 '/help <命令名>' 获取特定命令的帮助")
 
     return suggestions
+
+
+def get_verbose_error_info(error: Exception) -> Dict[str, Any]:
+    """获取详细错误信息
+
+    Args:
+        error: 异常对象
+
+    Returns:
+        Dict[str, Any]: 详细错误信息
+    """
+    error_type = type(error).__name__
+    error_msg = str(error)
+    error_info = {
+        "error_type": error_type,
+        "error_message": error_msg,
+        "context": "命令处理器",
+    }
+
+    # 添加异常详细信息
+    if hasattr(error, "__dict__"):
+        # 过滤掉内置属性
+        error_attrs = {k: v for k, v in error.__dict__.items() if not k.startswith("__") and not k.endswith("__")}
+        if error_attrs:
+            error_info["error_details"] = error_attrs
+
+    return error_info

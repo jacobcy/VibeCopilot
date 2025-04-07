@@ -56,9 +56,7 @@ class GitHubClientBase:
         response = requests.request(method, url, headers=headers, **kwargs)
         return response
 
-    def _make_graphql_request(
-        self, query: str, variables: Optional[Dict[str, Any]] = None
-    ) -> requests.Response:
+    def _make_graphql_request(self, query: str, variables: Optional[Dict[str, Any]] = None) -> requests.Response:
         """发送GraphQL API请求.
 
         Args:
@@ -98,17 +96,21 @@ class GitHubClientBase:
         try:
             response = self._make_rest_request("GET", endpoint, params=params, **kwargs)
             response.raise_for_status()
-            return response.json()
+            try:
+                return response.json()
+            except ValueError:
+                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
+                return None
         except requests.HTTPError as e:
             logger.error(f"GET请求失败: {endpoint} - {str(e)}")
             raise
 
-    def post(self, endpoint: str, json: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
+    def post(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
         """发送POST请求并返回JSON响应.
 
         Args:
             endpoint: API端点
-            json: 请求体JSON数据
+            payload: 请求体JSON数据 (原名json)
             **kwargs: 传递给requests的其他参数
 
         Returns:
@@ -118,19 +120,23 @@ class GitHubClientBase:
             requests.HTTPError: 当API请求失败时
         """
         try:
-            response = self._make_rest_request("POST", endpoint, json=json, **kwargs)
+            response = self._make_rest_request("POST", endpoint, json=payload, **kwargs)
             response.raise_for_status()
-            return response.json()
+            try:
+                return response.json()
+            except ValueError:
+                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
+                return None
         except requests.HTTPError as e:
             logger.error(f"POST请求失败: {endpoint} - {str(e)}")
             raise
 
-    def patch(self, endpoint: str, json: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
+    def patch(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
         """发送PATCH请求并返回JSON响应.
 
         Args:
             endpoint: API端点
-            json: 请求体JSON数据
+            payload: 请求体JSON数据 (原名json)
             **kwargs: 传递给requests的其他参数
 
         Returns:
@@ -140,19 +146,23 @@ class GitHubClientBase:
             requests.HTTPError: 当API请求失败时
         """
         try:
-            response = self._make_rest_request("PATCH", endpoint, json=json, **kwargs)
+            response = self._make_rest_request("PATCH", endpoint, json=payload, **kwargs)
             response.raise_for_status()
-            return response.json()
+            try:
+                return response.json()
+            except ValueError:
+                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
+                return None
         except requests.HTTPError as e:
             logger.error(f"PATCH请求失败: {endpoint} - {str(e)}")
             raise
 
-    def put(self, endpoint: str, json: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
+    def put(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
         """发送PUT请求并返回JSON响应.
 
         Args:
             endpoint: API端点
-            json: 请求体JSON数据
+            payload: 请求体JSON数据 (原名json)
             **kwargs: 传递给requests的其他参数
 
         Returns:
@@ -162,9 +172,13 @@ class GitHubClientBase:
             requests.HTTPError: 当API请求失败时
         """
         try:
-            response = self._make_rest_request("PUT", endpoint, json=json, **kwargs)
+            response = self._make_rest_request("PUT", endpoint, json=payload, **kwargs)
             response.raise_for_status()
-            return response.json()
+            try:
+                return response.json()
+            except ValueError:
+                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
+                return None
         except requests.HTTPError as e:
             logger.error(f"PUT请求失败: {endpoint} - {str(e)}")
             raise
@@ -186,7 +200,11 @@ class GitHubClientBase:
             response = self._make_rest_request("DELETE", endpoint, **kwargs)
             response.raise_for_status()
             # DELETE请求可能返回空响应
-            return response.json() if response.content else None
+            try:
+                return response.json() if response.content else None
+            except ValueError:
+                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
+                return None
         except requests.HTTPError as e:
             logger.error(f"DELETE请求失败: {endpoint} - {str(e)}")
             raise

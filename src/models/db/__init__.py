@@ -6,16 +6,9 @@
 
 from .base import Base, BaseMetadata, RuleType, TemplateVariableType
 from .flow_session import FlowSession, StageInstance, WorkflowDefinition
-from .roadmap import Epic, Milestone, Roadmap, Story, Task
-from .rule import (
-    Example,
-    Rule,
-    RuleApplication,
-    RuleDependency,
-    RuleExample,
-    RuleItem,
-    RuleMetadata,
-)
+from .roadmap import Epic, Milestone, Roadmap, Story
+from .rule import Example, Rule, RuleApplication, RuleDependency, RuleExample, RuleItem, RuleMetadata
+from .task import Task, TaskComment
 from .template import Template, TemplateMetadata, TemplateRepository, TemplateVariable
 from .workflow import Workflow, WorkflowExecution, WorkflowStep, WorkflowStepExecution
 
@@ -40,9 +33,11 @@ __all__ = [
     # Roadmap models
     "Epic",
     "Story",
-    "Task",
     "Milestone",
     "Roadmap",
+    # Task models
+    "Task",
+    "TaskComment",
     # Workflow models
     "Workflow",
     "WorkflowStep",

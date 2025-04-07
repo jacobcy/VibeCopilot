@@ -3,7 +3,8 @@
 """
 
 import os
-from unittest.mock import patch
+import unittest.mock  # 导入 unittest.mock 以使用全限定名
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 import rule_parser
@@ -82,11 +83,11 @@ def test_get_default_parser_fallback(mock_check):
 
 @patch(
     "builtins.open",
-    side_effect=lambda *args, **kwargs: {
-        ".env": mock_open(read_data="OPENAI_API_KEY=test-key")
-    }.get(args[0], mock_open())(args[0]),
+    side_effect=lambda *args, **kwargs: {".env": unittest.mock.mock_open(read_data="OPENAI_API_KEY=test-key")}.get(
+        args[0], unittest.mock.mock_open()
+    )(args[0]),
 )
-def test_check_openai_key_in_env_file_exists(mock_open):
+def test_check_openai_key_in_env_file_exists(mock_open_func):  # 重命名参数以避免与导入冲突
     """测试.env文件中存在OpenAI API密钥"""
     from rule_parser.parser_factory import _check_openai_key_in_env_file
 
@@ -99,11 +100,11 @@ def test_check_openai_key_in_env_file_exists(mock_open):
 
 @patch(
     "builtins.open",
-    side_effect=lambda *args, **kwargs: {".env": mock_open(read_data="OTHER_KEY=value")}.get(
-        args[0], mock_open()
-    )(args[0]),
+    side_effect=lambda *args, **kwargs: {".env": unittest.mock.mock_open(read_data="OTHER_KEY=value")}.get(args[0], unittest.mock.mock_open())(
+        args[0]
+    ),
 )
-def test_check_openai_key_in_env_file_not_exists(mock_open):
+def test_check_openai_key_in_env_file_not_exists(mock_open_func):  # 重命名参数
     """测试.env文件中不存在OpenAI API密钥"""
     from rule_parser.parser_factory import _check_openai_key_in_env_file
 
@@ -115,7 +116,7 @@ def test_check_openai_key_in_env_file_not_exists(mock_open):
 
 
 @patch("builtins.open", side_effect=FileNotFoundError)
-def test_check_openai_key_in_env_file_no_file(mock_open):
+def test_check_openai_key_in_env_file_no_file(mock_open_func):  # 重命名参数
     """测试.env文件不存在"""
     from rule_parser.parser_factory import _check_openai_key_in_env_file
 

@@ -9,16 +9,31 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
+from rich.console import Console
+from rich.table import Table
+
 from src.cli.base_command import BaseCommand
 from src.cli.command import Command
 from src.cli.commands.roadmap.handlers.detail_handlers import RoadmapDetailHandlers
 from src.cli.commands.roadmap.handlers.edit_handlers import RoadmapEditHandlers
 from src.cli.commands.roadmap.handlers.list_handlers import RoadmapListHandlers
+from src.cli.commands.roadmap.handlers.show_handler import handle_show_roadmap
+from src.cli.commands.roadmap.handlers.status_handler import handle_roadmap_status
 from src.cli.commands.roadmap.handlers.sync_handlers import RoadmapSyncHandlers
+
+# --- Imports for Task Integration ---
+from src.db import get_session_factory
+from src.db.repositories.roadmap_repository import RoadmapRepository, StoryRepository
+from src.db.repositories.task_repository import TaskRepository
 from src.db.service import DatabaseService
+from src.models.db.roadmap import Roadmap, Story
+from src.models.db.task import Task
 from src.roadmap import RoadmapService
 
+# ----------------------------------
+
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 class RoadmapCommand(BaseCommand, Command):
@@ -254,40 +269,87 @@ class RoadmapCommand(BaseCommand, Command):
                     print("执行失败")
 
     def _execute_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """实现BaseCommand接口的执行方法"""
-        # 解析参数
-        roadmap_action = args.get("roadmap_action")
+        """实际执行命令逻辑的分派"""
+        action = args.get("roadmap_action")
+        results = {"status": "error", "code": 1, "message": f"未知路线图操作: {action}", "data": None}
 
-        # 根据操作调用对应处理函数
-        if roadmap_action == "list":
-            result = self._list_roadmaps(args)
-        elif roadmap_action == "show":
-            result = self._show_roadmap(args)
-        elif roadmap_action == "create":
-            result = self._create_roadmap(args)
-        elif roadmap_action == "update":
-            result = self._update_roadmap(args)
-        elif roadmap_action == "delete":
-            result = self._delete_roadmap(args)
-        elif roadmap_action == "sync":
-            result = self._sync_roadmap(args)
-        elif roadmap_action == "switch":
-            result = self._switch_roadmap(args)
-        elif roadmap_action == "status":
-            result = self._roadmap_status(args)
-        else:
-            return {"success": False, "error": f"未知的路线图操作: {roadmap_action}"}
+        try:
+            if action == "list":
+                results = self._list_roadmaps(args)
+            elif action == "show":
+                results = self._show_roadmap(args)
+            elif action == "create":
+                results = self._create_roadmap(args)
+            elif action == "update":
+                results = self._update_roadmap(args)
+            elif action == "delete":
+                results = self._delete_roadmap(args)
+            elif action == "sync":
+                results = self._sync_roadmap(args)
+            elif action == "switch":
+                results = self._switch_roadmap(args)
+            elif action == "status":
+                results = self._roadmap_status(args)
+            else:
+                logger.warning(f"未知的 roadmap action: {action}")
+                # Return help or error message?
+                results["message"] = f"未知路线图操作: {action}. 使用 --help 查看可用操作。"
 
-        return result
+        except Exception as e:
+            logger.exception(f"执行 roadmap 操作 '{action}' 时出错: {e}")
+            results["message"] = f"执行 roadmap 操作时出错: {e}"
+            results["code"] = 500
+            # Optionally print to console if not agent mode
+            # if not self.is_agent_mode(args):
+            #     console.print(f"[bold red]错误:[/bold red] {e}")
+
+        # Standardized result structure for Agent
+        final_result = {
+            "status": results.get("status", "error" if results.get("code", 1) != 0 else "success"),
+            "code": results.get("code", 1 if results.get("status", "error") == "error" else 0),
+            "message": results.get("message", ""),
+            "data": results.get("data", None),
+            "meta": {"command": f"roadmap {action}", "args": args},
+        }
+        return final_result
 
     # 各个子命令的路由方法
     def _list_roadmaps(self, args: Dict) -> Dict[str, Any]:
-        """列出所有路线图"""
-        return RoadmapListHandlers.list_roadmaps(self.db_service, args)
+        """处理 list 子命令"""
+        logger.info("列出所有路线图...")
+        session_factory = get_session_factory()
+        with session_factory() as session:
+            repo = RoadmapRepository(session)
+            roadmaps = repo.get_all()
+            roadmap_list = [rm.to_dict() for rm in roadmaps]
+            # Console output (if not agent mode)
+            if not self.is_agent_mode(args):
+                if not roadmaps:
+                    console.print("[yellow]没有找到任何路线图。[/yellow]")
+                else:
+                    table = Table(title="路线图列表")
+                    table.add_column("ID", style="dim")
+                    table.add_column("名称", style="bold cyan")
+                    table.add_column("状态", style="magenta")
+                    if args.get("verbose"):
+                        table.add_column("描述")
+                    for rm in roadmaps:
+                        row = [rm.id, rm.name, rm.status]
+                        if args.get("verbose"):
+                            row.append(rm.description or "-")
+                        table.add_row(*row)
+                    console.print(table)
+
+            return {
+                "status": "success",
+                "code": 0,
+                "message": f"找到 {len(roadmap_list)} 个路线图",
+                "data": roadmap_list,
+            }
 
     def _show_roadmap(self, args: Dict) -> Dict[str, Any]:
-        """显示路线图详情"""
-        return RoadmapDetailHandlers.show_roadmap(self.db_service, args)
+        """处理 show 子命令 - 调用外部 handler"""
+        return handle_show_roadmap(args, self.is_agent_mode(args))
 
     def _create_roadmap(self, args: Dict) -> Dict[str, Any]:
         """创建路线图"""
@@ -310,5 +372,14 @@ class RoadmapCommand(BaseCommand, Command):
         return RoadmapSyncHandlers.switch_roadmap(self.service, self.db_service, args)
 
     def _roadmap_status(self, args: Dict) -> Dict[str, Any]:
-        """查看路线图状态"""
-        return RoadmapSyncHandlers.roadmap_status(self.service, self.db_service, args)
+        """处理 status 子命令 - 调用外部 handler"""
+        return handle_roadmap_status(args, self.is_agent_mode(args))
+
+    def is_agent_mode(self, args: Dict) -> bool:
+        """检查是否处于 Agent 模式 (简化)"""
+        # Based on args or environment? For now, assume False
+        return False
+
+
+# Register command (if using a central registry)
+# CommandRegistry.register(RoadmapCommand)

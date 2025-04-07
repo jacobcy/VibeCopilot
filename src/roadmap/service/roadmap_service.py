@@ -10,7 +10,10 @@ from typing import Any, Dict, List, Optional, Union
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.db.repositories.roadmap_repository import EpicRepository, StoryRepository, TaskRepository
+from src.db import get_session_factory
+from src.db.repositories.roadmap_repository import EpicRepository, MilestoneRepository, RoadmapRepository, StoryRepository
+from src.db.repositories.task_repository import TaskRepository
+from src.models.db import Epic, Milestone, Roadmap, Story, Task
 from src.roadmap.core import RoadmapManager, RoadmapStatus, RoadmapUpdater
 from src.roadmap.service.roadmap_data import (
     get_epics,
@@ -32,7 +35,9 @@ from src.roadmap.service.roadmap_operations import (
     update_roadmap,
     update_roadmap_status,
 )
-from src.roadmap.sync import GitHubSyncService, YamlSyncService
+
+# 移除循环导入
+# from src.roadmap.sync import GitHubSyncService, YamlSyncService
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +69,9 @@ class RoadmapService:
         self.epic_repo = EpicRepository(session)
         self.story_repo = StoryRepository(session)
         self.task_repo = TaskRepository(session)
+
+        # 延迟导入，避免循环依赖
+        from src.roadmap.sync import GitHubSyncService, YamlSyncService
 
         # 初始化同步服务
         self.github_sync = GitHubSyncService(self)

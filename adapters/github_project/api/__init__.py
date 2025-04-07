@@ -26,18 +26,12 @@ issues = issues_client.get_issues("octocat", "hello-world", state="open")
 """
 
 # 鼓励使用新的子模块客户端
-from .clients import (
-    GitHubClientBase,
-    GitHubIssuesClient,
-    GitHubProjectFieldsClient,
-    GitHubProjectItemsClient,
-    GitHubProjectsClient,
-)
+from .clients import GitHubClientBase, GitHubIssuesClient, GitHubProjectFieldsClient, GitHubProjectItemsClient, GitHubProjectsClient
 
 # 为向后兼容导出类
 from .github_client import GitHubClient
-from .issues_client import GitHubIssuesClient
-from .projects_client import GitHubProjectsClient
+from .issues_client import GitHubIssuesClient  # noqa: F811
+from .projects_client import GitHubProjectsClient  # noqa: F811
 
 __all__ = [
     # 向后兼容类

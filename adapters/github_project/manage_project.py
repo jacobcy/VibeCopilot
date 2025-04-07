@@ -12,11 +12,12 @@ import os
 import sys
 from pathlib import Path
 
+# 移到顶部
+from src.cursor.command_handler import CursorCommandHandler
+
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
-
-from src.cursor.command_handler import CursorCommandHandler
 
 
 def setup_environment():
@@ -66,9 +67,7 @@ class GitHubManager:
     def update_task_status(self, task_id, status, sync=True):
         """更新任务状态"""
         sync_str = "true" if sync else "false"
-        return self.execute_command(
-            f"/github --action=update --type=task --id={task_id} --status={status} --sync={sync_str}"
-        )
+        return self.execute_command(f"/github --action=update --type=task --id={task_id} --status={status} --sync={sync_str}")
 
     def create_task(self, title, milestone, priority="P1", description=None):
         """创建新任务"""
@@ -155,9 +154,7 @@ def run_interactive():
         sync_result = manager.sync_data("to-github")
         if sync_result["success"]:
             print(f"  ✅ {sync_result['data']['result']['message']}")
-            print(
-                f"  创建: {sync_result['data']['result']['created']}, 更新: {sync_result['data']['result']['updated']}"
-            )
+            print(f"  创建: {sync_result['data']['result']['created']}, 更新: {sync_result['data']['result']['updated']}")
         else:
             print(f"  ❌ 同步失败: {sync_result['error']}")
 
@@ -170,9 +167,7 @@ def main():
     parser.add_argument("--check", action="store_true", help="检查路线图状态")
     parser.add_argument("--list", metavar="MILESTONE", help="列出指定里程碑的任务")
     parser.add_argument("--update", nargs=2, metavar=("TASK_ID", "STATUS"), help="更新任务状态")
-    parser.add_argument(
-        "--create", nargs=4, metavar=("TITLE", "MILESTONE", "PRIORITY", "DESCRIPTION"), help="创建新任务"
-    )
+    parser.add_argument("--create", nargs=4, metavar=("TITLE", "MILESTONE", "PRIORITY", "DESCRIPTION"), help="创建新任务")
     parser.add_argument("--sync", choices=["to-github", "from-github"], help="同步数据")
     parser.add_argument("--interactive", action="store_true", help="交互式模式")
 

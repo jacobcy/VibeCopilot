@@ -60,7 +60,7 @@ def _ensure_parser_available():
             logger.info(f"尝试添加备选路径: {alt_path}")
             sys.path.append(str(alt_path))
             try:
-                import adapters.rule_parser
+                import adapters.rule_parser  # noqa: F811
 
                 logger.info("成功导入规则解析器(通过备选路径)")
                 return True

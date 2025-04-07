@@ -11,6 +11,9 @@ import logging
 import sys
 from typing import Any, Dict, List, Tuple
 
+from rich.console import Console
+from rich.table import Table
+
 from src.cli.commands.base_command import BaseCommand
 from src.cli.commands.memory.memory_subcommands import (
     handle_create_subcommand,
@@ -25,6 +28,7 @@ from src.cli.commands.memory.memory_subcommands import (
 )
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 class MemoryCommand(BaseCommand):
@@ -79,9 +83,7 @@ class MemoryCommand(BaseCommand):
         search_parser = subparsers.add_parser("search", help="语义搜索知识库")
         search_parser.add_argument("--query", required=True, help="搜索关键词")
         search_parser.add_argument("--type", help="内容类型")
-        search_parser.add_argument(
-            "--format", choices=["json", "text"], default="text", help="输出格式"
-        )
+        search_parser.add_argument("--format", choices=["json", "text"], default="text", help="输出格式")
 
         # import子命令 - 导入本地文档到知识库
         import_parser = subparsers.add_parser("import", help="导入本地文档到知识库")
@@ -96,9 +98,7 @@ class MemoryCommand(BaseCommand):
 
         # sync子命令 - 同步Obsidian和标准文档
         sync_parser = subparsers.add_parser("sync", help="同步Obsidian和标准文档")
-        sync_parser.add_argument(
-            "--sync-type", required=True, choices=["to-obsidian", "to-docs", "watch"], help="同步类型"
-        )
+        sync_parser.add_argument("--sync-type", required=True, choices=["to-obsidian", "to-docs", "watch"], help="同步类型")
 
     def execute_with_args(self, args: argparse.Namespace) -> int:
         """
@@ -111,7 +111,27 @@ class MemoryCommand(BaseCommand):
             命令执行结果状态码
         """
         if not hasattr(args, "subcommand") or not args.subcommand:
-            print(f"错误: 缺少子命令。使用 'vibecopilot memory --help' 查看帮助。")
+            # 如果没有子命令，显示更友好的错误信息和帮助
+            console.print("\n[bold red]错误:[/bold red] 请指定一个子命令\n")
+
+            # 创建一个表格来展示子命令
+            table = Table(show_header=False, box=None, padding=(0, 2))
+            table.add_column("Command", style="cyan")
+            table.add_column("Description")
+
+            table.add_row("list", "列出知识库内容")
+            table.add_row("show", "显示知识库内容详情")
+            table.add_row("create", "创建知识库内容")
+            table.add_row("update", "更新知识库内容")
+            table.add_row("delete", "删除知识库内容")
+            table.add_row("search", "语义搜索知识库")
+            table.add_row("import", "导入本地文档到知识库")
+            table.add_row("export", "导出知识库到Obsidian")
+            table.add_row("sync", "同步Obsidian和标准文档")
+
+            console.print("可用的子命令:")
+            console.print(table)
+            console.print("\n使用 [cyan]vibecopilot memory <子命令> --help[/cyan] 获取具体命令的帮助信息")
             return 1
 
         # 根据子命令调用相应的处理函数
@@ -167,9 +187,7 @@ class MemoryCommand(BaseCommand):
 
             return 1
 
-    def _output_human_mode(
-        self, success: bool, message: str, data: Any, subcommand: str, verbose: bool
-    ) -> None:
+    def _output_human_mode(self, success: bool, message: str, data: Any, subcommand: str, verbose: bool) -> None:
         """输出人类可读格式的结果"""
         if success:
             print(f"✅ 执行命令: /memory {subcommand} [参数]\n")
@@ -210,9 +228,7 @@ class MemoryCommand(BaseCommand):
             "code": 1,
             "message": error_message,
             "data": None,
-            "next_actions": [
-                {"command": f"vibecopilot memory {subcommand} --help", "description": "获取命令使用帮助"}
-            ],
+            "next_actions": [{"command": f"vibecopilot memory {subcommand} --help", "description": "获取命令使用帮助"}],
         }
 
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -220,9 +236,7 @@ class MemoryCommand(BaseCommand):
     def _get_next_actions(self, success: bool, subcommand: str, data: Any) -> List[Dict[str, str]]:
         """根据当前操作获取建议的下一步操作"""
         if not success:
-            return [
-                {"command": f"vibecopilot memory {subcommand} --help", "description": "获取命令使用帮助"}
-            ]
+            return [{"command": f"vibecopilot memory {subcommand} --help", "description": "获取命令使用帮助"}]
 
         # 根据不同的子命令推荐不同的后续操作
         if subcommand == "list":
@@ -244,8 +258,6 @@ class MemoryCommand(BaseCommand):
                 ]
             return []
         elif subcommand == "search":
-            return [
-                {"command": "vibecopilot memory show --path=<path>", "description": "查看搜索结果中的特定文档"}
-            ]
+            return [{"command": "vibecopilot memory show --path=<path>", "description": "查看搜索结果中的特定文档"}]
 
         return []

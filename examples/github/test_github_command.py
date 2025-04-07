@@ -10,11 +10,12 @@ import os
 import sys
 from pathlib import Path
 
+# 移到顶部
+from src.cursor.command_handler import CursorCommandHandler
+
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
-
-from src.cursor.command_handler import CursorCommandHandler
 
 
 def format_output(result):
@@ -49,17 +50,13 @@ def test_github_commands():
 
     # 测试更新任务状态
     print("\n【4】更新任务状态：")
-    update_result = cmd_handler.handle_command(
-        "/github --action=update --type=task --id=T2.1 --status=completed --sync=true"
-    )
+    update_result = cmd_handler.handle_command("/github --action=update --type=task --id=T2.1 --status=completed --sync=true")
     print(f"结果: {format_output(update_result)}")
     print("\n" + "-" * 80)
 
     # 测试添加新任务
     print("\n【5】创建新任务：")
-    story_result = cmd_handler.handle_command(
-        '/github --action=story --type=task --title="实现命令系统" --milestone=M2 --priority=P0'
-    )
+    story_result = cmd_handler.handle_command('/github --action=story --type=task --title="实现命令系统" --milestone=M2 --priority=P0')
     print(f"结果: {format_output(story_result)}")
     print("\n" + "-" * 80)
 

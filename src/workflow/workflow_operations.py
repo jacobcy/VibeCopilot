@@ -12,8 +12,10 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from src.db import get_session_factory, init_db
-from src.db.repositories.flow_session_repository import WorkflowDefinitionRepository
+from src.db import get_engine, get_session_factory
+from src.db.repositories.flow_session_repository import FlowSessionRepository
+from src.db.repositories.stage_instance_repository import StageInstanceRepository
+from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 from src.flow_session import FlowSessionManager, FlowStatusIntegration, StageInstanceManager
 
 # 配置日志
@@ -22,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def _get_db_session():
     """获取数据库会话"""
-    engine = init_db()
+    engine = get_engine()
     SessionFactory = get_session_factory(engine)
     return SessionFactory()
 
@@ -40,12 +42,6 @@ def list_workflows(args: argparse.Namespace) -> Dict[str, Any]:
     try:
         repo = WorkflowDefinitionRepository(db_session)
         workflows = repo.get_all()
-
-        if not workflows:
-            if args and hasattr(args, "no_print") and args.no_print:
-                return {"workflows": [], "count": 0}
-            print("没有找到工作流")
-            return {"workflows": []}
 
         workflow_list = []
         for workflow in workflows:
@@ -101,9 +97,7 @@ def view_workflow(args: argparse.Namespace) -> Dict[str, Any]:
             if workflow.stages:
                 print("\n阶段:")
                 for i, stage in enumerate(workflow.stages):
-                    print(
-                        f"  {i+1}. {stage.get('name', 'Unnamed Stage')} ({stage.get('id', 'unknown')})"
-                    )
+                    print(f"  {i+1}. {stage.get('name', 'Unnamed Stage')} ({stage.get('id', 'unknown')})")
                     if hasattr(args, "verbose") and args.verbose:
                         print(f"     描述: {stage.get('description', '无')}")
             else:
@@ -330,11 +324,7 @@ def get_workflow_by_name(workflow_name: str) -> Optional[Dict[str, Any]]:
         workflows = repo.get_all()
         for workflow in workflows:
             # 匹配名称或ID
-            if (
-                workflow.name.lower() == workflow_name
-                or workflow_name in workflow.name.lower()
-                or workflow_name in workflow.id.lower()
-            ):
+            if workflow.name.lower() == workflow_name or workflow_name in workflow.name.lower() or workflow_name in workflow.id.lower():
                 return workflow.to_dict()
 
         return None

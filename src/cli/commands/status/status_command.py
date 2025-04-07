@@ -9,10 +9,17 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
+from rich.console import Console
+from rich.syntax import Syntax
+from rich.table import Table
+
 from src.cli.command import Command
+from src.db import get_session_factory
+from src.db.repositories.task_repository import TaskRepository
 from src.status import StatusService
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 class StatusCommand(Command):
@@ -63,9 +70,7 @@ class StatusCommand(Command):
         parser = argparse.ArgumentParser(prog=f"status {subcommand}", add_help=False)
 
         if subcommand == "show":
-            parser.add_argument(
-                "--type", choices=["all", "summary", "critical"], default="summary", help="状态类型"
-            )
+            parser.add_argument("--type", choices=["all", "summary", "critical"], default="summary", help="状态类型")
             parser.add_argument("--verbose", "-v", action="store_true", help="显示详细信息")
             parser.add_argument("--format", choices=["text", "json"], default="text", help="输出格式")
 
@@ -154,12 +159,13 @@ class StatusCommand(Command):
             return 1
 
     def _handle_show(self, service: StatusService, args: Dict) -> int:
-        """处理show子命令"""
+        """处理show子命令 (集成 Task 摘要)"""
         status_type = args.get("type", "summary")
         verbose = args.get("verbose", False)
         output_format = args.get("format", "text")
 
         try:
+            # Get base system status
             if status_type == "all":
                 result = service.get_system_status(detailed=True)
             elif status_type == "critical":
@@ -167,7 +173,19 @@ class StatusCommand(Command):
             else:  # summary
                 result = service.get_system_status(detailed=False)
 
-            self._output_result(result, output_format, "system", verbose)
+            # --- Get and merge Task Summary ---
+            try:
+                # Assuming get_domain_status('task') returns a dict like {'total': N, 'open': X, ...}
+                task_summary = service.get_domain_status("task")
+                # Remove potential error key before merging
+                task_summary.pop("error", None)
+                result["task_summary"] = task_summary
+            except Exception as task_e:
+                logger.warning(f"获取任务摘要时出错: {task_e}", exc_info=True)
+                result["task_summary"] = {"error": f"获取任务摘要失败: {task_e}"}
+            # ---------------------------------
+
+            self._output_result(result, output_format, "system_with_tasks", verbose)
             return 0
         except Exception as e:
             logger.error(f"获取系统状态时出错: {str(e)}")
@@ -228,10 +246,15 @@ class StatusCommand(Command):
         """处理task子命令"""
         verbose = args.get("verbose", False)
         output_format = args.get("format", "text")
-
+        logger.info("获取任务状态...")
         try:
             result = service.get_domain_status("task")
-            self._output_result(result, output_format, "domain", verbose)
+            if "error" in result:
+                logger.error(f"获取任务状态失败: {result['error']}")
+                print(f"错误: {result['error']}")
+                return 1
+
+            self._output_result(result, output_format, "task", verbose)
             return 0
         except Exception as e:
             logger.error(f"获取任务状态时出错: {str(e)}")
@@ -279,150 +302,53 @@ class StatusCommand(Command):
             print(f"错误: {str(e)}")
             return 1
 
-    def _output_result(
-        self, result: Any, output_format: str, result_type: str, verbose: bool = False
-    ) -> None:
-        """格式化输出结果"""
+    def _output_result(self, result: Dict, output_format: str, context_type: str, verbose: bool):
+        """格式化并输出结果 (需要扩展以处理 Task)"""
         if output_format == "json":
-            print(json.dumps(result, indent=2, ensure_ascii=False))
-            return
+            console.print(Syntax(json.dumps(result, indent=2, ensure_ascii=False), "json", theme="default"))
+        else:
+            # --- Text Output Logic (Needs Refinement) ---
+            console.print(f"[bold underline]{context_type.replace('_', ' ').title()} Status:[/bold underline]")
 
-        # 文本格式输出
-        if result_type == "system":
-            self._format_system_status(result, verbose)
-        elif result_type == "domain":
-            self._format_domain_status(result, verbose)
-        elif result_type == "entity":
-            self._format_entity_status(result, verbose)
+            if context_type == "system_with_tasks":
+                # Print general system status parts
+                console.print(f"  项目阶段: {result.get('project_phase', 'N/A')}")
+                console.print(f"  活动工作流: {result.get('active_workflow', '无')}")
+                # ... print other system status fields ...
 
-    def _format_system_status(self, result: Dict, verbose: bool = False) -> None:
-        """格式化系统状态输出"""
-        print("\n=== 系统状态 ===")
+                # Print Task Summary
+                task_summary = result.get("task_summary", {})
+                if task_summary.get("error"):
+                    console.print(f"  [red]任务摘要错误:[/red] {task_summary['error']}")
+                elif task_summary:
+                    console.print("  任务概览:")
+                    console.print(f"    - 总计: {task_summary.get('total', 0)}")
+                    # Print counts for key statuses
+                    for status in ["open", "in_progress", "review", "done", "closed"]:
+                        if status in task_summary:
+                            console.print(f"    - {status.capitalize()}: {task_summary[status]}")
+                else:
+                    console.print("  任务概览: N/A")
 
-        # 基本信息
-        system_info = result.get("system_info", {})
-        if system_info:
-            print("\n系统信息:")
-            self._print_dict(system_info, indent=2)
+            elif context_type == "task":
+                # Detailed Task Status output
+                console.print(f"  任务总数: {result.get('total', 0)}")
+                if result.get("by_status"):
+                    console.print("  按状态分布:")
+                    status_table = Table(box=None)
+                    status_table.add_column("Status", style="magenta")
+                    status_table.add_column("Count", style="dim", justify="right")
+                    for status, count in sorted(result["by_status"].items()):
+                        status_table.add_row(status, str(count))
+                    console.print(status_table)
+                # Add other details if verbose
 
-        # 核心状态
-        critical = result.get("critical", [])
-        if critical:
-            print("\n需要注意的事项:")
-            for item in critical:
-                print(f"  ⚠️ {item.get('message')}")
-
-        # 各领域状态
-        domains = result.get("domains", [])
-        print(f"\n可用领域: {len(domains)}")
-
-        domain_status = result.get("status", {})
-        for domain, status in domain_status.items():
-            domain_icon = "✅" if status.get("health", 100) >= 80 else "⚠️"
-            print(f"\n--- {domain_icon} {domain} 状态 ---")
-
-            health = status.get("health", 0)
-            print(f"  健康度: {health}%")
-
-            if not verbose:
-                # 简要状态
-                print(f"  当前阶段: {status.get('current_phase', '未知')}")
-                print(f"  活动项目: {status.get('active_items', 0)}")
+            elif context_type == "domain":  # Existing handler for flow/roadmap
+                console.print(f"  领域: {result.get('domain', 'N/A')}")
+                console.print(f"  状态: {result.get('status', 'N/A')}")
+                if verbose and result.get("details"):
+                    console.print("  详情:", json.dumps(result["details"], indent=2, ensure_ascii=False))
             else:
-                # 详细状态
-                self._print_dict(status, indent=2)
-
-    def _format_domain_status(self, result: Dict, verbose: bool = False) -> None:
-        """格式化领域状态输出"""
-        if "error" in result:
-            self._error(result["error"])
-            return
-
-        domain = result.get("domain", "未知领域")
-        health = result.get("health", 0)
-        health_icon = "✅" if health >= 80 else "⚠️" if health >= 50 else "❌"
-
-        print(f"\n=== {domain} 状态 {health_icon} ===")
-        print(f"健康度: {health}%")
-
-        # 当前状态
-        current_phase = result.get("current_phase")
-        if current_phase:
-            print(f"当前阶段: {current_phase}")
-
-        # 活动项目
-        active_items = result.get("active_items", [])
-        if active_items:
-            print(f"\n活动项目 ({len(active_items)}):")
-            for item in active_items:
-                print(f"  - {item.get('id')}: {item.get('name')} ({item.get('status')})")
-
-        # 详细信息
-        if verbose:
-            details = result.get("details", {})
-            if details:
-                print("\n详细信息:")
-                self._print_dict(details, indent=2)
-
-        # 建议操作
-        suggestions = result.get("suggestions", [])
-        if suggestions:
-            print("\n建议操作:")
-            for suggestion in suggestions:
-                print(f"  - {suggestion}")
-
-    def _format_entity_status(self, result: Dict, verbose: bool = False) -> None:
-        """格式化实体状态输出"""
-        if "error" in result:
-            self._error(result["error"])
-            return
-
-        entity_id = result.get("id", "未知ID")
-        name = result.get("name") or result.get("title") or "未命名"
-        status = result.get("status", "未知状态")
-
-        status_icon = (
-            "✅"
-            if status in ["COMPLETED", "SUCCESS"]
-            else "⚠️"
-            if status in ["IN_PROGRESS", "PENDING"]
-            else "❌"
-        )
-        print(f"\n=== {entity_id} - {name} {status_icon} ===")
-        print(f"状态: {status}")
-
-        # 详细信息
-        if verbose:
-            # 移除基本信息字段再打印
-            result_copy = result.copy()
-            for field in ["id", "name", "title", "status"]:
-                if field in result_copy:
-                    result_copy.pop(field, None)
-
-            if result_copy:
-                print("\n详细信息:")
-                self._print_dict(result_copy, indent=2)
-
-    def _print_dict(self, data: Dict, indent: int = 0, verbose: bool = False) -> None:
-        """打印字典内容"""
-        for key, value in data.items():
-            if isinstance(value, dict):
-                print(" " * indent + f"{key}:")
-                self._print_dict(value, indent + 2, verbose)
-            elif isinstance(value, list):
-                print(" " * indent + f"{key}: [{len(value)} 项]")
-                if value and not isinstance(value[0], dict):
-                    print(" " * (indent + 2) + ", ".join(str(v) for v in value))
-                elif verbose and value:
-                    for i, item in enumerate(value):
-                        if isinstance(item, dict):
-                            print(" " * (indent + 2) + f"项目 {i+1}:")
-                            self._print_dict(item, indent + 4, verbose)
-                        else:
-                            print(" " * (indent + 2) + f"项目 {i+1}: {item}")
-            else:
-                print(" " * indent + f"{key}: {value}")
-
-    def _error(self, message: str) -> None:
-        """打印错误信息"""
-        print(f"错误: {message}")
+                # Default fallback for unknown context type
+                console.print(json.dumps(result, indent=2, ensure_ascii=False))
+            # ----------------------------------------------

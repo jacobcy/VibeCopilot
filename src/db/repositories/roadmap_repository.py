@@ -9,7 +9,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
-from src.models.db import Epic, Milestone, Roadmap, Story, Task
+from src.models.db import Epic, Milestone, Roadmap, Story
+from src.models.db.task import Task
 
 
 class RoadmapRepository(Repository[Roadmap]):
@@ -46,7 +47,7 @@ class RoadmapRepository(Repository[Roadmap]):
         return self.session.query(Roadmap).filter(Roadmap.name == name).first()
 
     def get_stats(self, roadmap_id: str) -> Dict[str, Any]:
-        """获取路线图统计信息
+        """获取路线图统计信息 (移除 Task 级别统计)
 
         Args:
             roadmap_id: 路线图ID
@@ -59,39 +60,27 @@ class RoadmapRepository(Repository[Roadmap]):
             return {"error": "Roadmap not found"}
 
         # 获取统计数据
-        milestone_count = (
-            self.session.query(Milestone).filter(Milestone.roadmap_id == roadmap_id).count()
-        )
+        milestone_count = self.session.query(Milestone).filter(Milestone.roadmap_id == roadmap_id).count()
         epic_count = self.session.query(Epic).filter(Epic.roadmap_id == roadmap_id).count()
         story_count = self.session.query(Story).filter(Story.roadmap_id == roadmap_id).count()
-        task_count = self.session.query(Task).filter(Task.roadmap_id == roadmap_id).count()
+        # task_count = self.session.query(Task).join(Story).filter(Story.roadmap_id == roadmap_id).count() # 如果需要统计 Task
 
-        # 计算完成进度
-        completed_milestones = (
-            self.session.query(Milestone)
-            .filter(Milestone.roadmap_id == roadmap_id, Milestone.status == "completed")
-            .count()
-        )
+        # 计算完成进度 (基于 Milestone 和 Story)
+        completed_milestones = self.session.query(Milestone).filter(Milestone.roadmap_id == roadmap_id, Milestone.status == "completed").count()
+        completed_stories = self.session.query(Story).filter(Story.roadmap_id == roadmap_id, Story.status == "completed").count()
 
-        completed_tasks = (
-            self.session.query(Task)
-            .filter(Task.roadmap_id == roadmap_id, Task.status == "completed")
-            .count()
-        )
-
-        milestone_progress = (
-            (completed_milestones / milestone_count * 100) if milestone_count > 0 else 0
-        )
-        task_progress = (completed_tasks / task_count * 100) if task_count > 0 else 0
+        milestone_progress = (completed_milestones / milestone_count * 100) if milestone_count > 0 else 0
+        story_progress = (completed_stories / story_count * 100) if story_count > 0 else 0
 
         return {
             "milestone_count": milestone_count,
             "epic_count": epic_count,
             "story_count": story_count,
-            "task_count": task_count,
+            # "task_count": task_count, # 移除
             "milestone_progress": milestone_progress,
-            "task_progress": task_progress,
-            "overall_progress": (milestone_progress + task_progress) / 2,
+            "story_progress": story_progress,  # 新增
+            # "task_progress": task_progress, # 移除
+            "overall_progress": (milestone_progress + story_progress) / 2,  # 调整
         }
 
 
@@ -228,26 +217,3 @@ class StoryRepository(Repository[Story]):
             "completed_tasks": completed_tasks,
             "progress": (completed_tasks / task_count * 100) if task_count > 0 else 0,
         }
-
-
-class TaskRepository(Repository[Task]):
-    """Task仓库"""
-
-    def __init__(self, session: Session):
-        """初始化Task仓库
-
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, Task)
-
-    def get_by_story(self, story_id: str) -> List[Task]:
-        """获取指定Story下的所有Tasks
-
-        Args:
-            story_id: Story ID
-
-        Returns:
-            Task对象列表
-        """
-        return self.session.query(Task).filter(Task.story_id == story_id).all()

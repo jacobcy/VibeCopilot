@@ -12,26 +12,41 @@ from src.status.core.health_calculator import HealthCalculator
 from src.status.core.project_state import ProjectState
 from src.status.core.provider_manager import ProviderManager
 from src.status.core.subscriber_manager import SubscriberManager
+from src.status.providers.task_provider import get_task_status_summary
 
 logger = logging.getLogger(__name__)
+
+# --- Add Singleton Pattern --- (Recommended for service classes)
+_instance = None
 
 
 class StatusService:
     """状态服务，负责系统状态管理和分发"""
 
-    def __init__(self):
-        """初始化状态服务
+    @classmethod
+    def get_instance(cls):
+        """获取 StatusService 的单例实例"""
+        global _instance
+        if _instance is None:
+            _instance = cls()
+        return _instance
 
-        创建状态提供者管理器、订阅者管理器、健康计算器和项目状态管理器
-        """
-        # 初始化各个状态管理组件
+    # -----------------------------
+
+    def __init__(self):
+        """初始化状态服务 (设为私有防止直接实例化)"""
+        if _instance is not None:
+            raise Exception("This class is a singleton! Use get_instance()")
+        else:
+            _instance = self  # Assign instance here
+
+        logger.info("Initializing Status Service...")
         self.provider_manager = ProviderManager()
         self.subscriber_manager = SubscriberManager()
         self.health_calculator = HealthCalculator()
         self.project_state = ProjectState()
-
-        # 注册默认值提供者
         self._register_default_providers()
+        logger.info("Status Service Initialized.")
 
     def _register_default_providers(self):
         """注册默认的状态提供者
@@ -43,6 +58,10 @@ class StatusService:
 
         # 注册项目状态提供者
         self.register_provider("project_state", self.project_state.get_project_state)
+
+        # --- Register Task Provider ---
+        self.register_provider("task", get_task_status_summary)
+        # -----------------------------
 
     def register_provider(self, status_type: str, provider_func: Callable[[], Any]):
         """注册状态提供者
@@ -163,13 +182,60 @@ class StatusService:
         """
         return self.project_state.get_project_state()
 
+    # --- Added get_domain_status ---
+    def get_domain_status(self, domain: str) -> Dict[str, Any]:
+        """获取指定领域的状态信息"""
+        logger.debug(f"获取领域状态: {domain}")
+        try:
+            # Assuming the provider returns the necessary structure
+            status_data = self.provider_manager.get_status(domain)
+            if status_data is None:  # Provider might not be registered or failed internally
+                return {"error": f"未找到或无法获取领域 '{domain}' 的状态。"}
+            # Add domain key for clarity in the command layer?
+            # status_data["domain"] = domain # Maybe not needed if command knows domain
+            return status_data
+        except Exception as e:
+            logger.error(f"获取领域 '{domain}' 状态时出错: {e}", exc_info=True)
+            return {"error": f"获取领域 '{domain}' 状态失败: {e}"}
 
-def import_time() -> str:
-    """获取当前时间字符串
+    # ---------------------------
 
-    Returns:
-        str: ISO格式的时间字符串
-    """
-    from datetime import datetime
+    # --- Added get_system_status ---
+    def get_system_status(self, detailed: bool = False) -> Dict[str, Any]:
+        """获取整体系统状态 (聚合所有 Provider)"""
+        logger.debug(f"获取系统状态 (detailed={detailed})...")
+        system_status = {}
+        try:
+            all_statuses = self.provider_manager.get_all_status()
 
-    return datetime.now().isoformat()
+            # Basic structure - can be enhanced
+            # project_state might be None if provider failed
+            project_state = all_statuses.get("project_state", {})
+            if isinstance(project_state, dict):
+                system_status["project_phase"] = project_state.get("current_phase", "未知")
+                system_status["project_name"] = project_state.get("name", "未命名项目")
+                system_status["project_version"] = project_state.get("version", "N/A")
+            else:
+                system_status["project_phase"] = "错误"
+                system_status["project_name"] = "错误"
+                system_status["project_version"] = "错误"
+
+            # Placeholder for active workflow - needs a proper provider
+            system_status["active_workflow"] = all_statuses.get("active_workflow_summary", {}).get("name", "无")
+
+            # Include task summary directly (already fetched by get_all_status)
+            system_status["task_summary"] = all_statuses.get("task", {"error": "Task provider 未运行或出错"})
+
+            # Include health status
+            system_status["health"] = all_statuses.get("health", {"error": "Health provider 未运行或出错"})
+
+            if detailed:
+                # Include all fetched statuses if detailed=True
+                system_status["all_domain_details"] = all_statuses
+
+            return system_status
+        except Exception as e:
+            logger.error(f"获取系统状态时出错: {e}", exc_info=True)
+            return {"error": f"获取系统状态失败: {e}"}
+
+    # -----------------------------
