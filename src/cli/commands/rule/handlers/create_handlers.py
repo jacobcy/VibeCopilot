@@ -33,6 +33,12 @@ def create_rule(template_manager, rule_generator, args) -> Dict[str, Any]:
             else getattr(args, "template_dir", None)
         )
 
+        # 获取规则名称
+        rule_name = args.get("name") if isinstance(args, dict) else getattr(args, "name", None)
+        if not rule_name:
+            logger.error("缺少规则名称参数")
+            return {"success": False, "error": "缺少规则名称参数"}
+
         # 设置模板目录
         if template_dir:
             template_manager.set_templates_dir(template_dir)
@@ -47,6 +53,9 @@ def create_rule(template_manager, rule_generator, args) -> Dict[str, Any]:
         variables = prepare_variables(args)
         if variables is None:
             return {"success": False, "error": "准备变量失败"}
+
+        # 确保设置了规则名称
+        variables["name"] = rule_name
 
         # 生成规则
         rule = rule_generator.generate_rule(template, variables)

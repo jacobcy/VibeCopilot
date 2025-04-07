@@ -6,10 +6,10 @@
 
 from typing import Any, Dict, Optional
 
-from src.core.parsing.base_parser import BaseParser
-from src.core.parsing.parsers.ollama_parser import OllamaParser
-from src.core.parsing.parsers.openai_parser import OpenAIParser
-from src.core.parsing.parsers.regex_parser import RegexParser
+from src.parsing.base_parser import BaseParser
+from src.parsing.parsers.ollama_parser import OllamaParser
+from src.parsing.parsers.openai_parser import OpenAIParser
+from src.parsing.parsers.regex_parser import RegexParser
 
 
 def create_parser(

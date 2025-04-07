@@ -7,7 +7,7 @@
 import re
 from typing import Any, Dict, List, Optional
 
-from src.core.parsing.base_parser import BaseParser
+from src.parsing.base_parser import BaseParser
 
 
 class RegexParser(BaseParser):

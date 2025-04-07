@@ -29,7 +29,7 @@
 ### 基本用法
 
 ```python
-from src.core.parsing.parser_factory import create_parser
+from src.parsing.parser_factory import create_parser
 
 # 使用OpenAI后端创建规则解析器
 parser = create_parser("rule", "openai")
@@ -45,8 +45,8 @@ result = parser.parse_text(rule_text, "rule")
 ### 使用处理器
 
 ```python
-from src.core.parsing.processors.rule_processor import RuleProcessor
-from src.core.parsing.processors.document_processor import DocumentProcessor
+from src.parsing.processors.rule_processor import RuleProcessor
+from src.parsing.processors.document_processor import DocumentProcessor
 
 # 创建处理器
 rule_processor = RuleProcessor()
@@ -62,7 +62,7 @@ doc_data = document_processor.process_document_file("docs/user/guide.md")
 ### 实体提取
 
 ```python
-from src.core.parsing.processors.entity_processor import EntityProcessor
+from src.parsing.processors.entity_processor import EntityProcessor
 
 # 创建实体处理器
 entity_processor = EntityProcessor()

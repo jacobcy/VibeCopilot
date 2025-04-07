@@ -6,7 +6,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from src.core.parsing.parser_factory import create_parser
+from src.parsing.parser_factory import create_parser
 
 
 class EntityProcessor:

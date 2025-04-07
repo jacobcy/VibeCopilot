@@ -256,59 +256,49 @@ class RuleCommand(BaseCommand, Command):
             result = import_rule(self.template_manager, parsed_args)
             result = convert_result(result)
         else:
-            logger.error("未知的规则操作: %s", rule_action)
-            result = {"success": False, "error": f"未知的规则操作: {rule_action}"}
+            # 未知操作
+            print(f"错误: 未知的规则操作 '{rule_action}'")
+            print(self.get_help())
+            return
 
-        # 格式化输出
-        if isinstance(result, dict):
-            if result.get("success", False):
-                # 输出结果
-                if "message" in result:
-                    print(result["message"])
-                elif "data" in result:
-                    # 格式化输出
-                    output_format = parsed_args.get("format", "text")
-                    if output_format == "json":
-                        print(json.dumps(result["data"], ensure_ascii=False, indent=2))
-                    else:
-                        if isinstance(result["data"], dict):
-                            for k, v in result["data"].items():
-                                print(f"{k}: {v}")
-                        elif isinstance(result["data"], list):
-                            for item in result["data"]:
-                                print(item)
-                        else:
-                            print(result["data"])
-            else:
-                # 输出错误
-                if "error" in result:
-                    print(f"错误: {result['error']}")
-                else:
-                    print("执行失败")
+        # 输出结果
+        print(result)
 
     def _execute_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """实现BaseCommand接口的执行方法"""
-        # 解析参数
+        """执行命令的内部实现
+
+        Args:
+            args: 命令参数
+
+        Returns:
+            处理结果
+        """
         rule_action = args.get("rule_action")
 
-        # 根据操作调用对应处理函数
-        if rule_action == "list":
-            result = list_rules(self.template_manager, args)
-        elif rule_action == "show":
-            result = show_rule(self.template_manager, args)
-        elif rule_action == "create":
-            result = create_rule(self.template_manager, self.rule_generator, args)
-        elif rule_action == "update":
-            result = edit_rule(self.template_manager, args)
-        elif rule_action == "delete":
-            result = delete_rule(self.template_manager, args)
-        elif rule_action == "validate":
-            result = validate_rule(self.template_manager, args)
-        elif rule_action == "export":
-            result = export_rule(self.template_manager, args)
-        elif rule_action == "import":
-            result = import_rule(self.template_manager, args)
-        else:
-            return {"success": False, "error": f"未知的规则操作: {rule_action}"}
+        if args.get("show_help", False):
+            return {"success": True, "message": self.get_help()}
 
-        return convert_result(result)
+        # 如果没有指定操作，默认为list
+        if rule_action is None:
+            return list_rules(self.template_manager, args)
+
+        # 处理具体操作
+        if rule_action == "create":
+            return create_rule(self.template_manager, self.rule_generator, args)
+        elif rule_action == "list":
+            return list_rules(self.template_manager, args)
+        elif rule_action == "show":
+            return show_rule(self.template_manager, args)
+        elif rule_action == "update":
+            return edit_rule(self.template_manager, args)
+        elif rule_action == "delete":
+            return delete_rule(self.template_manager, args)
+        elif rule_action == "validate":
+            return validate_rule(self.template_manager, args)
+        elif rule_action == "export":
+            return export_rule(self.template_manager, args)
+        elif rule_action == "import":
+            return import_rule(self.template_manager, args)
+        else:
+            # 未知操作
+            return {"success": False, "error": f"未知的规则操作: {rule_action}"}

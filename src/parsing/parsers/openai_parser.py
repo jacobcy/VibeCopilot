@@ -8,7 +8,7 @@ import json
 import os
 from typing import Any, Dict, Optional
 
-from src.core.parsing.base_parser import BaseParser
+from src.parsing.base_parser import BaseParser
 
 
 class OpenAIClient:
