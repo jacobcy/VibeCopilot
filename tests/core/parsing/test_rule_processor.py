@@ -9,13 +9,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.parsing.processors.rule_processor import RuleProcessor
+from src.parsing.processors.rule_processor import RuleProcessor
 
 
 class TestRuleProcessor:
     """Test cases for the RuleProcessor class."""
 
-    @patch("src.core.parsing.parser_factory.create_parser")
+    @patch("src.parsing.parser_factory.create_parser")
     def test_process_rule(self, mock_create_parser):
         """Test processing rule content."""
         # Mock the parser
@@ -43,7 +43,7 @@ class TestRuleProcessor:
         assert "sections" in result
         assert result["is_valid"] == True
 
-    @patch("src.core.parsing.parser_factory.create_parser")
+    @patch("src.parsing.parser_factory.create_parser")
     def test_process_rule_file(self, mock_create_parser):
         """Test processing a rule file."""
         # Mock the parser
@@ -84,7 +84,7 @@ class TestRuleProcessor:
         finally:
             os.unlink(file_path)
 
-    @patch("src.core.parsing.parser_factory.create_parser")
+    @patch("src.parsing.parser_factory.create_parser")
     def test_process_rule_directory(self, mock_create_parser):
         """Test processing a directory of rule files."""
         # Mock the parser
@@ -121,7 +121,7 @@ class TestRuleProcessor:
         assert results[0]["is_valid"] == True
         assert results[1]["is_valid"] == True
 
-    @patch("src.core.parsing.parser_factory.create_parser")
+    @patch("src.parsing.parser_factory.create_parser")
     def test_validate_and_enhance(self, mock_create_parser):
         """Test validation and enhancement of parsed rule data."""
         # Create processor

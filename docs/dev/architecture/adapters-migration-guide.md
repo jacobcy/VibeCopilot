@@ -32,7 +32,7 @@ result = parse_file("path/to/document.md")
 #### 新用法
 
 ```python
-from src.core.parsing import create_parser
+from src.parsing import create_parser
 
 # 使用工厂创建解析器
 parser = create_parser("document", "openai")  # 或 "ollama", "regex"
@@ -60,7 +60,7 @@ rule = parser.parse_rule_file(".cursor/rules/core-rules/concept.mdc")
 #### 新用法
 
 ```python
-from src.core.parsing.processors.rule_processor import RuleProcessor
+from src.parsing.processors.rule_processor import RuleProcessor
 
 # 创建规则处理器
 processor = RuleProcessor(backend="openai")  # 或 "ollama", "regex"
@@ -133,10 +133,10 @@ results = await vector_store.search("VibeCopilot 项目")
 ### 使用新的解析框架
 
 ```python
-from src.core.parsing import create_parser
-from src.core.parsing.processors.document_processor import DocumentProcessor
-from src.core.parsing.processors.rule_processor import RuleProcessor
-from src.core.parsing.processors.entity_processor import EntityProcessor
+from src.parsing import create_parser
+from src.parsing.processors.document_processor import DocumentProcessor
+from src.parsing.processors.rule_processor import RuleProcessor
+from src.parsing.processors.entity_processor import EntityProcessor
 
 # 创建基本解析器
 parser = create_parser("generic", "openai")

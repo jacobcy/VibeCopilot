@@ -334,7 +334,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Set
 
-from src.core.parsing.parser_factory import create_parser
+from src.parsing.parser_factory import create_parser
 from src.db.metadata.rule_repo import RuleRepository
 from src.db.metadata.document_repo import DocumentRepository
 from src.db.vector.memory_adapter import BasicMemoryAdapter

@@ -17,11 +17,11 @@ from pathlib import Path
 project_dir = Path(__file__).parent.parent
 sys.path.append(str(project_dir))
 
-from src.core.parsing.parser_factory import create_parser
-from src.core.parsing.processors.document_processor import DocumentProcessor
-from src.core.parsing.processors.entity_processor import EntityProcessor
-from src.core.parsing.processors.rule_processor import RuleProcessor
 from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.parsing.parser_factory import create_parser
+from src.parsing.processors.document_processor import DocumentProcessor
+from src.parsing.processors.entity_processor import EntityProcessor
+from src.parsing.processors.rule_processor import RuleProcessor
 
 
 async def parse_rule_example():

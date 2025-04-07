@@ -7,9 +7,9 @@
 import os
 from typing import Any, Dict, List, Optional, Set
 
-from src.core.parsing.processors.document_processor import DocumentProcessor
-from src.core.parsing.processors.rule_processor import RuleProcessor
 from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.parsing.processors.document_processor import DocumentProcessor
+from src.parsing.processors.rule_processor import RuleProcessor
 
 
 class SyncService:

@@ -1,21 +1,9 @@
-"""路线图命令模块
+"""
+路线图管理命令包
 
-提供路线图管理相关的命令，包括查看、创建、更新和同步等功能。
+提供路线图管理功能入口。
 """
 
-from src.cli.commands.roadmap.create_command import CreateCommand
-from src.cli.commands.roadmap.list_command import RoadmapListCommand
-from src.cli.commands.roadmap.story_command import StoryCommand
-from src.cli.commands.roadmap.switch_command import SwitchCommand
-from src.cli.commands.roadmap.sync_command import SyncCommand
-from src.cli.commands.roadmap.update_command import UpdateRoadmapCommand
+from src.cli.commands.roadmap.roadmap_command import RoadmapCommand
 
-# 导出所有命令
-__all__ = [
-    "StoryCommand",
-    "CreateCommand",
-    "UpdateRoadmapCommand",
-    "SyncCommand",
-    "RoadmapListCommand",
-    "SwitchCommand",
-]
+__all__ = ["RoadmapCommand"]

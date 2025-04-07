@@ -1,11 +1,11 @@
 """
 规则解析器模块 - 直接转发到新的统一解析框架
 
-此模块已被 src.core.parsing 和相关处理器替代，此文件仅做转发以保持最小兼容性。
+此模块已被 src.parsing 和相关处理器替代，此文件仅做转发以保持最小兼容性。
 """
 
-from src.core.parsing import create_parser
-from src.core.parsing.processors.rule_processor import RuleProcessor
+from src.parsing import create_parser
+from src.parsing.processors.rule_processor import RuleProcessor
 
 # 为了保持兼容
 RuleParser = RuleProcessor

@@ -32,11 +32,9 @@ def prepare_variables(args) -> Optional[Dict]:
         if isinstance(args, dict):
             name = args.get("name")
             vars_json = args.get("vars")
-            interactive = args.get("interactive", False)
         else:
             name = args.name
             vars_json = getattr(args, "vars", None)
-            interactive = getattr(args, "interactive", False)
 
         # 初始化变量
         variables = {"name": name}
@@ -49,11 +47,6 @@ def prepare_variables(args) -> Optional[Dict]:
             except json.JSONDecodeError:
                 logger.error("无效的JSON变量格式")
                 return None
-
-        # 交互式提示
-        if interactive:
-            # TODO: 实现交互式变量输入
-            logger.info("交互式变量输入功能尚未实现")
 
         return variables
 
@@ -89,20 +82,22 @@ def show_help() -> Dict[str, Any]:
 规则管理命令 (rule)
 
 用法:
-  rule create <template_type> <name> [--template-dir DIR] [--output-dir DIR] [--vars JSON] [--interactive]
-  rule list [--type TYPE]
-  rule show <rule_id>
-  rule edit <rule_id>
-  rule delete <rule_id>
-  rule validate <rule_id> [--all]
-  rule export <rule_id> [output_path]
-  rule import <rule_file>
+  rule list [--type=<rule_type>] [--verbose]
+  rule show <id> [--format=<json|text>]
+  rule create <template_type> <name> [--vars=<json>]
+  rule update <id> [--vars=<json>]
+  rule delete <id> [--force]
+  rule validate <id> [--all]
+  rule export <id> [--output=<path>] [--format=<format>]
+  rule import <file_path> [--overwrite]
 
 示例:
-  rule create core-rule my-rule --vars '{"description":"这是一个测试规则"}'
-  rule list --type core-rule
+  rule create core-rule my-rule --vars='{"description":"这是一个测试规则"}'
+  rule list --type=core-rule
   rule show my-rule
-  rule delete my-rule
+  rule delete my-rule --force
   rule validate --all
+  rule export my-rule --output=./my-rule.md
+  rule import ./my-rule.md --overwrite
 """
     return {"success": True, "message": help_text}

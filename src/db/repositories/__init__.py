@@ -11,6 +11,11 @@ from src.db.repositories.docs_engine import (
     LinkRepository,
     LinkType,
 )
+from src.db.repositories.flow_session_repository import (
+    FlowSessionRepository,
+    StageInstanceRepository,
+    WorkflowDefinitionRepository,
+)
 from src.db.repositories.roadmap_repository import (
     EpicRepository,
     MilestoneRepository,
@@ -45,4 +50,8 @@ __all__ = [
     "WorkflowRepository",
     "WorkflowExecutionRepository",
     "WorkflowStepRepository",
+    # 工作流会话仓库
+    "WorkflowDefinitionRepository",
+    "FlowSessionRepository",
+    "StageInstanceRepository",
 ]

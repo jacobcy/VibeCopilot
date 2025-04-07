@@ -5,6 +5,7 @@
 """
 
 from .base import Base, BaseMetadata, RuleType, TemplateVariableType
+from .flow_session import FlowSession, StageInstance, WorkflowDefinition
 from .roadmap import Epic, Milestone, Roadmap, Story, Task
 from .rule import (
     Example,
@@ -47,4 +48,8 @@ __all__ = [
     "WorkflowStep",
     "WorkflowExecution",
     "WorkflowStepExecution",
+    # Flow Session models
+    "WorkflowDefinition",
+    "FlowSession",
+    "StageInstance",
 ]

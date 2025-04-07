@@ -7,5 +7,6 @@
 """
 
 from src.cli.commands.flow.flow_command import FlowCommand
+from src.flow_session import register_commands
 
-__all__ = ["FlowCommand"]
+__all__ = ["FlowCommand", "register_commands"]

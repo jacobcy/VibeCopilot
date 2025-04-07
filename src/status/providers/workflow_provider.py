@@ -1,12 +1,16 @@
 """
 工作流状态提供者模块
 
-实现工作流的状态提供者接口。
+实现工作流的状态提供者接口，基于flow_session管理工作流状态。
 """
 
 import logging
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy.orm import Session
+
+from src.db import get_session_factory, init_db
+from src.flow_session import FlowSessionManager, FlowStatusIntegration
 from src.status.interfaces import IStatusProvider
 
 logger = logging.getLogger(__name__)
@@ -20,58 +24,63 @@ class WorkflowStatusProvider(IStatusProvider):
         """获取状态提供者的领域名称"""
         return "workflow"
 
+    def _get_db_session(self) -> Session:
+        """获取数据库会话"""
+        engine = init_db()
+        SessionFactory = get_session_factory(engine)
+        return SessionFactory()
+
     def get_status(self, entity_id: Optional[str] = None) -> Dict[str, Any]:
         """获取工作流状态
 
         Args:
-            entity_id: 可选，实体ID。格式为 "workflow:<id>" 或 "execution:<id>"。
+            entity_id: 可选，实体ID。格式为 "flow-<session_id>"。
                        不提供则获取整个工作流系统的状态。
 
         Returns:
             Dict[str, Any]: 状态信息
         """
         try:
-            # 导入工作流模块
-            import argparse
+            db_session = self._get_db_session()
+            try:
+                # 获取整个工作流系统状态
+                if not entity_id:
+                    session_manager = FlowSessionManager(db_session)
+                    sessions = session_manager.list_sessions()
 
-            from src.workflow.workflow_operations import list_workflows, view_workflow
+                    # 转换为状态系统格式
+                    status_integration = FlowStatusIntegration(db_session)
+                    sessions_data = []
+                    for session in sessions:
+                        sessions_data.append(status_integration.map_session_to_status(session))
 
-            # 创建参数解析器
-            parser = argparse.ArgumentParser()
-            parser.add_argument("-v", "--verbose", action="store_true")
+                    return {
+                        "domain": self.domain,
+                        "sessions": sessions_data,
+                        "count": len(sessions_data),
+                    }
 
-            # 获取整个工作流系统状态
-            if not entity_id:
-                workflows = list_workflows(parser.parse_args([]))
+                # 解析实体ID
+                if entity_id.startswith("flow-"):
+                    session_id = entity_id[5:]  # 移除"flow-"前缀
 
-                # 转换为字典
-                workflow_data = workflows if isinstance(workflows, dict) else {}
-                workflow_data["domain"] = self.domain
-                return workflow_data
+                    # 获取会话状态
+                    session_manager = FlowSessionManager(db_session)
+                    session = session_manager.get_session(session_id)
 
-            # 解析实体ID
-            if ":" in entity_id:
-                entity_type, real_id = entity_id.split(":", 1)
-            else:
-                # 默认为工作流
-                entity_type = "workflow"
-                real_id = entity_id
+                    if not session:
+                        return {"error": f"找不到会话: {session_id}"}
 
-            # 获取特定实体状态
-            if entity_type == "workflow":
-                args = parser.parse_args([])
-                args.id = real_id
-                workflow = view_workflow(args)
+                    # 转换为状态系统格式
+                    status_integration = FlowStatusIntegration(db_session)
+                    status_data = status_integration.map_session_to_status(session)
+                    status_data["domain"] = self.domain
 
-                # 转换为字典
-                workflow_data = workflow if isinstance(workflow, dict) else {}
-                workflow_data["domain"] = self.domain
-                return workflow_data
-            elif entity_type == "execution":
-                # TODO: 实现执行状态查询
-                return {"error": "执行状态查询尚未实现"}
-            else:
-                return {"error": f"未知实体类型: {entity_type}"}
+                    return status_data
+                else:
+                    return {"error": f"无效的实体ID格式: {entity_id}"}
+            finally:
+                db_session.close()
 
         except Exception as e:
             logger.error(f"获取工作流状态时出错: {e}")
@@ -81,7 +90,7 @@ class WorkflowStatusProvider(IStatusProvider):
         """更新工作流实体状态
 
         Args:
-            entity_id: 实体ID，格式为 "workflow:<id>" 或 "execution:<id>"
+            entity_id: 实体ID，格式为 "flow-<session_id>"
             status: 新状态
             **kwargs: 附加参数
 
@@ -89,42 +98,42 @@ class WorkflowStatusProvider(IStatusProvider):
             Dict[str, Any]: 更新结果
         """
         try:
-            # 导入工作流模块
-            import argparse
+            # 验证状态值
+            valid_statuses = ["IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELED"]
+            if status not in valid_statuses:
+                return {"error": f"无效的状态值: {status}", "updated": False}
 
-            from src.workflow.workflow_operations import update_workflow
+            db_session = self._get_db_session()
+            try:
+                # 解析实体ID
+                if not entity_id.startswith("flow-"):
+                    return {"error": f"无效的实体ID格式: {entity_id}", "updated": False}
 
-            # 解析实体ID
-            if ":" in entity_id:
-                entity_type, real_id = entity_id.split(":", 1)
-            else:
-                # 默认为工作流
-                entity_type = "workflow"
-                real_id = entity_id
+                session_id = entity_id[5:]  # 移除"flow-"前缀
 
-            # 更新状态
-            if entity_type == "workflow":
-                # 创建参数
-                args = argparse.Namespace()
-                args.id = real_id
-                args.status = status
-                args.name = kwargs.get("name")
-                args.description = kwargs.get("description")
-                args.n8n_id = kwargs.get("n8n_id")
+                # 获取会话管理器
+                session_manager = FlowSessionManager(db_session)
 
-                result = update_workflow(args)
+                # 根据状态执行对应操作
+                if status == "IN_PROGRESS":
+                    session_manager.resume_session(session_id)
+                elif status == "ON_HOLD":
+                    session_manager.pause_session(session_id)
+                elif status == "COMPLETED":
+                    session_manager.complete_session(session_id)
+                elif status == "CANCELED":
+                    session_manager.abort_session(session_id)
 
-                # 转换为字典
-                result_dict = result if isinstance(result, dict) else {}
-                if "success" in result_dict and result_dict["success"]:
-                    return {**result_dict, "updated": True}
+                # 获取更新后的会话状态
+                status_integration = FlowStatusIntegration(db_session)
+                result = status_integration.sync_session_to_status(session_id)
+
+                if "success" in result and result["success"]:
+                    return {**result, "updated": True}
                 else:
-                    return {**result_dict, "updated": False}
-            elif entity_type == "execution":
-                # TODO: 实现执行状态更新
-                return {"error": "执行状态更新尚未实现", "updated": False}
-            else:
-                return {"error": f"未知实体类型: {entity_type}", "updated": False}
+                    return {**result, "updated": False}
+            finally:
+                db_session.close()
 
         except Exception as e:
             logger.error(f"更新工作流状态时出错: {e}")
@@ -140,40 +149,35 @@ class WorkflowStatusProvider(IStatusProvider):
             List[Dict[str, Any]]: 实体列表
         """
         try:
-            # 导入工作流模块
-            import argparse
+            db_session = self._get_db_session()
+            try:
+                # 获取所有会话
+                session_manager = FlowSessionManager(db_session)
+                sessions = session_manager.list_sessions(status=status)
 
-            from src.workflow.workflow_operations import list_workflows
+                # 转换为状态系统格式
+                status_integration = FlowStatusIntegration(db_session)
+                entities = []
 
-            # 创建参数解析器
-            parser = argparse.ArgumentParser()
-            parser.add_argument("-v", "--verbose", action="store_true")
+                for session in sessions:
+                    # 如果指定了状态筛选，转换会话状态与状态系统状态进行比较
+                    session_status = status_integration.map_session_to_status(session)["status"]
+                    if status and session_status != status:
+                        continue
 
-            # 获取所有工作流
-            workflows_result = list_workflows(parser.parse_args([]))
+                    entities.append(
+                        {
+                            "id": f"flow-{session.id}",
+                            "name": session.name,
+                            "type": "flow_session",
+                            "status": session_status,
+                            "description": f"工作流: {session.workflow_id}",
+                        }
+                    )
 
-            # 解析结果
-            workflows = []
-            if isinstance(workflows_result, dict) and "workflows" in workflows_result:
-                workflows = workflows_result.get("workflows", [])
-
-            # 筛选并格式化
-            entities = []
-            for workflow in workflows:
-                if status and workflow.get("status") != status:
-                    continue
-
-                entities.append(
-                    {
-                        "id": f"workflow:{workflow.get('id')}",
-                        "name": workflow.get("name", "未命名工作流"),
-                        "type": "workflow",
-                        "status": workflow.get("status"),
-                        "description": workflow.get("description", ""),
-                    }
-                )
-
-            return entities
+                return entities
+            finally:
+                db_session.close()
 
         except Exception as e:
             logger.error(f"列出工作流实体时出错: {e}")

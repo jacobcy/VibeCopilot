@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from src.core.parsing.parsers.regex_parser import RegexParser
+from src.parsing.parsers.regex_parser import RegexParser
 
 
 class TestRegexParser:

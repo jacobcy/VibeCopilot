@@ -23,7 +23,7 @@ VibeCopilot 支持多种适配器，用于与不同的服务和工具集成：
 from adapters.content_parser import parse_file, parse_content
 
 # 新用法
-from src.core.parsing import create_parser
+from src.parsing import create_parser
 parser = create_parser("document", "openai")
 result = parser.parse_file("path/to/file.md")
 ```
@@ -37,7 +37,7 @@ result = parser.parse_file("path/to/file.md")
 from adapters.rule_parser import parse_rule_file
 
 # 新用法
-from src.core.parsing.processors.rule_processor import RuleProcessor
+from src.parsing.processors.rule_processor import RuleProcessor
 processor = RuleProcessor()
 result = processor.process_rule_file("path/to/rule.mdc")
 ```

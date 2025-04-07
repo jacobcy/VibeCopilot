@@ -1,13 +1,13 @@
 """
 统一内容解析器模块 - 直接转发到新的统一解析框架
 
-此模块已被 src.core.parsing 替代，此文件仅做转发以保持最小兼容性。
+此模块已被 src.parsing 替代，此文件仅做转发以保持最小兼容性。
 """
 
-from src.core.parsing import BaseParser, create_parser
-from src.core.parsing.parsers.ollama_parser import OllamaParser
-from src.core.parsing.parsers.openai_parser import OpenAIParser
-from src.core.parsing.parsers.regex_parser import RegexParser
+from src.parsing import BaseParser, create_parser
+from src.parsing.parsers.ollama_parser import OllamaParser
+from src.parsing.parsers.openai_parser import OpenAIParser
+from src.parsing.parsers.regex_parser import RegexParser
 
 # 为了简单兼容，保留 ContentParser 类名
 ContentParser = BaseParser
