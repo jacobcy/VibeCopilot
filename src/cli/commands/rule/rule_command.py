@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from src.cli.base_command import BaseCommand
 from src.cli.command import Command
-from src.cli.commands.rule_command_handlers import (
+from src.cli.commands.rule.rule_command_handlers import (
     create_rule,
     delete_rule,
     edit_rule,
@@ -24,7 +24,7 @@ from src.cli.commands.rule_command_handlers import (
     show_rule,
     validate_rule,
 )
-from src.cli.commands.rule_command_utils import convert_result, show_help
+from src.cli.commands.rule.rule_command_utils import convert_result, show_help
 from src.templates.core.rule_generator import RuleGenerator
 from src.templates.core.template_engine import TemplateEngine
 from src.templates.core.template_manager import TemplateManager
@@ -89,8 +89,9 @@ class RuleCommand(BaseCommand, Command):
         """解析命令参数"""
         parsed = {"command": self.get_command()}
 
-        if not args:
-            parsed["rule_action"] = "list"
+        # 处理帮助选项
+        if not args or "--help" in args or "-h" in args:
+            parsed["show_help"] = True
             return parsed
 
         # 处理规则操作
@@ -188,13 +189,16 @@ class RuleCommand(BaseCommand, Command):
         # 处理字典参数
         if isinstance(parsed_args, dict):
             rule_action = parsed_args.get("rule_action")
-            show_help_flag = parsed_args.get("help", False)
+            show_help_flag = parsed_args.get("show_help", False)
         else:
             return  # 不支持非字典参数
 
         # 处理帮助
         if show_help_flag:
-            result = show_help()
+            help_result = show_help()
+            if isinstance(help_result, dict) and "message" in help_result:
+                print(help_result["message"])
+            return
         # 如果没有指定操作，默认为list
         elif rule_action is None:
             result = list_rules(self.template_manager, parsed_args)
@@ -250,47 +254,41 @@ class RuleCommand(BaseCommand, Command):
                         if "content" in data:
                             print(data["content"])
                         else:
-                            print(json.dumps(data, indent=2, ensure_ascii=False))
+                            for k, v in data.items():
+                                print(f"{k}: {v}")
                     else:
+                        # 其他类型
                         print(data)
             else:
-                # 错误信息
+                # 输出错误信息
                 print(f"错误: {result.get('error', '未知错误')}")
-        else:
-            logger.error("未知的命令结果格式: %s", type(result))
 
     def _execute_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """命令执行的具体实现"""
-        # 处理字典参数
+        """执行规则命令（兼容旧接口）"""
+        # 从args中获取操作类型
         rule_action = args.get("rule_action")
-        show_help_flag = args.get("help", False)
 
         # 处理帮助
-        if show_help_flag:
+        if rule_action == "help" or args.get("help", False):
             return show_help()
 
-        # 如果没有指定操作，默认为list
-        if rule_action is None:
-            result = list_rules(self.template_manager, args)
-            return result
-
-        # 处理具体操作
+        # 根据操作类型执行相应的处理函数
         if rule_action == "create":
-            return create_rule(self.template_manager, self.rule_generator, args)
+            return convert_result(create_rule(self.template_manager, self.rule_generator, args))
         elif rule_action == "list":
-            return list_rules(self.template_manager, args)
+            return convert_result(list_rules(self.template_manager, args))
         elif rule_action == "show":
-            return show_rule(self.template_manager, args)
+            return convert_result(show_rule(self.template_manager, args))
         elif rule_action == "edit":
-            return edit_rule(self.template_manager, args)
+            return convert_result(edit_rule(self.template_manager, args))
         elif rule_action == "delete":
-            return delete_rule(self.template_manager, args)
+            return convert_result(delete_rule(self.template_manager, args))
         elif rule_action == "validate":
-            return validate_rule(self.template_manager, args)
+            return convert_result(validate_rule(self.template_manager, args))
         elif rule_action == "export":
-            return export_rule(self.template_manager, args)
+            return convert_result(export_rule(self.template_manager, args))
         elif rule_action == "import":
-            return import_rule(self.template_manager, args)
+            return convert_result(import_rule(self.template_manager, args))
         else:
             logger.error("未知的规则操作: %s", rule_action)
             return {"success": False, "error": f"未知的规则操作: {rule_action}"}

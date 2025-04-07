@@ -51,29 +51,6 @@ def test_github_command():
     print(f"GitHub命令帮助: {json.dumps(result, indent=2)}")
 
 
-def test_check_command():
-    """测试Check命令"""
-    print("\n==== 测试Check命令 ====")
-
-    # 初始化命令处理器
-    cmd_handler = CursorCommandHandler()
-
-    # 测试基本检查
-    print("\n1. 测试基本检查命令")
-    result = cmd_handler.handle_command("/check --type=task --id=T2.1")
-    print(f"结果: {json.dumps(result, indent=2)}")
-
-    # 测试详细模式
-    print("\n2. 测试详细模式")
-    result = cmd_handler.handle_command("/check --type=task --id=T2.1 --verbose")
-    print(f"结果: {json.dumps(result, indent=2)}")
-
-    # 测试检查项目
-    print("\n3. 测试项目检查")
-    result = cmd_handler.handle_command("/check --type=project")
-    print(f"结果: {json.dumps(result, indent=2)}")
-
-
 def test_available_commands():
     """测试获取可用命令列表"""
     print("\n==== 测试获取可用命令 ====")
@@ -115,7 +92,6 @@ if __name__ == "__main__":
 
     # 运行测试
     test_github_command()
-    test_check_command()
     test_available_commands()
     test_error_handling()
 

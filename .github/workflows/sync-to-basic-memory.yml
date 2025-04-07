@@ -1,0 +1,40 @@
+name: Sync to Basic Memory
+
+on:
+  push:
+    branches: [ main, dev ]
+    paths:
+      - 'docs/**/*.md'
+      - 'docs/**/*.mdx'
+      - '.cursor/rules/**/*.mdc'
+      - '.cursor/rules/**/*.md'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Get full history to detect changes
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+
+      - name: Sync to Basic Memory
+        run: python -m src.scripts.sync_to_basic_memory --files "${{ steps.changed-files.outputs.changed_files }}"
+        env:
+          BASIC_MEMORY_HOME: ${{ secrets.BASIC_MEMORY_HOME }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

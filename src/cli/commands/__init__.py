@@ -6,8 +6,8 @@
 
 # 导入所有命令处理器
 from src.cli.commands.db import DatabaseCommand
+from src.cli.commands.memory.memory_command import MemoryCommand
 from src.cli.commands.roadmap import (
-    CheckRoadmapCommand,
     CreateCommand,
     RoadmapListCommand,
     StoryCommand,
@@ -16,15 +16,15 @@ from src.cli.commands.roadmap import (
     UpdateRoadmapCommand,
 )
 from src.cli.commands.roadmap_commands import RoadmapCommands
-from src.cli.commands.rule_command import RuleCommand
+from src.cli.commands.rule.rule_command import RuleCommand
 
 # TODO: 添加其他命令处理器
 
 # 暴露所有命令处理器类
 __all__ = [
     "DatabaseCommand",
+    "MemoryCommand",
     "RuleCommand",
-    "CheckRoadmapCommand",
     "UpdateRoadmapCommand",
     "SyncCommand",
     "CreateCommand",

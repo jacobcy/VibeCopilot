@@ -7,10 +7,83 @@ VIBECOPILOT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 激活虚拟环境
 source "$VIBECOPILOT_PATH/.venv/bin/activate"
 
-# 设置别名
+# 设置临时别名（仅在当前会话有效）
 alias vc="vibecopilot"
+
+# 检测用户shell类型
+SHELL_TYPE=$(basename "$SHELL")
 
 # 提示用户
 echo "VibeCopilot环境已激活!"
 echo "您可以使用 'vc' 作为 'vibecopilot' 的快捷命令"
 echo "示例: vc roadmap sync"
+echo ""
+echo "注意: 当前设置的别名仅在本次会话中有效。"
+echo "要永久设置此别名，请根据您的shell类型执行以下操作:"
+
+# 根据不同shell类型提供相应指导
+case "$SHELL_TYPE" in
+  "bash")
+    echo "对于Bash用户，请添加以下行到 ~/.bashrc 或 ~/.bash_profile 文件:"
+    echo "alias vc=\"vibecopilot\""
+    ;;
+  "zsh")
+    echo "对于Zsh用户，请添加以下行到 ~/.zshrc 文件:"
+    echo "alias vc=\"vibecopilot\""
+    ;;
+  "fish")
+    echo "对于Fish用户，请添加以下行到 ~/.config/fish/config.fish 文件:"
+    echo "alias vc=\"vibecopilot\""
+    ;;
+  *)
+    echo "对于您的shell ($SHELL_TYPE)，请查阅相关文档了解如何永久设置别名。"
+    echo "通常是添加以下行到shell的配置文件中:"
+    echo "alias vc=\"vibecopilot\""
+    ;;
+esac
+
+# 是否要自动添加到配置文件的提示
+echo ""
+echo "是否希望自动添加此别名到您的配置文件? (y/n)"
+read -r response
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    case "$SHELL_TYPE" in
+        "bash")
+            if [[ -f ~/.bashrc ]]; then
+                echo 'alias vc="vibecopilot"' >> ~/.bashrc
+                echo "已添加别名到 ~/.bashrc"
+                echo "请执行 'source ~/.bashrc' 使其立即生效"
+            elif [[ -f ~/.bash_profile ]]; then
+                echo 'alias vc="vibecopilot"' >> ~/.bash_profile
+                echo "已添加别名到 ~/.bash_profile"
+                echo "请执行 'source ~/.bash_profile' 使其立即生效"
+            else
+                echo 'alias vc="vibecopilot"' >> ~/.bashrc
+                echo "已创建并添加别名到 ~/.bashrc"
+                echo "请执行 'source ~/.bashrc' 使其立即生效"
+            fi
+            ;;
+        "zsh")
+            echo 'alias vc="vibecopilot"' >> ~/.zshrc
+            echo "已添加别名到 ~/.zshrc"
+            echo "请执行 'source ~/.zshrc' 使其立即生效"
+            ;;
+        "fish")
+            if [[ -d ~/.config/fish ]]; then
+                echo 'alias vc="vibecopilot"' >> ~/.config/fish/config.fish
+                echo "已添加别名到 ~/.config/fish/config.fish"
+                echo "请执行 'source ~/.config/fish/config.fish' 使其立即生效"
+            else
+                mkdir -p ~/.config/fish
+                echo 'alias vc="vibecopilot"' >> ~/.config/fish/config.fish
+                echo "已创建并添加别名到 ~/.config/fish/config.fish"
+                echo "请执行 'source ~/.config/fish/config.fish' 使其立即生效"
+            fi
+            ;;
+        *)
+            echo "无法自动添加别名到您的shell配置文件，请手动添加。"
+            ;;
+    esac
+else
+    echo "您选择了不自动添加别名。如需手动添加，请参考上述说明。"
+fi

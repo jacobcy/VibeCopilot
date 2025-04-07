@@ -7,7 +7,6 @@
 
 # 导入所有路线图命令
 from src.cli.commands.roadmap import (
-    CheckRoadmapCommand,
     CreateCommand,
     RoadmapListCommand,
     StoryCommand,
@@ -17,7 +16,6 @@ from src.cli.commands.roadmap import (
 )
 
 __all__ = [
-    "CheckRoadmapCommand",
     "UpdateRoadmapCommand",
     "SyncCommand",
     "CreateCommand",
@@ -61,7 +59,6 @@ class RoadmapCommands(Command):
             roadmap sync               同步路线图数据
             roadmap switch             切换活动路线图
             roadmap list               列出所有路线图
-            roadmap check              检查路线图状态
             roadmap update             更新路线图元素状态
             roadmap plan               创建路线图计划元素
             roadmap story              查看路线图故事
@@ -83,7 +80,6 @@ class RoadmapCommands(Command):
             "sync": SyncCommand,
             "switch": SwitchCommand,
             "list": RoadmapListCommand,
-            "check": CheckRoadmapCommand,
             "update": UpdateRoadmapCommand,
             "plan": CreateCommand,
             "story": StoryCommand,
@@ -109,7 +105,6 @@ class RoadmapCommands(Command):
             print("  - sync    同步路线图数据")
             print("  - switch  切换活动路线图")
             print("  - list    列出所有路线图")
-            print("  - check   检查路线图状态")
             print("  - update  更新路线图元素状态")
             print("  - plan    创建路线图计划元素")
             print("  - story   查看路线图故事")

@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.cli.commands.rule_command_utils import (
+from src.cli.commands.rule.rule_command_utils import (
     get_template,
     prepare_variables,
     validate_single_rule,

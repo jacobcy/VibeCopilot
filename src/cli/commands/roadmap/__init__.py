@@ -3,7 +3,6 @@
 提供路线图管理相关的命令，包括查看、创建、更新和同步等功能。
 """
 
-from src.cli.commands.roadmap.check_command import CheckRoadmapCommand
 from src.cli.commands.roadmap.create_command import CreateCommand
 from src.cli.commands.roadmap.list_command import RoadmapListCommand
 from src.cli.commands.roadmap.story_command import StoryCommand
@@ -15,7 +14,6 @@ from src.cli.commands.roadmap.update_command import UpdateRoadmapCommand
 __all__ = [
     "StoryCommand",
     "CreateCommand",
-    "CheckRoadmapCommand",
     "UpdateRoadmapCommand",
     "SyncCommand",
     "RoadmapListCommand",

@@ -72,7 +72,7 @@ alwaysApply: true
 
 ### 文件系统配置
 
-- **允许目录**：`/Users/jacobcy/Public/VibeCopilot`
+- **允许目录**：`~/Public/VibeCopilot`
 - **文件操作使用绝对路径**
 - **默认临时目录**：`/tmp/vibecopilot`
 
@@ -90,7 +90,7 @@ alwaysApply: true
 
 ### Git工具配置
 
-- **仓库路径**：`/Users/jacobcy/Public/VibeCopilot`
+- **仓库路径**：`~/Public/VibeCopilot`
 - **默认分支**：`main`
 - **提交者信息**：从`.gitconfig`读取
 

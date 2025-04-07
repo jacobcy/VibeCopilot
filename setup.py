@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "vibecopilot=src.cli.main:main",
+            "vibecopilot=src.main:main",
             "content-parser=adapters.content_parser.cli.main:main",
         ],
     },

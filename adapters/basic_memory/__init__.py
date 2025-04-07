@@ -1,34 +1,61 @@
 """
-Basic Memory适配器
-提供文档解析、实体关系提取和导出功能
+基本记忆模块 - 直接转发到新的内存管理框架
+
+此模块已被 src.memory 和 src.db.vector 替代，此文件仅做转发以保持最小兼容性。
 """
 
-from adapters.basic_memory.base import BaseExporter, BaseParser
-from adapters.basic_memory.config import (
-    DEFAULT_OBSIDIAN_CONFIG,
-    DEFAULT_PARSER_CONFIG,
-    EXPORTER_TYPE_MAPPING,
-    PARSER_TYPE_MAPPING,
-    get_config,
-)
-from adapters.basic_memory.utils.formatters import (
-    convert_to_entity_format,
-    print_entity_visualization,
-)
+from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.entity_manager import EntityManager
+from src.memory.observation_manager import ObservationManager
+from src.memory.relation_manager import RelationManager
+from src.memory.sync_service import SyncService
 
-# 暂时注释掉，等实现完成后再启用
-# from adapters.basic_memory.memory_manager import MemoryManager
 
-__version__ = "0.1.0"
+# 兼容类
+class MemoryManager:
+    """内存管理器 (兼容类)"""
+
+    def __init__(self, config=None):
+        self.entity_manager = EntityManager(config)
+        self.observation_manager = ObservationManager(config)
+        self.relation_manager = RelationManager(config)
+        self.sync_service = SyncService()
+        self.vector_store = BasicMemoryAdapter(config)
+
+    async def sync_all(self, changed_files=None):
+        """同步所有内容 (兼容方法)"""
+        return await self.sync_service.sync_all(changed_files)
+
+    async def store_entity(self, entity_type, properties, content=None):
+        """存储实体 (兼容方法)"""
+        return await self.entity_manager.create_entity(entity_type, properties, content)
+
+    async def search(self, query, limit=5):
+        """搜索内容 (兼容方法)"""
+        return await self.vector_store.search(query, limit)
+
+
+# 基类
+class BaseParser:
+    """基础解析器 (兼容类)"""
+
+    pass
+
+
+class BaseExporter:
+    """基础导出器 (兼容类)"""
+
+    pass
+
+
+# 导出主要接口
 __all__ = [
-    # "MemoryManager", # 知识库管理器
+    "MemoryManager",
     "BaseParser",
     "BaseExporter",
-    "DEFAULT_PARSER_CONFIG",
-    "DEFAULT_OBSIDIAN_CONFIG",
-    "PARSER_TYPE_MAPPING",
-    "EXPORTER_TYPE_MAPPING",
-    "get_config",
-    "convert_to_entity_format",
-    "print_entity_visualization",
+    "EntityManager",
+    "ObservationManager",
+    "RelationManager",
+    "SyncService",
+    "BasicMemoryAdapter",
 ]

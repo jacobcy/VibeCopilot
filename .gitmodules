@@ -7,3 +7,6 @@
 [submodule "modules/gitdiagram"]
 	path = modules/gitdiagram
 	url = https://github.com/jacobcy/gitdiagram.git
+[submodule "external/basic-memory"]
+	path = modules/basic-memory
+	url = https://github.com/basicmachines-co/basic-memory.git
