@@ -1,45 +1,44 @@
 """
 规则生成器单元测试
+
+测试规则生成器的核心功能，包括规则内容生成和文件输出
 """
 
 import json
 import os
 import shutil
 import tempfile
-import unittest
-from datetime import datetime
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-# 使用原始Pydantic模型来运行测试
-from src.models.rule import Rule, RuleType
-from src.models.template import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
-from src.templates.core.rule_generator import RuleGenerator
-from src.templates.core.template_engine import TemplateEngine
+import pytest
+
+from src.models.rule_model import Rule, RuleType
+from src.rule_engine.generators.rule_generator import RuleGenerator
 
 
-class RuleGeneratorTests(unittest.TestCase):
+class TestRuleGenerator:
     """规则生成器测试类"""
 
-    def setUp(self):
+    def setup_method(self):
         """测试准备"""
         self.test_dir = tempfile.mkdtemp()
-        self.template_engine = TemplateEngine()
-        self.rule_generator = RuleGenerator(template_engine=self.template_engine)
+        self.template_repo = MagicMock()
+        self.rule_repo = MagicMock()
+        self.rule_generator = RuleGenerator(template_repo=self.template_repo, rule_repo=self.rule_repo)
 
-    def tearDown(self):
+    def teardown_method(self):
         """测试清理"""
         shutil.rmtree(self.test_dir)
 
-    def create_test_template(self):
-        """创建测试模板"""
-        return Template(
-            id="test-template",
-            name="测试模板",
-            description="用于测试的模板",
-            type="agent",
-            content="""---
-description: {{ description }}
-globs: {{ globs|default([]) }}
-alwaysApply: {{ always_apply|default(false) }}
+    def test_generate_rule(self):
+        """测试生成规则数据"""
+        # 模拟模板
+        mock_template = MagicMock()
+        mock_template.content = """---
+id: {{ id }}
+type: {{ type }}
+title: {{ title }}
 ---
 
 # {{ title }}
@@ -51,213 +50,185 @@ alwaysApply: {{ always_apply|default(false) }}
 {% for scene in scenes %}
 - {{ scene }}
 {% endfor %}
+"""
+        # 创建变量对象，确保name是字符串而不是MagicMock
+        var1 = MagicMock()
+        var1.name = "id"
+        var1.required = True
+        var1.default_value = None
 
-## 示例
-```
-{{ example }}
-```
-""",
-            variables=[
-                TemplateVariable(
-                    name="title",
-                    type=TemplateVariableType.STRING,
-                    description="规则标题",
-                    required=True,
-                ),
-                TemplateVariable(
-                    name="description",
-                    type=TemplateVariableType.STRING,
-                    description="规则描述",
-                    required=True,
-                ),
-                TemplateVariable(
-                    name="purpose",
-                    type=TemplateVariableType.STRING,
-                    description="规则目的",
-                    required=True,
-                ),
-                TemplateVariable(
-                    name="scenes",
-                    type=TemplateVariableType.ARRAY,
-                    description="使用场景",
-                    required=True,
-                ),
-                TemplateVariable(
-                    name="example",
-                    type=TemplateVariableType.STRING,
-                    description="示例代码",
-                    required=True,
-                ),
-                TemplateVariable(
-                    name="globs",
-                    type=TemplateVariableType.ARRAY,
-                    description="文件匹配模式",
-                    required=False,
-                    default=[],
-                ),
-                TemplateVariable(
-                    name="always_apply",
-                    type=TemplateVariableType.BOOLEAN,
-                    description="是否始终应用",
-                    required=False,
-                    default=False,
-                ),
-            ],
-            metadata=TemplateMetadata(author="测试作者", tags=["test"], version="1.0.0"),
-        )
+        var2 = MagicMock()
+        var2.name = "type"
+        var2.required = True
+        var2.default_value = '"rule"'
 
-    def test_generate_rule(self):
-        """测试生成规则对象"""
-        template = self.create_test_template()
+        var3 = MagicMock()
+        var3.name = "title"
+        var3.required = True
+        var3.default_value = None
 
+        var4 = MagicMock()
+        var4.name = "purpose"
+        var4.required = True
+        var4.default_value = None
+
+        var5 = MagicMock()
+        var5.name = "scenes"
+        var5.required = True
+        var5.default_value = None
+
+        mock_template.get_variables.return_value = [var1, var2, var3, var4, var5]
+
+        # 设置模板仓库返回值
+        self.template_repo.get_template_by_id.return_value = mock_template
+
+        # 设置变量
         variables = {
+            "id": "test-rule-01",
+            "type": "rule",
             "title": "测试规则",
-            "description": "这是一个测试规则",
-            "purpose": "用于测试规则生成功能",
+            "purpose": "用于测试规则生成器",
             "scenes": ["场景1", "场景2", "场景3"],
-            "example": "console.log('测试示例')",
-            "globs": ["*.js", "*.ts"],
-            "always_apply": True,
         }
 
-        rule = self.rule_generator.generate_rule(template, variables)
+        # 生成规则
+        rule_data = self.rule_generator.generate_rule("test-template", variables)
 
-        # 验证规则基本属性
-        self.assertEqual(rule.name, "测试规则")
-        self.assertEqual(rule.description, "这是一个测试规则")
-        self.assertEqual(rule.type, RuleType.AGENT)
-        self.assertEqual(rule.globs, ["*.js", "*.ts"])
-        self.assertTrue(rule.always_apply)
+        # 验证规则数据
+        assert rule_data["id"] == "test-rule-01"
+        assert rule_data["type"] == "rule"
+        assert rule_data["title"] == "测试规则"
+        assert "# 测试规则" in rule_data["content"]
+        assert "## 目的\n用于测试规则生成器" in rule_data["content"]
+        assert "- 场景1" in rule_data["content"]
+        assert "- 场景2" in rule_data["content"]
+        assert "- 场景3" in rule_data["content"]
 
-        # 验证规则ID
-        self.assertEqual(rule.id, "测试规则")
+    def test_generate_rule_with_missing_variables(self):
+        """测试缺少必要变量时生成规则"""
+        # 模拟模板
+        mock_template = MagicMock()
+        mock_template.content = "# {{ title }}\n{{ description }}"
 
-        # 验证规则内容包含渲染后的变量
-        self.assertIn("# 测试规则", rule.content)
-        self.assertIn("## 目的\n用于测试规则生成功能", rule.content)
-        self.assertIn("- 场景1", rule.content)
-        self.assertIn("- 场景2", rule.content)
-        self.assertIn("- 场景3", rule.content)
-        self.assertIn("console.log(&#39;测试示例&#39;)", rule.content)
+        # 创建变量对象，确保name是字符串而不是MagicMock
+        var1 = MagicMock()
+        var1.name = "title"
+        var1.required = True
+        var1.default_value = None
 
-    def test_generate_rule_with_missing_required_variable(self):
-        """测试缺少必填变量时生成规则"""
-        template = self.create_test_template()
+        var2 = MagicMock()
+        var2.name = "description"
+        var2.required = True
+        var2.default_value = None
 
-        # 缺少必填变量scenes
+        mock_template.get_variables.return_value = [var1, var2]
+
+        # 设置模板仓库返回值
+        self.template_repo.get_template_by_id.return_value = mock_template
+
+        # 缺少必要变量
         variables = {
-            "title": "测试规则",
-            "description": "这是一个测试规则",
-            "purpose": "用于测试规则生成功能",
-            "example": "console.log('测试示例')",
+            "title": "测试规则"
+            # 缺少 description
         }
 
         # 应该抛出ValueError异常
-        with self.assertRaises(ValueError):
-            self.rule_generator.generate_rule(template, variables)
+        with pytest.raises(ValueError):
+            self.rule_generator.generate_rule("test-template", variables)
 
     def test_generate_rule_file(self):
         """测试生成规则文件"""
-        template = self.create_test_template()
+        # 模拟模板
+        mock_template = MagicMock()
+        mock_template.content = """---
+id: {{ id }}
+type: {{ type }}
+---
 
+# {{ title }}
+
+{{ content }}
+"""
+        # 创建变量对象，确保name是字符串而不是MagicMock
+        var1 = MagicMock()
+        var1.name = "id"
+        var1.required = True
+        var1.default_value = None
+
+        var2 = MagicMock()
+        var2.name = "type"
+        var2.required = True
+        var2.default_value = '"rule"'
+
+        var3 = MagicMock()
+        var3.name = "title"
+        var3.required = True
+        var3.default_value = None
+
+        var4 = MagicMock()
+        var4.name = "content"
+        var4.required = True
+        var4.default_value = None
+
+        mock_template.get_variables.return_value = [var1, var2, var3, var4]
+
+        # 设置模板仓库返回值
+        self.template_repo.get_template_by_id.return_value = mock_template
+
+        # 设置变量
         variables = {
+            "id": "test-rule-file",
+            "type": "rule",
             "title": "测试规则文件",
-            "description": "这是一个测试规则文件",
-            "purpose": "用于测试规则文件生成功能",
-            "scenes": ["场景1", "场景2"],
-            "example": "console.log('测试示例')",
+            "content": "这是测试规则的内容。",
         }
 
-        output_path = os.path.join(self.test_dir, "test_rule.md")
+        # 设置输出路径
+        output_path = Path(self.test_dir) / "test_rule.md"
 
-        rule = self.rule_generator.generate_rule_file(template, variables, output_path)
+        # 生成规则文件
+        result_path = self.rule_generator.generate_rule_file("test-template", variables, output_path)
 
-        # 验证文件已创建
-        self.assertTrue(os.path.exists(output_path))
+        # 验证结果
+        assert result_path == str(output_path)
+        assert output_path.exists()
 
         # 验证文件内容
         with open(output_path, "r", encoding="utf-8") as f:
             content = f.read()
+            assert "# 测试规则文件" in content
+            assert "这是测试规则的内容。" in content
 
-        self.assertIn("# 测试规则文件", content)
-        self.assertIn("## 目的\n用于测试规则文件生成功能", content)
-        self.assertIn("- 场景1", content)
-        self.assertIn("- 场景2", content)
-
-    def test_generate_rule_json(self):
-        """测试生成规则的JSON表示"""
-        template = self.create_test_template()
-
-        variables = {
-            "title": "测试规则JSON",
-            "description": "这是一个测试规则JSON",
-            "purpose": "用于测试规则JSON生成功能",
-            "scenes": ["场景1"],
-            "example": "console.log('测试示例')",
+    def test_save_rule(self):
+        """测试保存规则到仓库"""
+        # 设置规则数据
+        rule_data = {
+            "id": "test-save-rule",
+            "type": "rule",
+            "title": "测试保存规则",
+            "content": "# 测试保存规则\n\n这是规则内容。",
         }
 
-        # 先生成规则对象
-        rule = self.rule_generator.generate_rule(template, variables)
+        # 模拟规则仓库的create方法
+        self.rule_repo.create.return_value = rule_data
 
-        # 生成JSON字符串
-        output_path = os.path.join(self.test_dir, "test_rule.json")
-        rule_json = self.rule_generator.generate_rule_json(rule, output_path)
+        # 保存规则
+        result = self.rule_generator.save_rule(rule_data)
 
-        # 验证JSON文件已创建
-        self.assertTrue(os.path.exists(output_path))
+        # 验证规则仓库的create方法被调用
+        self.rule_repo.create.assert_called_once_with(rule_data)
 
-        # 验证JSON内容
-        rule_dict = json.loads(rule_json)
+        # 验证结果
+        assert result == rule_data
 
-        self.assertEqual(rule_dict["name"], "测试规则JSON")
-        self.assertEqual(rule_dict["description"], "这是一个测试规则JSON")
-        self.assertEqual(rule_dict["type"], "agent")
-        self.assertEqual(rule_dict["metadata"]["author"], "测试作者")
+    def test_save_rule_without_repo(self):
+        """测试没有设置规则仓库时保存规则"""
+        # 创建没有规则仓库的生成器
+        generator = RuleGenerator(template_repo=self.template_repo)
 
-    def test_batch_generate_rules(self):
-        """测试批量生成规则"""
-        template = self.create_test_template()
+        # 设置规则数据
+        rule_data = {"id": "test-rule", "type": "rule"}
 
-        # 创建多个模板配置
-        template_configs = [
-            {
-                "template": template,
-                "variables": {
-                    "title": "规则1",
-                    "description": "这是规则1",
-                    "purpose": "用于测试批量生成功能",
-                    "scenes": ["场景1"],
-                    "example": "示例1",
-                },
-                "output_file": "rule1.md",
-            },
-            {
-                "template": template,
-                "variables": {
-                    "title": "规则2",
-                    "description": "这是规则2",
-                    "purpose": "用于测试批量生成功能",
-                    "scenes": ["场景2.1", "场景2.2"],
-                    "example": "示例2",
-                },
-                "output_file": "rule2.md",
-            },
-        ]
-
-        # 批量生成规则
-        rules = self.rule_generator.batch_generate_rules(template_configs, self.test_dir)
-
-        # 验证生成了2个规则
-        self.assertEqual(len(rules), 2)
-
-        # 验证文件已创建
-        self.assertTrue(os.path.exists(os.path.join(self.test_dir, "rule1.md")))
-        self.assertTrue(os.path.exists(os.path.join(self.test_dir, "rule2.md")))
-
-        # 验证规则属性
-        self.assertEqual(rules[0].name, "规则1")
-        self.assertEqual(rules[1].name, "规则2")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        # 应该抛出RuntimeError异常
+        with pytest.raises(RuntimeError):
+            generator.save_rule(rule_data)

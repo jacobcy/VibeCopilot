@@ -1,7 +1,7 @@
 """
-数据库基础模型
+数据库模型基类
 
-定义SQLAlchemy基类和通用工具函数
+提供所有数据库模型的公共基类和功能
 """
 
 from datetime import datetime
@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.declarative import declarative_base
 
+# 创建SQLAlchemy基类
 Base = declarative_base()
 
 

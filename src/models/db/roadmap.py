@@ -1,141 +1,66 @@
-# src/models/db/roadmap.py (New Content)
+"""
+Roadmap数据库模型
 
-import datetime
+定义项目路线图的数据库模型结构
+"""
+
+import json
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text
+from sqlalchemy import Column, String, Text
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
-from .base import Base  # Assuming Base is correctly defined elsewhere
-
-# Import the new Task model for relationship typing hint, use string for relationship()
-# from .task import Task # Not strictly needed for relationship string definition
-
-
-def generate_uuid():
-    """生成UUID字符串"""
-    return str(uuid.uuid4())
-
-
-# Association table for Epic <-> Task (if needed, maybe Task directly links to Epic/Story?)
-# epic_task_association = Table('epic_task_association', Base.metadata,
-#     Column('epic_id', String, ForeignKey('epics.id'), primary_key=True),
-#     Column('task_id', String, ForeignKey('tasks.id'), primary_key=True)
-# )
-
-# Association table for Milestone <-> Task (if needed)
-# milestone_task_association = Table('milestone_task_association', Base.metadata,
-#     Column('milestone_id', String, ForeignKey('milestones.id'), primary_key=True),
-#     Column('task_id', String, ForeignKey('tasks.id'), primary_key=True)
-# )
+from src.models.db.base import Base
 
 
 class Roadmap(Base):
-    """路线图 SQLAlchemy 模型"""
+    """路线图数据库模型，代表项目的整体规划"""
 
     __tablename__ = "roadmaps"
 
-    id = Column(String, primary_key=True, default=generate_uuid)
-    name = Column(String, nullable=False)
+    id = Column(String(50), primary_key=True, default=lambda: f"roadmap_{uuid.uuid4().hex[:8]}")
+    title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    status = Column(String, default="active", nullable=False)  # active, archived
-    owner = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    version = Column(String(20), default="1.0.0")
+    status = Column(String(50), default="active")
+    tags = Column(Text, nullable=True)  # 存储为JSON字符串
+    created_at = Column(String(50), nullable=True)
+    updated_at = Column(String(50), nullable=True)
 
-    # Relationships
+    # 关系
     epics = relationship("Epic", back_populates="roadmap", cascade="all, delete-orphan")
     milestones = relationship("Milestone", back_populates="roadmap", cascade="all, delete-orphan")
-    stories = relationship("Story", back_populates="roadmap", cascade="all, delete-orphan")  # Direct relationship if stories belong to roadmap
 
-    def __repr__(self):
-        return f"<Roadmap(id='{self.id}', name='{self.name}')>"
+    def __init__(self, **kwargs):
+        """初始化Roadmap，确保ID字段不为空"""
+        # 确保ID字段
+        if not kwargs.get("id"):
+            kwargs["id"] = f"roadmap_{uuid.uuid4().hex[:8]}"
 
-    def to_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        # 处理标签格式
+        if "tags" in kwargs and isinstance(kwargs["tags"], list):
+            kwargs["tags"] = json.dumps(kwargs["tags"])
 
+        # 确保时间戳
+        if not kwargs.get("created_at"):
+            kwargs["created_at"] = datetime.now().isoformat()
+        if not kwargs.get("updated_at"):
+            kwargs["updated_at"] = datetime.now().isoformat()
 
-class Milestone(Base):
-    """里程碑 SQLAlchemy 模型"""
-
-    __tablename__ = "milestones"
-
-    id = Column(String, primary_key=True, default=generate_uuid)
-    title = Column(String, nullable=False)
-    roadmap_id = Column(String, ForeignKey("roadmaps.id"), nullable=False, index=True)
-    description = Column(Text, nullable=True)
-    status = Column(String, default="planned", nullable=False)  # planned, in_progress, completed
-    due_date = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # Relationships
-    roadmap = relationship("Roadmap", back_populates="milestones")
-    stories = relationship("Story", back_populates="milestone")  # Stories assigned to this milestone
-    # tasks = relationship("Task", secondary=milestone_task_association, back_populates="milestones") # If Task links to Milestone
-
-    def __repr__(self):
-        return f"<Milestone(id='{self.id}', title='{self.title}')>"
+        super().__init__(**kwargs)
 
     def to_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-
-class Epic(Base):
-    """史诗 SQLAlchemy 模型"""
-
-    __tablename__ = "epics"
-
-    id = Column(String, primary_key=True, default=generate_uuid)
-    title = Column(String, nullable=False)
-    roadmap_id = Column(String, ForeignKey("roadmaps.id"), nullable=False, index=True)
-    description = Column(Text, nullable=True)
-    status = Column(String, default="draft", nullable=False)  # draft, in_progress, completed
-    # milestone_id = Column(String, ForeignKey("milestones.id"), nullable=True) # Optional: If Epic belongs to a Milestone
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # Relationships
-    roadmap = relationship("Roadmap", back_populates="epics")
-    stories = relationship("Story", back_populates="epic", cascade="all, delete-orphan")
-    # milestone = relationship("Milestone", back_populates="epics") # If Epic belongs to a Milestone
-    # tasks = relationship("Task", secondary=epic_task_association, back_populates="epics") # If Task links to Epic
-
-    def __repr__(self):
-        return f"<Epic(id='{self.id}', title='{self.title}')>"
-
-    def to_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-
-class Story(Base):
-    """用户故事 SQLAlchemy 模型"""
-
-    __tablename__ = "stories"  # Changed from 'roadmap_items' used in Task foreign key? Align this. Let's assume 'stories' for now.
-
-    id = Column(String, primary_key=True, default=generate_uuid)
-    title = Column(String, nullable=False)
-    roadmap_id = Column(String, ForeignKey("roadmaps.id"), nullable=False, index=True)  # Story belongs to a Roadmap
-    epic_id = Column(String, ForeignKey("epics.id"), nullable=True, index=True)  # Optional: Story belongs to an Epic
-    milestone_id = Column(String, ForeignKey("milestones.id"), nullable=True, index=True)  # Optional: Story belongs to a Milestone
-    description = Column(Text, nullable=True)
-    status = Column(String, default="draft", nullable=False)  # draft, refinement, in_progress, completed, rejected
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # Relationships
-    roadmap = relationship("Roadmap", back_populates="stories")
-    epic = relationship("Epic", back_populates="stories")
-    milestone = relationship("Milestone", back_populates="stories")
-
-    # Relationship to the NEW Task model
-    # The foreign key 'roadmap_item_id' in Task points to Story.id
-    # We need to ensure Task's ForeignKey targets 'stories.id'
-    tasks = relationship("Task", back_populates="roadmap_item", cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return f"<Story(id='{self.id}', title='{self.title}')>"
-
-    def to_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        """转换为字典"""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "version": self.version,
+            "status": self.status,
+            "tags": json.loads(self.tags) if self.tags else [],
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "epics": [epic.to_dict() for epic in self.epics] if self.epics else [],
+            "milestones": [milestone.to_dict() for milestone in self.milestones] if self.milestones else [],
+        }

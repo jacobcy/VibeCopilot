@@ -25,16 +25,16 @@ jobs:
         pip install -e ".[dev]"
     - name: Lint with flake8
       run: |
-        flake8 vibecopilot tests
+        flake8 src tests
     - name: Check formatting with black
       run: |
-        black --check vibecopilot tests
+        black --check src tests
     - name: Type check with mypy
       run: |
-        mypy vibecopilot
+        mypy src
     - name: Test with pytest
       run: |
-        pytest
+        python -m pytest tests/
 
   build:
     runs-on: ubuntu-latest

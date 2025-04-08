@@ -326,7 +326,7 @@ VibeCopilot采用简单的安装方式，避免复杂的依赖：
 
 ```bash
 # 安装命令
-git clone https://github.com/username/vibcopilot.git
+git clone https://github.com/jacobcy/vibecopilot.git
 cd vibcopilot
 pip install -r requirements.txt
 

@@ -19,8 +19,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "vibecopilot=src.main:main",
-            "content-parser=adapters.content_parser.cli.main:main",
+            "vibecopilot=src.cli.main:main",
+            "content-parser=src.parsing.cli.main:main",
         ],
     },
     classifiers=[

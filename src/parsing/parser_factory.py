@@ -4,6 +4,8 @@
 根据内容类型和后端类型创建合适的解析器实例。
 """
 
+import os
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from src.parsing.base_parser import BaseParser
@@ -12,9 +14,7 @@ from src.parsing.parsers.openai_parser import OpenAIParser
 from src.parsing.parsers.regex_parser import RegexParser
 
 
-def create_parser(
-    content_type: str = "generic", backend: str = "openai", config: Optional[Dict[str, Any]] = None
-) -> BaseParser:
+def create_parser(content_type: str = "generic", backend: str = "openai", config: Optional[Dict[str, Any]] = None) -> BaseParser:
     """
     创建解析器实例
 
@@ -64,3 +64,50 @@ def get_default_parser(config: Optional[Dict[str, Any]] = None) -> BaseParser:
     default_content_type = config.get("default_content_type", "generic")
 
     return create_parser(default_content_type, default_backend, config)
+
+
+def get_parser_for_file(file_path: str, config: Optional[Dict[str, Any]] = None) -> BaseParser:
+    """
+    根据文件路径获取合适的解析器
+
+    根据文件扩展名和内容自动选择最合适的解析器
+
+    Args:
+        file_path: 文件路径
+        config: 配置参数
+
+    Returns:
+        解析器实例
+    """
+    config = config or {}
+
+    # 获取文件扩展名
+    ext = Path(file_path).suffix.lower()
+
+    # 根据扩展名确定内容类型
+    content_type = "generic"
+    if ext in [".md", ".mdc", ".markdown"]:
+        content_type = "rule" if "rule" in file_path.lower() else "document"
+    elif ext in [".json", ".yaml", ".yml"]:
+        content_type = "data"
+    elif ext in [".py", ".js", ".ts", ".java", ".c", ".cpp"]:
+        content_type = "code"
+
+    # 选择解析器后端
+    # 对于复杂格式（如MDC），使用LLM解析
+    if ext in [".md", ".mdc", ".markdown"]:
+        backend = config.get("default_backend", "openai")
+    # 对于结构化数据，可以使用正则表达式或其他简单解析
+    elif ext in [".json", ".yaml", ".yml"]:
+        backend = "regex"
+    # 默认使用OpenAI
+    else:
+        backend = config.get("default_backend", "openai")
+
+    # 添加文件信息到配置
+    config["file_path"] = file_path
+    config["file_extension"] = ext
+    config["content_type"] = content_type
+
+    # 创建并返回解析器
+    return create_parser(content_type, backend, config)

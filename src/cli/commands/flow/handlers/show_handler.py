@@ -4,11 +4,11 @@ Flow 'show' subcommand handler.
 import logging
 from typing import Any, Dict
 
+from src.workflow import get_workflow, get_workflow_by_type, get_workflow_context  # 直接从workflow包导入
+
 # Assuming these helpers and operations are accessible
 from src.workflow.exporters.mermaid_exporter import MermaidExporter
 from src.workflow.flow_cmd.helpers import format_checklist, format_deliverables, format_workflow_stages
-from src.workflow.workflow_operations import get_workflow_by_type  # Keep if still relevant, otherwise use ID based fetch
-from src.workflow.workflow_operations import get_workflow
 
 logger = logging.getLogger(__name__)
 

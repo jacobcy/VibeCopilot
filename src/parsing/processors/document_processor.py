@@ -43,7 +43,7 @@ class DocumentProcessor:
             处理结果
         """
         # 解析文档内容
-        result = self.parser.parse_text(content, "document")
+        result = self.parser.parse_text(content)
 
         # 提取关键信息
         summary = self._generate_summary(result)
@@ -84,9 +84,7 @@ class DocumentProcessor:
 
         return result
 
-    def process_document_directory(
-        self, directory_path: str, pattern="**/*.md"
-    ) -> List[Dict[str, Any]]:
+    def process_document_directory(self, directory_path: str, pattern="**/*.md") -> List[Dict[str, Any]]:
         """
         处理文档目录
 

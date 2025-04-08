@@ -31,7 +31,7 @@ class InitCommand(Command):
         logger.info("开始初始化数据库...")
 
         try:
-            success = init_db()
+            success = init_db(force_recreate=args.force)
 
             if success:
                 self.console.print("[green]数据库初始化成功[/green]")

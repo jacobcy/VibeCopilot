@@ -1,0 +1,134 @@
+---
+description: VibeCopilot项目的核心概念定义和约定，确保术语理解一致
+globs:
+alwaysApply: false
+id: memory-command
+title: "VibeCopilot知识库命令规则"
+type: command_rule
+status: active
+version: "1.0"
+tags: [command, memory, knowledge, rule]
+related_items: [command-system]
+---
+
+# VibeCopilot知识库命令规则
+
+## 知识库命令概述
+
+知识库命令(`/memory`和`//memory`)用于管理VibeCopilot的知识库，包括创建、检索、更新和组织项目知识。知识库是项目经验和决策的持久化存储。
+
+## 命令类型和执行方式
+
+### 规则命令形式
+
+- 命令格式：`/memory [subcommand] [args]`
+- 执行方式：由Cursor Agent直接解释执行
+- 适用场景：简单内容查询、创建和检索
+
+### 程序命令形式
+
+- 命令格式：`//memory [subcommand] [args]`
+- 执行方式：转换为`vibecopilot memory [subcommand] [args]`并通过终端执行
+- 适用场景：复杂知识管理、批量操作和数据导入导出
+
+## 子命令详解
+
+| 子命令 | 说明 | 示例 |
+|-------|------|------|
+| `list` | 列出知识库内容 | `/memory list [--folder=<folder>]` |
+| `show` | 显示知识库内容详情 | `/memory show <path>` |
+| `create` | 创建知识库内容 | `/memory create --title="<title>" --folder="<folder>"` |
+| `update` | 更新知识库内容 | `/memory update <path> [--content="<content>"]` |
+| `delete` | 删除知识库内容 | `//memory delete <path> [--force]` |
+| `search` | 搜索知识库 | `/memory search --query="<query>"` |
+| `import` | 导入到知识库 | `//memory import <source_dir> [--recursive]` |
+| `export` | 导出知识库 | `//memory export [--output=<output_dir>]` |
+| `sync` | 同步知识库 | `//memory sync <sync_type>` |
+
+## 知识库内容类型
+
+知识库支持多种内容类型：
+
+| 类型 | 说明 | 文件夹 |
+|-----|------|-------|
+| `note` | 一般笔记和文档 | `/notes` |
+| `decision` | 决策记录 | `/decisions` |
+| `reference` | 参考资料 | `/references` |
+| `architecture` | 架构文档 | `/architecture` |
+| `meeting` | 会议记录 | `/meetings` |
+| `research` | 研究和调研 | `/research` |
+| `tutorial` | 教程和指南 | `/tutorials` |
+| `template` | 模板文件 | `/templates` |
+
+## 知识库组织结构
+
+知识库使用以下组织原则：
+
+1. **文件夹结构**：按内容类型和主题组织
+2. **标签系统**：使用标签进行跨文件夹分类
+3. **链接机制**：通过wiki链接建立内容间关联
+4. **版本控制**：跟踪内容的修改历史
+
+## 知识库搜索功能
+
+知识库支持多种搜索方式：
+
+| 搜索类型 | 说明 | 示例 |
+|----------|------|------|
+| 关键词搜索 | 基于关键词匹配 | `/memory search --query="用户认证"` |
+| 语义搜索 | 基于内容语义相似度 | `/memory search --query="用户认证" --semantic` |
+| 标签搜索 | 基于标签过滤 | `/memory search --tags="architecture,design"` |
+| 复合搜索 | 组合多种条件 | `/memory search --query="API" --tags="design" --type="note"` |
+
+## 知识库内容模板
+
+知识库提供预定义内容模板：
+
+```
+/memory create --template=decision --title="选择状态管理库"
+/memory create --template=meeting --title="项目启动会议"
+```
+
+## 知识库内容关联
+
+知识库内容可以互相关联：
+
+1. **Wiki链接**：使用`[[文档名]]`语法
+2. **块引用**：使用`![[文档名#块ID]]`语法
+3. **标签关联**：通过共享标签建立隐式关联
+4. **外部链接**：关联外部资源和URL
+
+## 使用示例
+
+```
+# 列出架构文档
+/memory list --folder=/architecture
+
+# 创建决策记录
+/memory create --title="数据库选型决策" --folder=/decisions
+
+# 搜索API相关内容
+/memory search --query="API设计" --semantic
+
+# 查看特定文档
+/memory show /architecture/system-overview.md
+
+# 更新文档内容
+/memory update /decisions/database-choice.md --content="我们决定使用PostgreSQL..."
+
+# 导入外部文档
+//memory import ./docs/specifications --folder=/references
+
+# 导出知识库为PDF
+//memory export --format=pdf --output=./project_knowledge
+
+# 获取相似文档
+/memory similar /architecture/api-design.md --limit=5
+```
+
+## 与其他系统集成
+
+- **流程集成**：工作流可记录和检索知识
+- **任务集成**：任务可关联到知识库文档
+- **规则集成**：知识可转化为项目规则
+- **版本控制**：知识库可与Git仓库同步

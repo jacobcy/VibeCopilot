@@ -56,7 +56,7 @@
 
 - **基本原则**：尽可能使用MCP工具执行命令，减少直接命令行操作
 - **文件操作**：使用绝对路径访问VibeCopilot项目文件
-  - 正确：`/Users/chenyi/Public/VibeCopilot/app/components/Button.tsx`
+  - 正确：`/Users/userName/Public/VibeCopilot/app/components/Button.tsx`
   - 错误：`app/components/Button.tsx`
 - **命令执行**：添加cat管道避免交互式界面
   - 示例：`git log | cat`

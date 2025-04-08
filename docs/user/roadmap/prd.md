@@ -243,7 +243,7 @@ GitHub同步:
 ```
 用户: @copilot
 系统: ✅ 命令模式已激活！
-用户: /task --id=T2.2 --status=in_progress --assignee=chenyi
+用户: /task --id=T2.2 --status=in_progress --assignee=<username>
 系统:
 ✅ 任务已更新!
 

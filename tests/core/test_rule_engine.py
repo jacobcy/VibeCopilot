@@ -1,119 +1,147 @@
-"""规则引擎测试模块"""
+"""
+规则引擎测试模块
+
+测试规则引擎的主要功能，包括解析、验证、导出和生成
+"""
 
 import os
-from unittest.mock import mock_open, patch
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.exceptions import RuleError
-from src.core.rule_engine import RuleEngine
-
-MOCK_RULE = {
-    "name": "test_rule",
-    "pattern": "/test",
-    "action": {"type": "response", "message": "Test rule executed"},
-}
-
-MOCK_RULE_YAML = """
-name: test_rule
-pattern: /test
-action:
-  type: response
-  message: Test rule executed
-"""
+from src.models.rule_model import Example, Rule, RuleItem, RuleMetadata
+from src.rule_engine.exporters.rule_exporter import export_rule_to_yaml
 
 
-@pytest.fixture
-def rule_engine():
-    """创建规则引擎实例"""
-    return RuleEngine()
+class TestRuleExporter(unittest.TestCase):
+    """测试规则导出器"""
+
+    def setUp(self):
+        """测试前准备"""
+        # 创建模拟规则数据
+        self.MOCK_RULE = {
+            "id": "test_rule",
+            "name": "测试规则",
+            "type": "auto",
+            "description": "这是一个测试规则",
+            "content": "# 测试规则\n\n这是一个用于测试的规则。",
+            "globs": ["*.py", "*.md"],
+            "always_apply": False,
+            "metadata": {"author": "测试作者", "version": "1.0.0", "tags": ["测试", "示例"]},
+            "items": [{"content": "规则项1", "priority": 1}, {"content": "规则项2", "priority": 2}],
+            "examples": [{"content": "示例1", "is_valid": True}, {"content": "示例2", "is_valid": False}],
+        }
+
+    def test_export_rule_to_yaml(self):
+        """测试将规则导出为YAML格式"""
+        # 调用导出函数
+        yaml_text = export_rule_to_yaml(self.MOCK_RULE)
+
+        # 验证导出结果包含必要字段
+        assert "id: test_rule" in yaml_text
+        assert "name: 测试规则" in yaml_text
+        assert "type: auto" in yaml_text
+        assert "description: 这是一个测试规则" in yaml_text
+
+        # 验证导出结果包含可选字段
+        assert "globs:" in yaml_text
+        assert "'*.py'" in yaml_text or "*.py" in yaml_text  # 允许任一种表示形式
+        assert "'*.md'" in yaml_text or "*.md" in yaml_text  # 允许任一种表示形式
+
+        # always_apply为False时字段可能不包含在结果中
+        # 如果包含，应该为False
+        if "always_apply:" in yaml_text:
+            assert "always_apply: false" in yaml_text.lower() or "always_apply: False" in yaml_text
+
+        # 验证导出结果包含metadata字段
+        assert "metadata:" in yaml_text
+        assert "author: 测试作者" in yaml_text
+        assert "version: 1.0.0" in yaml_text
+        assert "tags:" in yaml_text
+        assert "- 测试" in yaml_text
+        assert "- 示例" in yaml_text
+
+        # 验证导出结果包含items字段
+        assert "items:" in yaml_text
+        assert "content: 规则项1" in yaml_text
+        assert "priority: 1" in yaml_text
+        assert "content: 规则项2" in yaml_text
+        assert "priority: 2" in yaml_text
+
+        # 验证导出结果包含examples字段
+        assert "examples:" in yaml_text
+        assert "content: 示例1" in yaml_text
+        assert "is_valid: true" in yaml_text.lower() or "is_valid: True" in yaml_text
+        assert "content: 示例2" in yaml_text
+        assert "is_valid: false" in yaml_text.lower() or "is_valid: False" in yaml_text
+
+        # 测试always_apply为True的情况
+        rule_with_always_apply = self.MOCK_RULE.copy()
+        rule_with_always_apply["always_apply"] = True
+        yaml_text_always_apply = export_rule_to_yaml(rule_with_always_apply)
+        assert "always_apply: true" in yaml_text_always_apply.lower() or "always_apply: True" in yaml_text_always_apply
+
+    def test_export_rule_to_file(self):
+        """测试将规则导出到文件"""
+        # 使用临时文件
+        with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as temp_file:
+            temp_path = temp_file.name
+
+        try:
+            # 调用导出函数
+            result_path = export_rule_to_yaml(self.MOCK_RULE, temp_path)
+
+            # 验证返回值是文件路径
+            assert result_path == temp_path
+
+            # 验证文件存在
+            assert os.path.exists(temp_path)
+
+            # 验证文件内容
+            with open(temp_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                assert "id: test_rule" in content
+                assert "name: 测试规则" in content
+        finally:
+            # 清理临时文件
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+
+    def test_export_rule_object_to_yaml(self):
+        """测试将Rule对象导出为YAML格式"""
+        # 创建Rule对象
+        metadata = RuleMetadata(
+            author="测试作者", version="1.0.0", tags=["测试", "示例"], created_at="2023-01-01T00:00:00", updated_at="2023-01-01T00:00:00", dependencies=[]
+        )
+
+        items = [RuleItem(content="规则项1", priority=1), RuleItem(content="规则项2", priority=2)]
+
+        examples = [Example(content="示例1", is_valid=True), Example(content="示例2", is_valid=False)]
+
+        rule = Rule(
+            id="test_rule",
+            name="测试规则",
+            type="auto",
+            description="这是一个测试规则",
+            content="# 测试规则\n\n这是一个用于测试的规则。",
+            globs=["*.py", "*.md"],
+            always_apply=False,
+            metadata=metadata,
+            items=items,
+            examples=examples,
+        )
+
+        # 调用导出函数
+        yaml_text = export_rule_to_yaml(rule)
+
+        # 验证导出结果
+        assert "id: test_rule" in yaml_text
+        assert "name: 测试规则" in yaml_text
+        assert "type: auto" in yaml_text
 
 
-def test_validate_rule(rule_engine):
-    """测试规则验证"""
-    # 有效规则
-    assert rule_engine._validate_rule(MOCK_RULE) is True
-
-    # 缺少必要字段
-    invalid_rule = {"name": "test"}
-    with pytest.raises(RuleError) as exc:
-        rule_engine._validate_rule(invalid_rule)
-    assert "缺少必要字段" in str(exc.value)
-
-    # 无效的模式类型
-    invalid_rule = {"name": "test", "pattern": 123, "action": {}}
-    with pytest.raises(RuleError) as exc:
-        rule_engine._validate_rule(invalid_rule)
-    assert "规则模式必须是字符串" in str(exc.value)
-
-    # 无效的动作类型
-    invalid_rule = {"name": "test", "pattern": "/test", "action": "invalid"}
-    with pytest.raises(RuleError) as exc:
-        rule_engine._validate_rule(invalid_rule)
-    assert "规则动作必须是字典" in str(exc.value)
-
-
-def test_add_rule(rule_engine):
-    """测试添加规则"""
-    rule_engine.add_rule("test", MOCK_RULE, priority=1)
-
-    # 验证规则是否添加成功
-    assert rule_engine.get_rule("test") == MOCK_RULE
-    assert rule_engine.rule_priorities["test"] == 1
-
-
-def test_get_matching_rules(rule_engine):
-    """测试获取匹配规则"""
-    # 添加测试规则
-    rule_engine.add_rule("test1", {"name": "test1", "pattern": "/test", "action": {}}, priority=1)
-
-    rule_engine.add_rule("test2", {"name": "test2", "pattern": "/test", "action": {}}, priority=2)
-
-    # 测试规则匹配
-    matching_rules = rule_engine.get_matching_rules("/test command")
-    assert len(matching_rules) == 2
-
-    # 验证优先级排序
-    assert matching_rules[0]["name"] == "test2"
-    assert matching_rules[1]["name"] == "test1"
-
-    # 测试无匹配规则
-    assert len(rule_engine.get_matching_rules("/unknown")) == 0
-
-
-@patch("os.walk")
-@patch("builtins.open", new_callable=mock_open, read_data=MOCK_RULE_YAML)
-def test_load_rules(mock_file, mock_walk, rule_engine):
-    """测试加载规则文件"""
-    # 模拟规则文件
-    mock_walk.return_value = [("/rules", [], ["test.yml"])]
-
-    # 加载规则
-    rule_engine.load_rules("/rules")
-
-    # 验证规则是否加载成功
-    assert "test_rule" in rule_engine.rules
-    assert rule_engine.rules["test_rule"]["pattern"] == "/test"
-
-
-def test_process_command(rule_engine):
-    """测试命令处理"""
-    # 添加测试规则
-    rule_engine.add_rule("test", MOCK_RULE)
-
-    # 测试匹配命令
-    result = rule_engine.process_command("/test command")
-    assert result["handled"] is True
-    assert result["success"] is True
-    assert result["rule"] == "test_rule"
-
-    # 测试不匹配命令
-    result = rule_engine.process_command("/unknown")
-    assert result["handled"] is False
-
-    # 测试异常处理
-    with patch.object(rule_engine, "get_matching_rules", side_effect=Exception("Test error")):
-        result = rule_engine.process_command("/test")
-        assert result["handled"] is True
-        assert result["success"] is False
-        assert "规则引擎处理失败" in result["error"]
+if __name__ == "__main__":
+    unittest.main()

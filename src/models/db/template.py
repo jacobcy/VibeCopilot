@@ -1,73 +1,18 @@
 """
 模板数据库模型
 
-包含模板相关的数据库模型定义和与Pydantic模型的转换方法
+定义模板和模板变量的数据库模型，确保ID字段正确定义
 """
 
 import json
+import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text
+from sqlalchemy import Boolean, Column, ForeignKey, String, Text, inspect
 from sqlalchemy.orm import relationship
 
-from ...models import template as template_models
-from .base import Base, BaseMetadata, TemplateVariableType
-
-# 模板与变量关联表
-template_variable_association = Table(
-    "template_variable_association",
-    Base.metadata,
-    Column("template_id", String, ForeignKey("templates.id", ondelete="CASCADE")),
-    Column("variable_id", String, ForeignKey("template_variables.id", ondelete="CASCADE")),
-)
-
-
-class TemplateVariable(Base):
-    """模板变量数据库模型"""
-
-    __tablename__ = "template_variables"
-
-    id = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    type = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
-    default_value = Column(Text, nullable=True)  # 存储为JSON格式的字符串
-    required = Column(Boolean, default=True)
-    enum_values = Column(Text, nullable=True)  # 存储为JSON格式的字符串
-
-    # 关系
-    templates = relationship(
-        "Template", secondary=template_variable_association, back_populates="variables"
-    )
-
-    def to_pydantic(self) -> template_models.TemplateVariable:
-        """转换为Pydantic模型"""
-        return template_models.TemplateVariable(
-            id=self.id,
-            name=self.name,
-            type=self.type,
-            description=self.description,
-            default=json.loads(self.default_value) if self.default_value else None,
-            required=self.required,
-            enum_values=json.loads(self.enum_values) if self.enum_values else None,
-        )
-
-    @classmethod
-    def from_pydantic(
-        cls, model: template_models.TemplateVariable, var_id: str
-    ) -> "TemplateVariable":
-        """从Pydantic模型创建"""
-        return cls(
-            id=var_id,
-            name=model.name,
-            type=model.type.value if hasattr(model.type, "value") else model.type,
-            description=model.description,
-            default_value=json.dumps(model.default) if model.default is not None else None,
-            required=model.required,
-            enum_values=json.dumps(model.enum_values) if model.enum_values else None,
-        )
+from src.models.db.base import Base
 
 
 class Template(Base):
@@ -75,80 +20,120 @@ class Template(Base):
 
     __tablename__ = "templates"
 
-    id = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
+    id = Column(String(50), primary_key=True, default=lambda: f"template_{uuid.uuid4().hex[:8]}")
+    name = Column(String(100))
     description = Column(Text, nullable=True)
-    type = Column(String, nullable=False)  # agent, auto, manual等
-    content = Column(Text, nullable=False)
+    type = Column(String(50))
+    content = Column(Text)
     example = Column(Text, nullable=True)
-
-    # 元数据字段
-    author = Column(String, nullable=False)
-    version = Column(String, default="1.0.0")
-    tags = Column(Text, nullable=True)  # 存储为JSON格式的字符串列表
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    author = Column(String(100), nullable=True)
+    version = Column(String(20), nullable=True)
+    tags = Column(Text, nullable=True)  # 存储为JSON字符串
+    created_at = Column(String(50), nullable=True)
+    updated_at = Column(String(50), nullable=True)
 
     # 关系
-    variables = relationship(
-        "TemplateVariable",
-        secondary=template_variable_association,
-        back_populates="templates",
-        cascade="all, delete",
-    )
+    variables = relationship("TemplateVariable", back_populates="template", cascade="all, delete-orphan")
 
-    def to_pydantic(self) -> template_models.Template:
+    def __init__(self, **kwargs):
+        """初始化模板，确保ID字段不为空"""
+        # 确保ID字段
+        if not kwargs.get("id"):
+            kwargs["id"] = f"template_{uuid.uuid4().hex[:8]}"
+
+        # 确保时间戳
+        if not kwargs.get("created_at"):
+            kwargs["created_at"] = datetime.now().isoformat()
+        if not kwargs.get("updated_at"):
+            kwargs["updated_at"] = datetime.now().isoformat()
+
+        super().__init__(**kwargs)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "type": self.type,
+            "content": self.content,
+            "example": self.example,
+            "author": self.author,
+            "version": self.version,
+            "tags": json.loads(self.tags) if self.tags else [],
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "variables": [var.to_dict() for var in self.variables] if self.variables else [],
+        }
+
+    def to_pydantic(self):
         """转换为Pydantic模型"""
-        return template_models.Template(
-            id=self.id,
-            name=self.name,
-            description=self.description,
-            type=self.type,
-            content=self.content,
-            example=self.example,
-            variables=[var.to_pydantic() for var in self.variables],
-            metadata=template_models.TemplateMetadata(
-                author=self.author,
-                tags=json.loads(self.tags) if self.tags else [],
-                version=self.version,
-                created_at=self.created_at,
-                updated_at=self.updated_at,
-            ),
-        )
+        # 延迟导入避免循环依赖
+        from src.models import Template as TemplateModel
+        from src.models import TemplateVariable as TemplateVariableModel
 
-    @classmethod
-    def from_pydantic(cls, model: template_models.Template) -> "Template":
-        """从Pydantic模型创建"""
-        return cls(
-            id=model.id,
-            name=model.name,
-            description=model.description,
-            type=model.type,
-            content=model.content,
-            example=model.example,
-            author=model.metadata.author,
-            version=model.metadata.version,
-            tags=json.dumps(model.metadata.tags),
-        )
+        template_dict = self.to_dict()
+
+        # 处理变量
+        variables = []
+        for var_dict in template_dict.pop("variables", []):
+            variables.append(TemplateVariableModel(**var_dict))
+
+        # 创建模板模型
+        template = TemplateModel(**template_dict, variables=variables)
+        return template
 
 
-class TemplateMetadata(BaseMetadata):
-    """模板元数据模型，扩展基础元数据"""
+class TemplateVariable(Base):
+    """模板变量数据库模型"""
 
-    author: str = Field(..., description="作者")
-    tags: List[str] = Field(default_factory=list, description="标签")
-    version: str = Field(default="1.0.0", description="版本")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="更新时间")
+    __tablename__ = "template_variables"
 
+    id = Column(String(50), primary_key=True, default=lambda: f"var_{uuid.uuid4().hex[:8]}")
+    template_id = Column(String(50), ForeignKey("templates.id"))
+    name = Column(String(100))
+    type = Column(String(50), nullable=True)
+    description = Column(Text, nullable=True)
+    default_value = Column(Text, nullable=True)  # 存储为JSON字符串
+    required = Column(Boolean, default=True)
+    enum_values = Column(Text, nullable=True)  # 存储为JSON字符串
 
-class TemplateRepository(BaseModel):
-    """模板仓库设置"""
+    # 关系
+    template = relationship("Template", back_populates="variables")
 
-    id: str = Field(..., description="模板仓库ID")
-    name: str = Field(..., description="仓库名称")
-    url: str = Field(..., description="仓库URL")
-    description: Optional[str] = Field(None, description="仓库描述")
-    auth_required: bool = Field(default=False, description="是否需要认证")
-    templates_path: str = Field(default="templates", description="模板在仓库中的路径")
-    is_default: bool = Field(default=False, description="是否为默认仓库")
+    def __init__(self, **kwargs):
+        """初始化模板变量，确保ID字段不为空"""
+        # 确保ID字段
+        if not kwargs.get("id"):
+            kwargs["id"] = f"var_{uuid.uuid4().hex[:8]}"
+
+        super().__init__(**kwargs)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            "id": self.id,
+            "template_id": self.template_id,
+            "name": self.name,
+            "type": self.type,
+            "description": self.description,
+            "default_value": self.default_value,
+            "required": self.required,
+            "enum_values": json.loads(self.enum_values) if self.enum_values else None,
+        }
+
+    def to_pydantic(self):
+        """转换为Pydantic模型"""
+        # 延迟导入避免循环依赖
+        from src.models import TemplateVariable as TemplateVariableModel
+
+        var_dict = self.to_dict()
+
+        # 解析JSON字符串
+        if var_dict.get("default_value"):
+            try:
+                var_dict["default"] = json.loads(var_dict.pop("default_value"))
+            except (json.JSONDecodeError, TypeError):
+                var_dict["default"] = var_dict.pop("default_value")
+
+        return TemplateVariableModel(**var_dict)

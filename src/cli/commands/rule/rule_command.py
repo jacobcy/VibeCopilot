@@ -4,26 +4,12 @@
 处理规则相关的命令，包括创建、查看、修改、删除规则等操作。
 """
 
-import json
 import logging
-import os
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-from sqlalchemy.orm import Session
+from typing import Any, Dict, List
 
 from src.cli.base_command import BaseCommand
 from src.cli.command import Command
-from src.cli.commands.rule.rule_command_handlers import (
-    create_rule,
-    delete_rule,
-    edit_rule,
-    export_rule,
-    import_rule,
-    list_rules,
-    show_rule,
-    validate_rule,
-)
+from src.cli.commands.rule.core import RuleCommandExecutor, parse_rule_args
 from src.cli.commands.rule.rule_command_utils import convert_result, show_help
 from src.templates.core.rule_generator import RuleGenerator
 from src.templates.core.template_engine import TemplateEngine
@@ -44,6 +30,11 @@ class RuleCommand(BaseCommand, Command):
         self.template_manager = TemplateManager(session=self.session)
         self.rule_generator = RuleGenerator(template_engine=self.template_engine)
 
+        # 初始化命令执行器
+        self.command_executor = RuleCommandExecutor(
+            session=self.session, template_engine=self.template_engine, template_manager=self.template_manager, rule_generator=self.rule_generator
+        )
+
     # 实现新接口
     @classmethod
     def get_command(cls) -> str:
@@ -62,7 +53,7 @@ class RuleCommand(BaseCommand, Command):
     rule list                  列出所有规则
     rule list [--type=<rule_type>] [--verbose]     列出特定类型的规则
     rule show <id> [--format=<json|text>]         显示规则详情
-    rule create <template_type> <name> [--vars=<json>]  创建新规则
+    rule create <template_type> <n> [--vars=<json>]  创建新规则
     rule update <id> [--vars=<json>]       更新规则
     rule delete <id> [--force]          删除规则
     rule validate <id> [--all]         验证规则
@@ -72,7 +63,7 @@ class RuleCommand(BaseCommand, Command):
 参数:
     <id>                  规则ID
     <template_type>       模板类型
-    <name>                规则名称
+    <n>                规则名称
     <file_path>           规则文件路径
 
 选项:
@@ -88,118 +79,7 @@ class RuleCommand(BaseCommand, Command):
 
     def parse_args(self, args: List[str]) -> Dict:
         """解析命令参数"""
-        parsed = {"command": self.get_command()}
-
-        # 处理帮助选项
-        if not args or "--help" in args or "-h" in args:
-            parsed["show_help"] = True
-            return parsed
-
-        # 处理规则操作
-        rule_action = args.pop(0)
-        parsed["rule_action"] = rule_action
-
-        # 通用选项
-        parsed["verbose"] = "--verbose" in args
-        if "--verbose" in args:
-            args.remove("--verbose")
-
-        # 处理格式选项
-        for i, arg in enumerate(args):
-            if arg == "--format" and i + 1 < len(args):
-                parsed["format"] = args[i + 1]
-                args[i : i + 2] = []
-                break
-            elif arg.startswith("--format="):
-                parsed["format"] = arg.split("=", 1)[1]
-                args.remove(arg)
-                break
-
-        # 根据不同操作处理参数
-        if rule_action == "list":
-            # 处理list参数
-            self._parse_list_args(args, parsed)
-        elif rule_action == "show":
-            # 处理show参数
-            if args:
-                parsed["id"] = args.pop(0)
-        elif rule_action == "create":
-            # 处理create参数
-            if len(args) >= 2:
-                parsed["template_type"] = args.pop(0)
-                parsed["name"] = args.pop(0)
-            # 处理选项
-            self._parse_create_options(args, parsed)
-        elif rule_action == "update":
-            # 处理update参数
-            if args:
-                parsed["id"] = args.pop(0)
-            # 处理选项
-            self._parse_create_options(args, parsed)
-        elif rule_action == "delete":
-            # 处理delete参数
-            if args:
-                parsed["id"] = args.pop(0)
-            parsed["force"] = "--force" in args
-            if "--force" in args:
-                args.remove("--force")
-        elif rule_action == "validate":
-            # 处理validate参数
-            if args and not args[0].startswith("--"):
-                parsed["id"] = args.pop(0)
-            # 检查--all选项
-            parsed["all"] = "--all" in args
-            if "--all" in args:
-                args.remove("--all")
-        elif rule_action == "export":
-            # 处理export参数
-            if args and not args[0].startswith("--"):
-                parsed["id"] = args.pop(0)
-
-            # 处理--output选项
-            for i, arg in enumerate(args):
-                if arg == "--output" and i + 1 < len(args):
-                    parsed["output"] = args[i + 1]
-                    args[i : i + 2] = []
-                    break
-                elif arg.startswith("--output="):
-                    parsed["output"] = arg.split("=", 1)[1]
-                    args.remove(arg)
-                    break
-        elif rule_action == "import":
-            # 处理import参数
-            if args and not args[0].startswith("--"):
-                parsed["file_path"] = args.pop(0)
-            parsed["overwrite"] = "--overwrite" in args
-            if "--overwrite" in args:
-                args.remove("--overwrite")
-
-        return parsed
-
-    def _parse_list_args(self, args: List[str], parsed: Dict) -> None:
-        """解析list命令的参数"""
-        # 处理--type选项
-        for i, arg in enumerate(args):
-            if arg == "--type" and i + 1 < len(args):
-                parsed["type"] = args[i + 1]
-                args[i : i + 2] = []
-                break
-            elif arg.startswith("--type="):
-                parsed["type"] = arg.split("=", 1)[1]
-                args.remove(arg)
-                break
-
-    def _parse_create_options(self, args: List[str], parsed: Dict) -> None:
-        """解析create/update命令的选项"""
-        for i, arg in enumerate(args):
-            if arg == "--vars" and i + 1 < len(args):
-                parsed["vars"] = args[i + 1]
-                args[i : i + 2] = []
-                break
-            elif arg.startswith("--vars="):
-                parsed["vars"] = arg.split("=", 1)[1]
-                args.remove(arg)
-                break
+        return parse_rule_args(args)
 
     def execute(self, args) -> None:
         """执行命令 - 适配新接口"""
@@ -223,82 +103,36 @@ class RuleCommand(BaseCommand, Command):
             print("错误: 不支持的参数类型")
             return
 
-        # 处理字典参数
-        rule_action = parsed_args.get("rule_action")
+        # 执行命令并获取结果
+        result = self._execute_impl(parsed_args)
 
-        # 如果没有指定操作，默认为list
-        if rule_action is None:
-            result = list_rules(self.template_manager, parsed_args)
-            result = convert_result(result)
-        # 处理具体操作
-        elif rule_action == "create":
-            result = create_rule(self.template_manager, self.rule_generator, parsed_args)
-            result = convert_result(result)
-        elif rule_action == "list":
-            result = list_rules(self.template_manager, parsed_args)
-            result = convert_result(result)
-        elif rule_action == "show":
-            result = show_rule(self.template_manager, parsed_args)
-            result = convert_result(result)
-        elif rule_action == "update":
-            result = edit_rule(self.template_manager, parsed_args)
-            result = convert_result(result)
-        elif rule_action == "delete":
-            result = delete_rule(self.template_manager, parsed_args)
-            result = convert_result(result)
-        elif rule_action == "validate":
-            result = validate_rule(self.template_manager, parsed_args)
-            result = convert_result(result)
-        elif rule_action == "export":
-            result = export_rule(self.template_manager, parsed_args)
-            result = convert_result(result)
-        elif rule_action == "import":
-            result = import_rule(self.template_manager, parsed_args)
-            result = convert_result(result)
-        else:
-            # 未知操作
-            print(f"错误: 未知的规则操作 '{rule_action}'")
-            print(self.get_help())
-            return
-
-        # 输出结果
-        print(result)
+        # 格式化输出
+        if isinstance(result, dict):
+            if result.get("success", False):
+                # 输出结果
+                if "message" in result:
+                    print(result["message"])
+                if "data" in result:
+                    data = result["data"]
+                    # 根据数据类型选择合适的输出方式
+                    if isinstance(data, list):
+                        for item in data:
+                            print(convert_result(item))
+                    else:
+                        print(convert_result(data))
+            else:
+                # 输出错误
+                error_message = result.get("error", "未知错误")
+                print(f"错误: {error_message}")
 
     def _execute_impl(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """执行命令的内部实现
+        """
+        实现命令执行逻辑
 
         Args:
             args: 命令参数
 
         Returns:
-            处理结果
+            执行结果
         """
-        rule_action = args.get("rule_action")
-
-        if args.get("show_help", False):
-            return {"success": True, "message": self.get_help()}
-
-        # 如果没有指定操作，默认为list
-        if rule_action is None:
-            return list_rules(self.template_manager, args)
-
-        # 处理具体操作
-        if rule_action == "create":
-            return create_rule(self.template_manager, self.rule_generator, args)
-        elif rule_action == "list":
-            return list_rules(self.template_manager, args)
-        elif rule_action == "show":
-            return show_rule(self.template_manager, args)
-        elif rule_action == "update":
-            return edit_rule(self.template_manager, args)
-        elif rule_action == "delete":
-            return delete_rule(self.template_manager, args)
-        elif rule_action == "validate":
-            return validate_rule(self.template_manager, args)
-        elif rule_action == "export":
-            return export_rule(self.template_manager, args)
-        elif rule_action == "import":
-            return import_rule(self.template_manager, args)
-        else:
-            # 未知操作
-            return {"success": False, "error": f"未知的规则操作: {rule_action}"}
+        return self.command_executor.execute_command(args)

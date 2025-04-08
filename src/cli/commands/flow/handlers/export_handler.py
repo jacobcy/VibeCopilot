@@ -5,11 +5,11 @@ import logging
 import os
 from typing import Any, Dict
 
+from src.workflow import get_workflow, get_workflow_by_type  # 从workflow包导入
+
 # Assuming exporters and workflow_operations are accessible
 from src.workflow.exporters.json_exporter import JsonExporter
 from src.workflow.exporters.mermaid_exporter import MermaidExporter
-from src.workflow.workflow_operations import get_workflow_by_type  # Keep if needed
-from src.workflow.workflow_operations import get_workflow
 
 logger = logging.getLogger(__name__)
 

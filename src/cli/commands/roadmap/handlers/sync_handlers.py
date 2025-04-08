@@ -15,6 +15,16 @@ logger = logging.getLogger(__name__)
 class RoadmapSyncHandlers:
     """路线图同步和状态处理类"""
 
+    def __init__(self, service, db_service):
+        """初始化路线图同步和状态处理类
+
+        Args:
+            service: 路线图服务实例
+            db_service: 数据库服务实例
+        """
+        self.service = service
+        self.db_service = db_service
+
     @staticmethod
     def sync_roadmap(roadmap_service, args: Dict) -> Dict[str, Any]:
         """同步路线图数据

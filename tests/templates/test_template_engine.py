@@ -1,27 +1,30 @@
 """
 模板引擎单元测试
+
+测试模板引擎的核心功能，包括模板渲染和变量处理
 """
 
 import os
 import shutil
 import tempfile
 import unittest
-from datetime import datetime
+from unittest.mock import MagicMock, patch
 
-# 使用src.models.template中定义的Pydantic模型来运行测试
+import pytest
+
 from src.models.template import Template, TemplateMetadata, TemplateVariable, TemplateVariableType
 from src.templates.core.template_engine import TemplateEngine
 
 
-class TemplateEngineTests(unittest.TestCase):
+class TestTemplateEngine:
     """模板引擎测试类"""
 
-    def setUp(self):
+    def setup_method(self):
         """测试准备"""
         self.test_dir = tempfile.mkdtemp()
         self.template_engine = TemplateEngine()
 
-    def tearDown(self):
+    def teardown_method(self):
         """测试清理"""
         shutil.rmtree(self.test_dir)
 
@@ -32,18 +35,16 @@ class TemplateEngineTests(unittest.TestCase):
 
         result = self.template_engine.render_template_string(template_string, variables)
 
-        self.assertEqual(result, "Hello, World! Today is Monday.")
+        assert result == "Hello, World! Today is Monday."
 
     def test_render_template_with_filters(self):
         """测试使用过滤器渲染模板"""
-        template_string = (
-            "{{ snake_case|camel_case }} {{ snake_case|pascal_case }} {{ snake_case|kebab_case }}"
-        )
+        template_string = "{{ snake_case|camel_case }} {{ snake_case|pascal_case }} {{ snake_case|kebab_case }}"
         variables = {"snake_case": "hello_world"}
 
         result = self.template_engine.render_template_string(template_string, variables)
 
-        self.assertEqual(result, "helloWorld HelloWorld hello-world")
+        assert result == "helloWorld HelloWorld hello-world"
 
     def test_render_template(self):
         """测试渲染模板对象"""
@@ -75,7 +76,7 @@ class TemplateEngineTests(unittest.TestCase):
 
         result = self.template_engine.render_template(template, variables)
 
-        self.assertEqual(result, "Title: Hello World\nDescription: Default description")
+        assert result == "Title: Hello World\nDescription: Default description"
 
     def test_apply_template_to_file(self):
         """测试应用模板到文件"""
@@ -109,13 +110,13 @@ class TemplateEngineTests(unittest.TestCase):
         self.template_engine.apply_template(template, variables, output_path)
 
         # 验证文件是否创建
-        self.assertTrue(os.path.exists(output_path))
+        assert os.path.exists(output_path)
 
         # 验证文件内容
         with open(output_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        self.assertEqual(content, "# Test Document\n\nThis is a test document content.")
+        assert content == "# Test Document\n\nThis is a test document content."
 
     def test_template_validation_error(self):
         """测试模板变量验证错误"""
@@ -138,7 +139,7 @@ class TemplateEngineTests(unittest.TestCase):
 
         variables = {}  # 缺少必填变量
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.template_engine.render_template(template, variables)
 
     def test_syntax_error(self):
@@ -146,9 +147,5 @@ class TemplateEngineTests(unittest.TestCase):
         template_string = "{{ unclosed_tag"
         variables = {}
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.template_engine.render_template_string(template_string, variables)
-
-
-if __name__ == "__main__":
-    unittest.main()

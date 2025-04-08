@@ -1,155 +1,86 @@
-# VibeCopilot
+# VibeCopilot 模板生成系统
 
-VibeCopilot是一个AI辅助开发工具，致力于优化开发流程，提高开发效率。当前处于演示阶段，专注于核心功能的实现。
+VibeCopilot 模板生成系统是一个强大的工具，用于根据预定义模板和变量生成各种类型的文档，包括规则、文档和其他内容。该系统支持本地正则替换和云端LLM生成两种方式，满足不同场景的需求。
 
-## 主要功能
+## 功能特点
 
-- **规则系统**：定义和管理开发规则和最佳实践
-- **文档引擎**：管理、解析和检索项目文档
-- **工作流管理**：规范化开发流程和任务管理
-- **AI集成**：与OpenAI和Ollama等AI服务集成，增强开发能力
+- **多种生成器**: 支持基于正则表达式的本地生成和基于LLM的云端智能生成
+- **变量验证**: 自动验证必需变量和变量类型
+- **命令行界面**: 提供丰富的命令行工具管理和使用模板
+- **模板管理**: 支持模板的导入、创建、更新和删除
+- **多种输出格式**: 支持Markdown、JSON等多种输出格式
 
-## 快速开始
-
-1. 克隆项目
+## 安装使用
 
 ```bash
-git clone https://github.com/jacobcy/VibeCopilot.git
-cd VibeCopilot
+# 安装依赖
+pip install -r requirements.txt
+
+# 测试模板生成
+python test_template_generator.py templates/rule/command.md -v '{"name":"test_command","description":"A test command for demonstration"}'
+
+# 使用LLM生成器
+python test_template_generator.py templates/rule/command.md -v '{"name":"test_command","description":"A test command for demonstration"}' -g llm
 ```
 
-2. 设置环境变量
+## 命令行工具
+
+模板系统提供了一套完整的命令行工具:
 
 ```bash
-cp config/.env.example .env
-# 编辑.env文件，填入你的配置
-```
+# 列出所有模板
+python -m src.commands.template.main list
 
-3. 安装依赖
+# 查看特定模板
+python -m src.commands.template.main show <template_id>
 
-```bash
-pip install -e .
-```
+# 生成模板内容
+python -m src.commands.template.main generate <template_id> --variables '{"name":"value"}'
 
-4. 运行项目
+# 导入模板
+python -m src.commands.template.main import <file_path>
 
-```bash
-vibecopilot --help
-```
-
-## 内容解析工具
-
-VibeCopilot提供了统一的内容解析工具，支持解析规则文件和Markdown文档：
-
-```bash
-# 解析文件（自动检测内容类型）
-content-parser parse path/to/file.md
-
-# 解析规则文件
-content-parser parse path/to/rule.mdc --type rule
-
-# 解析文档文件
-content-parser parse path/to/document.md --type document
-
-# 解析文本内容
-content-parser parse-content "# 文档标题\n\n文档内容" --type document
-
-# 从文件读取内容并解析
-content-parser parse-content path/to/file.md --from-file --type document
-
-# 检查环境配置
-content-parser check-env
+# 加载目录中的所有模板
+python -m src.commands.template.main load
 ```
 
 ## 项目结构
 
 ```
-VibeCopilot/
-├── adapters/              # 外部服务适配器
-│   ├── content_parser/    # 统一内容解析模块
-│   ├── rule_engine.py     # 规则引擎接口
-│   └── docs_engine.py     # 文档引擎接口
-├── src/                   # 核心源代码
-│   ├── cli/               # 命令行接口
-│   ├── core/              # 核心功能模块
-│   ├── db/                # 数据库层
-│   ├── docs_engine/       # 文档引擎
-│   ├── models/            # 数据模型
-│   └── workflow/          # 工作流管理
-├── bin/                   # 可执行脚本
-├── config/                # 配置文件
-├── data/                  # 数据存储
-├── docs/                  # 项目文档
-└── tests/                 # 测试代码
+src/
+├── commands/
+│   └── template/       # 模板命令行工具
+├── models/             # 数据模型
+├── templates/
+│   ├── core/           # 模板核心功能
+│   └── generators/     # 模板生成器
+│       ├── base_generator.py       # 生成器基类
+│       ├── regex_generator.py      # 正则生成器
+│       └── llm_generator.py        # LLM生成器
+templates/
+├── rule/               # 规则模板
+└── doc/                # 文档模板
 ```
 
-## 环境变量
+## 支持的模板类型
 
-主要环境变量配置：
+系统支持多种模板类型，包括:
 
-| 变量名 | 描述 | 默认值 |
-|---------|-------------|---------|
-| VIBE_CONTENT_PARSER | 内容解析引擎 | openai |
-| VIBE_OPENAI_MODEL | OpenAI模型 | gpt-4o-mini |
-| VIBE_OLLAMA_MODEL | Ollama模型 | mistral |
-| OPENAI_API_KEY | OpenAI API密钥 | - |
-| DOCS_ENGINE_DB_PATH | 文档引擎数据库路径 | data/docs_engine.db |
+- **规则模板**: 用于生成各类规则文档
+- **文档模板**: 用于生成API文档、架构文档等
+- **任务模板**: 用于生成任务描述和计划
 
-详细配置请参考`.env.example`文件。
+## 开发者指南
+
+要扩展模板系统功能:
+
+1. 添加新的模板生成器: 实现`TemplateGenerator`接口
+2. 添加新的命令: 在`src/commands/template/commands.py`中注册新命令
+3. 创建新模板: 在templates目录下创建符合规范的Markdown文件
 
 ## 许可证
 
-MIT
+本项目采用MIT许可证。
 
-## 贡献
-
-欢迎提交问题和合并请求。
-
-## LangChain解析器
-
-VibeCopilot现在包含一个强大的LangChain解析器，支持文档知识化处理和基础内存功能。
-
-### 主要功能
-
-- 文档加载和分割
-- 向量化存储与检索
-- 知识实体和关系提取
-- 知识图谱构建
-
-### 使用方法
-
-1. **基本用法**
-
-   使用CLI命令导入文档:
-
-   ```bash
-   python -m adapters.basic_memory.cli import langchain ./docs
-   ```
-
-2. **高级选项**
-
-   自定义数据库路径和模型:
-
-   ```bash
-   python -m adapters.basic_memory.cli import langchain ./docs \
-     --db ./knowledge.db \
-     --model gpt-4
-   ```
-
-3. **导出知识**
-
-   将处理结果导出到Obsidian:
-
-   ```bash
-   python -m adapters.basic_memory.cli export ./knowledge.db --format obsidian
-   ```
-
-### 开发说明
-
-LangChain解析器位于`adapters/basic_memory/parsers/langchain_parser.py`，它提供了一个简单的接口来处理文档并提取结构化知识。
-
-要扩展功能，请完善以下模块:
-
-- `document_loader.py`: 文档加载和分割
-- `knowledge_extractor.py`: 知识提取
-- `vector_store.py`: 向量存储管理
+![CI](https://github.com/jacobcy/VibeCopilot/actions/workflows/ci.yml/badge.svg)
+![Tests](https://github.com/jacobcy/VibeCopilot/actions/workflows/test-all.yml/badge.svg)

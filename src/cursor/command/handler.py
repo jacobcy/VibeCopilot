@@ -8,9 +8,9 @@ import logging
 from typing import Any, Dict, List, Tuple
 
 from src.cli.command_parser import CommandParser
-from src.core.rule_engine import RuleEngine
 from src.cursor.command.formatter import enhance_result_for_agent
 from src.cursor.command.suggestions import get_command_suggestions, get_error_suggestions, get_verbose_error_info
+from src.rule_engine.core.rule_manager import RuleManager
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class CursorCommandHandler:
     def __init__(self):
         """初始化命令处理器"""
         self.command_parser = CommandParser()
-        self.rule_engine = RuleEngine()
+        self.rule_engine = RuleManager()
         self._register_handlers()
 
     def _register_handlers(self):
@@ -42,20 +42,14 @@ class CursorCommandHandler:
         logger.info(f"收到命令: {command}")
 
         try:
-            # 首先尝试使用规则引擎处理
-            rule_result = self.rule_engine.process_command(command)
-            if rule_result.get("handled", False):
-                logger.info(f"规则引擎处理结果: {rule_result}")
-                # 增强AI友好的结果反馈
-                return enhance_result_for_agent(rule_result)
-
-            # 如果规则引擎未处理，解析命令结构
+            # 解析命令结构
             command_name, args = self._parse_command(command)
             logger.debug(f"解析结果 - 命令: {command_name}, 参数: {args}")
 
             # 使用命令解析器执行命令
             result = self.command_parser.execute_command(command_name, args)
             logger.info(f"命令执行结果: {result}")
+
             # 增强AI友好的结果反馈
             return enhance_result_for_agent(result)
 
@@ -132,10 +126,7 @@ class CursorCommandHandler:
         # 从命令解析器获取所有注册的命令
         commands = self.command_parser.get_available_commands()
 
-        # 添加规则引擎的命令
-        rule_commands = self.rule_engine.get_available_commands()
-        commands.extend(rule_commands)
-
+        # 这里不再获取规则引擎的命令
         return commands
 
     def get_command_help(self, command_name: str) -> Dict[str, Any]:

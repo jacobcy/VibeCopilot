@@ -18,13 +18,13 @@ def main():
     parser = argparse.ArgumentParser(description="从Basic Memory数据库导出到Obsidian")
     parser.add_argument(
         "--db",
-        default="/Users/chenyi/basic-memory/main.db",
-        help="Basic Memory数据库路径 (默认: /Users/chenyi/basic-memory/main.db)",
+        default="~/basic-memory/main.db",
+        help="Basic Memory数据库路径 (默认: ~/basic-memory/main.db)",
     )
     parser.add_argument(
         "--output",
-        default="/Users/chenyi/basic-memory/obsidian_vault",
-        help="Obsidian输出目录 (默认: /Users/chenyi/basic-memory/obsidian_vault)",
+        default="~/basic-memory/obsidian_vault",
+        help="Obsidian输出目录 (默认: ~/basic-memory/obsidian_vault)",
     )
 
     args = parser.parse_args()

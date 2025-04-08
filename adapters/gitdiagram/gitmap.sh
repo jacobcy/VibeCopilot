@@ -175,7 +175,7 @@ if [ $? -eq 0 ]; then
   if [[ "$PROJECT_PATH" == *"VibeCopilot"* ]]; then
     echo ""
     echo "📝 VibeCopilot集成: 您可以将生成的架构图添加到开发文档中:"
-    echo "   cp $OUTPUT_DIR/${PROJECT_NAME}_diagram.md /Users/chenyi/Public/VibeCopilot/docs/dev/architecture/"
+    echo "   cp $OUTPUT_DIR/${PROJECT_NAME}_diagram.md ~/Public/VibeCopilot/docs/dev/architecture/"
   fi
 else
   echo "分析过程中发生错误，请检查日志以获取详细信息。"

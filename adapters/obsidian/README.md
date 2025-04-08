@@ -50,6 +50,6 @@ Obsidian 适配器使用以下环境变量进行配置：
 
 Obsidian 适配器与以下模块集成：
 
-- `content_parser` - 用于解析 Obsidian 文档
+- `src/parsing` - 用于解析 Obsidian 文档
 - `docs_engine` - 使用文档引擎进行格式转换
 - `docusaurus` - 同步文档到 Docusaurus

@@ -13,114 +13,122 @@ logger = logging.getLogger(__name__)
 class RoadmapEditHandlers:
     """路线图编辑处理类"""
 
-    @staticmethod
-    def create_roadmap(roadmap_service, args: Dict) -> Dict[str, Any]:
-        """创建路线图
+    def __init__(self, service=None, db_service=None):
+        """
+        初始化路线图编辑处理器
 
         Args:
-            roadmap_service: 路线图服务实例
-            args: 命令参数
+            service: 路线图服务
+            db_service: 数据库服务
+        """
+        self.service = service
+        self.db_service = db_service
+
+    def create_roadmap(self, name: str, description: str = "") -> Dict[str, Any]:
+        """
+        创建新路线图
+
+        Args:
+            name: 路线图名称
+            description: 路线图描述
 
         Returns:
-            处理结果
+            创建结果
         """
         try:
-            name = args.get("name")
             if not name:
-                return {"success": False, "error": "缺少路线图名称参数"}
+                return {"success": False, "error": "缺少路线图名称"}
 
-            description = args.get("description", "")
+            # 创建路线图数据
+            roadmap_data = {"name": name, "description": description}
 
-            # 创建新路线图
-            new_roadmap = roadmap_service.create_roadmap(name, description)
-            if not new_roadmap.get("success", False):
-                return {"success": False, "error": new_roadmap.get("error", "创建路线图失败")}
-
-            roadmap_id = new_roadmap.get("roadmap", {}).get("id")
-            return {
-                "success": True,
-                "message": f"成功创建路线图: {name} (ID: {roadmap_id})",
-                "data": {"id": roadmap_id, "name": name},
-            }
+            # 使用路线图服务创建
+            if self.service:
+                result = self.service.create_roadmap(roadmap_data)
+                return {"success": True, "message": f"成功创建路线图: {name}", "data": result}
+            else:
+                return {"success": False, "error": "路线图服务不可用"}
 
         except Exception as e:
-            logger.error("创建路线图失败: %s", str(e))
+            logger.error(f"创建路线图失败: {str(e)}")
             return {"success": False, "error": f"创建路线图失败: {str(e)}"}
 
-    @staticmethod
-    def update_roadmap(roadmap_service, db_service, args: Dict) -> Dict[str, Any]:
-        """更新路线图
+    def update_roadmap(self, roadmap_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        更新路线图
 
         Args:
-            roadmap_service: 路线图服务实例
-            db_service: 数据库服务实例
-            args: 命令参数
+            roadmap_id: 路线图ID
+            update_data: 更新数据
 
         Returns:
-            处理结果
+            更新结果
         """
         try:
-            roadmap_id = args.get("id")
             if not roadmap_id:
-                return {"success": False, "error": "缺少路线图ID参数"}
+                return {"success": False, "error": "缺少路线图ID"}
 
-            # 验证路线图是否存在
-            roadmap = db_service.get_roadmap(roadmap_id)
-            if not roadmap:
-                return {"success": False, "error": f"找不到ID为 {roadmap_id} 的路线图"}
+            if not update_data:
+                return {"success": False, "error": "没有提供更新数据"}
 
-            # 获取更新参数
-            name = args.get("name")
-            description = args.get("description")
+            # 检查路线图是否存在
+            if self.service:
+                roadmap = self.service.get_roadmap(roadmap_id)
+                if not roadmap:
+                    return {"success": False, "error": f"路线图不存在: {roadmap_id}"}
 
-            if not name and not description:
-                return {"success": False, "error": "至少需要提供一个要更新的参数（name或description）"}
+                # 更新路线图
+                result = self.service.update_roadmap(roadmap_id, update_data)
 
-            # 更新路线图
-            update_data = {}
-            if name:
-                update_data["name"] = name
-            if description:
-                update_data["description"] = description
-
-            result = roadmap_service.update_roadmap(roadmap_id, update_data)
-            if not result.get("success", False):
-                return {"success": False, "error": result.get("error", "更新路线图失败")}
-
-            return {
-                "success": True,
-                "message": f"成功更新路线图: {roadmap_id}",
-                "data": {"id": roadmap_id, "updated_fields": list(update_data.keys())},
-            }
+                return {"success": True, "message": f"成功更新路线图: {roadmap_id}", "data": result}
+            else:
+                return {"success": False, "error": "路线图服务不可用"}
 
         except Exception as e:
-            logger.error("更新路线图失败: %s", str(e))
+            logger.error(f"更新路线图失败: {str(e)}")
             return {"success": False, "error": f"更新路线图失败: {str(e)}"}
 
-    @staticmethod
-    def delete_roadmap(roadmap_service, db_service, args: Dict) -> Dict[str, Any]:
-        """删除路线图
+    def switch_roadmap(self, roadmap_id: str) -> Dict[str, Any]:
+        """
+        切换当前活动路线图
 
         Args:
-            roadmap_service: 路线图服务实例
-            db_service: 数据库服务实例
-            args: 命令参数
+            roadmap_id: 路线图ID
 
         Returns:
-            处理结果
+            切换结果
         """
         try:
-            roadmap_id = args.get("id")
             if not roadmap_id:
-                return {"success": False, "error": "缺少路线图ID参数"}
+                return {"success": False, "error": "缺少路线图ID"}
 
-            # 验证路线图是否存在
-            roadmap = db_service.get_roadmap(roadmap_id)
-            if not roadmap:
-                return {"success": False, "error": f"找不到ID为 {roadmap_id} 的路线图"}
+            if self.service:
+                # 调用服务的切换方法
+                result = self.service.switch_roadmap(roadmap_id)
+                return result
+            else:
+                return {"success": False, "error": "路线图服务不可用"}
+
+        except Exception as e:
+            logger.error(f"切换路线图失败: {str(e)}")
+            return {"success": False, "error": f"切换路线图失败: {str(e)}"}
+
+    def delete_roadmap(self, roadmap_id: str, force: bool = False) -> Dict[str, Any]:
+        """
+        删除路线图
+
+        Args:
+            roadmap_id: 路线图ID
+            force: 是否强制删除
+
+        Returns:
+            删除结果
+        """
+        try:
+            if not roadmap_id:
+                return {"success": False, "error": "缺少路线图ID"}
 
             # 检查是否强制删除
-            force = args.get("force", False)
             if not force:
                 return {
                     "success": False,
@@ -128,13 +136,19 @@ class RoadmapEditHandlers:
                     "require_force": True,
                 }
 
-            # 删除路线图
-            result = roadmap_service.delete_roadmap(roadmap_id)
-            if not result.get("success", False):
-                return {"success": False, "error": result.get("error", "删除路线图失败")}
+            if self.service:
+                # 检查路线图是否存在
+                roadmap = self.service.get_roadmap(roadmap_id)
+                if not roadmap:
+                    return {"success": False, "error": f"路线图不存在: {roadmap_id}"}
 
-            return {"success": True, "message": f"成功删除路线图: {roadmap_id}"}
+                # 删除路线图
+                result = self.service.delete_roadmap(roadmap_id)
+
+                return {"success": True, "message": f"成功删除路线图: {roadmap_id}", "data": result}
+            else:
+                return {"success": False, "error": "路线图服务不可用"}
 
         except Exception as e:
-            logger.error("删除路线图失败: %s", str(e))
+            logger.error(f"删除路线图失败: {str(e)}")
             return {"success": False, "error": f"删除路线图失败: {str(e)}"}

@@ -4,6 +4,7 @@
 提供通用的数据库操作接口，所有具体仓库类都应继承自此基类。
 """
 
+import logging
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from sqlalchemy.orm import Session
@@ -12,6 +13,8 @@ from src.models.db import Base
 
 # 定义泛型类型T，限制为Base的子类
 T = TypeVar("T", bound=Base)
+
+logger = logging.getLogger(__name__)
 
 
 class Repository(Generic[T]):
@@ -37,8 +40,12 @@ class Repository(Generic[T]):
             新创建的实体对象
         """
         try:
+            logger.debug(f"尝试创建实体对象: {self.model_class.__name__}")
+            logger.debug(f"输入数据: {data}")
+
             if hasattr(self.model_class, "from_dict"):
                 # 使用from_dict方法创建实例
+                logger.debug(f"使用from_dict方法创建实例")
                 instance = self.model_class.from_dict(data)
             else:
                 # 使用关键字参数拆包创建实例
@@ -55,16 +62,23 @@ class Repository(Generic[T]):
                     for key, value in data.items():
                         if key in allowed_params:
                             model_attrs[key] = value
+                            logger.debug(f"找到参数 {key}: {value}")
+                        else:
+                            logger.debug(f"忽略不需要的参数 {key}: {value}")
                 else:
                     # 如果无法获取参数信息，直接使用全部数据
                     model_attrs = data
 
+                logger.debug(f"模型创建参数: {model_attrs}")
                 instance = self.model_class(**model_attrs)
 
+            logger.debug(f"创建的实例: {instance.__dict__}")
             self.session.add(instance)
             self.session.commit()
+            logger.debug(f"实体对象提交成功，ID: {getattr(instance, 'id', None)}")
             return instance
         except Exception as e:
+            logger.error(f"创建实体对象失败: {str(e)}")
             self.session.rollback()
             raise e
 

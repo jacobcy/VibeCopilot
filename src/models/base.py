@@ -20,6 +20,7 @@ class RuleType(str, Enum):
     AUTO = "auto"  # 自动选择规则
     MANUAL = "manual"  # 手动规则
     ALWAYS = "always"  # 全局规则
+    RULE = "rule"  # 通用规则，兼容现有数据
 
 
 class TemplateVariableType(str, Enum):

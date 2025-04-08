@@ -13,6 +13,17 @@ logger = logging.getLogger(__name__)
 class RoadmapDetailHandlers:
     """路线图详情处理类"""
 
+    def __init__(self, service=None, db_service=None):
+        """
+        初始化路线图详情处理器
+
+        Args:
+            service: 路线图服务
+            db_service: 数据库服务
+        """
+        self.service = service
+        self.db_service = db_service
+
     @staticmethod
     def show_roadmap(db_service, args: Dict) -> Dict[str, Any]:
         """显示路线图详情
@@ -69,8 +80,7 @@ class RoadmapDetailHandlers:
                         "是否活动": "是" if roadmap["is_active"] else "否",
                         "创建时间": roadmap["created_at"],
                         "更新时间": roadmap["updated_at"],
-                        "统计信息": f"Epic数量: {len(epics)}, 里程碑数量: {len(milestones)}, "
-                        f"故事数量: {len(stories)}, 任务数量: {len(tasks)}",
+                        "统计信息": f"Epic数量: {len(epics)}, 里程碑数量: {len(milestones)}, " f"故事数量: {len(stories)}, 任务数量: {len(tasks)}",
                     },
                 }
                 return result

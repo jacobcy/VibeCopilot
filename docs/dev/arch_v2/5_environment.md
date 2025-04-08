@@ -41,7 +41,7 @@ VibeCopilot项目开发需要以下核心工具：
 
 ```bash
 # 克隆项目仓库
-git clone https://github.com/your-username/VibeCopilot.git
+git clone https://github.com/your-jacobcy/vibecopilot.git
 cd VibeCopilot
 ```
 

@@ -1,0 +1,130 @@
+---
+# 模板数据验证模式
+id: template_schema
+name: 模板验证模式
+version: 1.0.0
+description: VibeCopilot模板数据的验证模式
+
+# 模板基本结构
+structure:
+  id:
+    type: string
+    required: true
+    description: 模板唯一标识符
+
+  name:
+    type: string
+    required: true
+    description: 模板名称
+
+  type:
+    type: string
+    required: true
+    default: template
+    enum:
+      - template
+      - general
+      - email
+      - document
+      - code
+      - prompt
+    description: 模板类型
+
+  description:
+    type: string
+    required: false
+    description: 模板描述
+
+  content:
+    type: string
+    required: true
+    description: 模板内容
+
+  example:
+    type: string
+    required: false
+    description: 示例内容
+
+  variables:
+    type: array
+    required: false
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          required: true
+          description: 变量ID
+
+        name:
+          type: string
+          required: true
+          description: 变量名称
+
+        type:
+          type: string
+          required: true
+          enum:
+            - string
+            - number
+            - boolean
+            - object
+            - array
+          description: 变量类型
+
+        description:
+          type: string
+          required: false
+          description: 变量描述
+
+        default:
+          type: any
+          required: false
+          description: 默认值
+
+        required:
+          type: boolean
+          required: false
+          default: true
+          description: 是否必填
+
+        enum_values:
+          type: array
+          required: false
+          description: 枚举值列表
+    description: 模板变量列表
+
+  metadata:
+    type: object
+    required: false
+    properties:
+      author:
+        type: string
+        required: false
+        description: 模板作者
+
+      version:
+        type: string
+        required: false
+        pattern: ^\d+\.\d+\.\d+$
+        description: 模板版本号，采用语义化版本
+
+      tags:
+        type: array
+        required: false
+        items:
+          type: string
+        description: 模板标签
+
+      created_at:
+        type: string
+        required: false
+        format: date-time
+        description: 创建时间
+
+      updated_at:
+        type: string
+        required: false
+        format: date-time
+        description: 更新时间
+    description: 模板元数据

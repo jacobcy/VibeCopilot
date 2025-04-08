@@ -86,6 +86,15 @@ class TemplateLoader:
         template_data = load_template_from_file(file_path)
         template_id = template_data.get("id") or normalize_template_id(template_data["name"])
 
+        # 确保始终有一个有效的ID
+        if not template_id or template_id.strip() == "":
+            # 使用文件名作为ID
+            template_id = os.path.splitext(os.path.basename(file_path))[0]
+
+            # 如果文件名不合适，使用UUID
+            if not template_id or template_id.strip() == "":
+                template_id = f"template_{str(uuid.uuid4())[:8]}"
+
         metadata = template_data.pop("metadata", {})
         template_metadata = {
             "author": metadata.get("author", "未知"),
@@ -98,7 +107,7 @@ class TemplateLoader:
         # 准备模板数据
         db_template_data = {
             "id": template_id,
-            "name": template_data.get("name"),
+            "name": template_data.get("name") or template_id,
             "description": template_data.get("description", ""),
             "type": template_data.get("type", "general"),
             "content": template_data.get("content", ""),
@@ -114,13 +123,9 @@ class TemplateLoader:
                 "name": var.get("name"),
                 "type": var.get("type"),
                 "description": var.get("description", ""),
-                "default_value": json.dumps(var.get("default"))
-                if var.get("default") is not None
-                else None,
+                "default_value": json.dumps(var.get("default")) if var.get("default") is not None else None,
                 "required": var.get("required", True),
-                "enum_values": json.dumps(var.get("enum_values"))
-                if var.get("enum_values")
-                else None,
+                "enum_values": json.dumps(var.get("enum_values")) if var.get("enum_values") else None,
             }
             variables_data.append(var_data)
 
@@ -130,12 +135,13 @@ class TemplateLoader:
         # 返回Pydantic模型
         return db_template.to_pydantic()
 
-    def import_template_from_dict(self, template_dict: Dict[str, Any]) -> TemplateModel:
+    def import_template_from_dict(self, template_dict: Dict[str, Any], overwrite: bool = False) -> TemplateModel:
         """
         从字典导入模板
 
         Args:
             template_dict: 包含模板数据的字典
+            overwrite: 是否覆盖已存在的模板
 
         Returns:
             导入的模板对象
@@ -151,14 +157,31 @@ class TemplateLoader:
         }
 
         # 确保模板ID
-        template_id = template_dict.get("id") or normalize_template_id(
-            template_dict.get("name", f"template_{str(uuid.uuid4())[:8]}")
-        )
+        template_id = template_dict.get("id")
+        if not template_id or template_id.strip() == "":
+            template_id = normalize_template_id(template_dict.get("name", f"template_{str(uuid.uuid4())[:8]}"))
+
+        # 再次验证ID不为空
+        if not template_id or template_id.strip() == "":
+            template_id = f"template_{str(uuid.uuid4())[:8]}"
+
+        # 检查模板是否已存在
+        existing_template = self.template_repo.get_template_by_id(template_id)
+
+        # 如果模板已存在且不允许覆盖，直接返回现有模板
+        if existing_template and not overwrite:
+            logger.info(f"模板已存在且不允许覆盖: {template_id}")
+            return existing_template.to_pydantic()
+
+        # 如果模板已存在且允许覆盖，先删除现有模板
+        if existing_template and overwrite:
+            logger.info(f"覆盖现有模板: {template_id}")
+            self.template_repo.delete_template(template_id)
 
         # 准备模板数据
         db_template_data = {
             "id": template_id,
-            "name": template_dict.get("name"),
+            "name": template_dict.get("name") or template_id,
             "description": template_dict.get("description", ""),
             "type": template_dict.get("type", "general"),
             "content": template_dict.get("content", ""),
@@ -174,13 +197,9 @@ class TemplateLoader:
                 "name": var.get("name"),
                 "type": var.get("type"),
                 "description": var.get("description", ""),
-                "default_value": json.dumps(var.get("default"))
-                if var.get("default") is not None
-                else None,
+                "default_value": json.dumps(var.get("default")) if var.get("default") is not None else None,
                 "required": var.get("required", True),
-                "enum_values": json.dumps(var.get("enum_values"))
-                if var.get("enum_values")
-                else None,
+                "enum_values": json.dumps(var.get("enum_values")) if var.get("enum_values") else None,
             }
             variables_data.append(var_data)
 

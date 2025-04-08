@@ -24,6 +24,17 @@ class TemplateRepository(Repository[Template]):
         """
         super().__init__(session, Template)
 
+    def get_template_by_id(self, template_id: str) -> Optional[Template]:
+        """根据ID获取模板
+
+        Args:
+            template_id: 模板ID
+
+        Returns:
+            Template对象或None
+        """
+        return self.get_by_id(template_id)
+
     def get_by_name(self, name: str) -> Optional[Template]:
         """根据名称获取模板
 
@@ -71,9 +82,7 @@ class TemplateRepository(Repository[Template]):
 
         return results
 
-    def create_template(
-        self, template_data: Dict[str, Any], variables: List[Dict[str, Any]]
-    ) -> Template:
+    def create_template(self, template_data: Dict[str, Any], variables: List[Dict[str, Any]]) -> Template:
         """创建模板及其变量
 
         Args:
@@ -117,11 +126,7 @@ class TemplateVariableRepository(Repository[TemplateVariable]):
         Returns:
             TemplateVariable对象列表
         """
-        return (
-            self.session.query(TemplateVariable)
-            .filter(TemplateVariable.templates.any(id=template_id))
-            .all()
-        )
+        return self.session.query(TemplateVariable).filter(TemplateVariable.templates.any(id=template_id)).all()
 
     def get_by_name_and_template(self, name: str, template_id: str) -> Optional[TemplateVariable]:
         """根据名称和模板ID获取变量
@@ -133,8 +138,4 @@ class TemplateVariableRepository(Repository[TemplateVariable]):
         Returns:
             TemplateVariable对象或None
         """
-        return (
-            self.session.query(TemplateVariable)
-            .filter(TemplateVariable.name == name, TemplateVariable.templates.any(id=template_id))
-            .first()
-        )
+        return self.session.query(TemplateVariable).filter(TemplateVariable.name == name, TemplateVariable.templates.any(id=template_id)).first()

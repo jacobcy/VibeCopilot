@@ -133,8 +133,8 @@ class RuleGenerator:
                     rule_json = pydantic_rule.model_dump_json(exclude_none=True, indent=2)
                 except Exception:
                     # 对于测试，直接创建一个简化的Pydantic规则模型
-                    from src.models.rule import Rule as PydanticRule
-                    from src.models.rule import RuleMetadata
+                    from src.models.rule_model import Rule as PydanticRule
+                    from src.models.rule_model import RuleMetadata
 
                     # 为测试创建一个简单的元数据对象
                     metadata = RuleMetadata(

@@ -1,24 +1,22 @@
 """
 文档引擎接口模块
-提供统一的文档引擎接口，使用content_parser解析文档文件，并提供格式转换功能
+提供统一的文档引擎接口，使用src.parsing解析文档文件，并提供格式转换功能
 """
 
 import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from adapters.content_parser import parse_content, parse_file
 from src.docs_engine.engine import create_document_engine
+from src.parsing import create_parser
 
 logger = logging.getLogger(__name__)
 
 
-def parse_document_file(
-    file_path: str, parser_type: Optional[str] = None, model: Optional[str] = None
-) -> Dict[str, Any]:
+def parse_document_file(file_path: str, parser_type: Optional[str] = None, model: Optional[str] = None) -> Dict[str, Any]:
     """解析文档文件
 
-    使用统一的content_parser接口解析文档文件
+    使用统一的parsing接口解析文档文件
 
     Args:
         file_path: 文档文件路径
@@ -28,23 +26,25 @@ def parse_document_file(
     Returns:
         Dict: 解析后的文档结构
     """
-    logger.info(f"使用content_parser解析文档文件: {file_path}")
+    logger.info(f"使用parsing模块解析文档文件: {file_path}")
 
-    # 调用统一的内容解析接口
-    result = parse_file(
-        file_path=file_path, content_type="document", parser_type=parser_type, model=model
-    )
+    # 创建解析器
+    config = {}
+    if model:
+        config["model"] = model
+
+    # 使用新的parsing接口
+    parser = create_parser(content_type="document", backend=parser_type or "openai", config=config)
+    result = parser.parse_file(file_path)
 
     logger.info(f"文档文件解析完成: {file_path}")
     return result
 
 
-def parse_document_content(
-    content: str, context: str = "", parser_type: Optional[str] = None, model: Optional[str] = None
-) -> Dict[str, Any]:
+def parse_document_content(content: str, context: str = "", parser_type: Optional[str] = None, model: Optional[str] = None) -> Dict[str, Any]:
     """解析文档内容
 
-    使用统一的content_parser接口解析文档内容
+    使用统一的parsing接口解析文档内容
 
     Args:
         content: 文档文本内容
@@ -55,16 +55,16 @@ def parse_document_content(
     Returns:
         Dict: 解析后的文档结构
     """
-    logger.info(f"使用content_parser解析文档内容, 上下文: {context}")
+    logger.info(f"使用parsing模块解析文档内容, 上下文: {context}")
 
-    # 调用统一的内容解析接口
-    result = parse_content(
-        content=content,
-        context=context,
-        content_type="document",
-        parser_type=parser_type,
-        model=model,
-    )
+    # 创建解析器
+    config = {"context": context}
+    if model:
+        config["model"] = model
+
+    # 使用新的parsing接口
+    parser = create_parser(content_type="document", backend=parser_type or "openai", config=config)
+    result = parser.parse_content(content)
 
     logger.info(f"文档内容解析完成")
     return result
@@ -101,8 +101,9 @@ def import_document_to_db(file_path: str) -> Dict[str, Any]:
     """
     logger.info(f"导入文档到数据库: {file_path}")
 
-    # 使用解析并自动保存的功能
-    doc_data = parse_file(file_path=file_path, content_type="document")
+    # 使用新的parsing接口解析并保存
+    parser = create_parser(content_type="document")
+    doc_data = parser.parse_file(file_path)
 
     return {
         "success": True,
@@ -134,9 +135,7 @@ def convert_document_links(content: str, from_format: str, to_format: str) -> st
     return result
 
 
-def create_document_from_template(
-    template: str, output_path: str, variables: Dict[str, Any] = None
-) -> bool:
+def create_document_from_template(template: str, output_path: str, variables: Dict[str, Any] = None) -> bool:
     """使用模板创建文档
 
     Args:

@@ -4,8 +4,8 @@
 
 **注意**：适配器模块已经重构！内容解析和数据存储功能已被统一到新框架中：
 
-- `adapters/content_parser` → `src/core/parsing`
-- `adapters/rule_parser` → `src/core/parsing`（特别是 RuleProcessor）
+- `adapters/content_parser` → `src/parsing`
+- `adapters/rule_parser` → `src/parsing`（特别是 RuleProcessor）
 - `adapters/basic_memory` → `src/memory` 和 `src/db/vector`
 
 适配器模块仍然保留，但只是作为转发到新模块的兼容层。请在新代码中直接使用新模块。
@@ -16,7 +16,7 @@ VibeCopilot 支持多种适配器，用于与不同的服务和工具集成：
 
 ### 内容解析 (已迁移)
 
-内容解析功能已迁移到 `src/core/parsing`。
+内容解析功能已迁移到 `src/parsing`。
 
 ```python
 # 旧用法
@@ -30,7 +30,7 @@ result = parser.parse_file("path/to/file.md")
 
 ### 规则解析 (已迁移)
 
-规则解析功能已迁移到 `src/core/parsing` 和 RuleProcessor。
+规则解析功能已迁移到 `src/parsing` 和 RuleProcessor。
 
 ```python
 # 旧用法

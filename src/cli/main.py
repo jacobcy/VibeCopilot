@@ -25,14 +25,18 @@ import click
 
 from src.cli.command import Command
 from src.cli.command_parser import CommandParser
-from src.cli.commands import RoadmapCommands
 from src.cli.commands.db import DatabaseCommand
 from src.cli.commands.flow.flow_command import FlowCommand
 from src.cli.commands.help.help_command import HelpCommand
 from src.cli.commands.memory import MemoryCommand
+from src.cli.commands.roadmap.roadmap_command import RoadmapCommand
 from src.cli.commands.rule import RuleCommand
 from src.cli.commands.status import StatusCommand
 from src.cli.commands.task.task_command import TaskCommand
+from src.cli.commands.template.template_command import TemplateCommand
+
+# 预初始化数据库连接管理器
+from src.db.connection_manager import ensure_tables_exist
 
 # 配置日志
 logging.basicConfig(
@@ -45,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 # 命令映射
 COMMANDS: Dict[str, Type[Command]] = {
-    "roadmap": RoadmapCommands,
+    "roadmap": RoadmapCommand,
     "rule": RuleCommand,
     "flow": FlowCommand,
     "status": StatusCommand,
@@ -53,6 +57,7 @@ COMMANDS: Dict[str, Type[Command]] = {
     "memory": MemoryCommand,
     "db": DatabaseCommand,
     "help": HelpCommand,
+    "template": TemplateCommand,
 }
 
 
@@ -89,6 +94,9 @@ def main():
     """
     CLI主入口
     """
+    # 预准备数据库，仅确保表存在，不进行重建
+    ensure_tables_exist(force_recreate=False)
+
     cli = get_cli_app()
     return cli()
 

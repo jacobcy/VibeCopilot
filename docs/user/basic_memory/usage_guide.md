@@ -13,7 +13,7 @@
 ### 安装依赖
 
 ```bash
-cd /Users/chenyi/Public/VibeCopilot
+cd /Users/<username>/Public/VibeCopilot
 pip install -r requirements.txt
 ```
 
@@ -36,7 +36,7 @@ OPENAI_API_KEY="你的密钥" python scripts/basic_memory/langchain_parser.py yo
 ### 1. 使用 LangChain 解析文档
 
 ```bash
-cd /Users/chenyi/Public/VibeCopilot
+cd /Users/<username>/Public/VibeCopilot
 python scripts/basic_memory/langchain_parser.py 文档目录
 ```
 
@@ -48,25 +48,25 @@ python scripts/basic_memory/langchain_parser.py docs/dev/architecture
 ### 2. 使用 OpenAI 解析文档（替代方案）
 
 ```bash
-cd /Users/chenyi/Public/VibeCopilot
+cd /Users/<username>/Public/VibeCopilot
 python scripts/basic_memory/openai_parser.py 文档目录
 ```
 
 ### 3. 导出到 Obsidian
 
 ```bash
-cd /Users/chenyi/Public/VibeCopilot
+cd /Users/<username>/Public/VibeCopilot
 python scripts/basic_memory/export_to_obsidian.py
 ```
 
-此操作会将解析结果导出到 `/Users/chenyi/basic-memory/obsidian_vault` 目录。
+此操作会将解析结果导出到 `/Users/<username>/basic-memory/obsidian_vault` 目录。
 
 ## 知识查询
 
 通过自然语言查询知识库：
 
 ```bash
-cd /Users/chenyi/Public/VibeCopilot
+cd /Users/<username>/Public/VibeCopilot
 python scripts/basic_memory/query_knowledge.py --query "你的问题"
 ```
 
@@ -98,14 +98,14 @@ python scripts/basic_memory/query_knowledge.py --query "组件通信机制是如
 
 系统默认路径：
 
-- 数据库：`/Users/chenyi/basic-memory/main.db`
-- 向量索引：`/Users/chenyi/basic-memory/vector_index`
-- Obsidian输出：`/Users/chenyi/basic-memory/obsidian_vault`
+- 数据库：`/Users/<username>/basic-memory/main.db`
+- 向量索引：`/Users/<username>/basic-memory/vector_index`
+- Obsidian输出：`/Users/<username>/basic-memory/obsidian_vault`
 
 ### 备份数据
 
 建议定期备份数据库和向量索引：
 
 ```bash
-cp -r /Users/chenyi/basic-memory /path/to/backup/$(date +%Y%m%d)
+cp -r /Users/<username>/basic-memory /path/to/backup/$(date +%Y%m%d)
 ```

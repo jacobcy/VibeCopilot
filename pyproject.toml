@@ -107,7 +107,7 @@ docs = [
 "Documentation" = "https://github.com/jacobcy/VibeCopilot/docs"
 
 [project.scripts]
-vibecopilot = "vibecopilot.main:app"
+vibecopilot = "src.cli.main:main"
 
 [tool.uv]
 excludes = [".git", "__pycache__", "*.pyc", ".tox", ".venv"]

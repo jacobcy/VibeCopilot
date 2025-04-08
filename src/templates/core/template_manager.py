@@ -5,8 +5,10 @@
 此文件为重构后的版本，使用分离的模块实现功能。
 """
 
+import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -14,6 +16,7 @@ from sqlalchemy.orm import Session
 from src.db import TemplateRepository, TemplateVariableRepository
 from src.models import Template as TemplateModel
 from src.templates.core.managers import TemplateLoader, TemplateSearcher, TemplateUpdater
+from src.templates.core.managers.template_exporter import TemplateExporter
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,7 @@ class TemplateManager:
         self.loader = TemplateLoader(session, self.template_repo, self.variable_repo)
         self.searcher = TemplateSearcher(session, self.template_repo, self.variable_repo)
         self.updater = TemplateUpdater(session, self.template_repo, self.variable_repo)
+        self.exporter = TemplateExporter(session, self.template_repo, self.variable_repo)
 
         # 缓存引用
         self.templates_cache = self.searcher.templates_cache
@@ -97,9 +101,7 @@ class TemplateManager:
         self.templates_cache[result.id] = result
         return result
 
-    def update_template(
-        self, template_id: str, template_data: Dict[str, Any]
-    ) -> Optional[TemplateModel]:
+    def update_template(self, template_id: str, template_data: Dict[str, Any]) -> Optional[TemplateModel]:
         """
         更新模板
 
@@ -160,3 +162,118 @@ class TemplateManager:
         清除模板缓存
         """
         self.searcher.clear_cache()
+
+    def import_template_from_file(self, file_path: str, overwrite: bool = False) -> Optional[TemplateModel]:
+        """
+        从文件导入模板
+
+        Args:
+            file_path: 模板文件路径
+            overwrite: 是否覆盖同名模板
+
+        Returns:
+            导入的模板对象，如果导入失败则返回None
+        """
+        try:
+            file_path = Path(file_path)
+            if not file_path.exists():
+                logger.error(f"文件不存在: {file_path}")
+                return None
+
+            # 读取文件内容
+            content = file_path.read_text(encoding="utf-8")
+
+            # 根据文件扩展名处理不同类型的文件
+            if file_path.suffix.lower() == ".json":
+                # 处理JSON格式
+                template_data = json.loads(content)
+                if not template_data.get("id"):
+                    template_data["id"] = file_path.stem
+                return self.loader.import_template_from_dict(template_data, overwrite=overwrite)
+            else:
+                # 处理Markdown或其他文本格式
+                # 尝试使用template_utils提取前置元数据
+                try:
+                    from src.templates.utils.template_utils import load_template_from_file
+
+                    template_data = load_template_from_file(str(file_path))
+                    if not template_data.get("id"):
+                        template_data["id"] = file_path.stem
+                    return self.loader.import_template_from_dict(template_data, overwrite=overwrite)
+                except Exception as e:
+                    logger.warning(f"使用template_utils解析失败: {str(e)}，使用简单方式解析")
+
+                    # 简单处理，直接作为纯文本模板
+                    template_name = file_path.stem
+                    template_data = {
+                        "id": template_name,
+                        "name": template_name,  # 确保设置name字段
+                        "type": "doc",  # 根据目录推断类型
+                        "description": f"从文件 {file_path.name} 导入的模板",
+                        "content": content,
+                        "metadata": {
+                            "author": "",
+                            "tags": [],
+                            "version": "1.0.0",
+                        },
+                    }
+                    return self.loader.import_template_from_dict(template_data, overwrite=overwrite)
+
+        except Exception as e:
+            logger.error(f"导入模板失败: {str(e)}")
+            return None
+
+    def export_template_to_file(self, template_id: str, output_path: str, format: str = "markdown") -> Optional[str]:
+        """
+        导出模板到文件
+
+        Args:
+            template_id: 模板ID
+            output_path: 输出文件路径
+            format: 输出格式，支持markdown和json
+
+        Returns:
+            导出的文件路径，如果导出失败则返回None
+        """
+        return self.exporter.export_template(template_id, output_path, format)
+
+    def export_templates_by_type(self, template_type: str, output_dir: str, format: str = "markdown") -> List[str]:
+        """
+        按类型导出模板
+
+        Args:
+            template_type: 模板类型
+            output_dir: 输出目录
+            format: 输出格式，支持markdown和json
+
+        Returns:
+            导出的文件路径列表
+        """
+        return self.exporter.export_templates_by_type(template_type, output_dir, format)
+
+    def export_all_templates(self, output_dir: str, format: str = "markdown") -> List[str]:
+        """
+        导出所有模板
+
+        Args:
+            output_dir: 输出目录
+            format: 输出格式，支持markdown和json
+
+        Returns:
+            导出的文件路径列表
+        """
+        return self.exporter.export_all_templates(output_dir, format)
+
+    def export_templates_by_ids(self, template_ids: List[str], output_dir: str, format: str = "markdown") -> List[str]:
+        """
+        按ID列表导出模板
+
+        Args:
+            template_ids: 模板ID列表
+            output_dir: 输出目录
+            format: 输出格式，支持markdown和json
+
+        Returns:
+            导出的文件路径列表
+        """
+        return self.exporter.export_templates_by_ids(template_ids, output_dir, format)

@@ -1,0 +1,110 @@
+---
+description:
+globs:
+alwaysApply: true
+id: command-system
+title: "VibeCopilot命令系统规则"
+type: command_rule
+status: active
+version: "1.0"
+tags: [command, system, rule]
+---
+
+# VibeCopilot命令系统规则
+
+## 命令类型定义
+
+VibeCopilot系统使用两种类型的命令：
+
+1. **规则命令(Rule Commands)**：以`/`开头，在Cursor IDE中由AI助手直接解释执行
+2. **程序命令(CLI Commands)**：以`//`开头，表示调用`vibecopilot`命令行接口
+
+## 命令解析规则
+
+当用户输入以下格式命令时，AI助手应按照以下规则理解和处理：
+
+### 规则命令解析 (`/command`)
+
+- 命令格式：`/command [subcommand] [args]`
+- 处理方式：
+  - 由Cursor Agent (AI助手)通过规则系统直接解释
+  - 支持自然语言变体和上下文理解
+  - 不直接调用外部程序
+  - 目的是快速调用某一条规则
+  - 适用于简单交互和规则应用场景
+
+### 程序命令解析 (`//command`)
+
+- 命令格式：`//command [subcommand] [args]`
+- 处理方式：
+  - Cursor Agent作为接口翻译工具，允许用户用自然语言配置参数
+  - 转换为`vibecopilot command [subcommand] [args]`格式
+  - 通过终端执行实际的CLI命令
+  - 严格按照命令行参数规范处理
+  - 目的是调取程序命令接口执行具体操作
+  - 适用于复杂流程和需要持久化的操作
+
+## 命令区别说明
+
+1. **规则命令 `/command`**：
+   - 直接调用规则，不执行外部程序
+   - AI助手在对话中直接响应和处理
+   - 适合快速获取信息和简单交互
+   - 不会生成持久化的数据库更改
+
+2. **程序命令 `//command`**：
+   - 实际调用`vibecopilot`命令行工具
+   - 执行持久化操作，如创建/修改数据库记录
+   - 适合需要系统级操作和数据持久化的场景
+   - AI助手仅作为接口翻译，将自然语言需求转换为CLI命令
+
+## 规则命令与CLI命令映射
+
+| 规则命令 | CLI命令 | 功能描述 |
+|---------|---------|--------|
+| `/rule list` | `vibecopilot rule list` | 列出所有规则 |
+| `/flow run <workflow>` | `vibecopilot flow run <workflow>` | 执行特定工作流 |
+| `/task create "<n>"` | `vibecopilot task create --title="<n>"` | 创建新任务 |
+| `/memory search "<query>"` | `vibecopilot memory search --query="<query>"` | 搜索知识库 |
+| `/status show` | `vibecopilot status show` | 显示项目状态 |
+| `/help` | `vibecopilot help` | 显示帮助信息 |
+
+## 结构化规则处理
+
+VibeCopilot使用结构化规则文件（YAML或JSON）作为规则的源数据：
+
+1. 规则源文件（YAML/JSON）定义基础规则结构和元数据
+2. 这些文件被解析到数据库中存储
+3. 通过LLM批量分析进行规则增强
+4. 使用规则模板引擎生成最终的MDC文件
+5. MDC文件被加载到Cursor Agent供AI使用
+
+## 命令执行流程
+
+1. 用户输入命令（`/command`或`//command`）
+2. Cursor Agent解析命令意图
+3. 对于`/command`，直接应用规则处理，直接在对话中响应
+4. 对于`//command`，转换为CLI格式并执行，通过终端调用系统功能
+5. 获取执行结果并格式化输出
+6. 提供后续操作建议
+
+## 使用示例
+
+```
+# 规则命令示例（AI助手直接解释处理）
+/rule list               # 快速查看规则列表，仅在对话中展示，不修改系统状态
+/task create "实现新功能"  # 快速创建任务描述，但不实际写入数据库
+/help flow               # 快速获取flow命令的帮助信息
+
+# 程序命令示例（转换为CLI命令执行）
+//flow run dev:story     # 实际调用系统执行工作流，可能修改数据库
+//roadmap show           # 调用系统生成并显示roadmap，可能读取配置文件
+//memory search "架构设计" # 调用系统搜索知识库，实际使用数据库功能
+```
+
+## 重要约定
+
+1. 引用规则但不执行时使用`@规则名`格式（例如：`@command-system`）
+2. 提及规则命令但不执行时使用`{/命令名}`格式（例如：`{/rule list}`）
+3. 所有命令支持`--verbose`参数获取详细输出
+4. 危险操作（如删除）支持`--force`参数

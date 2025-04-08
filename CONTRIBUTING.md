@@ -60,7 +60,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/VibeCopilot.git
+git clone https://github.com/yourjacobcy/vibecopilot.git
 cd VibeCopilot
 
 # 创建虚拟环境

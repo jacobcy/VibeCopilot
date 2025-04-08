@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-from src.core.config import config_manager  # Import config manager
+from src.core.config import get_config  # 更新导入
 from src.models.db import docs_engine  # Assuming docs models exist here
 from src.models.db import template  # Assuming template models exist here
 from src.models.db import flow_session, roadmap, task
@@ -47,46 +47,29 @@ def get_db_path():
 
     # 使用默认路径
     default_path = os.path.abspath("data/vibecopilot.db")
-    logger.info(f"使用默认数据库路径: {default_path}")
+    logger.debug(f"使用默认数据库路径: {default_path}")
     return default_path
 
 
-def init_db():
+def init_db(force_recreate=False):
     """初始化数据库
 
     创建数据库表结构，如果表已存在则不会重新创建
 
+    Args:
+        force_recreate: 是否强制重新创建表
+
     Returns:
         bool: 初始化是否成功
     """
+    from src.db.connection_manager import ensure_tables_exist, get_engine
+
     try:
-        db_path = get_db_path()
+        # 使用连接管理器确保表存在
+        ensure_tables_exist(force_recreate)
 
-        # 确保数据库目录存在
-        db_dir = os.path.dirname(db_path)
-        if db_dir:
-            os.makedirs(db_dir, exist_ok=True)
-
-        # 构建数据库URL
-        database_url = f"sqlite:///{db_path}"
-        logger.info(f"初始化数据库: {database_url}")
-
-        # 创建数据库引擎
-        engine = create_engine(database_url, connect_args={"check_same_thread": False})
-
-        # 创建所有表
-        Base.metadata.create_all(engine)
-        logger.info(f"数据库表已成功创建在 {db_path}")
-
-        # 创建会话
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        db = SessionLocal()
-
-        # TODO: 在这里添加初始数据，如果需要的话
-
-        db.commit()
-        db.close()
-        return True
+        # 返回引擎以兼容旧代码
+        return get_engine()
 
     except Exception as e:
         logger.error(f"初始化数据库失败: {e}")

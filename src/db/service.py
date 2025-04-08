@@ -28,9 +28,8 @@ class DatabaseService:
 
     def __init__(self):
         """初始化数据库服务"""
-        # 初始化数据库
-        engine = init_db()
-        session_factory = get_session_factory(engine)
+        # 使用会话工厂
+        session_factory = get_session_factory()
         self.session = session_factory()
 
         # 初始化各个仓库

@@ -1,0 +1,13 @@
+id: test_rule_01
+name: test_rule
+type: rule
+description: 测试规则
+content: 这是一个测试规则
+globs:
+- '*.txt'
+metadata:
+  author: 测试
+  version: 1.0.0
+  tags:
+  - test
+  dependencies: []

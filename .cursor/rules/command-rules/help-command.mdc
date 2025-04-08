@@ -1,0 +1,257 @@
+---
+description: 当用户输入/help命令时,执行帮助命令，解释命令用法和显示可用命令
+globs:
+alwaysApply: false
+id: help-command
+title: "VibeCopilot帮助命令规则"
+type: command_rule
+status: active
+version: "1.0"
+tags: [command, help, documentation, rule]
+related_items: [command-system]
+---
+
+# VibeCopilot帮助命令规则
+
+## 帮助命令概述
+
+帮助命令(`/help`和`//help`)用于显示VibeCopilot的帮助信息，包括可用命令列表、命令用法和示例。这是用户了解系统功能和使用方法的主要入口。
+
+## 命令类型和执行方式
+
+### 规则命令形式
+
+- 命令格式：`/help [subcommand] [args]`
+- 执行方式：由Cursor Agent直接解释执行
+- 适用场景：查询命令用法、显示帮助信息和示例
+
+### 程序命令形式
+
+- 命令格式：`//help [subcommand] [args]`
+- 执行方式：转换为`vibecopilot help [subcommand] [args]`并通过终端执行
+- 适用场景：生成详细文档、导出帮助信息和批量查询
+
+## 子命令详解
+
+| 子命令 | 说明 | 示例 |
+|-------|------|------|
+| 无子命令 | 显示所有可用命令的概述 | `/help` |
+| `[命令名]` | 显示特定命令的详细用法 | `/help flow` |
+| `list` | 列出所有可用命令 | `/help list` |
+| `detail` | 显示命令的详细信息 | `/help detail flow` |
+| `examples` | 显示命令的使用示例 | `/help examples rule` |
+| `export` | 导出帮助文档 | `//help export --format=markdown` |
+
+## 命令参数选项
+
+| 参数 | 说明 | 示例 |
+|-----|------|------|
+| `--detail=<level>` | 设置帮助信息的详细级别 | `/help flow --detail=full` |
+| `--format=<format>` | 设置输出格式 | `//help export --format=html` |
+| `--output=<path>` | 设置输出路径 | `//help export --output=./docs/` |
+| `--filter=<filter>` | 过滤显示的命令 | `/help list --filter=workflow` |
+
+## 详细级别说明
+
+帮助命令支持不同的详细级别：
+
+| 级别 | 说明 | 显示内容 |
+|-----|------|---------|
+| `basic` | 基本信息 | 命令概述和基本语法 |
+| `normal` | 标准信息（默认） | 命令用法、参数和常用示例 |
+| `full` | 完整信息 | 所有选项、示例和相关命令 |
+
+## 命令显示格式
+
+帮助命令将以清晰、结构化的格式显示信息：
+
+1. **命令标题**：显示命令名称和简短描述
+2. **命令语法**：显示基本语法格式
+3. **参数说明**：列出所有参数及其用途
+4. **子命令列表**：显示所有可用子命令
+5. **使用示例**：提供常见使用场景的示例
+6. **相关命令**：推荐相关的其他命令
+
+## 与新命令系统集成
+
+帮助命令完全支持新的命令系统架构：
+
+```
+# 查看规则命令帮助
+/help /rule
+
+# 查看程序命令帮助
+/help //flow
+
+# 显示命令区别
+/help command-types
+```
+
+## 命令集成点
+
+帮助系统与其他系统的集成：
+
+- **规则集成**：显示规则系统的使用方法
+- **角色集成**：显示专家角色系统的使用方法
+- **命令集成**：帮助内容自动反映命令更新
+
+## 使用示例
+
+```
+# 显示所有可用命令
+/help
+
+# 显示flow命令的详细用法
+/help flow
+
+# 显示rule命令的完整信息
+/help rule --detail=full
+
+# 列出所有工作流相关命令
+/help list --filter=workflow
+
+# 显示task命令的使用示例
+/help examples task
+
+# 导出所有命令帮助为Markdown
+//help export --format=markdown --output=./docs/commands/
+
+# 查看新旧命令格式的区别
+/help command-types
+```
+
+## 特殊帮助主题
+
+除了命令帮助，系统还提供特殊主题的帮助：
+
+| 主题 | 说明 | 调用方式 |
+|-----|------|---------|
+| `command-types` | 规则命令和程序命令的区别 | `/help command-types` |
+| `templates` | 模板系统使用指南 | `/help templates` |
+| `rules` | 规则系统使用指南 | `/help rules` |
+| `agents` | 专家角色系统指南 | `/help agents` |
+| `workflow` | 工作流概念和使用 | `/help workflow` |
+
+## 命令参考示例
+
+<example>
+  # 显示所有可用命令
+
+  用户: `/help`
+
+  系统响应:
+  ```
+  📚 VibeCopilot 命令帮助
+
+  可用命令类型:
+  - 规则命令(/) - 由AI直接处理的简单交互命令
+  - 程序命令(//) - 转换为CLI执行的复杂持久化命令
+
+  可用命令列表:
+  1. /rule, //rule - 管理规则系统
+  2. /flow, //flow - 启动和管理工作流
+  3. /roadmap, //roadmap - 管理项目路线图
+  4. /task, //task - 管理项目任务
+  5. /memory, //memory - 管理项目知识库
+  6. /status, //status - 查看项目状态
+  7. /help, //help - 显示命令帮助信息
+
+  输入 /help [命令名] 查看特定命令的详细用法
+  示例: /help flow
+
+  输入 /help command-types 了解规则命令和程序命令的区别
+  ```
+
+  # 显示特定命令的帮助信息
+
+  用户: `/help flow`
+
+  系统响应:
+  ```
+  📖 Flow命令帮助
+
+  用途: 管理和执行工作流
+
+  基本语法:
+  - 规则命令: /flow [子命令] [参数]
+  - 程序命令: //flow [子命令] [参数]
+
+  常用子命令:
+  - list: 列出所有工作流 - 示例: /flow list
+  - show: 查看工作流详情 - 示例: /flow show dev:story
+  - run: 执行工作流 - 示例: //flow run dev:story
+  - next: 获取下一步建议 - 示例: /flow next
+
+  工作流会话管理:
+  - session list: 列出会话 - 示例: /flow session list
+  - session show: 查看会话 - 示例: /flow session show <id>
+
+  常用参数:
+  - --type: 工作流类型 - 示例: /flow list --type=dev
+  - --name: 指定名称 - 示例: //flow run dev:story --name="登录功能"
+
+  更多信息请使用: /help flow --detail=full
+  ```
+
+  # 显示命令类型帮助
+
+  用户: `/help command-types`
+
+  系统响应:
+  ```
+  🔍 VibeCopilot命令类型说明
+
+  VibeCopilot支持两种命令格式:
+
+  1. 规则命令 (/)
+     - 格式: /command [subcommand] [args]
+     - 处理: 由Cursor Agent直接解释执行
+     - 用途: 简单查询、交互指导、基本操作
+     - 示例: /rule list, /task create "新任务"
+
+  2. 程序命令 (//)
+     - 格式: //command [subcommand] [args]
+     - 处理: 转换为vibecopilot命令行工具执行
+     - 用途: 复杂操作、数据持久化、批处理
+     - 示例: //flow run dev:story, //roadmap create --name="2023计划"
+
+  选择指南:
+  - 简单查询和交互操作使用规则命令(/)
+  - 复杂流程和需要持久化的操作使用程序命令(//)
+  - 两种格式支持相同的命令集，但功能深度和持久化能力不同
+  ```
+</example>
+
+<example type="invalid">
+  # 错误示例：混淆新旧命令格式
+
+  用户: `/help`
+
+  系统响应:
+  ```
+  VibeCopilot命令帮助
+
+  可用命令:
+  1. /check - 检查项目状态
+  2. /workflow - 管理工作流程
+  3. /roadmap //roadmap - 管理路线图
+  4. /mcp - MCP指令
+  ```
+
+  问题: 混合了旧格式和新格式命令，信息不准确，没有区分规则命令和程序命令
+
+  # 错误示例：忽略规则命令和程序命令的区别
+
+  用户: `/help flow`
+
+  系统响应:
+  ```
+  Flow命令用于管理工作流。
+
+  使用方法:
+  /flow run <workflow>
+  /flow list
+  ```
+
+  问题: 没有区分规则命令和程序命令格式，缺少//flow格式的说明，命令说明不完整
+</example>

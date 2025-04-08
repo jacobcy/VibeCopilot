@@ -11,7 +11,7 @@ alwaysApply: false
 - Always use `uv` for Python package management within the virtual environment
 - Always use `pnpm` for Node.js package management, avoiding npm and yarn
 - Use TypeScript (`.ts`) instead of JavaScript (`.js`) for all new code
-- When using MCP filesystem tools, always use absolute paths (e.g., `/Users/chenyi/Public/VibeCopilot/src/file.ts`)
+- When using MCP filesystem tools, always use absolute paths (e.g., `/Users/<username>/Public/VibeCopilot/src/file.ts`)
 - Append `| cat` to terminal commands that might produce interactive output
 - Use MCP sequential thinking for complex problem-solving
 - Use MCP time tools to get accurate timestamps
@@ -26,7 +26,7 @@ alwaysApply: false
 - Running Git commands: `git status | cat`
 - Activating virtual environment: `source .venv/bin/activate`
 - TypeScript compilation: `pnpm tsc`
-- Using absolute paths: `/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx`
+- Using absolute paths: `/Users/<username>/Public/VibeCopilot/src/components/Button.tsx`
 - Getting current time: `mcp_time_docker_get_current_time({timezone: "UTC"})`
 
 ## Examples
@@ -38,7 +38,7 @@ alwaysApply: false
 
   // Correct file operations
   mcp_filesystem_docker_read_file({
-    path: "/Users/chenyi/Public/VibeCopilot/src/components/Button.tsx"
+    path: "/Users/<username>/Public/VibeCopilot/src/components/Button.tsx"
   })
 
   // Correct command execution

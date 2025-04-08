@@ -11,7 +11,8 @@ from rich.table import Table
 from src.db import get_session_factory
 from src.db.repositories.roadmap_repository import RoadmapRepository, StoryRepository
 from src.db.repositories.task_repository import TaskRepository
-from src.models.db.roadmap import Roadmap, Story
+from src.models.db.roadmap import Roadmap
+from src.models.db.story import Story
 from src.models.db.task import Task
 
 logger = logging.getLogger(__name__)

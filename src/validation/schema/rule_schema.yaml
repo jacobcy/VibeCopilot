@@ -1,0 +1,77 @@
+---
+# 规则数据验证模式
+id: rule_schema
+name: 规则验证模式
+version: 1.0.0
+description: VibeCopilot规则数据的验证模式
+
+# 规则基本结构
+structure:
+  id:
+    type: string
+    required: true
+    description: 规则唯一标识符
+
+  name:
+    type: string
+    required: true
+    description: 规则名称
+
+  type:
+    type: string
+    required: true
+    default: rule
+    enum:
+      - rule
+      - core-rule
+      - dev-rule
+      - role-rule
+      - tech-rule
+      - test-rule
+      - tool-rule
+    description: 规则类型
+
+  description:
+    type: string
+    required: false
+    description: 规则描述
+
+  content:
+    type: string
+    required: true
+    description: 规则内容
+
+  metadata:
+    type: object
+    required: false
+    properties:
+      author:
+        type: string
+        required: false
+        description: 规则作者
+
+      version:
+        type: string
+        required: false
+        pattern: ^\d+\.\d+\.\d+$
+        description: 规则版本号，采用语义化版本
+
+      tags:
+        type: array
+        required: false
+        items:
+          type: string
+        description: 规则标签
+
+      created_at:
+        type: string
+        required: false
+        format: date-time
+        description: 创建时间
+
+      updated_at:
+        type: string
+        required: false
+        format: date-time
+        description: 更新时间
+    description: 规则元数据

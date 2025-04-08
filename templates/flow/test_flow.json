@@ -1,77 +1,117 @@
 {
-  "id": "test-workflow",
-  "name": "测试工作流",
-  "description": "基于test-flow规则生成的测试流程工作流",
-  "source_rule": ".cursor/rules/flow-rules/test-flow.mdc",
-  "version": "1.0.0",
-  "stages": [
+  "description": "测试流程工作流模板，用于创建测试相关的工作流",
+  "variables": [
     {
-      "id": "test_preparation",
-      "name": "测试准备",
-      "description": "准备测试环境和测试计划",
-      "order": 1,
-      "checklist": [
-        "理解需要测试的功能和预期行为",
-        "准备测试环境和测试数据",
-        "确认测试工具和框架可用",
-        "制定测试计划和测试用例"
-      ],
-      "deliverables": [
-        "测试计划文档",
-        "测试用例列表",
-        "测试环境配置完成"
-      ]
+      "name": "id",
+      "description": "流程ID",
+      "required": true,
+      "type": "string"
     },
     {
-      "id": "test_execution",
-      "name": "测试执行",
-      "description": "执行各类测试并记录结果",
-      "order": 2,
-      "checklist": [
-        "执行单元测试并验证覆盖率",
-        "执行集成测试验证组件交互",
-        "执行端到端测试验证整体功能",
-        "记录测试过程和发现的问题"
-      ],
-      "deliverables": [
-        "测试执行记录",
-        "测试覆盖率报告",
-        "问题跟踪记录"
-      ]
+      "name": "name",
+      "description": "流程名称",
+      "required": true,
+      "type": "string"
     },
     {
-      "id": "test_analysis",
-      "name": "测试分析",
-      "description": "分析测试结果并生成报告",
-      "order": 3,
-      "checklist": [
-        "分析测试失败的原因",
-        "评估功能完整性和质量",
-        "确认是否达到测试覆盖率目标",
-        "提出质量改进建议"
-      ],
-      "deliverables": [
-        "测试结果分析报告",
-        "质量评估文档",
-        "改进建议清单"
-      ]
+      "name": "description",
+      "description": "流程描述",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "name": "source_rule",
+      "description": "源规则路径",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "name": "version",
+      "description": "版本号",
+      "required": false,
+      "type": "string",
+      "default": "1.0.0"
     }
   ],
-  "transitions": [
-    {
-      "from": "test_preparation",
-      "to": "test_execution",
-      "condition": "测试准备工作完成"
-    },
-    {
-      "from": "test_execution",
-      "to": "test_analysis",
-      "condition": "测试执行完成"
-    },
-    {
-      "from": "test_analysis",
-      "to": "complete",
-      "condition": "测试分析完成并达到质量要求"
-    }
-  ]
+  "type": "flow",
+  "author": "VibeCopilot",
+  "version": "1.0.0",
+  "tags": ["test", "workflow", "flow"],
+  "template": {
+    "id": "{{id}}",
+    "name": "{{name}}",
+    "description": "{{description}}",
+    "source_rule": "{{source_rule}}",
+    "version": "{{version}}",
+    "stages": [
+      {
+        "id": "test_preparation",
+        "name": "测试准备",
+        "description": "准备测试环境和测试计划",
+        "order": 1,
+        "checklist": [
+          "理解需要测试的功能和预期行为",
+          "准备测试环境和测试数据",
+          "确认测试工具和框架可用",
+          "制定测试计划和测试用例"
+        ],
+        "deliverables": [
+          "测试计划文档",
+          "测试用例列表",
+          "测试环境配置完成"
+        ]
+      },
+      {
+        "id": "test_execution",
+        "name": "测试执行",
+        "description": "执行各类测试并记录结果",
+        "order": 2,
+        "checklist": [
+          "执行单元测试并验证覆盖率",
+          "执行集成测试验证组件交互",
+          "执行端到端测试验证整体功能",
+          "记录测试过程和发现的问题"
+        ],
+        "deliverables": [
+          "测试执行记录",
+          "测试覆盖率报告",
+          "问题跟踪记录"
+        ]
+      },
+      {
+        "id": "test_analysis",
+        "name": "测试分析",
+        "description": "分析测试结果并生成报告",
+        "order": 3,
+        "checklist": [
+          "分析测试失败的原因",
+          "评估功能完整性和质量",
+          "确认是否达到测试覆盖率目标",
+          "提出质量改进建议"
+        ],
+        "deliverables": [
+          "测试结果分析报告",
+          "质量评估文档",
+          "改进建议清单"
+        ]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "test_preparation",
+        "to": "test_execution",
+        "condition": "测试准备工作完成"
+      },
+      {
+        "from": "test_execution",
+        "to": "test_analysis",
+        "condition": "测试执行完成"
+      },
+      {
+        "from": "test_analysis",
+        "to": "complete",
+        "condition": "测试分析完成并达到质量要求"
+      }
+    ]
+  }
 }

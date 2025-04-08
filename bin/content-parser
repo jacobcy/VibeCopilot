@@ -14,4 +14,4 @@ if [ -d "venv" ]; then
 fi
 
 # 执行内容解析命令行工具
-python -m adapters.content_parser.cli.main "$@"
+python -m src.parsing.cli.main "$@"

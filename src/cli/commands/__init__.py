@@ -1,48 +1,23 @@
 """
-命令处理模块
+CLI命令模块
 
-所有命令实现需要在此导入，方便统一管理
+提供各种命令行命令的实现
 """
 
-# 基本导入
-from typing import Any, Callable, Dict, List
+from src.cli.commands.db_commands import add_db_commands, handle_db_command
+from src.cli.commands.template_commands import add_template_commands, generate_template, handle_template_command, list_templates, show_template
 
-# 导入所有命令处理器
-from src.cli.commands.db import DatabaseCommand
-from src.cli.commands.flow.handlers.session_handlers import handle_session_command
-from src.cli.commands.github.handlers import handle_github_command
-from src.cli.commands.memory.memory_command import MemoryCommand
-from src.cli.commands.roadmap import CreateCommand, RoadmapCommand, RoadmapListCommand, StoryCommand, SwitchCommand, SyncCommand, UpdateRoadmapCommand
-from src.cli.commands.roadmap_commands import RoadmapCommands
-from src.cli.commands.rule.rule_command import RuleCommand
+# 命令注册表字典，存储命令名称和处理函数的映射
+COMMAND_REGISTRY = {"mock": lambda args: {"success": True, "message": "Mock command executed", "args": args}}
 
-# TODO: 添加其他命令处理器
-
-# 暴露所有命令处理器类
+# 导出命令函数
 __all__ = [
-    "DatabaseCommand",
-    "MemoryCommand",
-    "RuleCommand",
-    "UpdateRoadmapCommand",
-    "SyncCommand",
-    "CreateCommand",
-    "StoryCommand",
-    "SwitchCommand",
-    "RoadmapListCommand",
-    "RoadmapCommands",
-    # Add commands from registration
-    "handle_session_command",
-    "handle_github_command",
+    "add_db_commands",
+    "handle_db_command",
+    "add_template_commands",
+    "handle_template_command",
+    "generate_template",
+    "list_templates",
+    "show_template",
+    "COMMAND_REGISTRY",
 ]
-
-"""
-命令注册表
-
-存储所有可用的命令处理器
-"""
-
-COMMAND_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
-    "flow": handle_session_command,
-    "github": handle_github_command,
-    # 添加更多命令处理器
-}

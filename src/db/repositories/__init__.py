@@ -8,6 +8,7 @@
 from src.db.repositories.docs_engine import BlockRepository, DocumentRepository, LinkRepository, LinkType
 from src.db.repositories.flow_session_repository import FlowSessionRepository
 from src.db.repositories.roadmap_repository import EpicRepository, MilestoneRepository, RoadmapRepository, StoryRepository
+from src.db.repositories.rule_repository import RuleExampleRepository, RuleItemRepository, RuleRepository
 from src.db.repositories.stage_instance_repository import StageInstanceRepository
 from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
 from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
@@ -33,6 +34,10 @@ __all__ = [
     # 模板仓库
     "TemplateRepository",
     "TemplateVariableRepository",
+    # 规则仓库
+    "RuleRepository",
+    "RuleItemRepository",
+    "RuleExampleRepository",
     # 工作流仓库
     "WorkflowRepository",
     "WorkflowExecutionRepository",

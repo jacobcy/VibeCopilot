@@ -169,7 +169,7 @@ GitHub同步:
 
 示例：
 ```
-/task --id=T2.2 --status=in_progress --assignee=chenyi
+/task --id=T2.2 --status=in_progress --assignee=<username>
 ```
 
 输出：

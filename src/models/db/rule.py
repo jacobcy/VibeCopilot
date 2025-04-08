@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import relationship
 
-from ...models import rule as rule_models
+from ...models import rule_model as rule_models
 from .base import Base, RuleType
 
 # 规则与规则条目关联表
@@ -46,16 +46,12 @@ class RuleItem(Base):
 
     def to_pydantic(self) -> rule_models.RuleItem:
         """转换为Pydantic模型"""
-        return rule_models.RuleItem(
-            content=self.content, priority=self.priority, category=self.category
-        )
+        return rule_models.RuleItem(content=self.content, priority=self.priority, category=self.category)
 
     @classmethod
     def from_pydantic(cls, model: rule_models.RuleItem, item_id: str) -> "RuleItem":
         """从Pydantic模型创建"""
-        return cls(
-            id=item_id, content=model.content, priority=model.priority, category=model.category
-        )
+        return cls(id=item_id, content=model.content, priority=model.priority, category=model.category)
 
 
 class RuleExample(Base):
@@ -73,9 +69,7 @@ class RuleExample(Base):
 
     def to_pydantic(self) -> rule_models.Example:
         """转换为Pydantic模型"""
-        return rule_models.Example(
-            content=self.content, is_valid=self.is_valid, description=self.description
-        )
+        return rule_models.Example(content=self.content, is_valid=self.is_valid, description=self.description)
 
     @classmethod
     def from_pydantic(cls, model: rule_models.Example, example_id: str) -> "RuleExample":
@@ -160,9 +154,7 @@ class Rule(Base):
     effectiveness = Column(Integer, default=0)
 
     # 关系
-    items = relationship(
-        "RuleItem", secondary=rule_item_association, back_populates="rules", cascade="all, delete"
-    )
+    items = relationship("RuleItem", secondary=rule_item_association, back_populates="rules", cascade="all, delete")
     examples = relationship(
         "RuleExample",
         secondary=rule_example_association,

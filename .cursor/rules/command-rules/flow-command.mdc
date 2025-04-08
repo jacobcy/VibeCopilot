@@ -1,0 +1,117 @@
+---
+description: 当用户输入/flow命令时，管理和执行VibeCopilot中定义的各种流程
+globs:
+alwaysApply: false
+id: flow-command
+title: "VibeCopilot流程命令规则"
+type: command_rule
+status: active
+version: "1.0"
+tags: [command, flow, workflow, rule]
+related_items: [command-system]
+---
+
+# VibeCopilot流程命令规则
+
+## 流程命令概述
+
+流程命令(`/flow`和`//flow`)用于管理VibeCopilot中定义的各种工作流和流程，包括创建、执行、查看和管理工作流定义及其会话实例。
+
+## 命令类型和执行方式
+
+### 规则命令形式
+
+- 命令格式：`/flow [subcommand] [args]`
+- 执行方式：由Cursor Agent直接解释执行
+- 适用场景：简单查询、单步执行和交互指导
+
+### 程序命令形式
+
+- 命令格式：`//flow [subcommand] [args]`
+- 执行方式：转换为`vibecopilot flow [subcommand] [args]`并通过终端执行
+- 适用场景：复杂工作流执行、会话管理和持久化操作
+
+## 子命令详解
+
+### 工作流定义操作
+
+| 子命令 | 说明 | 示例 |
+|-------|------|------|
+| `list` | 列出所有可用工作流定义 | `/flow list [--type=<workflow_type>]` |
+| `show` | 查看工作流定义详情 | `/flow show <id>` |
+| `run` | 执行特定工作流的阶段 | `/flow run <workflow_name>:<stage_name>` |
+| `next` | 获取工作流下一步建议 | `/flow next` |
+| `visualize` | 可视化工作流结构 | `/flow visualize <id>` |
+
+### 工作流会话操作
+
+| 子命令 | 说明 | 示例 |
+|-------|------|------|
+| `session list` | 列出所有工作流会话 | `/flow session list [--status=<status>]` |
+| `session show` | 查看会话详情和进度 | `/flow session show <id>` |
+| `session create` | 创建新的工作流会话 | `/flow session create <workflow_id>` |
+| `session pause` | 暂停工作流会话 | `/flow session pause <id>` |
+| `session resume` | 恢复暂停的会话 | `/flow session resume <id>` |
+| `session abort` | 终止工作流会话 | `/flow session abort <id>` |
+
+## 常用工作流模板
+
+VibeCopilot定义了一系列预设工作流模板，可通过命令直接调用：
+
+| 工作流ID | 描述 | 调用示例 |
+|---------|------|---------|
+| `dev:story` | 用户故事开发流程 | `//flow run dev:story` |
+| `dev:feature` | 功能开发流程 | `//flow run dev:feature` |
+| `dev:bugfix` | Bug修复流程 | `//flow run dev:bugfix` |
+| `doc:guide` | 文档编写流程 | `//flow run doc:guide` |
+| `review:code` | 代码审核流程 | `//flow run review:code` |
+| `test:integration` | 集成测试流程 | `//flow run test:integration` |
+
+## 工作流上下文使用
+
+工作流执行会创建和维护上下文，用于跨阶段传递信息：
+
+1. 上下文在工作流会话中持久保存
+2. 上下文可通过`/flow context`命令查看
+3. 工作流可访问上下文中的变量和状态
+4. 各阶段的输出会自动添加到上下文中
+5. 上下文可用于后续阶段的决策和执行
+
+## 流程引导功能
+
+调用`//flow run <workflow>`会自动引导用户完成整个流程：
+
+1. 显示工作流概述和目标
+2. 展示当前阶段任务和要求
+3. 提供完成当前阶段的指导
+4. 在完成后建议下一步操作
+5. 根据情境提供相关资源和参考
+
+## 使用示例
+
+```
+# 列出所有可用工作流
+/flow list
+
+# 查看特定工作流详情
+/flow show dev:story
+
+# 执行用户故事开发流程
+//flow run dev:story
+
+# 创建新的功能开发会话
+//flow session create dev:feature --name="支付集成"
+
+# 在现有会话中执行下一阶段
+//flow run dev:feature:implementation --session=12345
+
+# 可视化工作流结构
+/flow visualize dev:feature
+```
+
+## 与其他命令的集成
+
+- **任务集成**：工作流可自动创建和更新任务
+- **规则集成**：工作流可应用特定阶段的规则
+- **状态集成**：工作流可更新项目状态
+- **记忆集成**：工作流可记录和检索知识库内容

@@ -8,7 +8,7 @@ from .base import BaseMetadata, RuleType, TemplateVariableType
 
 # 导入数据库模型
 from .db import Base, Epic, Milestone, Roadmap, Story, Task, Workflow, WorkflowStep
-from .rule import Example, Rule, RuleApplication, RuleDependency, RuleItem, RuleMetadata
+from .rule_model import Example, Rule, RuleApplication, RuleDependency, RuleItem, RuleMetadata
 from .template import Template, TemplateMetadata, TemplateRepository, TemplateVariable
 
 __all__ = [

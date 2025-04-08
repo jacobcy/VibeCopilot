@@ -53,6 +53,6 @@ Docusaurus 适配器使用以下环境变量进行配置：
 
 Docusaurus 适配器与以下模块集成：
 
-- `content_parser` - 用于解析文档内容
+- `src/parsing` - 用于解析文档内容
 - `docs_engine` - 使用文档引擎进行格式转换
 - `obsidian` - 从 Obsidian 接收文档内容

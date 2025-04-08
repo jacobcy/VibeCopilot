@@ -1,7 +1,46 @@
 ---
-description: 当用户需要{{ role_name }}时,使用本规则
-globs:
-alwaysApply: false
+description: 角色规则模板，用于创建专家角色规则
+variables:
+  - name: role_name
+    description: 角色名称
+    required: true
+    type: string
+  - name: role_title
+    description: 角色标题
+    required: true
+    type: string
+  - name: expertise_areas
+    description: 专业领域
+    required: true
+    type: string
+  - name: key_skills
+    description: 关键技能
+    required: true
+    type: string
+  - name: core_skills
+    description: 核心专长列表
+    required: true
+    type: array
+  - name: tech_stack
+    description: 技术栈列表
+    required: true
+    type: array
+  - name: methodologies
+    description: 方法论列表
+    required: true
+    type: array
+  - name: glossary
+    description: 专业词汇表
+    required: false
+    type: array
+    default: []
+type: rule
+author: VibeCopilot
+version: 1.0.0
+tags:
+  - role
+  - expert
+  - rule
 ---
 
 # {{ role_title }}专家角色

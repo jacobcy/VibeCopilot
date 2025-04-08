@@ -1,1 +1,3 @@
-"""Integration tests for VibeCopilot."""
+"""
+集成测试包
+"""
