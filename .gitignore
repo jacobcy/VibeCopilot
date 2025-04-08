@@ -78,6 +78,7 @@ backups/
 
 # App specific
 modules/
+!docs/user/modules/
 !scripts/setup/modules/
 .vibecopilot/
 

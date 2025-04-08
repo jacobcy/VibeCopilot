@@ -57,6 +57,18 @@ alwaysApply: true
 - `/data`：数据存储目录
 - `/website`：文档网站
 - `/adapters`：适配器实现
+- `/examples`：范例
+- `/templates`：各种模版
+- `/temp`：临时文件
+- `/scripts`：构建和工具脚本
+- `/node_modules`：前端依赖
+- `/.env`：环境变量
+- `/.gitignore`：Git忽略文件
+- `/package.json`：前端包管理
+- `/requirements.txt`：后端依赖
+- `/README.md`：项目说明
+- `/CHANGELOG.md`：变更日志
+- `/LICENSE`：许可证文件
 
 ## 环境变量配置
 
