@@ -1,12 +1,12 @@
-[submodule "modules/obsidiosaurus"]
-	path = modules/obsidiosaurus
+[submodule "external/obsidiosaurus"]
+	path = external/obsidiosaurus
 	url = https://github.com/CIMSTA/obsidiosaurus.git
-[submodule "modules/cursor-custom-agents-rules-generator"]
-	path = modules/cursor-custom-agents-rules-generator
+[submodule "external/cursor-custom-agents-rules-generator"]
+	path = external/cursor-custom-agents-rules-generator
 	url = https://github.com/jacobcy/cursor-custom-agents-rules-generator.git
-[submodule "modules/gitdiagram"]
-	path = modules/gitdiagram
+[submodule "external/gitdiagram"]
+	path = external/gitdiagram
 	url = https://github.com/jacobcy/gitdiagram.git
 [submodule "external/basic-memory"]
-	path = modules/basic-memory
+	path = external/basic-memory
 	url = https://github.com/basicmachines-co/basic-memory.git

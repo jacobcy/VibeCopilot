@@ -77,9 +77,7 @@ backups/
 .cursor/rules/*/.DS_Store
 
 # App specific
-modules/
-!docs/user/modules/
-!scripts/setup/modules/
+external/
 .vibecopilot/
 
 # Database and cache files
