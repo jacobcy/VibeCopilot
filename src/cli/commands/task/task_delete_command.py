@@ -1,5 +1,6 @@
 # src/cli/commands/task/task_delete_command.py
 
+import argparse
 import logging
 from typing import Any, Dict
 
@@ -31,6 +32,15 @@ class DeleteTaskCommand(BaseCommand):
 
     def __init__(self):
         super().__init__("delete", "删除一个指定的任务")
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        """配置命令的参数解析器"""
+        parser.add_argument("task_id", help="要删除的 Task ID")
+        parser.add_argument("-f", "--force", action="store_true", help="跳过确认直接删除")
+
+    def execute_with_args(self, args: argparse.Namespace) -> Dict[str, Any]:
+        """使用解析后的参数执行命令"""
+        return self.execute(task_id=args.task_id, force=args.force)
 
     def execute(
         self,

@@ -1,5 +1,6 @@
 # src/cli/commands/task/task_update_command.py
 
+import argparse
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -37,6 +38,30 @@ class UpdateTaskCommand(BaseCommand):
 
     def __init__(self):
         super().__init__("update", "更新一个已存在的任务")
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        """配置命令的参数解析器"""
+        parser.add_argument("task_id", help="要更新的 Task ID")
+        parser.add_argument("-t", "--title", help="新的任务标题")
+        parser.add_argument("-d", "--desc", help="新的任务描述")
+        parser.add_argument("-a", "--assignee", help="新的负责人 ('-' 表示清空)")
+        parser.add_argument("-l", "--label", nargs="+", help="设置新的标签列表 (会覆盖旧列表)")
+        parser.add_argument("--add-label", nargs="+", help="添加标签")
+        parser.add_argument("--remove-label", nargs="+", help="移除标签")
+        parser.add_argument("-s", "--status", help="新的状态")
+
+    def execute_with_args(self, args: argparse.Namespace) -> Dict[str, Any]:
+        """使用解析后的参数执行命令"""
+        return self.execute(
+            task_id=args.task_id,
+            title=args.title,
+            description=args.desc,
+            assignee=args.assignee,
+            label=args.label,
+            add_label=args.add_label,
+            remove_label=args.remove_label,
+            status=args.status,
+        )
 
     def execute(
         self,

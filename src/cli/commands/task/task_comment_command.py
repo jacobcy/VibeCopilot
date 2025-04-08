@@ -1,5 +1,6 @@
 # src/cli/commands/task/task_comment_command.py
 
+import argparse
 import logging
 from typing import Any, Dict, Optional
 
@@ -36,6 +37,16 @@ class CommentTaskCommand(BaseCommand):
 
     def __init__(self):
         super().__init__("comment", "为指定的任务添加评论")
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        """配置命令的参数解析器"""
+        parser.add_argument("task_id", help="要评论的 Task ID")
+        parser.add_argument("-c", "--content", required=True, help="评论内容 (必需)")
+        parser.add_argument("-a", "--author", help="评论者 (默认为当前用户或系统)")
+
+    def execute_with_args(self, args: argparse.Namespace) -> Dict[str, Any]:
+        """使用解析后的参数执行命令"""
+        return self.execute(task_id=args.task_id, content=args.content, author=args.author)
 
     def execute(
         self,

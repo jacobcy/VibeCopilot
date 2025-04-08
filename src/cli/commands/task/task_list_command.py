@@ -1,5 +1,6 @@
 # src/cli/commands/task/task_list_command.py
 
+import argparse
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -36,16 +37,46 @@ class ListTaskCommand(BaseCommand):
     def __init__(self):
         super().__init__("list", "列出项目中的任务")
 
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        """配置命令行解析器"""
+        parser.add_argument("-s", "--status", nargs="+", help="按状态过滤 (例如: open,in_progress)")
+        parser.add_argument("-a", "--assignee", help="按负责人过滤")
+        parser.add_argument("-l", "--label", nargs="+", help="按标签过滤 (目前仅简单匹配)")
+        parser.add_argument("-r", "--roadmap", help="按关联的 Roadmap Item (Story ID) 过滤")
+        parser.add_argument("-i", "--independent", action="store_true", help="仅显示独立任务 (无 Roadmap 关联)")
+        parser.add_argument("--limit", type=int, help="限制返回数量")
+        parser.add_argument("--offset", type=int, help="跳过指定数量的结果")
+        parser.add_argument("-v", "--verbose", action="store_true", help="显示更详细的信息")
+
+    def execute_with_args(self, args: argparse.Namespace) -> int:
+        """执行命令"""
+        try:
+            self.execute(
+                status=args.status,
+                assignee=args.assignee,
+                label=args.label,
+                roadmap_item_id=args.roadmap,
+                independent=args.independent,
+                limit=args.limit,
+                offset=args.offset,
+                verbose=args.verbose,
+            )
+            return 0
+        except Exception as e:
+            logger.error(f"列出任务时出错: {e}", exc_info=True)
+            console.print(f"[bold red]错误:[/bold red] {e}")
+            return 1
+
     def execute(
         self,
-        status: Optional[List[str]] = typer.Option(None, "--status", "-s", help="按状态过滤 (例如: open,in_progress)"),
-        assignee: Optional[str] = typer.Option(None, "--assignee", "-a", help="按负责人过滤"),
-        label: Optional[List[str]] = typer.Option(None, "--label", "-l", help="按标签过滤 (目前仅简单匹配)"),
-        roadmap_item_id: Optional[str] = typer.Option(None, "--roadmap", "-r", help="按关联的 Roadmap Item (Story ID) 过滤"),
-        independent: Optional[bool] = typer.Option(None, "--independent", "-i", help="仅显示独立任务 (无 Roadmap 关联)"),
-        limit: Optional[int] = typer.Option(None, "--limit", help="限制返回数量"),
-        offset: Optional[int] = typer.Option(None, "--offset", help="跳过指定数量的结果"),
-        verbose: bool = typer.Option(False, "--verbose", "-v", help="显示更详细的信息"),
+        status: Optional[List[str]] = None,
+        assignee: Optional[str] = None,
+        label: Optional[List[str]] = None,
+        roadmap_item_id: Optional[str] = None,
+        independent: Optional[bool] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+        verbose: bool = False,
     ) -> Dict[str, Any]:
         """执行列出任务的逻辑"""
         logger.info(

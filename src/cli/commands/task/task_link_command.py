@@ -1,5 +1,6 @@
 # src/cli/commands/task/task_link_command.py
 
+import argparse
 import logging
 import re
 from enum import Enum
@@ -61,6 +62,16 @@ class LinkTaskCommand(BaseCommand):
 
     def __init__(self):
         super().__init__("link", "关联任务到 Roadmap Item, Workflow Stage 或 GitHub 实体")
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        """配置命令的参数解析器"""
+        parser.add_argument("task_id", help="要关联的 Task ID")
+        parser.add_argument("-t", "--type", required=True, choices=[t.value for t in LinkType], help="要关联的目标实体类型")
+        parser.add_argument("-id", "--target", required=True, help="目标实体的 ID 或标识符 ('-' 表示取消关联)")
+
+    def execute_with_args(self, args: argparse.Namespace) -> Dict[str, Any]:
+        """使用解析后的参数执行命令"""
+        return self.execute(task_id=args.task_id, link_type=LinkType(args.type), target_id=args.target)
 
     def execute(
         self,

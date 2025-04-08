@@ -1,5 +1,6 @@
 # src/cli/commands/task/task_create_command.py
 
+import argparse
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -34,16 +35,46 @@ class CreateTaskCommand(BaseCommand):
     def __init__(self):
         super().__init__("create", "创建一个新的任务")
 
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        """配置命令行解析器"""
+        parser.add_argument("-t", "--title", required=True, help="任务标题 (必需)")
+        parser.add_argument("-d", "--desc", help="任务描述")
+        parser.add_argument("-a", "--assignee", help="负责人")
+        parser.add_argument("-l", "--label", action="append", help="标签 (可多次使用)")
+        parser.add_argument("-s", "--status", default="open", help="初始状态 (默认: open)")
+        parser.add_argument("--link-roadmap", help="关联到 Roadmap Item (Story ID)")
+        parser.add_argument("--link-workflow-stage", help="关联到 Workflow Stage Instance ID")
+        parser.add_argument("--link-github", help="关联到 GitHub Issue (格式: owner/repo#number)")
+
+    def execute_with_args(self, args: argparse.Namespace) -> int:
+        """执行命令"""
+        try:
+            self.execute(
+                title=args.title,
+                description=args.desc,
+                assignee=args.assignee,
+                label=args.label,
+                status=args.status,
+                link_roadmap_item_id=args.link_roadmap,
+                link_workflow_stage_instance_id=args.link_workflow_stage,
+                link_github_issue=args.link_github,
+            )
+            return 0
+        except Exception as e:
+            logger.error(f"创建任务时出错: {e}", exc_info=True)
+            console.print(f"[bold red]错误:[/bold red] {e}")
+            return 1
+
     def execute(
         self,
-        title: str = typer.Option(..., "--title", "-t", help="任务标题 (必需)"),
-        description: Optional[str] = typer.Option(None, "--desc", "-d", help="任务描述"),
-        assignee: Optional[str] = typer.Option(None, "--assignee", "-a", help="负责人"),
-        label: Optional[List[str]] = typer.Option(None, "--label", "-l", help="标签 (多个标签用多次选项，例如 -l bug -l ui)"),
-        status: Optional[str] = typer.Option("open", "--status", "-s", help="初始状态 (默认: open)"),
-        link_roadmap_item_id: Optional[str] = typer.Option(None, "--link-roadmap", help="关联到 Roadmap Item (Story ID)"),
-        link_workflow_stage_instance_id: Optional[str] = typer.Option(None, "--link-workflow-stage", help="关联到 Workflow Stage Instance ID"),
-        link_github_issue: Optional[str] = typer.Option(None, "--link-github", help="关联到 GitHub Issue (格式: owner/repo#number)"),
+        title: str,
+        description: Optional[str] = None,
+        assignee: Optional[str] = None,
+        label: Optional[List[str]] = None,
+        status: Optional[str] = "open",
+        link_roadmap_item_id: Optional[str] = None,
+        link_workflow_stage_instance_id: Optional[str] = None,
+        link_github_issue: Optional[str] = None,
     ) -> Dict[str, Any]:
         """执行创建任务的逻辑"""
         logger.info(

@@ -1,5 +1,6 @@
 # src/cli/commands/task/task_show_command.py
 
+import argparse
 import logging
 from typing import Any, Dict, Optional
 
@@ -33,10 +34,28 @@ class ShowTaskCommand(BaseCommand):
     def __init__(self):
         super().__init__("show", "显示指定任务的详细信息")
 
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        """配置命令行解析器"""
+        parser.add_argument("task_id", help="要显示的 Task ID")
+        parser.add_argument("-v", "--verbose", action="store_true", help="显示更详细的信息，包括评论")
+
+    def execute_with_args(self, args: argparse.Namespace) -> int:
+        """执行命令"""
+        try:
+            self.execute(
+                task_id=args.task_id,
+                verbose=args.verbose,
+            )
+            return 0
+        except Exception as e:
+            logger.error(f"显示任务详情时出错: {e}", exc_info=True)
+            console.print(f"[bold red]错误:[/bold red] {e}")
+            return 1
+
     def execute(
         self,
-        task_id: str = typer.Argument(..., help="要显示的 Task ID"),
-        verbose: bool = typer.Option(False, "--verbose", "-v", help="显示更详细的信息，包括评论"),
+        task_id: str,
+        verbose: bool = False,
     ) -> Dict[str, Any]:
         """执行显示任务详情的逻辑"""
         logger.info(f"执行显示任务命令: task_id={task_id}, verbose={verbose}")
