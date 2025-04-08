@@ -116,7 +116,7 @@ class DBConnectionManager:
 
         # 创建所有表 (如果不存在)
         Base.metadata.create_all(self._engine)
-        logger.info("确保数据库表已存在")
+        logger.debug("确保数据库表已存在")
 
         return True
 

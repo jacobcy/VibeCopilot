@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-class BaseCommand(ABC):
+class BaseCommand(Command, ABC):  # Inherit from Command
     """命令基类"""
 
     def __init__(self, name: str, description: str):
@@ -52,18 +52,14 @@ class BaseCommand(ABC):
             parsed_args = self._parser.parse_args(args)
             return self.execute_with_args(parsed_args)
         except Exception as e:
+            # Log the exception for debugging
+            logger.exception(f"Error executing command {self.name}")
             console.print(f"[red]错误:[/red] {str(e)}")
+            # Ensure we return an int as per Command interface
             return 1
 
     def print_help(self) -> None:
         """打印帮助信息"""
         self._parser.print_help()
 
-    @classmethod
-    def get_help(cls) -> str:
-        """获取命令的帮助信息"""
-        # 如果子类有自己的文档字符串，就使用它
-        if cls.__doc__:
-            return cls.__doc__
-        # 否则返回一个基本的帮助信息
-        return "暂无帮助信息"
+    # get_help is now inherited from Command as a classmethod

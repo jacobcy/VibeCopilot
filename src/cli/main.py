@@ -19,21 +19,26 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 import importlib
 import logging
-from typing import Dict, Type
+from typing import Dict, Type, Union
 
 import click
+import typer
+from typer.main import get_command
 
 from src.cli.command import Command
 from src.cli.command_parser import CommandParser
 from src.cli.commands.db import DatabaseCommand
+from src.cli.commands.db.db_click import db as db_click_group
 from src.cli.commands.flow.flow_command import FlowCommand
-from src.cli.commands.help.help_command import HelpCommand
-from src.cli.commands.memory import MemoryCommand
-from src.cli.commands.roadmap.roadmap_command import RoadmapCommand
-from src.cli.commands.rule import RuleCommand
-from src.cli.commands.status import StatusCommand
-from src.cli.commands.task.task_command import TaskCommand
-from src.cli.commands.template.template_command import TemplateCommand
+from src.cli.commands.help.help_command import HelpCommand  # Keep for now, might refactor later
+from src.cli.commands.memory import MemoryCommand  # Keep for now, might refactor later
+from src.cli.commands.roadmap.roadmap_click import roadmap as roadmap_click_group
+
+# from src.cli.commands.rule import RuleCommand # Remove old command import
+from src.cli.commands.rule.rule_click import rule as rule_click_group
+from src.cli.commands.status import StatusCommand  # Keep for now, might refactor later
+from src.cli.commands.task import task_app
+from src.cli.commands.template.template_command import TemplateCommand  # Keep for now, might refactor later
 
 # 预初始化数据库连接管理器
 from src.db.connection_manager import ensure_tables_exist
@@ -48,12 +53,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 命令映射
+# Note: Typer app 'task' is handled specially in get_cli_app
+# Remove 'rule' from this dict as it's now handled directly as a click group
 COMMANDS: Dict[str, Type[Command]] = {
-    "roadmap": RoadmapCommand,
-    "rule": RuleCommand,
-    "flow": FlowCommand,
-    "status": StatusCommand,
-    "task": TaskCommand,
+    # "rule": RuleCommand, # Removed
+    "flow": FlowCommand,  # Keep for now
+    "status": StatusCommand,  # Keep for now
+    # "task": task_app, # Handled separately below
     "memory": MemoryCommand,
     "db": DatabaseCommand,
     "help": HelpCommand,
@@ -83,9 +89,18 @@ def get_cli_app():
     def cli():
         pass
 
-    # 注册所有命令
+    # Register remaining old-style commands (to be refactored later)
     for cmd_name, cmd_class in COMMANDS.items():
         cli.add_command(create_cli_command(cmd_class), cmd_name)
+
+    # Add the new click-based command groups
+    cli.add_command(rule_click_group, name="rule")
+    cli.add_command(roadmap_click_group, name="roadmap")
+    cli.add_command(db_click_group, name="db")
+
+    # Add the Typer app task_app (already converted to Click command)
+    # 将 Typer 应用转换为 Click 命令并添加
+    cli.add_command(get_command(task_app), name="task")
 
     return cli
 
@@ -105,8 +120,16 @@ def print_help():
     """打印帮助信息"""
     print("VibeCopilot CLI工具")
     print("\n可用命令:")
+    # Print help for remaining old-style commands
     for cmd_name, cmd_class in COMMANDS.items():
-        print(f"  {cmd_name:<10} {cmd_class.get_help()}")
+        if issubclass(cmd_class, Command):
+            print(f"  {cmd_name:<10} {cmd_class.get_help()}")  # Keep old help format for these for now
+
+    # Click automatically handles help for added groups/commands like rule and task
+    # Manually add help text for rule and task for consistency in this custom help output
+    print(f"  {'rule':<10} 规则管理命令 (使用 'vc rule --help' 查看子命令)")
+    # We might need to adjust if the default help isn't sufficient
+    print(f"  {'task':<10} 任务管理命令 (使用 'vc task --help' 查看子命令)")
 
     print("\n用法:")
     print("  vibecopilot <命令> [参数]")

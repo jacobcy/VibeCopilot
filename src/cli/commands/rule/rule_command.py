@@ -8,7 +8,6 @@ import argparse
 import logging
 from typing import Any, Dict, List, Optional
 
-import click
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -16,6 +15,7 @@ from rich.table import Table
 
 from src.cli.base_command import BaseCommand
 from src.cli.command import Command
+from src.cli.commands.help.help_provider import HelpProvider
 from src.cli.commands.rule.core import RuleCommandExecutor, parse_rule_args
 from src.cli.commands.rule.rule_command_utils import convert_result, show_help
 from src.core.rule_manager import RuleManager
@@ -47,44 +47,64 @@ class RuleCommand(BaseCommand, Command):
             session=self.session, template_engine=self.template_engine, template_manager=self.template_manager, rule_generator=self.rule_generator
         )
         self.rule_manager = RuleManager()
+        self.help_provider = HelpProvider()
 
     def configure_parser(self, parser: argparse.ArgumentParser) -> None:
         """配置命令行解析器"""
-        parser.formatter_class = argparse.RawDescriptionHelpFormatter
-        parser.description = self._get_command_description()
+        description = """规则管理命令
 
-        subparsers = parser.add_subparsers(dest="subcommand", help="子命令")
+用法:
+  /rule <子命令> [参数]
+  //rule <子命令> [参数]
+
+子命令:
+  list         列出所有规则
+  show         显示规则详情
+  create       创建新规则
+  edit         编辑规则
+  delete       删除规则
+  enable       启用规则
+  disable      禁用规则"""
+
+        # 使用 RawDescriptionHelpFormatter 保留描述文本中的换行和缩进
+        parser.formatter_class = argparse.RawDescriptionHelpFormatter
+        parser.description = description
+
+        # 覆盖 argparse 默认的 usage 字符串
+        parser.usage = "%(prog)s <子命令> [参数]"
+
+        subparsers = parser.add_subparsers(dest="subcommand", title="可用的子命令")
 
         # list子命令
-        list_parser = subparsers.add_parser("list", help="列出规则")
-        list_parser.add_argument("-t", "--type", help="规则类型")
+        list_parser = subparsers.add_parser("list", help="列出规则", description="列出所有规则或指定类型的规则")
+        list_parser.add_argument("-t", "--type", help="规则类型 (core/dev/tech/tool)")
 
         # show子命令
-        show_parser = subparsers.add_parser("show", help="显示规则详情")
+        show_parser = subparsers.add_parser("show", help="显示规则详情", description="显示指定规则的详细信息")
         show_parser.add_argument("rule_name", help="规则名称")
 
         # create子命令
-        create_parser = subparsers.add_parser("create", help="创建规则")
+        create_parser = subparsers.add_parser("create", help="创建规则", description="创建一个新的规则")
         create_parser.add_argument("rule_name", help="规则名称")
-        create_parser.add_argument("-t", "--type", required=True, help="规则类型")
+        create_parser.add_argument("-t", "--type", required=True, help="规则类型 (core/dev/tech/tool)")
         create_parser.add_argument("-d", "--description", help="规则描述")
         create_parser.add_argument("-p", "--priority", type=int, help="规则优先级 (1-100)", choices=range(1, 101))
 
         # edit子命令
-        edit_parser = subparsers.add_parser("edit", help="编辑规则")
+        edit_parser = subparsers.add_parser("edit", help="编辑规则", description="编辑现有规则")
         edit_parser.add_argument("rule_name", help="规则名称")
 
         # delete子命令
-        delete_parser = subparsers.add_parser("delete", help="删除规则")
+        delete_parser = subparsers.add_parser("delete", help="删除规则", description="删除指定的规则")
         delete_parser.add_argument("rule_name", help="规则名称")
         delete_parser.add_argument("-f", "--force", action="store_true", help="强制删除")
 
         # enable子命令
-        enable_parser = subparsers.add_parser("enable", help="启用规则")
+        enable_parser = subparsers.add_parser("enable", help="启用规则", description="启用指定的规则")
         enable_parser.add_argument("rule_name", help="规则名称")
 
         # disable子命令
-        disable_parser = subparsers.add_parser("disable", help="禁用规则")
+        disable_parser = subparsers.add_parser("disable", help="禁用规则", description="禁用指定的规则")
         disable_parser.add_argument("rule_name", help="规则名称")
 
     def _get_command_description(self) -> str:
@@ -92,29 +112,111 @@ class RuleCommand(BaseCommand, Command):
         return """规则管理命令
 
 用法:
-    vc rule list                     # 列出所有规则
-    vc rule show <rule_name>         # 显示规则详情
-    vc rule create <rule_name>       # 创建新规则
-    vc rule edit <rule_name>         # 编辑规则
-    vc rule delete <rule_name>       # 删除规则
-    vc rule enable <rule_name>       # 启用规则
-    vc rule disable <rule_name>      # 禁用规则
+  /rule <子命令> [参数]
+  //rule <子命令> [参数]
 
-参数:
-    rule_name                        规则名称
+子命令:
+  list         列出所有规则
+  show         显示规则详情
+  create       创建新规则
+  edit         编辑规则
+  delete       删除规则
+  enable       启用规则
+  disable      禁用规则
 
 选项:
-    -h, --help                       显示帮助信息
-    -t, --type <type>               规则类型 (core/dev/tech/tool)
-    -d, --description <desc>         规则描述
-    -p, --priority <num>            规则优先级 (1-100)
-    -f, --force                     强制执行操作
-"""
+  -h, --help              显示帮助信息
+  -t, --type <type>       规则类型 (core/dev/tech/tool)
+  -d, --desc <desc>       规则描述
+  -p, --priority <num>    规则优先级 (1-100)
+  -f, --force             强制执行操作
+
+示例:
+  # 列出所有规则
+  /rule list
+  //rule list --type core
+
+  # 显示规则详情
+  /rule show dev-rules/flow"""
+
+    @classmethod
+    def get_help(cls) -> str:
+        """获取命令的帮助信息"""
+        return """规则管理命令
+
+用法:
+  /rule <子命令> [参数]
+  //rule <子命令> [参数]
+
+子命令:
+  list         列出所有规则
+  show         显示规则详情
+  create       创建新规则
+  edit         编辑规则
+  delete       删除规则
+  enable       启用规则
+  disable      禁用规则
+
+选项:
+  -h, --help              显示帮助信息
+  -t, --type <type>       规则类型 (core/dev/tech/tool)
+  -d, --desc <desc>       规则描述
+  -p, --priority <num>    规则优先级 (1-100)
+  -f, --force             强制执行操作
+
+示例:
+  # 列出所有规则
+  /rule list
+  //rule list --type core
+
+  # 显示规则详情
+  /rule show dev-rules/flow"""
 
     def execute_with_args(self, args: argparse.Namespace) -> int:
         """执行命令"""
         if not args.subcommand:
-            self.print_help()
+            # 直接使用Rich渲染，绕过argparse格式化问题
+            from rich.markdown import Markdown
+
+            help_md = """# 规则管理命令
+
+## 用法
+```
+/rule <子命令> [参数]
+//rule <子命令> [参数]
+```
+
+## 子命令
+| 命令 | 描述 |
+|------|------|
+| `list` | 列出所有规则 |
+| `show` | 显示规则详情 |
+| `create` | 创建新规则 |
+| `edit` | 编辑规则 |
+| `delete` | 删除规则 |
+| `enable` | 启用规则 |
+| `disable` | 禁用规则 |
+
+## 选项
+| 选项 | 描述 |
+|------|------|
+| `-h, --help` | 显示帮助信息 |
+| `-t, --type <type>` | 规则类型 (core/dev/tech/tool) |
+| `-d, --desc <desc>` | 规则描述 |
+| `-p, --priority <num>` | 规则优先级 (1-100) |
+| `-f, --force` | 强制执行操作 |
+
+## 示例
+```
+# 列出所有规则
+/rule list
+//rule list --type core
+
+# 显示规则详情
+/rule show dev-rules/flow
+```
+"""
+            console.print(Markdown(help_md))
             return 1
 
         try:
@@ -208,36 +310,56 @@ class RuleCommand(BaseCommand, Command):
         console.print(f"[green]成功:[/green] 禁用规则 '{args.rule_name}'")
         return 0
 
+    def print_help(self):
+        """打印帮助信息"""
+        # 使用控制台直接打印格式化文本
+        console.print(
+            """
+[bold cyan]规则管理命令[/]
 
-@click.group()
-def rule():
-    """规则管理命令
+[bold]用法:[/]
+  /rule <子命令> [参数]
+  //rule <子命令> [参数]
 
-    用法:
-        rule list                                    列出所有规则
-        rule list [--type=<rule_type>] [--verbose]  列出特定类型的规则
-        rule show <id> [--format=<json|text>]       显示规则详情
-        rule create <template_type> <name> [--vars=<json>]  创建新规则
-        rule update <id> [--vars=<json>]            更新规则
-        rule delete <id> [--force]                  删除规则
-        rule validate <id> [--all]                  验证规则
-        rule export <id> [--output=<path>] [--format=<format>]  导出规则
-        rule import <file_path> [--overwrite]       导入规则
+[bold]子命令:[/]
+  [yellow]list[/]         列出所有规则
+  [yellow]show[/]         显示规则详情
+  [yellow]create[/]       创建新规则
+  [yellow]edit[/]         编辑规则
+  [yellow]delete[/]       删除规则
+  [yellow]enable[/]       启用规则
+  [yellow]disable[/]      禁用规则
 
-    参数:
-        <id>                  规则ID
-        <template_type>       模板类型
-        <name>               规则名称
-        <file_path>          规则文件路径
+[bold]选项:[/]
+  [yellow]-h, --help[/]              显示帮助信息
+  [yellow]-t, --type[/] <type>       规则类型 (core/dev/tech/tool)
+  [yellow]-d, --desc[/] <desc>       规则描述
+  [yellow]-p, --priority[/] <num>    规则优先级 (1-100)
+  [yellow]-f, --force[/]             强制执行操作
 
-    选项:
-        --type=<rule_type>    规则类型
-        --format=<format>     输出格式(json或text)
-        --vars=<json>         变量值（JSON格式）
-        --output=<path>       输出路径
-        --force              强制执行危险操作
-        --verbose            显示详细信息
-        --all                处理所有规则
-        --overwrite          覆盖已存在的规则
-    """
-    pass
+[bold]示例:[/]
+  # 列出所有规则
+  [dim]/rule list[/]
+  [dim]//rule list --type core[/]
+
+  # 显示规则详情
+  [dim]/rule show dev-rules/flow[/]
+"""
+        )
+        return
+
+    def _execute_impl(self, args: List[str]) -> int:
+        """实现 Command 接口的抽象方法
+
+        将参数转发给 execute_with_args 方法处理
+
+        Args:
+            args: 命令行参数列表
+
+        Returns:
+            命令执行结果代码
+        """
+        parser = argparse.ArgumentParser(prog=self.name, description=self.description)
+        self.configure_parser(parser)
+        parsed_args = parser.parse_args(args)
+        return self.execute_with_args(parsed_args)

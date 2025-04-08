@@ -16,6 +16,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from src.cli.commands.base_command import BaseCommand
+from src.cli.commands.help.help_provider import HelpProvider
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -29,6 +30,7 @@ class HelpCommand(BaseCommand):
             name="help",
             description="显示帮助信息",
         )
+        self.help_provider = HelpProvider()
 
     def configure_parser(self, parser: argparse.ArgumentParser) -> None:
         """配置命令行解析器"""
@@ -128,25 +130,9 @@ class HelpCommand(BaseCommand):
         # 创建命令帮助面板
         title = f"[bold cyan]{command_name}[/bold cyan] 命令帮助"
 
-        if command_name == "help":
-            content = self._get_help_command_help(verbose)
-        elif command_name == "rule":
-            content = self._get_rule_command_help(verbose)
-        elif command_name == "flow":
-            content = self._get_flow_command_help(verbose)
-        elif command_name == "roadmap":
-            content = self._get_roadmap_command_help(verbose)
-        elif command_name == "task":
-            content = self._get_task_command_help(verbose)
-        elif command_name == "status":
-            content = self._get_status_command_help(verbose)
-        elif command_name == "memory":
-            content = self._get_memory_command_help(verbose)
-        elif command_name == "db":
-            content = self._get_db_command_help(verbose)
-        elif command_name == "template":
-            content = self._get_template_command_help(verbose)
-        else:
+        # 从帮助提供者获取帮助信息
+        content = self.help_provider.get_command_help(command_name, verbose)
+        if not content:
             logger.error(f"未知命令: {command_name}")
             console.print(f"[red]错误:[/red] 未知命令 '{command_name}'")
             console.print("\n[yellow]提示:[/yellow] 使用 [cyan]/help[/cyan] 查看所有可用命令")

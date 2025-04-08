@@ -240,3 +240,23 @@ class DatabaseService:
     def delete_template(self, template_id: str) -> bool:
         """删除Template"""
         return self.delete_entity("template", template_id)
+
+    def backup(self, path: Optional[str] = None) -> str:
+        """备份数据库"""
+        # TODO: 实现备份逻辑
+        return path or "backup.db"
+
+    def restore(self, path: str) -> None:
+        """从备份文件恢复数据库"""
+        # TODO: 实现恢复逻辑
+        pass
+
+    def clean(self) -> None:
+        """清理数据库"""
+        # TODO: 实现清理逻辑
+        pass
+
+    def get_stats(self) -> Dict[str, int]:
+        """获取数据库统计信息"""
+        # TODO: 实现统计逻辑
+        return {"epic": 0, "story": 0, "task": 0, "label": 0, "template": 0}

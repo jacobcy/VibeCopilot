@@ -132,3 +132,13 @@ class BaseCommand(ABC):
             self.required_args = required
         if optional:
             self.optional_args = optional
+
+    def print_help(self):
+        """打印命令帮助信息"""
+        print(f"命令: {self.name}")
+        print(f"描述: {self.description}")
+        print("用法:")
+        print(self.get_usage())
+        print("示例:")
+        for example in self.get_examples():
+            print(f"  {example['description']}: {example['command']}")

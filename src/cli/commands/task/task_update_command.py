@@ -2,10 +2,13 @@
 
 import argparse
 import logging
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
 from src.cli.commands.base_command import BaseCommand
 from src.db import get_session_factory
@@ -13,6 +16,17 @@ from src.db.repositories.task_repository import TaskRepository
 
 logger = logging.getLogger(__name__)
 console = Console()
+
+
+class TaskStatus(str, Enum):
+    """任务状态枚举"""
+
+    TODO = "todo"
+    IN_PROGRESS = "in_progress"
+    REVIEW = "review"
+    DONE = "done"
+    BLOCKED = "blocked"
+    CANCELLED = "cancelled"
 
 
 class UpdateTaskCommand(BaseCommand):
@@ -40,143 +54,135 @@ class UpdateTaskCommand(BaseCommand):
         super().__init__("update", "更新一个已存在的任务")
 
     def configure_parser(self, parser: argparse.ArgumentParser) -> None:
-        """配置命令的参数解析器"""
-        parser.add_argument("task_id", help="要更新的 Task ID")
-        parser.add_argument("-t", "--title", help="新的任务标题")
-        parser.add_argument("-d", "--desc", help="新的任务描述")
-        parser.add_argument("-a", "--assignee", help="新的负责人 ('-' 表示清空)")
-        parser.add_argument("-l", "--label", nargs="+", help="设置新的标签列表 (会覆盖旧列表)")
-        parser.add_argument("--add-label", nargs="+", help="添加标签")
-        parser.add_argument("--remove-label", nargs="+", help="移除标签")
-        parser.add_argument("-s", "--status", help="新的状态")
+        """配置命令行参数解析器
+
+        Args:
+            parser: ArgumentParser 实例
+        """
+        parser.add_argument("task_id", type=str, help="要更新的任务ID")
+        parser.add_argument("--title", "-t", type=str, help="新的任务标题")
+        parser.add_argument("--description", "-d", type=str, help="新的任务描述")
+        parser.add_argument("--assignee", "-a", type=str, help="新的任务负责人")
+        parser.add_argument("--status", "-s", type=str, choices=[status.value for status in TaskStatus], help="新的任务状态")
+        parser.add_argument("--label", "-l", type=str, action="append", help="设置任务标签(可多次使用)")
+        parser.add_argument("--add-label", type=str, action="append", help="添加任务标签(可多次使用)")
+        parser.add_argument("--remove-label", type=str, action="append", help="移除任务标签(可多次使用)")
+        parser.add_argument("--no-diff", action="store_true", help="不显示任务更新前后的差异")
 
     def execute_with_args(self, args: argparse.Namespace) -> Dict[str, Any]:
         """使用解析后的参数执行命令"""
         return self.execute(
             task_id=args.task_id,
             title=args.title,
-            description=args.desc,
+            description=args.description,
             assignee=args.assignee,
             label=args.label,
             add_label=args.add_label,
             remove_label=args.remove_label,
             status=args.status,
+            no_diff=args.no_diff,
         )
 
     def execute(
         self,
-        task_id: str = typer.Argument(..., help="要更新的 Task ID"),
-        title: Optional[str] = typer.Option(None, "--title", "-t", help="新的任务标题"),
-        description: Optional[str] = typer.Option(None, "--desc", "-d", help="新的任务描述"),
-        assignee: Optional[str] = typer.Option(None, "--assignee", "-a", help="新的负责人 ('-' 表示清空)"),
-        label: Optional[List[str]] = typer.Option(None, "--label", "-l", help="设置新的标签列表 (会覆盖旧列表)"),
-        add_label: Optional[List[str]] = typer.Option(None, "--add-label", help="添加标签"),
-        remove_label: Optional[List[str]] = typer.Option(None, "--remove-label", help="移除标签"),
-        status: Optional[str] = typer.Option(None, "--status", "-s", help="新的状态")
-        # 关联更新建议通过 'task link' 命令处理，这里保持简单
+        task_id: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        assignee: Optional[str] = None,
+        label: Optional[List[str]] = None,
+        add_label: Optional[List[str]] = None,
+        remove_label: Optional[List[str]] = None,
+        status: Optional[str] = None,
+        no_diff: bool = False,
     ) -> Dict[str, Any]:
-        """执行更新任务的逻辑"""
-        logger.info(
-            f"执行更新任务命令: task_id={task_id}, title='{title}', assignee={assignee}, labels={label}, "
-            f"add_labels={add_label}, remove_labels={remove_label}, status={status}"
-        )
+        """执行任务更新命令
 
-        results = {
-            "status": "success",
-            "code": 0,
-            "message": "",
-            "data": None,
-            "meta": {"command": "task update", "args": locals()},
-        }
+        Args:
+            task_id: 要更新的任务ID
+            title: 新的任务标题
+            description: 新的任务描述
+            assignee: 新的任务负责人
+            label: 设置的标签列表
+            add_label: 要添加的标签列表
+            remove_label: 要移除的标签列表
+            status: 新的任务状态
+            no_diff: 是否不显示差异
 
-        update_data: Dict[str, Any] = {}
-        if title is not None:
-            update_data["title"] = title
-        if description is not None:
-            update_data["description"] = description
-        if assignee is not None:
-            # 允许传入 "-" 来清空负责人
-            update_data["assignee"] = None if assignee == "-" else assignee
-        if status is not None:
-            update_data["status"] = status
-        # 注意: label, add_label, remove_label 需要特殊处理
-
-        if not update_data and label is None and add_label is None and remove_label is None:
-            results["status"] = "info"
-            results["message"] = "没有提供需要更新的字段。"
-            if not self.is_agent_mode(locals()):
-                console.print("[yellow]提示:[/yellow] 没有提供需要更新的字段。")
-            return results
+        Returns:
+            包含更新结果的字典
+        """
+        self.logger.info(f"正在更新任务 {task_id}")
+        results = {"success": False, "message": "", "data": None}
 
         try:
-            session_factory = get_session_factory()
-            with session_factory() as session:
-                task_repo = TaskRepository(session)
+            # 1. 获取原始任务
+            task = self.task_service.get_task(task_id)
+            if not task:
+                raise ValueError(f"找不到任务 {task_id}")
 
-                # --- 处理标签更新 ---
-                current_labels = None
-                if label is not None or add_label or remove_label:
-                    task_to_update = task_repo.get_by_id(task_id)
-                    if not task_to_update:
-                        results["status"] = "error"
-                        results["code"] = 404
-                        results["message"] = f"更新失败：未找到 Task ID: {task_id}"
-                        if not self.is_agent_mode(locals()):
-                            console.print(f"[bold red]错误:[/bold red] 未找到 Task ID: {task_id}")
-                        return results
-                    current_labels = set(task_to_update.labels or [])
+            old_task = task.copy()
 
-                if label is not None:
-                    # 直接设置新标签，覆盖旧的
-                    update_data["labels"] = list(set(label))  # 去重
-                elif add_label or remove_label:
-                    # 添加或移除标签
-                    if current_labels is None:
-                        current_labels = set()  # Should not happen due to check above, but safeguard
-                    if add_label:
-                        current_labels.update(add_label)
-                    if remove_label:
-                        current_labels.difference_update(remove_label)
-                    update_data["labels"] = sorted(list(current_labels))
+            # 2. 验证状态
+            if status:
+                try:
+                    TaskStatus(status)  # 验证状态是否有效
+                except ValueError:
+                    raise ValueError(f"无效的任务状态: {status}")
+                task.status = status
 
-                # 执行更新
-                updated_task = task_repo.update_task(task_id, update_data)
+            # 3. 更新基本信息
+            if title is not None:
+                task.title = title
+            if description is not None:
+                task.description = description
+            if assignee is not None:
+                task.assignee = assignee if assignee != "-" else ""
 
-                if not updated_task:
-                    # update_task 内部可能返回 None 如果 task_id 不存在 (虽然上面检查过一次)
-                    results["status"] = "error"
-                    results["code"] = 404
-                    results["message"] = f"更新失败：未找到 Task ID: {task_id} (或更新时出错)"
-                    if not self.is_agent_mode(locals()):
-                        console.print(f"[bold red]错误:[/bold red] 更新失败，未找到 Task ID: {task_id}")
-                    return results
+            # 4. 处理标签更新
+            if label is not None:
+                task.labels = set(label)
+            else:
+                current_labels = set(task.labels or set())
+                if add_label:
+                    current_labels.update(add_label)
+                if remove_label:
+                    current_labels.difference_update(remove_label)
+                task.labels = current_labels
 
-                session.commit()  # 提交更改
+            # 5. 保存更新
+            self.task_service.update_task(task)
 
-                task_dict = updated_task.to_dict()
-                results["data"] = task_dict
-                results["message"] = f"成功更新任务 (ID: {updated_task.id})"
+            # 6. 显示差异
+            if not no_diff:
+                table = Table(title="任务更新差异", show_header=True)
+                table.add_column("字段", style="cyan")
+                table.add_column("原值", style="red")
+                table.add_column("新值", style="green")
 
-                # --- 控制台输出 (非 Agent 模式) ---
-                if not self.is_agent_mode(locals()):
-                    console.print(f"[bold green]成功:[/bold green] 已更新任务 (ID: {updated_task.id})")
-                    # 可以显示更新后的关键信息
-                    # console.print(f"  新标题: {updated_task.title}")
-                    # console.print(f"  新状态: {updated_task.status}")
+                for field in ["title", "description", "assignee", "status"]:
+                    old_value = getattr(old_task, field) or ""
+                    new_value = getattr(task, field) or ""
+                    if old_value != new_value:
+                        table.add_row(field, str(old_value), str(new_value))
 
-        except ValueError as ve:
-            logger.error(f"更新任务失败: {ve}", exc_info=True)
-            results["message"] = f"更新任务失败: {ve}"
-            console.print(f"[bold red]错误:[/bold red] {ve}")
+                # 处理标签差异
+                old_labels = set(old_task.labels or set())
+                new_labels = set(task.labels or set())
+                if old_labels != new_labels:
+                    table.add_row("labels", ", ".join(sorted(old_labels)) or "-", ", ".join(sorted(new_labels)) or "-")
+
+                self.console.print(Panel(table, title="更新成功"))
+
+            results["success"] = True
+            results["message"] = "任务更新成功"
+            results["data"] = task
+
+        except ValueError as e:
+            self.logger.error(f"更新任务失败: {str(e)}")
+            results["message"] = str(e)
         except Exception as e:
-            logger.error(f"更新任务时出错: {e}", exc_info=True)
-            # if 'session' in locals() and session.is_active:
-            #    session.rollback()
-            results["status"] = "error"
-            results["code"] = 500
-            results["message"] = f"更新任务时出错: {e}"
-            if not self.is_agent_mode(locals()):
-                console.print(f"[bold red]错误:[/bold red] {e}")
+            self.logger.error(f"更新任务时发生错误: {str(e)}", exc_info=True)
+            results["message"] = f"更新任务时发生错误: {str(e)}"
 
         return results
 
