@@ -39,18 +39,27 @@ class Task(Base):
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")
 
     def __init__(self, **kwargs):
-        """初始化Task，确保ID字段不为空"""
+        """初始化Task，确保ID字段不为空，并设置默认值"""
         # 确保ID字段
         if not kwargs.get("id"):
             kwargs["id"] = f"task_{uuid.uuid4().hex[:8]}"
 
-        # 确保时间戳
-        if not kwargs.get("created_at"):
-            kwargs["created_at"] = datetime.now().isoformat()
-        if not kwargs.get("updated_at"):
-            kwargs["updated_at"] = datetime.now().isoformat()
-
         super().__init__(**kwargs)
+
+        # 补充默认值（在调用父类初始化后检查实例属性）
+        if getattr(self, "status", None) is None:
+            self.status = "todo"
+        if getattr(self, "priority", None) is None:
+            self.priority = "medium"
+        if getattr(self, "estimated_hours", None) is None:
+            self.estimated_hours = 0
+        if getattr(self, "is_completed", None) is None:
+            self.is_completed = False
+
+        if getattr(self, "created_at", None) is None:
+            self.created_at = datetime.now().isoformat()
+        if getattr(self, "updated_at", None) is None:
+            self.updated_at = datetime.now().isoformat()
 
     def to_dict(self):
         """转换为字典"""

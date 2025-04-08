@@ -29,12 +29,10 @@ from src.cli.command import Command
 from src.cli.command_parser import CommandParser
 from src.cli.commands.db import DatabaseCommand
 from src.cli.commands.db.db_click import db as db_click_group
-from src.cli.commands.flow.flow_command import FlowCommand
+from src.cli.commands.flow.flow_click import flow as flow_click_group
 from src.cli.commands.help.help_command import HelpCommand  # Keep for now, might refactor later
-from src.cli.commands.memory import MemoryCommand  # Keep for now, might refactor later
+from src.cli.commands.memory.memory_click import memory as memory_click_group
 from src.cli.commands.roadmap.roadmap_click import roadmap as roadmap_click_group
-
-# from src.cli.commands.rule import RuleCommand # Remove old command import
 from src.cli.commands.rule.rule_click import rule as rule_click_group
 from src.cli.commands.status import StatusCommand  # Keep for now, might refactor later
 from src.cli.commands.task import task_app
@@ -54,13 +52,9 @@ logger = logging.getLogger(__name__)
 
 # 命令映射
 # Note: Typer app 'task' is handled specially in get_cli_app
-# Remove 'rule' from this dict as it's now handled directly as a click group
+# Remove 'rule', 'flow' and 'memory' from this dict as they're now handled directly as click groups
 COMMANDS: Dict[str, Type[Command]] = {
-    # "rule": RuleCommand, # Removed
-    "flow": FlowCommand,  # Keep for now
     "status": StatusCommand,  # Keep for now
-    # "task": task_app, # Handled separately below
-    "memory": MemoryCommand,
     "db": DatabaseCommand,
     "help": HelpCommand,
     "template": TemplateCommand,
@@ -97,6 +91,8 @@ def get_cli_app():
     cli.add_command(rule_click_group, name="rule")
     cli.add_command(roadmap_click_group, name="roadmap")
     cli.add_command(db_click_group, name="db")
+    cli.add_command(flow_click_group, name="flow")
+    cli.add_command(memory_click_group, name="memory")
 
     # Add the Typer app task_app (already converted to Click command)
     # 将 Typer 应用转换为 Click 命令并添加
@@ -125,11 +121,13 @@ def print_help():
         if issubclass(cmd_class, Command):
             print(f"  {cmd_name:<10} {cmd_class.get_help()}")  # Keep old help format for these for now
 
-    # Click automatically handles help for added groups/commands like rule and task
-    # Manually add help text for rule and task for consistency in this custom help output
+    # Click automatically handles help for added groups/commands
     print(f"  {'rule':<10} 规则管理命令 (使用 'vc rule --help' 查看子命令)")
-    # We might need to adjust if the default help isn't sufficient
+    print(f"  {'flow':<10} 工作流管理命令 (使用 'vc flow --help' 查看子命令)")
     print(f"  {'task':<10} 任务管理命令 (使用 'vc task --help' 查看子命令)")
+    print(f"  {'roadmap':<10} 路线图管理命令 (使用 'vc roadmap --help' 查看子命令)")
+    print(f"  {'db':<10} 数据库管理命令 (使用 'vc db --help' 查看子命令)")
+    print(f"  {'memory':<10} 知识库管理命令 (使用 'vc memory --help' 查看子命令)")
 
     print("\n用法:")
     print("  vibecopilot <命令> [参数]")

@@ -56,27 +56,34 @@ EXPECTED_SUBCOMMANDS = {
 
 def get_registered_commands():
     """获取当前已注册的所有命令"""
-    # 直接使用COMMANDS字典，其中包含了所有注册的命令类
-    return {cmd_name: cmd_class.get_help() for cmd_name, cmd_class in COMMANDS.items()}
+    cli = get_cli_app()
+    # 从click应用中获取命令
+    click_commands = {cmd.name: cmd.help for cmd in cli.commands.values()}
+
+    # 从旧式COMMANDS字典获取命令
+    old_commands = {cmd_name: cmd_class.get_help() for cmd_name, cmd_class in COMMANDS.items()}
+
+    # 合并两种命令
+    return {**click_commands, **old_commands}
 
 
 def get_registered_subcommands(command):
     """
     获取特定命令的子命令列表
-
-    由于命令系统架构变化，这个方法需要适应新的结构
     """
-    # 由于命令实际是在其_execute_impl方法中解析子命令
-    # 我们无法静态地获取子命令列表，因此这个测试在这里只是一个简单检查
-    # 实际项目中应该添加更直接的方式获取子命令
+    cli = get_cli_app()
+    cmd = cli.commands.get(command)
+    if not cmd:
+        return []
+
+    # 如果是click.Group，它有commands属性
+    if hasattr(cmd, "commands"):
+        return list(cmd.commands.keys())
 
     # 对于flow session特殊情况
     if command == "flow session":
-        # session子命令是特殊情况
         return ["list", "show", "create", "pause", "resume", "abort", "delete"]
 
-    # 假设每个命令类都有一个configure_parser方法，它会为此命令注册子命令
-    # 实际项目中，应该有更好的方式来查询子命令
     return EXPECTED_SUBCOMMANDS.get(command, [])
 
 

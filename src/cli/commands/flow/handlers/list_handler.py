@@ -36,24 +36,15 @@ def handle_list_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
         verbose = args.get("verbose", False)
         output_format = args.get("format", "text")
 
-        # 转换为 argparse.Namespace 对象
-        args_namespace = argparse.Namespace()
-        args_namespace.verbose = verbose
-        args_namespace.format = output_format
-        args_namespace.no_print = args.get("_agent_mode", False)
-
         # 获取工作流列表
-        result_dict = list_workflows(args_namespace)  # Pass the args_namespace to list_workflows
+        result_dict = list_workflows()  # No arguments needed
 
-        # 检查 list_workflows 的返回值
-        if not isinstance(result_dict, dict) or "workflows" not in result_dict:
-            logger.error(f"list_workflows 返回了意外的格式: {result_dict}")
-            result["message"] = "获取工作流列表时内部错误"
-            result["code"] = 500
-            return result
-
-        # 提取工作流列表
-        workflow_data = result_dict.get("workflows", [])
+        # 处理 list_workflows 的返回值
+        if isinstance(result_dict, dict) and "workflows" in result_dict:
+            workflow_data = result_dict["workflows"]
+        else:
+            # 如果返回的不是字典或没有workflows键，视为空列表
+            workflow_data = []
 
         if not workflow_data:
             result["status"] = "success"

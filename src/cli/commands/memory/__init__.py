@@ -4,6 +4,6 @@
 提供管理VibeCopilot知识库的命令。
 """
 
-from src.cli.commands.memory.memory_command import MemoryCommand
+from src.cli.commands.memory.memory_click import memory as memory_click_group
 
-__all__ = ["MemoryCommand"]
+__all__ = ["memory_click_group"]

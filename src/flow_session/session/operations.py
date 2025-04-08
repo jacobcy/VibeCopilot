@@ -15,8 +15,8 @@ from src.models.db import FlowSession, StageInstance, WorkflowDefinition
 
 def get_db_session():
     """获取数据库会话"""
-    engine = init_db()
-    SessionFactory = get_session_factory(engine)
+    init_db()  # 确保数据库已初始化
+    SessionFactory = get_session_factory()
     return SessionFactory()
 
 
@@ -53,9 +53,7 @@ def get_session(session_id: str) -> Optional[FlowSession]:
         return manager.get_session(session_id)
 
 
-def list_sessions(
-    status: Optional[str] = None, workflow_id: Optional[str] = None
-) -> List[FlowSession]:
+def list_sessions(status: Optional[str] = None, workflow_id: Optional[str] = None) -> List[FlowSession]:
     """列出会话的便捷函数
 
     Args:
@@ -217,12 +215,8 @@ def get_session_progress(session_id: str) -> Dict[str, Any]:
                 "id": stage_id,
                 "name": stage_name,
                 "status": stage_instance.status,
-                "started_at": stage_instance.started_at.isoformat()
-                if stage_instance.started_at
-                else None,
-                "completed_at": stage_instance.completed_at.isoformat()
-                if stage_instance.completed_at
-                else None,
+                "started_at": stage_instance.started_at.isoformat() if stage_instance.started_at else None,
+                "completed_at": stage_instance.completed_at.isoformat() if stage_instance.completed_at else None,
             }
 
             if stage_instance.status == "COMPLETED":
