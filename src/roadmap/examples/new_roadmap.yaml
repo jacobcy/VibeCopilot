@@ -1,0 +1,24 @@
+metadata:
+  title: 新测试路线图
+  description: 用于测试创建新路线图功能
+  version: 1.0
+
+milestones:
+  - title: 测试里程碑1
+    description: 新路线图的第一个里程碑
+    status: planned
+
+  - title: 测试里程碑2
+    description: 新路线图的第二个里程碑
+    status: in_progress
+
+tasks:
+  - title: 测试任务1
+    description: 新路线图的第一个任务
+    status: todo
+    priority: medium
+
+  - title: 测试任务2
+    description: 新路线图的第二个任务
+    status: in_progress
+    priority: high

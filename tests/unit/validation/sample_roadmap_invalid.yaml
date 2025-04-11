@@ -1,0 +1,22 @@
+metadata:
+  title: 无效路线图示例
+  description: 缺少epic-story-task结构的无效路线图
+  version: 1.0
+  author: 测试用户
+  created_at: '2023-05-01'
+  updated_at: '2023-05-15'
+
+# 只有milestones，没有epics，应该验证失败
+milestones:
+  - title: 版本1.0发布
+    description: 第一个正式版本
+    status: planned
+    tasks:
+      - title: 完成核心功能
+        description: 确保所有核心功能可用
+        status: in_progress
+        priority: high
+      - title: 发布文档
+        description: 完成用户文档
+        status: todo
+        priority: medium

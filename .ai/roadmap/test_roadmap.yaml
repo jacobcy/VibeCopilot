@@ -1,0 +1,7 @@
+metadata:
+  title: LLM解析失败
+  description: 无法从LLM响应中提取有效数据，请查看日志和调试文件
+  version: '0.1'
+  error_type: <class 'dict'>
+  debug_file: /tmp/roadmap_llm_raw_response.json
+epics: []

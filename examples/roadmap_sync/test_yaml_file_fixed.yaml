@@ -1,0 +1,20 @@
+metadata:
+  title: 测试路线图
+  version: '1.0'
+epics:
+- title: 未分类
+  stories:
+  - title: 故事1
+    tasks:
+    - title: 故事1的默认任务
+      status: todo
+  - title: 故事2
+    tasks:
+    - title: 故事2的默认任务
+      status: todo
+- title: 里程碑1
+  stories:
+  - title: 任务1
+    tasks:
+    - title: 任务1
+      status: todo

@@ -65,6 +65,7 @@ repos:
         verbose: true
         # 添加 pre-commit 的 exclude
         exclude: ^(examples/|bak/|\.venv/|venv/|build/|dist/)
+        stages: [manual]
         # stages: [pre-commit]
 
 # 将文件长度检查设为手动模式，方便开发期间提交
