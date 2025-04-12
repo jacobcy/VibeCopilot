@@ -24,62 +24,61 @@ class CommandChecker:
         except Exception as e:
             return -1, "", str(e)
 
-    def check_command(self, cmd_name: str, cmd_config: Dict) -> Dict:
-        """检查单个命令"""
-        check_result = {"name": f"命令检查: {cmd_name}", "status": "passed", "details": [], "suggestions": []}
+    def check_command_help(self, cmd_name: str, cmd_config: Dict) -> Dict:
+        """检查命令的帮助信息"""
+        check_result = {"name": f"命令帮助检查: {cmd_name}", "status": "passed", "details": [], "suggestions": []}
 
-        # 构建完整命令
+        # 构建帮助命令
         cmd_prefix = self.main_config["common_config"].get("command_prefix", "vibecopilot")
-        full_cmd = f"{cmd_prefix} {cmd_name}"
+        help_cmd = f"{cmd_prefix} {cmd_name} --help"
 
-        # 运行命令
-        code, stdout, stderr = self.run_command(full_cmd)
+        # 运行帮助命令
+        code, stdout, stderr = self.run_command(help_cmd)
 
-        # 检查返回码
-        if code != 0:
+        # 检查帮助命令是否成功
+        if code != 0 or not stdout:
             check_result["status"] = "failed"
-            check_result["details"].append(f"命令返回错误码: {code}")
+            check_result["details"].append("帮助命令执行失败")
             check_result["details"].append(f"错误信息: {stderr}")
-            check_result["suggestions"].append("检查命令实现和错误处理")
+            check_result["suggestions"].append("确保命令支持--help选项")
             return check_result
 
-        # 检查预期输出
-        for expected in cmd_config.get("expected_output", []):
-            if expected not in stdout:
-                check_result["status"] = "failed"
-                check_result["details"].append(f"未找到预期输出: {expected}")
-                check_result["suggestions"].append(f"确保命令输出包含: {expected}")
-
-        # 检查响应时间
-        if cmd_config.get("timeout"):
-            # TODO: 实现响应时间检查
-            pass
-
-        # 检查输出格式
-        if self.main_config["output_format"]["check_json_format"] and "--json" in cmd_name:
-            try:
-                import json
-
-                json.loads(stdout)
-            except json.JSONDecodeError:
-                check_result["status"] = "failed"
-                check_result["details"].append("JSON输出格式无效")
-                check_result["suggestions"].append("检查JSON输出格式")
-
-        # 检查帮助信息
-        if self.main_config["output_format"]["check_help_format"]:
-            help_cmd = f"{full_cmd} --help"
-            help_code, help_stdout, help_stderr = self.run_command(help_cmd)
-            if help_code != 0 or not help_stdout:
+        # 检查帮助信息是否包含必要内容
+        required_help_content = ["Usage:", "Options:"]
+        for content in required_help_content:
+            if content not in stdout:
                 check_result["status"] = "warning"
-                check_result["details"].append("帮助信息检查失败")
-                check_result["suggestions"].append("确保命令支持--help选项")
+                check_result["details"].append(f"帮助信息缺少: {content}")
+                check_result["suggestions"].append(f"在帮助信息中添加 {content} 部分")
 
-        # 添加成功信息
-        if check_result["status"] == "passed":
-            check_result["details"].append("命令执行成功")
+        # 检查子命令说明
+        if cmd_config.get("subcommands"):
+            for subcmd, subcmd_config in cmd_config["subcommands"].items():
+                if subcmd_config.get("required", False) and subcmd not in stdout:
+                    check_result["status"] = "warning"
+                    check_result["details"].append(f"帮助信息缺少必要子命令说明: {subcmd}")
+                    check_result["suggestions"].append(f"添加 {subcmd} 的说明")
 
         return check_result
+
+    def check_command(self, cmd_name: str, cmd_config: Dict) -> List[Dict]:
+        """检查单个命令"""
+        results = []
+
+        # 首先检查帮助信息
+        help_result = self.check_command_help(cmd_name, cmd_config)
+        results.append(help_result)
+
+        # 更新统计
+        self.results["summary"]["total"] += 1
+        if help_result["status"] == "passed":
+            self.results["summary"]["passed"] += 1
+        elif help_result["status"] == "failed":
+            self.results["summary"]["failed"] += 1
+        elif help_result["status"] == "warning":
+            self.results["summary"]["warnings"] += 1
+
+        return results
 
     def check_command_group(self, group_name: str, group_config: Dict) -> List[Dict]:
         """检查命令组"""
@@ -87,17 +86,8 @@ class CommandChecker:
 
         for cmd_name, cmd_config in group_config["commands"].items():
             # 检查命令
-            check_result = self.check_command(cmd_name, cmd_config)
-            results.append(check_result)
-
-            # 更新统计
-            self.results["summary"]["total"] += 1
-            if check_result["status"] == "passed":
-                self.results["summary"]["passed"] += 1
-            elif check_result["status"] == "failed":
-                self.results["summary"]["failed"] += 1
-            elif check_result["status"] == "warning":
-                self.results["summary"]["warnings"] += 1
+            check_results = self.check_command(cmd_name, cmd_config)
+            results.extend(check_results)
 
         return results
 

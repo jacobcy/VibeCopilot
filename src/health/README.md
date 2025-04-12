@@ -2,7 +2,14 @@
 
 ## 模块说明
 
-本模块提供了VibeCopilot系统的健康状态检查功能，可以检查系统各个组件的运行状态、完整性和性能。
+本模块提供了VibeCopilot系统的健康状态检查功能，是一个轻量级的系统完整性检查工具。主要用于：
+
+1. 验证系统命令和参数的存在性
+2. 检查基础组件的可用性
+3. 确保配置文件的完整性
+4. 验证文档结构的完整性
+
+注意：本工具不是功能测试工具，不替代 pytest 等测试框架。具体的功能性测试、单元测试和集成测试仍需要使用 pytest 进行。
 
 ## 模块结构
 
@@ -32,17 +39,27 @@ health/
 ### 命令行使用
 
 ```bash
+# 基本命令格式
+python -m src.health.cli check [OPTIONS]
+
+# 可用选项：
+# --module [system|command|database|all]  选择要检查的模块
+# --category TEXT                        命令类别（仅用于命令检查）
+# --verbose                             显示详细信息
+
+# 使用示例：
+
 # 运行全部检查
-python -m src.health.cli check
+python -m src.health.cli check --module all
 
-# 检查特定模块
-python -m src.health.cli check --module database
+# 仅检查命令模块
+python -m src.health.cli check --module command
 
-# 生成详细的Markdown报告
-python -m src.health.cli check --verbose --format markdown
+# 检查特定类别的命令
+python -m src.health.cli check --module command --category flow
 
-# 使用自定义配置文件
-python -m src.health.cli check --config path/to/config.yaml
+# 显示详细检查信息
+python -m src.health.cli check --verbose
 ```
 
 ### 配置文件
@@ -86,3 +103,10 @@ documentation:
 1. 检查操作应该是只读的，不应修改任何系统状态
 2. 配置文件中的路径应使用相对于项目根目录的路径
 3. 检查超时时间默认为30秒，可在配置中调整
+4. 本工具仅进行命令完整性和基础可用性检查，不涉及具体业务逻辑测试
+5. 功能性测试应使用 pytest 进行，包括：
+   - 单元测试
+   - 集成测试
+   - 端到端测试
+   - 性能测试
+6. 建议将本工具作为 CI/CD 流程的预检步骤，在主要测试之前运行

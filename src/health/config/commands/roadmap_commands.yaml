@@ -1,0 +1,334 @@
+# Roadmap命令组配置
+
+commands:
+  "roadmap sync":
+    description: "从GitHub同步路线图数据"
+    subcommands:
+      "--repository":
+        description: "GitHub仓库名称"
+        type: "string"
+        required: true
+      "--theme":
+        description: "GitHub项目主题标签"
+        type: "string"
+      "--operation":
+        description: "同步操作类型"
+        values: ["push", "pull"]
+        default: "pull"
+      "--roadmap":
+        description: "指定路线图ID"
+        type: "string"
+      "--force":
+        description: "强制同步，忽略冲突"
+        type: "flag"
+      "--verbose":
+        description: "显示详细输出"
+        type: "flag"
+    expected_output: ["同步完成"]
+    timeout: 30
+    critical: true
+
+  "roadmap switch":
+    description: "切换活动路线图"
+    subcommands:
+      "roadmap_id":
+        description: "路线图ID"
+        type: "string"
+        required: false
+      "--show":
+        description: "只显示当前活动路线图"
+        type: "flag"
+      "--clear":
+        description: "清除当前活动路线图设置"
+        type: "flag"
+    expected_output: ["已切换路线图", "当前活动路线图"]
+    timeout: 5
+    critical: true
+
+  "roadmap list":
+    description: "列出路线图元素或所有路线图"
+    subcommands:
+      "--all":
+        description: "列出所有路线图而非当前路线图中的元素"
+        type: "flag"
+      "--type":
+        description: "元素类型"
+        values: ["all", "milestone", "story", "task"]
+        default: "all"
+      "--status":
+        description: "按状态筛选"
+        type: "string"
+      "--assignee":
+        description: "按负责人筛选"
+        type: "string"
+      "--labels":
+        description: "按标签筛选，多个标签用逗号分隔"
+        type: "string"
+      "--detail":
+        description: "显示详细信息"
+        type: "flag"
+      "--format":
+        description: "输出格式"
+        values: ["text", "json", "table"]
+        default: "text"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["路线图列表"]
+    timeout: 10
+    critical: true
+
+  "roadmap create":
+    description: "创建新的路线图元素"
+    subcommands:
+      "type":
+        description: "元素类型"
+        values: ["milestone", "epic", "story"]
+        required: true
+      "title":
+        description: "元素标题"
+        type: "string"
+        required: true
+      "--epic":
+        description: "所属史诗ID (用于story)"
+        type: "string"
+      "--description":
+        description: "详细描述"
+        type: "string"
+      "--assignee":
+        description: "指派给用户"
+        type: "string"
+      "--labels":
+        description: "标签列表，用逗号分隔"
+        type: "string"
+      "--priority":
+        description: "优先级"
+        values: ["high", "medium", "low"]
+    expected_output: ["创建成功"]
+    timeout: 10
+    critical: true
+
+  "roadmap update":
+    description: "更新路线图元素状态"
+    subcommands:
+      "type":
+        description: "元素类型"
+        values: ["milestone", "story", "task"]
+        required: true
+      "id":
+        description: "元素ID"
+        type: "string"
+        required: true
+      "status":
+        description: "新状态"
+        type: "string"
+        required: true
+      "--sync":
+        description: "同步到GitHub"
+        type: "flag"
+      "--comment":
+        description: "更新说明"
+        type: "string"
+      "--assignee":
+        description: "更新指派人"
+        type: "string"
+      "--labels":
+        description: "更新标签（用逗号分隔）"
+        type: "string"
+    expected_output: ["更新成功"]
+    timeout: 10
+    critical: true
+
+  "roadmap story":
+    description: "管理路线图故事"
+    subcommands:
+      "story_id":
+        description: "故事ID"
+        type: "string"
+        required: false
+      "--title":
+        description: "故事标题"
+        type: "string"
+      "--milestone":
+        description: "所属里程碑ID"
+        type: "string"
+      "--description":
+        description: "故事描述"
+        type: "string"
+      "--priority":
+        description: "优先级"
+        values: ["P0", "P1", "P2", "P3"]
+      "--assignee":
+        description: "指派给用户"
+        type: "string"
+      "--labels":
+        description: "标签列表，用逗号分隔"
+        type: "string"
+      "--status":
+        description: "更新状态"
+        values: ["not_started", "in_progress", "completed", "blocked"]
+      "--comment":
+        description: "状态变更说明"
+        type: "string"
+      "--format":
+        description: "输出格式"
+        values: ["json", "text", "table"]
+        default: "text"
+      "--delete":
+        description: "删除故事"
+        type: "flag"
+      "--force":
+        description: "强制删除，不请求确认"
+        type: "flag"
+    expected_output: ["故事详情", "更新成功", "删除成功"]
+    timeout: 10
+    critical: true
+
+  "roadmap validate":
+    description: "验证路线图YAML文件"
+    subcommands:
+      "source":
+        description: "源文件路径"
+        type: "string"
+        required: true
+      "--fix":
+        description: "自动修复格式问题"
+        type: "flag"
+      "--output":
+        description: "修复后输出的文件路径"
+        type: "string"
+      "--template":
+        description: "使用自定义模板验证"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+      "--import":
+        description: "验证通过后导入路线图"
+        type: "flag"
+      "--roadmap-id":
+        description: "导入时指定路线图ID"
+        type: "string"
+    expected_output: ["验证通过", "验证失败"]
+    timeout: 15
+    critical: true
+
+  "roadmap import":
+    description: "导入路线图YAML文件"
+    subcommands:
+      "source":
+        description: "源文件路径"
+        type: "string"
+        required: true
+      "--roadmap-id":
+        description: "现有路线图ID"
+        type: "string"
+      "--fix":
+        description: "自动修复格式问题"
+        type: "flag"
+      "--activate":
+        description: "导入后设为当前活动路线图"
+        type: "flag"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["导入成功"]
+    timeout: 20
+    critical: true
+
+  "roadmap show":
+    description: "查看路线图详情"
+    subcommands:
+      "--id":
+        description: "路线图ID"
+        type: "string"
+      "--milestone":
+        description: "里程碑ID"
+        type: "string"
+      "--task":
+        description: "任务ID"
+        type: "string"
+      "--health":
+        description: "显示健康状态检查"
+        type: "flag"
+      "--format":
+        description: "输出格式"
+        values: ["json", "text", "table"]
+        default: "table"
+    expected_output: ["路线图详情"]
+    timeout: 10
+    critical: true
+
+  "roadmap export":
+    description: "导出路线图为YAML"
+    subcommands:
+      "--id":
+        description: "路线图ID"
+        type: "string"
+      "--output":
+        description: "输出文件路径"
+        type: "string"
+        required: true
+      "--milestone":
+        description: "只导出特定里程碑及其任务"
+        type: "string"
+      "--template":
+        description: "使用特定模板格式"
+        type: "string"
+    expected_output: ["导出成功"]
+    timeout: 15
+    critical: true
+
+  "roadmap delete":
+    description: "删除路线图或元素"
+    subcommands:
+      "type":
+        description: "删除类型"
+        values: ["roadmap", "milestone", "task"]
+        required: true
+      "id":
+        description: "要删除的ID"
+        type: "string"
+        required: true
+      "--force":
+        description: "强制删除，不请求确认"
+        type: "flag"
+      "--cascade":
+        description: "级联删除关联元素"
+        type: "flag"
+    expected_output: ["删除成功"]
+    timeout: 10
+    critical: true
+
+  "roadmap plan":
+    description: "互动式路线图规划"
+    subcommands:
+      "--id":
+        description: "要修改的路线图ID"
+        type: "string"
+      "--template":
+        description: "使用特定模板开始"
+        type: "string"
+      "--from":
+        description: "从YAML文件开始"
+        type: "string"
+      "--interactive":
+        description: "始终使用交互式模式"
+        type: "flag"
+    expected_output: ["规划完成"]
+    timeout: 30
+    critical: true
+
+# 路线图命令组配置
+group_config:
+  max_concurrent_roadmaps: 5    # 最大并发路线图数
+  auto_backup: true            # 自动备份
+  sync_interval: 3600         # GitHub同步间隔（秒）
+  default_format: "table"     # 默认输出格式
+
+# 验证配置
+validation:
+  check_dependencies: true    # 检查依赖关系
+  validate_status: true      # 验证状态转换
+  check_permissions: true    # 检查权限
+  enforce_naming: true       # 强制命名规范

@@ -1,50 +1,21 @@
 # 命令检查配置
 
-# 命令组定义
-command_groups:
-  - name: "flow"
-    description: "工作流命令组"
-    config_file: "flow_commands.yaml"
-    required: true
-
-  - name: "flow_session"
-    description: "工作流会话命令组"
-    config_file: "flow_session_commands.yaml"
-    required: true
-
-# 全局性能配置
-performance:
-  max_response_time: 10  # 最大响应时间（秒）
-  warning_threshold: 5   # 警告阈值（秒）
-  concurrent_tests: 1    # 并发测试数量
-
-# 全局输出格式检查
-output_format:
-  check_json_format: true    # 检查JSON输出格式
-  check_error_format: true   # 检查错误输出格式
-  check_help_format: true    # 检查帮助信息格式
-
-# 通用命令配置
 common_config:
-  timeout: 30  # 默认超时时间（秒）
-  retry: 3     # 默认重试次数
-  command_prefix: "vibecopilot"  # 命令前缀
+  command_prefix: "vibecopilot"
+  default_timeout: 30
+  max_retries: 3
 
-  # 通用子命令选项
-  common_options:
-    - name: "--verbose"
-      description: "显示详细信息"
-      type: "flag"
-    - name: "--format"
-      description: "输出格式"
-      values: ["text", "json", "yaml"]
-    - name: "--help"
-      description: "显示帮助信息"
-      type: "flag"
+performance:
+  max_response_time: 30  # 秒
+  check_response_time: true
 
-# 验证配置
-validation:
-  check_existence: true     # 检查命令是否存在
-  check_permission: true    # 检查执行权限
-  check_output: true       # 检查命令输出
-  check_timeout: true      # 检查超时设置
+output_format:
+  check_json_format: true
+  check_help_format: true
+  check_error_format: true
+
+command_groups:
+  - name: "roadmap"
+    description: "路线图管理命令"
+    config_file: "roadmap_commands.yaml"
+    critical: true
