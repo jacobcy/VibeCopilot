@@ -136,7 +136,7 @@ def search(query, type, format, verbose, agent_mode):
         click.echo(f"错误: {message}", err=True)
 
 
-@memory.command()
+@memory.command(name="import")
 @click.option("--source-dir", required=True, help="源文档目录")
 @click.option("--recursive", is_flag=True, help="递归导入子目录")
 @click.option("--verbose", "-v", is_flag=True, help="提供详细输出")
