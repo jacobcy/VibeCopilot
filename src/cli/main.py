@@ -10,17 +10,14 @@
 import logging
 import os
 import sys
-from typing import Dict, Type, Union
+from typing import Dict, Type
 
 import click
 from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.table import Table
 
 from src.cli.command import Command
 from src.cli.commands.db.db_click import db as db_click_group
-from src.cli.commands.flow.flow_click import flow as flow_click_group
+from src.cli.commands.flow.flow_main import flow as flow_click_group
 from src.cli.commands.help.help_click import help as help_command
 from src.cli.commands.memory.memory_click import memory as memory_click_group
 from src.cli.commands.roadmap.roadmap_click import roadmap as roadmap_click_group
@@ -71,7 +68,9 @@ def print_version(ctx, param, value):
     """打印版本信息"""
     if not value or ctx.resilient_parsing:
         return
-    console.print(Panel.fit("[bold green]VibeCopilot[/bold green] [cyan]v0.1.0[/cyan]\n" "您的AI辅助开发工具", title="版本信息"))
+    from src import __version__
+
+    console.print(f"[bold]VibeCopilot[/bold] version: [bold blue]{__version__}[/bold blue]")
     ctx.exit()
 
 
@@ -101,27 +100,15 @@ def get_cli_app():
 
 def print_error_message(command: str):
     """打印错误信息"""
-    console.print(f"\n[bold red]错误:[/bold red] 未知命令 '{command}'")
-    console.print("\n[yellow]可用命令:[/yellow]")
+    console.print(f"\n[bold red]错误:[/bold red] 未知命令: {command}")
+    console.print("\n可用命令:")
 
-    # 创建表格
-    table = Table(show_header=False, box=None)
-    table.add_column("Category", style="cyan")
-    table.add_column("Commands", style="green")
-
-    # 按分组显示命令
-    for category, commands in COMMAND_GROUPS.items():
-        cmd_list = []
+    for group, commands in COMMAND_GROUPS.items():
+        console.print(f"\n[bold]{group}[/bold]")
         for cmd in commands:
             if cmd in COMMANDS:
-                doc = COMMANDS[cmd].__doc__ or "暂无描述"
-            else:
-                doc = "暂无描述"
-            cmd_list.append(f"{cmd:<12} {doc.split('\n')[0]}")
-        table.add_row(f"[bold]{category}[/bold]", "\n".join(cmd_list))
-
-    console.print(table)
-    console.print("\n使用 [bold]vibecopilot <命令> --help[/bold] 查看具体命令的帮助信息")
+                cmd_class = COMMANDS[cmd]
+                console.print(f"  {cmd:<10} {cmd_class.__doc__ or '暂无描述'}")
 
 
 def main():

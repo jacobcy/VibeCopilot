@@ -9,7 +9,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from src.workflow.workflow_operations import (
+from src.workflow.operations import (
     create_workflow,
     delete_workflow,
     get_workflow,

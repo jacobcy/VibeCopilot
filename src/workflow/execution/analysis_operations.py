@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from src.workflow.execution.execution_operations import get_workflow_executions
-from src.workflow.workflow_operations import get_workflow, list_workflows
+from src.workflow.operations import get_workflow, list_workflows
 
 logger = logging.getLogger(__name__)
 

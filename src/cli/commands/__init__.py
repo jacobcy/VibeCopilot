@@ -5,13 +5,13 @@ VibeCopilot CLI命令包
 """
 
 from src.cli.commands.db.db_click import db
-from src.cli.commands.flow.flow_click import flow
+from src.cli.commands.flow.flow_main import flow
 from src.cli.commands.help.help_click import help
 from src.cli.commands.memory.memory_click import memory
 from src.cli.commands.roadmap.roadmap_click import roadmap
 from src.cli.commands.rule.rule_click import rule
 from src.cli.commands.status.status_click import status
-from src.cli.commands.task import task_app as task
+from src.cli.commands.task.task_click import task
 from src.cli.commands.template.template_click import template
 
 __all__ = [

@@ -13,7 +13,7 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from src.workflow.flow_cmd.workflow_runner import run_workflow_stage
-from src.workflow.workflow_operations import (  # execute_workflow, # 已移除，由flow_session处理
+from src.workflow.operations import (  # execute_workflow, # 已移除，由flow_session处理
     create_workflow,
     delete_workflow,
     list_workflows,

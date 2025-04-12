@@ -11,6 +11,7 @@ class CheckResult:
     details: List[str]
     suggestions: List[str]
     metrics: Dict[str, Any]
+    command_results: Dict[str, Any] = None  # 命令检查的详细结果
 
 
 class BaseChecker:

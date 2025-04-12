@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 from src.db import get_session_factory
 from src.flow_session.session.manager import FlowSessionManager
 from src.flow_session.stage.manager import StageInstanceManager
-from src.workflow.workflow_operations import validate_workflow_files
+from src.workflow.operations import validate_workflow_files
 
 logger = logging.getLogger(__name__)
 

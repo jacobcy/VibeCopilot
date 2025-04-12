@@ -37,17 +37,42 @@ class HealthCheckCLI:
 
     def run_command_check(self, category: Optional[str] = None, verbose: bool = False) -> CheckResult:
         """运行命令检查"""
-        # 加载主配置
-        config = self.load_config("commands/config.yaml")
+        try:
+            # 加载主配置
+            config = self.load_config("commands/config.yaml")
+            if verbose:
+                group_count = len(config.get("command_groups", []))
+                click.echo(f"已加载主配置文件: {group_count} 个命令组")
 
-        # 加载所有命令组配置
-        command_configs = {}
-        for group in config["command_groups"]:
-            group_config = self.load_config(f"commands/{group['config_file']}")
-            command_configs[group["name"]] = group_config
+            # 加载所有命令组配置
+            command_configs = {}
+            for group in config.get("command_groups", []):
+                try:
+                    group_name = group.get("name")
+                    config_file = group.get("config_file")
+                    if not group_name or not config_file:
+                        raise ValueError(f"命令组配置不完整: {group}")
 
-        checker = CommandChecker(config, command_configs, category=category, verbose=verbose)
-        return checker.check()
+                    if verbose:
+                        click.echo(f"正在加载命令组配置: {group_name} ({config_file})")
+
+                    group_config = self.load_config(f"commands/{config_file}")
+                    command_configs[group_name] = group_config
+
+                    if verbose:
+                        click.echo(f"成功加载命令组 {group_name} 的配置")
+                except Exception as e:
+                    raise ValueError(f"加载命令组 {group_name} 配置失败: {str(e)}")
+
+            checker = CommandChecker(config, command_configs, category=category, verbose=verbose)
+            return checker.check()
+        except Exception as e:
+            error_msg = f"命令检查失败: {str(e)}"
+            if verbose:
+                import traceback
+
+                error_msg += f"\n详细错误信息:\n{traceback.format_exc()}"
+            raise Exception(error_msg)
 
     def run_database_check(self, verbose: bool = False) -> CheckResult:
         """运行数据库检查"""
@@ -77,7 +102,7 @@ class HealthCheckCLI:
                     if key in total_metrics:
                         total_metrics[key] += value
 
-        report.append(f"## 整体状态: {overall_status.upper()}")
+        report.append(f"\n## 整体状态: {overall_status.upper()}")
 
         report.append("\n## 统计摘要")
         report.append(f"- 总检查项: {total_metrics['total']}")
@@ -89,6 +114,38 @@ class HealthCheckCLI:
         for module_name, check_result in results.items():
             report.append(f"\n### {module_name}")
             report.append(f"状态: {check_result.status.upper()}")
+
+            if module_name == "命令检查" and hasattr(check_result, "command_results"):
+                report.append("\n命令组检查详情:")
+                for group_name, group_result in check_result.command_results.items():
+                    report.append(f"\n#### {group_name}")
+                    if group_result.get("status") == "failed":
+                        report.append("❌ 失败")
+                        if "errors" in group_result:
+                            report.append("错误详情:")
+                            for error in group_result["errors"]:
+                                report.append(f"- {error}")
+                    elif group_result.get("status") == "warning":
+                        report.append("⚠️ 警告")
+                        if "warnings" in group_result:
+                            report.append("警告详情:")
+                            for warning in group_result["warnings"]:
+                                report.append(f"- {warning}")
+                    else:
+                        report.append("✅ 通过")
+
+                    if "commands" in group_result:
+                        report.append("\n检查的命令:")
+                        for cmd, cmd_result in group_result["commands"].items():
+                            status_icon = "✅" if cmd_result.get("status") == "passed" else "❌"
+                            report.append(f"{status_icon} {cmd}")
+                            if cmd_result.get("status") != "passed":
+                                if "errors" in cmd_result:
+                                    for error in cmd_result["errors"]:
+                                        report.append(f"  - 错误: {error}")
+                                if "warnings" in cmd_result:
+                                    for warning in cmd_result["warnings"]:
+                                        report.append(f"  - 警告: {warning}")
 
             if check_result.details:
                 report.append("\n详细信息:")

@@ -6,12 +6,15 @@
 提供工作流的统计分析和进度跟踪功能。
 """
 
+import logging
 import os
 from typing import Any, Dict, List, Optional
 
 from src.core.config import get_config
 from src.utils.file_utils import read_json_file
-from src.workflow.workflow_operations import get_workflow, list_workflows
+from src.workflow.operations import get_workflow, list_workflows
+
+logger = logging.getLogger(__name__)
 
 
 def get_workflow_executions(workflow_id: str) -> List[Dict[str, Any]]:

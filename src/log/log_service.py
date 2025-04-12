@@ -22,8 +22,16 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # 配置日志文件路径 - 按日期命名
 log_file = os.path.join(LOG_DIR, f"vibe-log-{datetime.datetime.now().strftime('%Y-%m-%d')}.log")
 
+# 根据环境变量设置日志级别
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+log_level = getattr(logging, log_level, logging.INFO)
+
 # 配置日志格式
-logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.FileHandler(log_file), logging.StreamHandler()])  # 同时输出到控制台
+logging.basicConfig(
+    level=log_level,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler(log_file), logging.StreamHandler() if log_level <= logging.INFO else logging.NullHandler()],
+)
 
 logger = logging.getLogger("vibe-log")
 

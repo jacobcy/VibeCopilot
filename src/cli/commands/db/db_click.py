@@ -13,15 +13,10 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.commands.db.create_handler import create
-from src.cli.commands.db.delete_handler import delete
-from src.cli.commands.db.init_handler import init_db
-from src.cli.commands.db.list_handler import list_db
-from src.cli.commands.db.query_handler import query
-from src.cli.commands.db.show_handler import show_db
-from src.cli.commands.db.update_handler import update
+from src.cli.commands.db.handlers.init_handler import init_db
+from src.cli.commands.db.handlers.list_handler import list_db
+from src.cli.commands.db.handlers.show_handler import show_db
 from src.cli.decorators import pass_service
-from src.db.service import DatabaseService
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -49,7 +44,7 @@ def init_db(service, verbose: bool, force: bool) -> None:
         args_namespace = argparse.Namespace(**args_dict)
 
         # 实例化并执行InitHandler
-        from src.cli.commands.db.init_handler import InitHandler
+        from src.cli.commands.db.handlers.init_handler import InitHandler
 
         init_handler = InitHandler()
         return init_handler.handle(args_dict)
@@ -72,7 +67,7 @@ def list_db(service, type: str, verbose: bool, format: str) -> None:
         logger.debug(f"Click命令收到数据库服务 (ID: {id(service)})")
 
         # 临时使用旧的 handler，后续会重构
-        from src.cli.commands.db.list_handler import ListHandler
+        from src.cli.commands.db.handlers.list_handler import ListHandler
 
         list_handler = ListHandler()
         list_handler.db_service = service
@@ -94,7 +89,7 @@ def show_db(service, type: str, id: str, format: str) -> None:
         args_dict = {"type": type, "id": id, "format": format, "service": service}
 
         # 实例化并执行ShowHandler
-        from src.cli.commands.db.show_handler import ShowHandler
+        from src.cli.commands.db.handlers.show_handler import ShowHandler
 
         show_handler = ShowHandler()
         return show_handler.handle(args_dict)
@@ -116,7 +111,7 @@ def query_db(service, type: str, id: Optional[str] = None, query: Optional[str] 
         args_dict = {"type": type, "id": id, "query": query, "format": format, "verbose": verbose, "service": service}
 
         # 实例化并执行QueryHandler
-        from src.cli.commands.db.query_handler import QueryHandler
+        from src.cli.commands.db.handlers.query_handler import QueryHandler
 
         query_handler = QueryHandler()
         return query_handler.handle(args_dict)
@@ -136,7 +131,7 @@ def create_db(service, type: str, data: str, verbose: bool = False) -> None:
         args_dict = {"type": type, "data": data, "verbose": verbose, "service": service}
 
         # 实例化并执行CreateHandler
-        from src.cli.commands.db.create_handler import CreateHandler
+        from src.cli.commands.db.handlers.create_handler import CreateHandler
 
         create_handler = CreateHandler()
         return create_handler.handle(args_dict)
@@ -157,7 +152,7 @@ def update_db(service, type: str, id: str, data: str, verbose: bool = False) -> 
         args_dict = {"type": type, "id": id, "data": data, "verbose": verbose, "service": service}
 
         # 实例化并执行UpdateHandler
-        from src.cli.commands.db.update_handler import UpdateHandler
+        from src.cli.commands.db.handlers.update_handler import UpdateHandler
 
         update_handler = UpdateHandler()
         return update_handler.handle(args_dict)
@@ -178,7 +173,7 @@ def delete_db(service, type: str, id: str, force: bool = False, verbose: bool = 
         args_dict = {"type": type, "id": id, "force": force, "verbose": verbose, "service": service}
 
         # 实例化并执行DeleteHandler
-        from src.cli.commands.db.delete_handler import DeleteHandler
+        from src.cli.commands.db.handlers.delete_handler import DeleteHandler
 
         delete_handler = DeleteHandler()
         return delete_handler.handle(args_dict)
@@ -197,7 +192,7 @@ def backup_db(service, output: Optional[str] = None, verbose: bool = False) -> N
         args_dict = {"output": output, "verbose": verbose, "service": service}
 
         # 实例化并执行BackupHandler
-        from src.cli.commands.db.backup_handler import BackupHandler
+        from src.cli.commands.db.handlers.backup_handler import BackupHandler
 
         backup_handler = BackupHandler()
         return backup_handler.handle(args_dict)
@@ -217,7 +212,7 @@ def restore_db(service, backup_file: str, force: bool = False, verbose: bool = F
         args_dict = {"backup_file": backup_file, "force": force, "verbose": verbose, "service": service}
 
         # 实例化并执行RestoreHandler
-        from src.cli.commands.db.restore_handler import RestoreHandler
+        from src.cli.commands.db.handlers.restore_handler import RestoreHandler
 
         restore_handler = RestoreHandler()
         return restore_handler.handle(args_dict)

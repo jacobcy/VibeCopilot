@@ -64,7 +64,7 @@ def get_session(session_id: str) -> Optional[FlowSession]:
         return manager.get_session(session_id)
 
 
-def list_sessions(status: Optional[str] = None, workflow_id: Optional[str] = None) -> List[FlowSession]:
+def handle_list_sessions(status: Optional[str] = None, workflow_id: Optional[str] = None) -> List[FlowSession]:
     """列出会话
 
     Args:

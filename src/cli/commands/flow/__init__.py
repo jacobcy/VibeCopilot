@@ -1,12 +1,15 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 工作流命令模块
 
-提供工作流管理和执行的命令行功能
+提供工作流创建、管理和执行的命令接口。
 """
 
-from src.cli.commands.flow.commands import flow as flow_click_group
-from src.flow_session import register_commands
+from src.cli.commands.flow.flow_create_commands import create
+from src.cli.commands.flow.flow_main import flow
+from src.cli.commands.flow.session_commands import session
 
-__all__ = ["flow_click_group", "register_commands"]
+__all__ = [
+    "flow",
+    "session",
+    "create",
+]

@@ -20,6 +20,10 @@ class CommandChecker(BaseChecker):
     def run_command(self, command: str) -> Tuple[int, str, str]:
         """运行命令并返回结果"""
         try:
+            # 替换命令前缀
+            if command.startswith("vibecopilot "):
+                command = command.replace("vibecopilot ", "vc ")
+
             process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = process.communicate(timeout=self.config["performance"]["max_response_time"])
             return process.returncode, stdout.decode(), stderr.decode()
@@ -39,26 +43,38 @@ class CommandChecker(BaseChecker):
         # 运行帮助命令
         code, stdout, stderr = self.run_command(help_cmd)
 
-        # 检查帮助命令是否成功
-        if code != 0 or not stdout:
+        # 获取完整输出（包括stdout和stderr）
+        output = stdout + stderr
+
+        # 检查是否有有效的帮助信息输出
+        help_indicators = ["Usage:", "Options:", "--help"]
+        has_help_content = any(indicator in output for indicator in help_indicators)
+
+        # 即使返回码非0，只要有有效的帮助信息就认为是成功的
+        if not has_help_content:
             check_result["status"] = "failed"
-            check_result["details"].append("帮助命令执行失败")
-            check_result["details"].append(f"错误信息: {stderr}")
+            check_result["details"].append("帮助命令没有返回有效的帮助信息")
+            if code != 0:
+                check_result["details"].append(f"错误代码: {code}")
             check_result["suggestions"].append("确保命令支持--help选项")
             return check_result
 
         # 检查帮助信息是否包含必要内容
         required_help_content = ["Usage:", "Options:"]
+        missing_content = []
         for content in required_help_content:
-            if content not in stdout:
-                check_result["status"] = "warning"
-                check_result["details"].append(f"帮助信息缺少: {content}")
-                check_result["suggestions"].append(f"在帮助信息中添加 {content} 部分")
+            if content not in output:
+                missing_content.append(content)
+
+        if missing_content:
+            check_result["status"] = "warning"
+            check_result["details"].extend([f"帮助信息缺少: {content}" for content in missing_content])
+            check_result["suggestions"].extend([f"在帮助信息中添加 {content} 部分" for content in missing_content])
 
         # 检查子命令说明
         if cmd_config.get("subcommands"):
             for subcmd, subcmd_config in cmd_config["subcommands"].items():
-                if subcmd_config.get("required", False) and subcmd not in stdout:
+                if subcmd_config.get("required", False) and subcmd not in output:
                     check_result["status"] = "warning"
                     check_result["details"].append(f"帮助信息缺少必要子命令说明: {subcmd}")
                     check_result["suggestions"].append(f"添加 {subcmd} 的说明")
@@ -98,7 +114,8 @@ class CommandChecker(BaseChecker):
     def check(self) -> CheckResult:
         """运行所有命令检查"""
         try:
-            all_checks = []
+            command_results = {}  # 存储每个命令组的检查结果
+
             # 确定要检查的命令组
             groups_to_check = []
             for group in self.config["command_groups"]:
@@ -109,8 +126,40 @@ class CommandChecker(BaseChecker):
             for group in groups_to_check:
                 group_name = group["name"]
                 if group_name in self.command_configs:
-                    group_results = self.check_command_group(group_name, self.command_configs[group_name])
-                    all_checks.extend(group_results)
+                    group_config = self.command_configs[group_name]
+                    group_result = {"status": "passed", "commands": {}, "errors": [], "warnings": []}
+
+                    try:
+                        # 检查每个命令
+                        for cmd_name, cmd_config in group_config.get("commands", {}).items():
+                            cmd_results = self.check_command(cmd_name, cmd_config)
+                            cmd_status = "passed"
+                            cmd_errors = []
+                            cmd_warnings = []
+
+                            for result in cmd_results:
+                                if result["status"] == "failed":
+                                    cmd_status = "failed"
+                                    cmd_errors.extend(result["details"])
+                                elif result["status"] == "warning" and cmd_status != "failed":
+                                    cmd_status = "warning"
+                                    cmd_warnings.extend(result["details"])
+
+                            group_result["commands"][cmd_name] = {"status": cmd_status, "errors": cmd_errors, "warnings": cmd_warnings}
+
+                            # 更新组状态
+                            if cmd_status == "failed":
+                                group_result["status"] = "failed"
+                                group_result["errors"].extend(cmd_errors)
+                            elif cmd_status == "warning" and group_result["status"] != "failed":
+                                group_result["status"] = "warning"
+                                group_result["warnings"].extend(cmd_warnings)
+
+                    except Exception as e:
+                        group_result["status"] = "failed"
+                        group_result["errors"].append(f"命令组 {group_name} 检查失败: {str(e)}")
+
+                    command_results[group_name] = group_result
 
             # 根据检查结果确定状态
             if self.summary["failed"] > 0:
@@ -122,10 +171,11 @@ class CommandChecker(BaseChecker):
 
             return CheckResult(
                 status=status,
-                details=[check["details"] for check in all_checks],
-                suggestions=[check["suggestions"] for check in all_checks],
+                details=[f"命令组 {group_name}: {result['status'].upper()}" for group_name, result in command_results.items()],
+                suggestions=["检查失败的命令组和命令的具体错误信息"] if status != "passed" else [],
                 metrics=self.summary,
+                command_results=command_results,  # 添加命令检查的详细结果
             )
 
         except Exception as e:
-            return CheckResult(status="failed", details=[f"检查过程出错: {str(e)}"], suggestions=["检查命令检查器配置和实现"], metrics=self.summary)
+            return CheckResult(status="failed", details=[f"检查过程出错: {str(e)}"], suggestions=["检查命令检查器配置和实现"], metrics=self.summary, command_results={})

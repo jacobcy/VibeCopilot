@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 # 更新导入路径
 from src.workflow.analytics.workflow_analytics import _analyze_workflow_progress, calculate_progress_statistics, get_workflow_executions
-from src.workflow.workflow_operations import list_workflows
+from src.workflow.operations import list_workflows
 
 
 class TestWorkflowAdvancedOperations(unittest.TestCase):

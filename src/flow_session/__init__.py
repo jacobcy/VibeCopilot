@@ -4,7 +4,6 @@
 提供工作流会话的管理功能，包括会话创建、暂停、恢复、完成等。
 """
 
-from src.flow_session.cli.commands import register_commands
 from src.flow_session.session import (
     close_session,
     complete_session,
@@ -13,7 +12,7 @@ from src.flow_session.session import (
     get_session,
     get_session_progress,
     get_session_stages,
-    list_sessions,
+    handle_list_sessions,
     pause_session,
     resume_session,
     set_current_stage,
@@ -29,7 +28,7 @@ __all__ = [
     "FlowStatusIntegration",
     "create_session",
     "get_session",
-    "list_sessions",
+    "handle_list_sessions",
     "update_session",
     "delete_session",
     "pause_session",
@@ -39,5 +38,4 @@ __all__ = [
     "get_session_stages",
     "get_session_progress",
     "set_current_stage",
-    "register_commands",
 ]

@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from src.flow_session import FlowSessionManager
 from src.workflow.flow_cmd.workflow_runner import run_workflow_stage
-from src.workflow.workflow_operations import get_workflow_by_id
+from src.workflow.operations import get_workflow_by_id
 
 
 def get_current_session_id() -> Optional[str]:

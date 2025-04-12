@@ -27,10 +27,7 @@ def get_workflows_directory() -> str:
             data_dir = os.path.abspath(data_dir)
         workflows_dir = os.path.join(data_dir, "workflows")
 
-    # 确保目录存在
-    os.makedirs(workflows_dir, exist_ok=True)
-    logger.debug(f"工作流目录: {workflows_dir}")
-
+    ensure_directory_exists(workflows_dir)
     return workflows_dir
 
 
@@ -46,3 +43,15 @@ def get_workflow_file_path(workflow_id: str) -> str:
     """
     workflows_dir = get_workflows_directory()
     return os.path.join(workflows_dir, f"{workflow_id}.json")
+
+
+def ensure_directory_exists(directory_path: str) -> None:
+    """
+    确保目录存在，如果不存在则创建
+
+    Args:
+        directory_path: 目录路径
+    """
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path, exist_ok=True)
+        logger.debug(f"创建目录: {directory_path}")

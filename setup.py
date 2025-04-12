@@ -1,13 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from setuptools import find_packages, setup
 
 setup(
-    name="vibecopilot",
+    name="vibe-copilot",
     version="0.1.0",
     description="VibeCopilot - AI辅助开发工具",
-    author="Jacob Cui",
+    author="Jacob Chen",
     packages=find_packages(exclude=["tests", "docs"]),
     python_requires=">=3.8.0",
     install_requires=[
@@ -17,12 +17,6 @@ setup(
         "pyyaml>=6.0",
         "python-frontmatter>=1.0.0",
     ],
-    entry_points={
-        "console_scripts": [
-            "vibecopilot=src.cli.main:main",
-            "content-parser=src.parsing.cli.main:main",
-        ],
-    },
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

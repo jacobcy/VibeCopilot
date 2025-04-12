@@ -8,7 +8,7 @@
 
 from typing import Any, Dict, Optional
 
-from src.workflow.workflow_operations import get_workflow, get_workflow_by_id, get_workflow_by_name, list_workflows
+from src.workflow.operations import get_workflow, get_workflow_by_id, get_workflow_by_name, list_workflows
 
 
 def get_workflow_fuzzy(identifier: str) -> Optional[Dict[str, Any]]:

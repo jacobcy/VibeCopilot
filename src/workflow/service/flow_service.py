@@ -13,8 +13,7 @@ from typing import Any, Dict, List, Optional
 from src.db import get_session_factory
 from src.flow_session.session.manager import FlowSessionManager
 from src.flow_session.stage.manager import StageInstanceManager
-from src.workflow.service.components import BaseService, ExecutionService, SessionService, StageService, WorkflowDefinitionService
-from src.workflow.workflow_operations import (
+from src.workflow.operations import (
     create_workflow,
     delete_workflow,
     get_workflow,
@@ -24,6 +23,7 @@ from src.workflow.workflow_operations import (
     update_workflow,
     validate_workflow_files,
 )
+from src.workflow.service.components import BaseService, ExecutionService, SessionService, StageService, WorkflowDefinitionService
 
 logger = logging.getLogger(__name__)
 

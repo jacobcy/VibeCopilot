@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from src.core.config import get_config
 from src.utils.file_utils import ensure_directory_exists, read_json_file, write_json_file
-from src.workflow.workflow_operations import create_workflow
+from src.workflow.operations import create_workflow
 
 # 设置日志
 logger = logging.getLogger(__name__)
