@@ -1,7 +1,9 @@
 """数据库健康检查器"""
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+from sqlalchemy import inspect, text
 
 from src.db.connection_manager import get_engine, get_session
 from src.utils.logger import setup_logger
@@ -17,6 +19,8 @@ class DatabaseChecker(BaseChecker):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.db_config = config.get("database", {})
+        self.file_config = config.get("files", {})
+        self.check_config = config.get("check_config", {})
 
     def check(self) -> CheckResult:
         """执行数据库健康检查"""
@@ -29,25 +33,42 @@ class DatabaseChecker(BaseChecker):
             self.result.status = "passed"
             self.result.details = []
             self.result.suggestions = []
-            self.result.metrics = {"tables_checked": 0, "tables_missing": 0, "files_checked": 0, "files_missing": 0}
+            self.result.metrics = {
+                "tables_checked": 0,
+                "tables_missing": 0,
+                "files_checked": 0,
+                "files_missing": 0,
+                "p0_issues": 0,
+                "p1_issues": 0,
+                "p2_issues": 0,
+            }
 
-            # 检查核心表
-            core_tables_result = self._check_core_tables(engine)
-            self._update_result(core_tables_result)
+            # 按优先级和分类检查表
+            categories = [
+                ("core_tables", "核心系统表"),
+                ("workflow_tables", "工作流引擎表"),
+                ("session_tables", "会话管理表"),
+                ("task_tables", "任务管理表"),
+                ("roadmap_tables", "路线图管理表"),
+            ]
 
-            # 检查工作流相关表
-            workflow_tables_result = self._check_workflow_tables(engine)
-            self._update_result(workflow_tables_result)
-
-            # 检查任务和会话相关表
-            task_tables_result = self._check_task_tables(engine)
-            self._update_result(task_tables_result)
+            for category_key, category_name in categories:
+                tables = self.db_config.get(category_key, [])
+                if tables:
+                    category_result = self._check_table_category(engine, tables, category_name)
+                    self._update_result(category_result)
 
             # 检查必要文件
             files_result = self._check_required_files()
             self._update_result(files_result)
 
             session.close()
+
+            # 根据优先级确定最终状态
+            if self.result.metrics["p0_issues"] > 0:
+                self.result.status = "failed"
+            elif self.result.metrics["p1_issues"] > 0:
+                self.result.status = "warning"
 
         except Exception as e:
             self.result.status = "failed"
@@ -57,68 +78,47 @@ class DatabaseChecker(BaseChecker):
 
         return self.result
 
-    def _check_core_tables(self, engine) -> Tuple[str, List[str], List[str]]:
-        """检查核心数据表"""
-        required_tables = {
-            "rules": 1,  # 规则表
-            "templates": 0,  # 模板表
-            "memory_items": 0,  # 记忆项表
-        }
-
-        return self._check_tables(engine, required_tables, "核心表")
-
-    def _check_workflow_tables(self, engine) -> Tuple[str, List[str], List[str]]:
-        """检查工作流相关表"""
-        required_tables = {
-            "workflows": 0,  # 工作流表
-            "stages": 0,  # 阶段表
-            "transitions": 0,  # 转换表
-            "workflow_definitions": 0,  # 工作流定义表
-            "flow_sessions": 0,  # 工作流会话表
-            "stage_instances": 0,  # 阶段实例表
-        }
-
-        return self._check_tables(engine, required_tables, "工作流表")
-
-    def _check_task_tables(self, engine) -> Tuple[str, List[str], List[str]]:
-        """检查任务和会话相关表"""
-        required_tables = {
-            "stories": 0,  # 故事表
-            "tasks": 0,  # 任务表
-            "epics": 0,  # Epic表
-            "roadmaps": 0,  # 路线图表
-            "milestones": 0,  # 里程碑表
-        }
-
-        return self._check_tables(engine, required_tables, "任务表")
-
-    def _check_tables(self, engine, required_tables: Dict[str, int], category: str) -> Tuple[str, List[str], List[str]]:
-        """检查数据表是否存在并符合要求"""
+    def _check_table_category(self, engine, tables: List[Dict], category_name: str) -> Tuple[str, List[str], List[str]]:
+        """检查特定分类的表"""
         details = []
         suggestions = []
         status = "passed"
 
-        inspector = engine.dialect.inspector(engine)
+        inspector = inspect(engine)
         existing_tables = inspector.get_table_names()
 
-        for table, min_records in required_tables.items():
-            self.result.metrics["tables_checked"] += 1
+        details.append(f"\n{category_name}检查结果:")
 
-            if table not in existing_tables:
-                status = "failed"
-                self.result.metrics["tables_missing"] += 1
-                details.append(f"缺失{category}: {table}")
-                suggestions.append(f"运行数据库初始化命令创建表 {table}")
-                continue
+        with engine.connect() as connection:
+            for table_config in tables:
+                table_name = table_config["name"]
+                priority = table_config["priority"]
+                description = table_config["description"]
+                min_records = table_config.get("min_records", 0)
 
-            # 检查记录数
-            result = engine.execute(f"SELECT COUNT(*) FROM {table}")
-            count = result.scalar()
-            details.append(f"表 {table}: {count} 条记录")
+                self.result.metrics["tables_checked"] += 1
 
-            if count < min_records:
-                status = "warning"
-                suggestions.append(f"表 {table} 记录数({count})小于要求的最小记录数({min_records})")
+                if table_name not in existing_tables:
+                    status = "failed" if priority == 0 else "warning"
+                    self.result.metrics["tables_missing"] += 1
+                    self.result.metrics[f"p{priority}_issues"] += 1
+                    details.append(f"- 缺失{description}: {table_name} (P{priority})")
+                    suggestions.append(f"运行数据库初始化命令创建表 {table_name} (优先级: P{priority})")
+                    continue
+
+                # 检查记录数
+                result = connection.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+                count = result.scalar()
+                details.append(f"- 表 {table_name}: {count} 条记录 (P{priority})")
+
+                if count < min_records:
+                    if priority == 0:
+                        status = "failed"
+                        self.result.metrics["p0_issues"] += 1
+                    else:
+                        status = "warning"
+                        self.result.metrics[f"p{priority}_issues"] += 1
+                    suggestions.append(f"表 {table_name} 记录数({count})小于要求的最小记录数({min_records}) (优先级: P{priority})")
 
         return status, details, suggestions
 
@@ -128,25 +128,29 @@ class DatabaseChecker(BaseChecker):
         suggestions = []
         status = "passed"
 
-        required_files = [
-            "src/db/connection_manager.py",
-            "src/db/repository.py",
-            "src/db/service.py",
-            "src/db/README.md",
-            "src/db/models/__init__.py",
-            "src/db/repositories/__init__.py",
-        ]
+        details.append("\n文件检查结果:")
+        required_files = self.file_config.get("required", [])
 
-        for file_path in required_files:
+        for file_config in required_files:
+            file_path = file_config["path"]
+            priority = file_config.get("priority", 0)
+            description = file_config["description"]
+
             self.result.metrics["files_checked"] += 1
 
             if not os.path.exists(file_path):
-                status = "failed"
                 self.result.metrics["files_missing"] += 1
-                details.append(f"缺失文件: {file_path}")
-                suggestions.append(f"创建必要的数据库文件: {file_path}")
+                self.result.metrics[f"p{priority}_issues"] += 1
+
+                if priority == 0:
+                    status = "failed"
+                else:
+                    status = "warning"
+
+                details.append(f"- 缺失文件: {file_path} (P{priority})")
+                suggestions.append(f"创建必要的数据库文件: {file_path} ({description}) (优先级: P{priority})")
             else:
-                details.append(f"文件存在: {file_path}")
+                details.append(f"- 文件存在: {file_path} (P{priority})")
 
         return status, details, suggestions
 

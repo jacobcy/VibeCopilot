@@ -19,3 +19,31 @@ command_groups:
     description: "路线图管理命令"
     config_file: "roadmap_commands.yaml"
     critical: true
+  - name: "task"
+    description: "任务管理命令"
+    config_file: "task_commands.yaml"
+    critical: true
+  - name: "memory"
+    description: "记忆管理命令"
+    config_file: "memory_commands.yaml"
+    critical: true
+  - name: "flow_session"
+    description: "流程会话管理命令"
+    config_file: "flow_session_commands.yaml"
+    critical: true
+  - name: "help"
+    description: "帮助命令"
+    config_file: "help_commands.yaml"
+    critical: true
+  - name: "rule"
+    description: "规则管理命令"
+    config_file: "rule_commands.yaml"
+    critical: true
+  - name: "db"
+    description: "数据库管理命令"
+    config_file: "db_commands.yaml"
+    critical: true
+  - name: "flow"
+    description: "流程管理命令"
+    config_file: "flow_commands.yaml"
+    critical: true

@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 from typing import Any, Dict, Optional
 
 import click
@@ -26,6 +27,42 @@ class InitHandler(ClickBaseHandler):
     def __init__(self):
         super().__init__()
 
+    def pre_process(self, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        预处理命令参数，确保force参数正确传递
+
+        Args:
+            **kwargs: 命令参数
+
+        Returns:
+            Dict[str, Any]: 处理后的参数
+        """
+        processed_args = super().pre_process(**kwargs)
+        # 清理可能存在的环境变量
+        if "FORCE_RECREATE" in os.environ:
+            del os.environ["FORCE_RECREATE"]
+
+        if "force" in processed_args:
+            force = processed_args["force"]
+            if isinstance(force, bool):
+                os.environ["FORCE_RECREATE"] = str(force).lower()
+        return processed_args
+
+    def post_process(self, result: Any) -> Any:
+        """
+        后处理命令结果，清理环境变量
+
+        Args:
+            result: 处理结果
+
+        Returns:
+            Any: 后处理的结果
+        """
+        # 清理环境变量
+        if "FORCE_RECREATE" in os.environ:
+            del os.environ["FORCE_RECREATE"]
+        return super().post_process(result)
+
     def validate(self, **kwargs: Dict[str, Any]) -> bool:
         """
         验证初始化参数
@@ -45,11 +82,12 @@ class InitHandler(ClickBaseHandler):
 
         return True
 
-    def handle(self, **kwargs: Dict[str, Any]) -> bool:
+    def handle(self, service=None, **kwargs: Dict[str, Any]) -> bool:
         """
         处理初始化命令
 
         Args:
+            service: 数据库服务实例
             **kwargs: 命令参数
 
         Returns:
@@ -60,7 +98,6 @@ class InitHandler(ClickBaseHandler):
         """
         force = kwargs.get("force", False)
         verbose = kwargs.get("verbose", False)
-        service = kwargs.get("service")
 
         if verbose:
             console.print(f"初始化数据库，强制重建: {'是' if force else '否'}")
@@ -113,6 +150,8 @@ def init_db(service, force: bool = False, verbose: bool = False) -> None:
     """
     handler = InitHandler()
     try:
+        if verbose:
+            click.echo(f"初始化数据库，强制重建: {'是' if force else '否'}")
         result = handler.execute(service=service, force=force, verbose=verbose)
         return 0 if result else 1
     except Exception:

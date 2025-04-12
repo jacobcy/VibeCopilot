@@ -10,6 +10,7 @@ from .base import Base, RuleType
 # 导出具体模型
 from .epic import Epic
 from .flow_session import FlowSession, StageInstance
+from .memory_item import MemoryItem
 from .milestone import Milestone
 from .roadmap import Roadmap
 from .rule import Rule, RuleExample, RuleItem, RuleMetadata
@@ -48,4 +49,5 @@ __all__ = [
     "RuleItem",
     "RuleExample",
     "RuleMetadata",
+    "MemoryItem",
 ]

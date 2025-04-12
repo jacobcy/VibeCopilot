@@ -1,213 +1,143 @@
 # 数据库健康检查配置
 
-# 核心表配置
-core_tables:
-  rules:
-    min_records: 1
-    required_columns:
-      - id
-      - name
-      - type
-      - content
-    description: "规则系统核心表"
+# 数据库检查配置
+database:
+  # 核心系统表（优先级：P0）
+  core_tables:
+    - name: "rules"
+      description: "规则表"
+      min_records: 1
+      priority: 0
+      category: "core"
+    - name: "templates"
+      description: "模板表"
+      min_records: 0
+      priority: 0
+      category: "core"
+    - name: "memory_items"
+      description: "记忆项表"
+      min_records: 0
+      priority: 0
+      category: "core"
 
-  templates:
-    min_records: 0
-    required_columns:
-      - id
-      - name
-      - type
-      - content
-    description: "模板系统表"
+  # 工作流引擎表（优先级：P1）
+  workflow_tables:
+    - name: "workflows"
+      description: "工作流定义表"
+      min_records: 0
+      priority: 1
+      category: "workflow"
+    - name: "stages"
+      description: "工作流阶段表"
+      min_records: 0
+      priority: 1
+      category: "workflow"
+    - name: "transitions"
+      description: "阶段转换表"
+      min_records: 0
+      priority: 1
+      category: "workflow"
+    - name: "workflow_definitions"
+      description: "工作流模板表"
+      min_records: 0
+      priority: 1
+      category: "workflow"
 
-  memory_items:
-    min_records: 0
-    required_columns:
-      - id
-      - title
-      - content
-      - folder
-    description: "知识库记忆表"
+  # 会话管理表（优先级：P1）
+  session_tables:
+    - name: "flow_sessions"
+      description: "流程会话表"
+      min_records: 0
+      priority: 1
+      category: "session"
+    - name: "stage_instances"
+      description: "阶段实例表"
+      min_records: 0
+      priority: 1
+      category: "session"
 
-# 工作流相关表配置
-workflow_tables:
-  workflows:
-    min_records: 0
-    required_columns:
-      - id
-      - name
-      - description
-      - version
-      - is_active
-      - tags
-    description: "工作流定义表"
+  # 任务管理表（优先级：P2）
+  task_tables:
+    - name: "stories"
+      description: "用户故事表"
+      min_records: 0
+      priority: 2
+      category: "task"
+    - name: "tasks"
+      description: "任务表"
+      min_records: 0
+      priority: 2
+      category: "task"
+    - name: "epics"
+      description: "Epic表"
+      min_records: 0
+      priority: 2
+      category: "task"
 
-  stages:
-    min_records: 0
-    required_columns:
-      - id
-      - workflow_id
-      - name
-      - description
-      - order_index
-      - checklist
-      - deliverables
-      - weight
-    description: "工作流阶段表"
+  # 路线图管理表（优先级：P2）
+  roadmap_tables:
+    - name: "roadmaps"
+      description: "路线图表"
+      min_records: 0
+      priority: 2
+      category: "roadmap"
+    - name: "milestones"
+      description: "里程碑表"
+      min_records: 0
+      priority: 2
+      category: "roadmap"
 
-  transitions:
-    min_records: 0
-    required_columns:
-      - id
-      - workflow_id
-      - from_stage
-      - to_stage
-      - condition
-    description: "阶段转换表"
-
-  workflow_definitions:
-    min_records: 0
-    required_columns:
-      - id
-      - name
-      - type
-      - description
-      - stages
-      - source_rule
-    description: "工作流模板定义表"
-
-  flow_sessions:
-    min_records: 0
-    required_columns:
-      - id
-      - workflow_id
-      - name
-      - status
-      - current_stage_id
-      - completed_stages
-      - context
-    description: "工作流会话表"
-
-  stage_instances:
-    min_records: 0
-    required_columns:
-      - id
-      - session_id
-      - stage_id
-      - name
-      - status
-      - started_at
-      - completed_at
-      - context
-    description: "阶段实例表"
-
-# 任务相关表配置
-task_tables:
-  stories:
-    min_records: 0
-    required_columns:
-      - id
-      - title
-      - description
-      - epic_id
-      - status
-      - priority
-    description: "用户故事表"
-
-  tasks:
-    min_records: 0
-    required_columns:
-      - id
-      - title
-      - description
-      - status
-      - priority
-      - estimated_hours
-      - story_id
-      - assignee
-    description: "任务表"
-
-  task_comments:
-    min_records: 0
-    required_columns:
-      - id
-      - task_id
-      - content
-      - author
-      - created_at
-      - updated_at
-      - parent_id
-      - status
-    description: "任务评论表"
-
-  epics:
-    min_records: 0
-    required_columns:
-      - id
-      - title
-      - description
-      - roadmap_id
-      - status
-    description: "Epic表"
-
-  roadmaps:
-    min_records: 0
-    required_columns:
-      - id
-      - name
-      - description
-      - status
-    description: "路线图表"
-
-  milestones:
-    min_records: 0
-    required_columns:
-      - id
-      - name
-      - description
-      - due_date
-      - roadmap_id
-    description: "里程碑表"
-
-# 必要文件配置
-required_files:
-  database_core:
+# 数据库文件检查配置
+files:
+  required:
     - path: "src/db/connection_manager.py"
-      description: "数据库连接管理器"
+      description: "数据库连接管理"
+      priority: 0
     - path: "src/db/repository.py"
-      description: "数据访问对象基类"
+      description: "数据库仓储基类"
+      priority: 0
     - path: "src/db/service.py"
-      description: "数据库服务接口"
-
-  documentation:
+      description: "数据库服务基类"
+      priority: 0
     - path: "src/db/README.md"
       description: "数据库模块说明文档"
-    - path: "src/workflow/docs/data-structure.md"
-      description: "工作流数据结构文档"
-    - path: "src/roadmap/docs/entity_relationships.md"
-      description: "实体关系说明文档"
-
-  models:
+      priority: 1
     - path: "src/db/models/__init__.py"
-      description: "数据库模型定义"
-    - path: "src/db/models/workflow.py"
-      description: "工作流相关模型"
-    - path: "src/db/models/task.py"
-      description: "任务相关模型"
-
-  repositories:
+      description: "数据模型包"
+      priority: 0
     - path: "src/db/repositories/__init__.py"
-      description: "仓库模块初始化文件"
-    - path: "src/db/repositories/workflow.py"
-      description: "工作流仓库实现"
-    - path: "src/db/repositories/task.py"
-      description: "任务仓库实现"
+      description: "仓储实现包"
+      priority: 0
 
-# 性能检查配置
-performance_checks:
-  connection_timeout: 5  # 数据库连接超时时间（秒）
-  query_timeout: 10      # 查询超时时间（秒）
-  max_connections: 100   # 最大连接数
+# 检查配置
+check_config:
+  # 优先级定义
+  priorities:
+    P0: "核心功能，必须存在且正确"
+    P1: "重要功能，建议完善"
+    P2: "次要功能，可选完善"
+
+  # 分类说明
+  categories:
+    core: "核心系统表，包含规则、模板等基础功能"
+    workflow: "工作流引擎相关表，处理流程定义和执行"
+    session: "会话管理相关表，处理运行时状态"
+    task: "任务管理相关表，处理项目任务"
+    roadmap: "路线图相关表，处理项目规划"
+
+  # 检查行为配置
+  behavior:
+    check_table_existence: true
+    check_record_count: true
+    check_file_existence: true
+    check_file_permissions: false  # 暂不检查文件权限
+    check_table_schema: false      # 暂不检查表结构
+
+  # 性能配置
+  performance:
+    connection_timeout: 5    # 秒
+    query_timeout: 10       # 秒
+    max_retry_count: 3      # 重试次数
 
 # 数据完整性检查配置
 integrity_checks:

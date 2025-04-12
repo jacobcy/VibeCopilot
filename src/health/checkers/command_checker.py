@@ -6,18 +6,22 @@ import subprocess
 import sys
 from typing import Dict, List, Optional, Tuple
 
+from .base_checker import BaseChecker, CheckResult
 
-class CommandChecker:
-    def __init__(self, main_config: Dict, command_configs: Dict):
-        self.main_config = main_config
+
+class CommandChecker(BaseChecker):
+    def __init__(self, main_config: Dict, command_configs: Dict, category: Optional[str] = None, verbose: bool = False):
+        super().__init__(main_config)
         self.command_configs = command_configs
-        self.results = {"checks": [], "summary": {"total": 0, "passed": 0, "failed": 0, "warnings": 0}}
+        self.category = category
+        self.verbose = verbose
+        self.summary = {"total": 0, "passed": 0, "failed": 0, "warnings": 0}
 
     def run_command(self, command: str) -> Tuple[int, str, str]:
         """运行命令并返回结果"""
         try:
             process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            stdout, stderr = process.communicate(timeout=self.main_config["performance"]["max_response_time"])
+            stdout, stderr = process.communicate(timeout=self.config["performance"]["max_response_time"])
             return process.returncode, stdout.decode(), stderr.decode()
         except subprocess.TimeoutExpired:
             return -1, "", "命令执行超时"
@@ -29,7 +33,7 @@ class CommandChecker:
         check_result = {"name": f"命令帮助检查: {cmd_name}", "status": "passed", "details": [], "suggestions": []}
 
         # 构建帮助命令
-        cmd_prefix = self.main_config["common_config"].get("command_prefix", "vibecopilot")
+        cmd_prefix = self.config["common_config"].get("command_prefix", "vibecopilot")
         help_cmd = f"{cmd_prefix} {cmd_name} --help"
 
         # 运行帮助命令
@@ -70,13 +74,13 @@ class CommandChecker:
         results.append(help_result)
 
         # 更新统计
-        self.results["summary"]["total"] += 1
+        self.summary["total"] += 1
         if help_result["status"] == "passed":
-            self.results["summary"]["passed"] += 1
+            self.summary["passed"] += 1
         elif help_result["status"] == "failed":
-            self.results["summary"]["failed"] += 1
+            self.summary["failed"] += 1
         elif help_result["status"] == "warning":
-            self.results["summary"]["warnings"] += 1
+            self.summary["warnings"] += 1
 
         return results
 
@@ -91,13 +95,14 @@ class CommandChecker:
 
         return results
 
-    def run_checks(self, category: Optional[str] = None, verbose: bool = False) -> Dict:
+    def check(self) -> CheckResult:
         """运行所有命令检查"""
         try:
+            all_checks = []
             # 确定要检查的命令组
             groups_to_check = []
-            for group in self.main_config["command_groups"]:
-                if category is None or group["name"] == category:
+            for group in self.config["command_groups"]:
+                if self.category is None or group["name"] == self.category:
                     groups_to_check.append(group)
 
             # 检查每个命令组
@@ -105,10 +110,22 @@ class CommandChecker:
                 group_name = group["name"]
                 if group_name in self.command_configs:
                     group_results = self.check_command_group(group_name, self.command_configs[group_name])
-                    self.results["checks"].extend(group_results)
+                    all_checks.extend(group_results)
 
-            return self.results
+            # 根据检查结果确定状态
+            if self.summary["failed"] > 0:
+                status = "failed"
+            elif self.summary["warnings"] > 0:
+                status = "warning"
+            else:
+                status = "passed"
+
+            return CheckResult(
+                status=status,
+                details=[check["details"] for check in all_checks],
+                suggestions=[check["suggestions"] for check in all_checks],
+                metrics=self.summary,
+            )
 
         except Exception as e:
-            self.results["checks"].append({"name": "命令检查", "status": "failed", "details": [f"检查过程出错: {str(e)}"], "suggestions": ["检查命令检查器配置和实现"]})
-            return self.results
+            return CheckResult(status="failed", details=[f"检查过程出错: {str(e)}"], suggestions=["检查命令检查器配置和实现"], metrics=self.summary)

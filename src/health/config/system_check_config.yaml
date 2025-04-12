@@ -1,169 +1,87 @@
-# VibeCopilot 系统检查配置
-
-# 环境要求配置
+# 系统检查配置
 environment:
-  python:
-    min_version: "3.9.0"
-    recommended_version: "3.11.0"
-
   required_env_vars:
     - name: "VIBECOPILOT_ENV"
-      description: "运行环境"
       default: "development"
-    - name: "CLAUDE_API_KEY"
-      description: "Claude API密钥"
-      is_secret: true
+      description: "运行环境"
     - name: "DB_PATH"
-      description: "数据库路径"
       default: "data/db/vibecopilot.db"
-    - name: "VECTOR_DB_PATH"
-      description: "向量数据库路径"
-      default: "data/vector_db"
+      description: "SQLite数据库路径"
     - name: "LOG_LEVEL"
-      description: "日志级别"
       default: "INFO"
+      description: "日志级别"
 
-# 配置文件检查
-configurations:
-  required_files:
-    - path: ".env"
-      description: "环境配置文件"
-      template: "templates/.env.example"
-      critical: true
+  optional_env_vars:
+    - name: "CLAUDE_API_KEY"
+      description: "Claude API密钥（可选）"
+    - name: "VECTOR_DB_PATH"
+      default: "data/vector_db"
+      description: "向量数据库路径（可选）"
+    - name: "PORT"
+      default: "8000"
+      description: "服务器端口（可选）"
+    - name: "HOST"
+      default: "localhost"
+      description: "服务器主机名（可选）"
 
-    - path: "config/default/claude.json"
-      description: "Claude API配置"
-      template: "templates/config/claude.json.example"
-      critical: true
-
-    - path: "config/default/github.json"
-      description: "GitHub配置"
-      template: "templates/config/github.json.example"
-      critical: false
-
-    - path: "config/default/gitdiagram.json"
-      description: "GitDiagram配置"
-      template: "templates/config/gitdiagram.json.example"
-      critical: false
-
-    - path: ".cursor/settings.json"
-      description: "Cursor IDE配置"
-      template: "templates/.cursor/settings.json.example"
-      critical: true
-
-    - path: ".ai/prompts/default.json"
-      description: "AI提示配置"
-      template: "templates/.ai/prompts/default.json.example"
-      critical: true
-
-# 依赖检查配置
 dependencies:
-  core_packages:
-    fastapi:
-      min_version: "0.95.0"
-      description: "Web框架"
-      critical: true
-
-    sqlalchemy:
+  python_version: ">=3.9.0"
+  required_packages:
+    - name: "sqlalchemy"
       min_version: "1.4.0"
-      description: "ORM框架"
-      critical: true
-
-    pydantic:
-      min_version: "1.10.0"
-      description: "数据验证"
-      critical: true
-
-    click:
+    - name: "click"
       min_version: "8.0.0"
-      description: "命令行工具"
-      critical: true
-
-    python-dotenv:
+    - name: "python-dotenv"
       min_version: "0.19.0"
-      description: "环境变量管理"
-      critical: true
+    - name: "pyyaml"
+      min_version: "6.0.0"
 
   optional_packages:
-    mermaid-cli:
-      min_version: "8.0.0"
-      description: "图表生成"
-      critical: false
+    - name: "fastapi"
+      min_version: "0.95.0"
+      description: "API框架（可选）"
 
-    black:
-      min_version: "22.0.0"
-      description: "代码格式化"
-      critical: false
-
-# 目录结构检查
-directory_structure:
-  required_directories:
+directories:
+  required:
     - path: "src"
-      description: "源代码目录"
-      critical: true
-
+      description: "核心源代码目录"
     - path: "config"
-      description: "配置目录"
-      critical: true
-
+      description: "配置文件目录"
     - path: "data"
       description: "数据存储目录"
-      critical: true
-
     - path: ".ai"
-      description: "AI资源目录"
-      critical: true
-
+      description: "AI相关资源"
     - path: "tests"
-      description: "测试目录"
-      critical: false
+      description: "测试代码目录"
 
+  optional:
     - path: "docs"
       description: "文档目录"
-      critical: false
-
     - path: "scripts"
-      description: "脚本目录"
-      critical: false
+      description: "构建和工具脚本"
 
-# 权限检查配置
-permissions:
-  critical_paths:
-    - path: "data"
-      description: "数据目录"
-      required_permissions: ["read", "write"]
-
-    - path: "config"
-      description: "配置目录"
-      required_permissions: ["read", "write"]
-
+config_files:
+  required:
     - path: ".env"
-      description: "环境配置文件"
-      required_permissions: ["read"]
+      description: "环境变量配置文件"
+    - path: "requirements.txt"
+      description: "Python依赖配置"
+    - path: "README.md"
+      description: "项目说明文档"
 
-    - path: "logs"
-      description: "日志目录"
-      required_permissions: ["read", "write"]
+  optional:
+    - path: "config/default/claude.json"
+      description: "Claude API配置（可选）"
+    - path: ".cursor/settings.json"
+      description: "Cursor IDE配置（可选）"
+    - path: ".ai/prompts/default.json"
+      description: "AI提示配置（可选）"
 
-# 性能检查配置
 performance:
-  memory_threshold: 512  # MB
-  disk_space_threshold: 1024  # MB
-  check_disk_usage: true
-  check_memory_usage: true
+  max_response_time: 30  # 秒
+  check_response_time: true
 
-# 安全检查配置
-security:
-  check_file_permissions: true
-  check_env_encryption: true
-  check_api_keys: true
-  check_secret_files: true
-
-# 日志检查配置
-logging:
-  check_log_files: true
-  max_log_size: 100  # MB
-  required_log_files:
-    - "logs/app.log"
-    - "logs/error.log"
-    - "logs/access.log"
+output_format:
+  check_json_format: true
+  check_help_format: true
+  check_error_format: true

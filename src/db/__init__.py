@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 from typing import Optional
 
 from sqlalchemy import Engine
@@ -15,6 +16,7 @@ from src.db.connection_manager import ensure_tables_exist, get_engine, get_sessi
 
 # Updated imports for flow repositories
 from src.db.repositories.flow_session_repository import FlowSessionRepository
+from src.db.repositories.memory_item_repository import MemoryItemRepository
 from src.db.repositories.rule_repository import RuleExampleRepository, RuleItemRepository, RuleRepository
 from src.db.repositories.stage_instance_repository import StageInstanceRepository
 from src.db.repositories.task_repository import TaskCommentRepository, TaskRepository
@@ -51,6 +53,7 @@ __all__ = [
     "WorkflowDefinitionRepository",
     "TaskRepository",
     "TaskCommentRepository",
+    "MemoryItemRepository",
 ]
 
 # 注意: 不要在此处导入 service.py 或其他依赖 src.db 的模块，
@@ -70,14 +73,23 @@ def init_database(force_recreate=False) -> bool:
     """
     logger.info("初始化数据库...")
     try:
+        # 检查环境变量中的force_recreate设置
+        env_force = os.getenv("FORCE_RECREATE", "").lower() == "true"
+        force_recreate = force_recreate or env_force
+
         # 确保表已创建
-        ensure_tables_exist(force_recreate)
+        ensure_tables_exist(force_recreate=force_recreate)
 
         # 验证数据库引擎可用
         engine = get_engine()
         if not engine:
             logger.error("数据库引擎初始化失败")
             return False
+
+        # 初始化数据
+        from src.db.init_data import init_all_data
+
+        init_all_data()
 
         logger.info("数据库初始化成功")
         return True

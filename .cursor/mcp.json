@@ -5,23 +5,15 @@
         "args": [
           "-y",
           "@modelcontextprotocol/server-filesystem",
-          "/Users/jacobcy/Public/VibeCopilot"
-        ],
-        "env": {},
-        "capabilities": {
-          "filesystem": true
-        }
+          "${workspaceRoot}"
+        ]
       },
       "sequential-thinking": {
         "command": "npx",
         "args": [
           "-y",
           "@modelcontextprotocol/server-sequential-thinking"
-        ],
-        "env": {},
-        "capabilities": {
-          "tools": true
-        }
+        ]
       },
       "time": {
         "command": "uvx",
@@ -29,50 +21,38 @@
           "mcp-server-time",
           "--local-timezone",
           "Asia/Shanghai"
-        ],
-        "env": {},
-        "capabilities": {
-          "tools": true
-        }
+        ]
       },
       "basic-memory": {
         "command": "uvx",
         "args": [
           "basic-memory",
           "mcp"
-        ],
-        "env": {},
-        "capabilities": {
-          "tools": true,
-          "resources": true
-        }
+        ]
       },
       "git": {
         "command": "uvx",
         "args": [
           "mcp-server-git",
           "--repository",
-          "/Users/jacobcy/Public/VibeCopilot"
-        ],
-        "env": {},
-        "capabilities": {
-          "tools": true
-        }
+          "${workspaceRoot}"
+        ]
       },
       "vibe-copilot": {
         "command": "python",
         "env": {
-          "PYTHONPATH": "/Users/jacobcy/Public/VibeCopilot"
+          "PYTHONPATH": "${workspaceRoot}"
         },
         "args": [
-          "/Users/jacobcy/Public/VibeCopilot/src/cursor/server.py",
+          "${workspaceRoot}/src/cursor/server.py",
           "--workspace",
-          "/Users/jacobcy/Public/VibeCopilot"
+          "${workspaceRoot}",
+          "--verbose"
         ],
         "capabilities": {
-          "tools": true,
           "prompts": true,
           "resources": true,
+          "tools": true,
           "logging": true,
           "completion": true
         }

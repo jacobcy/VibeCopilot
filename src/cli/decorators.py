@@ -11,6 +11,8 @@ from typing import Any, Callable, Optional, TypeVar, cast
 
 import click
 from rich.console import Console
+from rich.panel import Panel
+from rich.traceback import Traceback
 from typing_extensions import ParamSpec
 
 from src.services.service_factory import ServiceFactory
@@ -51,30 +53,35 @@ def friendly_error_handling(f: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return f(*args, **kwargs)
-        except click.ClickException:
-            # Click的异常直接抛出，因为它们已经格式化好了
-            raise
+        except click.exceptions.UsageError as e:
+            # 命令使用错误
+            console.print(Panel(f"[bold red]命令使用错误[/bold red]\n\n{str(e)}\n\n" f"使用 --help 查看命令帮助", title="错误", border_style="red"))
+            raise click.Abort()
+        except click.exceptions.BadParameter as e:
+            # 参数错误
+            console.print(Panel(f"[bold red]参数错误[/bold red]\n\n{str(e)}\n\n" f"使用 --help 查看正确的参数格式", title="错误", border_style="red"))
+            raise click.Abort()
         except Exception as e:
-            # 获取verbose参数，如果存在的话
-            verbose = kwargs.get("verbose", False)
+            # 其他未预期的错误
+            is_verbose = any(arg == "--verbose" or arg == "-v" for arg in args) or kwargs.get("verbose", False)
 
-            # 错误消息
-            error_msg = str(e)
-
-            # 在verbose模式下显示更多信息
-            if verbose:
-                import traceback
-
-                console.print("[bold red]错误详情:[/bold red]")
-                console.print(traceback.format_exc())
+            if is_verbose:
+                console.print(
+                    Panel(
+                        f"[bold red]执行出错[/bold red]\n\n"
+                        f"[yellow]错误类型:[/yellow] {type(e).__name__}\n"
+                        f"[yellow]错误信息:[/yellow] {str(e)}\n\n"
+                        "[cyan]详细错误信息:[/cyan]",
+                        title="错误",
+                        border_style="red",
+                    )
+                )
+                console.print(Traceback())
             else:
-                console.print(f"[red]错误: {error_msg}[/red]")
-                console.print("[blue]提示: 使用 --verbose 参数查看详细错误信息[/blue]")
+                console.print(Panel(f"[bold red]执行出错[/bold red]\n\n{str(e)}\n\n" f"使用 --verbose 查看详细错误信息", title="错误", border_style="red"))
+            raise click.Abort()
 
-            # 返回错误状态码
-            return 1
-
-    return cast(Callable[P, R], wrapper)
+    return wrapper
 
 
 def pass_service(f: Optional[Callable[P, R]] = None, *, service_type: str = "roadmap") -> Callable[P, R]:

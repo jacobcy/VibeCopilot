@@ -14,8 +14,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from src.models.db.base import Base
+from src.utils.logger import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 class DBConnectionManager:
@@ -115,31 +116,31 @@ class DBConnectionManager:
         Args:
             force_recreate: 是否强制重新创建表
         """
-        # import traceback
+        # 检查环境变量中的force_recreate设置
+        env_force = os.getenv("FORCE_RECREATE", "").lower() == "true"
+        force_recreate = force_recreate or env_force
 
-        # 获取调用栈信息
-        # caller_info = "".join(traceback.format_stack()[:-1])
         logger.info(f"ensure_tables_exist 被调用 (force_recreate={force_recreate})")
-
-        # 如果已确保表存在且不需要强制重建，则直接返回
-        if self._tables_ensured and not force_recreate:
-            logger.info("表已经确保存在，跳过表创建过程")
-            return True
 
         if not self._initialized:
             logger.info("数据库连接未初始化，进行初始化...")
             self._initialize()
 
+        # 如果强制重建，重置_tables_ensured标记
         if force_recreate:
+            self._tables_ensured = False
             logger.info("强制重新创建所有表")
             Base.metadata.drop_all(self._engine)
 
-        # 创建所有表 (如果不存在)
-        Base.metadata.create_all(self._engine)
-        logger.info("数据库表创建/验证完成")
-
-        # 标记表已经确保存在
-        self._tables_ensured = True
+        # 如果表未确保存在，则创建
+        if not self._tables_ensured:
+            # 创建所有表 (如果不存在)
+            Base.metadata.create_all(self._engine)
+            logger.info("数据库表创建/验证完成")
+            # 标记表已经确保存在
+            self._tables_ensured = True
+        else:
+            logger.info("表已经确保存在，跳过表创建过程")
 
         return True
 
