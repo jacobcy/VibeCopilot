@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
-from src.cli.commands.rule.rule_command_utils import get_template, prepare_variables
+from src.cli.commands.rule.utils import get_template, prepare_variables
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,7 @@ def create_rule(template_manager, rule_generator, args) -> Dict[str, Any]:
     try:
         # 获取参数
         template_type = args.get("template_type") if isinstance(args, dict) else args.template_type
-        template_dir = (
-            args.get("template_dir")
-            if isinstance(args, dict)
-            else getattr(args, "template_dir", None)
-        )
+        template_dir = args.get("template_dir") if isinstance(args, dict) else getattr(args, "template_dir", None)
 
         # 获取规则名称
         rule_name = args.get("name") if isinstance(args, dict) else getattr(args, "name", None)
@@ -61,11 +57,7 @@ def create_rule(template_manager, rule_generator, args) -> Dict[str, Any]:
         rule = rule_generator.generate_rule(template, variables)
 
         # 保存规则
-        output_dir = (
-            args.get("output_dir")
-            if isinstance(args, dict)
-            else getattr(args, "output_dir", None) or "rules"
-        )
+        output_dir = args.get("output_dir") if isinstance(args, dict) else getattr(args, "output_dir", None) or "rules"
         output_path = Path(output_dir) / f"{rule.id}.md"
         rule_generator.generate_rule_file(template, variables, str(output_path))
 

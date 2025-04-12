@@ -34,13 +34,13 @@ class ConfigManager:
     def _get_config_dir(self) -> Path:
         """获取配置目录
 
-        优先使用环境变量VIBECOPILOT_CONFIG_DIR，否则使用用户主目录下的.vibecopilot
+        优先使用环境变量VIBECOPILOT_CONFIG_DIR，否则使用用户主目录下的data/temp
         """
         config_dir = os.environ.get("VIBECOPILOT_CONFIG_DIR")
         if config_dir:
             path = Path(config_dir)
         else:
-            path = Path.home() / ".vibecopilot"
+            path = Path.home() / "data/temp"
 
         path.mkdir(parents=True, exist_ok=True)
         return path

@@ -1,0 +1,44 @@
+# VibeCopilot 健康检查配置
+
+# 检查器配置
+checkers:
+  database:
+    enabled: true
+    critical: true
+    config_file: "database_check_config.yaml"
+  command:
+    enabled: true
+    critical: true
+    config_file: "command_check_config.yaml"
+  documentation:
+    enabled: true
+    critical: false
+    config_file: "documentation_check_config.yaml"
+  dependency:
+    enabled: true
+    critical: true
+    config_file: "dependency_check_config.yaml"
+
+# 全局配置
+global:
+  workspace_root: "/Users/jacobcy/Public/VibeCopilot"
+  report_dir: "reports/health_checks"
+  log_level: "INFO"
+  timeout: 30  # 全局超时时间（秒）
+
+# 报告配置
+report:
+  format: "markdown"  # markdown 或 json
+  save: true         # 是否保存报告文件
+  verbose: false     # 是否显示详细信息
+  metrics: true      # 是否包含指标数据
+
+# 通知配置
+notifications:
+  enabled: false
+  channels:
+    - type: "console"
+      enabled: true
+    - type: "file"
+      enabled: true
+      path: "logs/health_check.log"

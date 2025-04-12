@@ -5,8 +5,10 @@
 """
 
 from src.validation.core.base_validator import BaseValidator, ValidationResult
+from src.validation.core.roadmap_validator import RoadmapCoreValidator
 from src.validation.core.rule_validator import RuleValidator
 from src.validation.core.template_validator import TemplateValidator
+from src.validation.core.validator import Validator
 from src.validation.core.yaml_validator import YamlValidator
 
 __all__ = [
@@ -15,4 +17,6 @@ __all__ = [
     "YamlValidator",
     "RuleValidator",
     "TemplateValidator",
+    "RoadmapCoreValidator",
+    "Validator",
 ]

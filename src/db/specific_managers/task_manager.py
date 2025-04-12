@@ -43,7 +43,16 @@ class TaskManager:
         Returns:
             Task列表
         """
-        return self._entity_manager.get_entities("task")
+        logger.info("获取所有Task列表")
+        try:
+            # 使用实体管理器获取Task列表
+            tasks = self._entity_manager.get_entities("task")
+            logger.info(f"获取到 {len(tasks)} 个Task")
+            return tasks
+        except Exception as e:
+            logger.error(f"获取Task列表失败: {e}", exc_info=True)
+            # 不要抛出异常，返回空列表
+            return []
 
     def create_task(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """创建Task

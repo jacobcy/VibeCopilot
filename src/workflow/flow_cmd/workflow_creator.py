@@ -6,78 +6,75 @@
 提供从规则或模板创建工作流的功能
 """
 
+import asyncio
+import json
 import logging
 import os
+import uuid
 from typing import Any, Dict, Optional
 
+from rich import print_json
+from rich.console import Console
+from rich.panel import Panel
+
+from src.parsing.processors.workflow_processor import WorkflowProcessor
 from src.rule_engine.parser import parse_rule_content
 from src.utils.file_utils import read_json_file, read_text_file, write_json_file
 from src.workflow.workflow_operations import create_workflow
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
-def create_workflow_from_rule(rule_path: str, output_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+async def create_workflow_from_rule(rule_path: str) -> Optional[Dict[str, Any]]:
     """
     从规则文件创建工作流
 
     Args:
         rule_path: 规则文件路径
-        output_path: 输出文件路径（可选）
 
     Returns:
-        Optional[Dict[str, Any]]: 创建的工作流数据或None
+        Optional[Dict[str, Any]]: 工作流数据，如果创建失败则返回None
     """
     try:
         # 读取规则文件
-        rule_content = read_text_file(rule_path)
+        with open(rule_path, "r", encoding="utf-8") as f:
+            rule_content = f.read()
 
-        # 解析规则内容
-        rule_data = parse_rule_content(rule_content)
+        # 使用WorkflowProcessor解析工作流结构
+        processor = WorkflowProcessor()
+        workflow_structure = await processor.parse_workflow_rule(rule_content)
 
-        if not rule_data:
-            logger.error(f"解析规则文件失败: {rule_path}")
+        if not workflow_structure:
+            error_msg = "规则解析失败: 无法从规则内容中提取工作流结构"
+            logger.error(error_msg)
+            console.print(f"\n[bold red]✗[/bold red] {error_msg}")
             return None
 
-        # 提取规则元数据
-        meta = rule_data.get("meta", {})
+        # 生成工作流ID
+        workflow_structure["id"] = str(uuid.uuid4())
 
-        # 创建工作流数据
-        workflow_data = {
-            "name": meta.get("title", os.path.basename(rule_path).split(".")[0]),
-            "description": meta.get("description", "从规则创建的工作流"),
-            "type": meta.get("type", "workflow"),
-            "tags": meta.get("tags", []),
-            "steps": [],
-        }
+        # 确保工作流结构包含必要字段
+        if "name" not in workflow_structure:
+            workflow_structure["name"] = os.path.splitext(os.path.basename(rule_path))[0]
+        if "description" not in workflow_structure:
+            workflow_structure["description"] = f"从规则文件 {rule_path} 创建的工作流"
 
-        # 如果规则中有流程定义，则添加步骤
-        if "process" in rule_data:
-            process = rule_data["process"]
-            for i, step in enumerate(process):
-                workflow_data["steps"].append(
-                    {
-                        "id": f"step_{i+1}",
-                        "name": step.get("name", f"步骤 {i+1}"),
-                        "description": step.get("description", ""),
-                        "type": "script",  # 默认为脚本类型
-                        "order": i + 1,
-                        "config": {"script": step.get("action", "")},
-                    }
-                )
+        # 打印解析结果
+        console.print("\n[bold green]规则解析成功！[/bold green]")
+        console.print(Panel(json.dumps(workflow_structure, ensure_ascii=False, indent=2), title="工作流结构", border_style="green"))
 
-        # 创建工作流
-        workflow = create_workflow(workflow_data)
+        return workflow_structure
 
-        # 如果提供了输出路径，则写入文件
-        if output_path:
-            write_json_file(output_path, workflow)
-            logger.info(f"工作流已保存到: {output_path}")
-
-        return workflow
-
+    except FileNotFoundError:
+        error_msg = f"规则文件不存在: {rule_path}"
+        logger.error(error_msg)
+        console.print(f"\n[bold red]✗[/bold red] {error_msg}")
+        return None
     except Exception as e:
-        logger.error(f"从规则创建工作流时出错: {str(e)}", exc_info=True)
+        error_msg = f"从规则创建工作流时出错: {str(e)}"
+        logger.error(error_msg)
+        console.print(f"\n[bold red]✗[/bold red] {error_msg}")
         return None
 
 
@@ -114,6 +111,14 @@ def create_workflow_from_template_with_vars(
         # 替换变量
         if variables:
             template = _replace_variables(template, variables)
+
+        # 确保工作流结构包含必要字段
+        if "id" not in template:
+            template["id"] = str(uuid.uuid4())
+        if "name" not in template:
+            template["name"] = template_name
+        if "description" not in template:
+            template["description"] = f"从模板 {template_name} 创建的工作流"
 
         # 创建工作流
         workflow = create_workflow(template)

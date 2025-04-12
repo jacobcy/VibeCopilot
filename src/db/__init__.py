@@ -5,6 +5,7 @@
 """
 
 import logging
+from typing import Optional
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -54,3 +55,32 @@ __all__ = [
 
 # 注意: 不要在此处导入 service.py 或其他依赖 src.db 的模块，
 # 避免循环导入。service.py 会直接导入所需的仓库类。
+
+
+def init_database(force_recreate=False) -> bool:
+    """初始化数据库并确保表已创建
+
+    统一的初始化入口点，适用于CLI等需要确保数据库正确初始化的场景
+
+    Args:
+        force_recreate: 是否强制重新创建表
+
+    Returns:
+        bool: 初始化是否成功
+    """
+    logger.info("初始化数据库...")
+    try:
+        # 确保表已创建
+        ensure_tables_exist(force_recreate)
+
+        # 验证数据库引擎可用
+        engine = get_engine()
+        if not engine:
+            logger.error("数据库引擎初始化失败")
+            return False
+
+        logger.info("数据库初始化成功")
+        return True
+    except Exception as e:
+        logger.error(f"数据库初始化失败: {e}", exc_info=True)
+        return False

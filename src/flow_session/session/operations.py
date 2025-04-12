@@ -4,13 +4,18 @@
 提供工作流会话高级操作的功能实现。
 """
 
+import logging
 from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy.orm import Session
 
 from src.db import get_session_factory, init_db
+from src.db.repositories import FlowSessionRepository
 from src.flow_session.session.manager import FlowSessionManager
+from src.flow_session.stage.manager import StageInstanceManager
 from src.models.db import FlowSession, StageInstance, WorkflowDefinition
+
+logger = logging.getLogger(__name__)
 
 
 def get_db_session():
@@ -20,27 +25,33 @@ def get_db_session():
     return SessionFactory()
 
 
-def create_session(workflow_id: str, name: Optional[str] = None) -> Optional[FlowSession]:
-    """创建新会话的便捷函数
+def create_session(
+    session: Session,
+    workflow_id: str,
+    session_name: str = None,
+    task_id: str = None,
+) -> Dict:
+    """创建一个新的工作流会话。
 
     Args:
+        session: 数据库会话
         workflow_id: 工作流定义ID
-        name: 会话名称
+        session_name: 可选，会话名称
+        task_id: 可选，关联的任务ID
 
     Returns:
-        创建的会话或None
+        Dict: 包含创建结果的字典
     """
-    with get_db_session() as session:
+    try:
         manager = FlowSessionManager(session)
-        try:
-            return manager.create_session(workflow_id, name)
-        except ValueError as e:
-            print(f"创建会话失败: {str(e)}")
-            return None
+        new_session = manager.create_session(workflow_id=workflow_id, session_name=session_name, task_id=task_id)
+        return {"status": "success", "session_id": new_session.id}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 def get_session(session_id: str) -> Optional[FlowSession]:
-    """获取会话的便捷函数
+    """获取会话
 
     Args:
         session_id: 会话ID
@@ -54,7 +65,7 @@ def get_session(session_id: str) -> Optional[FlowSession]:
 
 
 def list_sessions(status: Optional[str] = None, workflow_id: Optional[str] = None) -> List[FlowSession]:
-    """列出会话的便捷函数
+    """列出会话
 
     Args:
         status: 会话状态
@@ -69,7 +80,7 @@ def list_sessions(status: Optional[str] = None, workflow_id: Optional[str] = Non
 
 
 def update_session(session_id: str, data: Dict[str, Any]) -> Optional[FlowSession]:
-    """更新会话的便捷函数
+    """更新会话
 
     Args:
         session_id: 会话ID
@@ -84,7 +95,7 @@ def update_session(session_id: str, data: Dict[str, Any]) -> Optional[FlowSessio
 
 
 def delete_session(session_id: str) -> bool:
-    """删除会话的便捷函数
+    """删除会话
 
     Args:
         session_id: 会话ID
@@ -98,7 +109,7 @@ def delete_session(session_id: str) -> bool:
 
 
 def pause_session(session_id: str) -> Optional[FlowSession]:
-    """暂停会话的便捷函数
+    """暂停会话
 
     Args:
         session_id: 会话ID
@@ -108,25 +119,33 @@ def pause_session(session_id: str) -> Optional[FlowSession]:
     """
     with get_db_session() as session:
         manager = FlowSessionManager(session)
-        return manager.pause_session(session_id)
+        try:
+            return manager.pause_session(session_id)
+        except Exception as e:
+            logger.error(f"暂停会话失败: {e}")
+            return None
 
 
 def resume_session(session_id: str) -> Optional[FlowSession]:
-    """恢复会话的便捷函数
+    """恢复会话
 
     Args:
         session_id: 会话ID
 
     Returns:
-        更新后的会话或None
+        恢复后的会话对象或None
     """
     with get_db_session() as session:
         manager = FlowSessionManager(session)
-        return manager.resume_session(session_id)
+        try:
+            return manager.resume_session(session_id)
+        except Exception as e:
+            logger.error(f"恢复会话失败: {e}")
+            return None
 
 
 def complete_session(session_id: str) -> Optional[FlowSession]:
-    """完成会话的便捷函数
+    """完成会话
 
     Args:
         session_id: 会话ID
@@ -136,25 +155,34 @@ def complete_session(session_id: str) -> Optional[FlowSession]:
     """
     with get_db_session() as session:
         manager = FlowSessionManager(session)
-        return manager.complete_session(session_id)
+        try:
+            return manager.complete_session(session_id)
+        except Exception as e:
+            logger.error(f"完成会话失败: {e}")
+            return None
 
 
-def abort_session(session_id: str) -> Optional[FlowSession]:
-    """终止会话的便捷函数
+def close_session(session_id: str, reason: Optional[str] = None) -> Optional[FlowSession]:
+    """结束会话
 
     Args:
         session_id: 会话ID
+        reason: 结束原因(可选)
 
     Returns:
-        更新后的会话或None
+        结束后的会话对象或None
     """
     with get_db_session() as session:
         manager = FlowSessionManager(session)
-        return manager.abort_session(session_id)
+        try:
+            return manager.close_session(session_id, reason)
+        except Exception as e:
+            logger.error(f"结束会话失败: {e}")
+            return None
 
 
 def get_session_stages(session_id: str) -> List[StageInstance]:
-    """获取会话的所有阶段实例的便捷函数
+    """获取会话中的所有阶段实例
 
     Args:
         session_id: 会话ID
@@ -164,13 +192,11 @@ def get_session_stages(session_id: str) -> List[StageInstance]:
     """
     with get_db_session() as session:
         manager = FlowSessionManager(session)
-        from src.flow_session.stage_manager import StageInstanceManager
-
         return manager.stage_repo.get_by_session_id(session_id)
 
 
 def get_session_progress(session_id: str) -> Dict[str, Any]:
-    """获取会话进度信息的便捷函数
+    """获取会话进度信息
 
     Args:
         session_id: 会话ID
@@ -222,31 +248,38 @@ def get_session_progress(session_id: str) -> Dict[str, Any]:
             if stage_instance.status == "COMPLETED":
                 completed_stages.append(stage_info)
             elif stage_instance.status == "ACTIVE":
-                from src.flow_session.stage_manager import StageInstanceManager
-
-                stage_manager = StageInstanceManager(session)
-                progress = stage_manager.get_instance_progress(stage_instance.id)
-
-                stage_info["completed_items"] = progress.get("completed_count", 0)
-                stage_info["total_items"] = progress.get("total_count", 0)
-
                 current_stage = stage_info
             else:
                 pending_stages.append(stage_info)
 
+        # 计算进度百分比
+        total_stages = len(all_stages)
+        completed_count = len(completed_stages)
+        progress_percentage = (completed_count / total_stages) * 100 if total_stages > 0 else 0
+
         return {
-            "session_id": session_id,
-            "workflow_id": flow_session.workflow_id,
-            "name": flow_session.name,
-            "status": flow_session.status,
             "completed_stages": completed_stages,
             "current_stage": current_stage,
             "pending_stages": pending_stages,
+            "total_stages": total_stages,
+            "completed_count": completed_count,
+            "progress_percentage": progress_percentage,
         }
 
 
+def get_current_session() -> Optional[FlowSession]:
+    """获取当前活动会话
+
+    Returns:
+        当前会话对象或None
+    """
+    with get_db_session() as session:
+        manager = FlowSessionManager(session)
+        return manager.get_current_session()
+
+
 def set_current_stage(session_id: str, stage_id: str) -> Optional[FlowSession]:
-    """设置会话当前阶段的便捷函数
+    """设置会话的当前阶段
 
     Args:
         session_id: 会话ID
@@ -257,32 +290,18 @@ def set_current_stage(session_id: str, stage_id: str) -> Optional[FlowSession]:
     """
     with get_db_session() as session:
         manager = FlowSessionManager(session)
-        return manager.session_repo.update_current_stage(session_id, stage_id)
+        flow_session = manager.get_session(session_id)
+        if not flow_session:
+            logger.error(f"会话不存在: {session_id}")
+            return None
 
-
-def complete_stage(session_id: str, stage_id: str) -> bool:
-    """标记阶段为已完成的便捷函数
-
-    Args:
-        session_id: 会话ID
-        stage_id: 阶段ID
-
-    Returns:
-        是否操作成功
-    """
-    with get_db_session() as session:
-        manager = FlowSessionManager(session)
-
-        # 获取阶段实例
-        from src.flow_session.stage_manager import StageInstanceManager
-
-        stage_manager = StageInstanceManager(session)
-        instances = stage_manager.list_instances(session_id=session_id)
-        instance = next((i for i in instances if i.stage_id == stage_id), None)
-
-        if not instance:
-            return False
-
-        # 标记为已完成
-        completed = stage_manager.complete_instance(instance.id)
-        return completed is not None
+        try:
+            # 更新会话的当前阶段
+            flow_session.current_stage_id = stage_id
+            session.commit()
+            session.refresh(flow_session)
+            return flow_session
+        except Exception as e:
+            session.rollback()
+            logger.error(f"设置当前阶段失败: {e}")
+            return None

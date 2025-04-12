@@ -15,14 +15,12 @@ from src.models.db import StageInstance
 
 def get_db_session():
     """获取数据库会话"""
-    engine = init_db()
-    SessionFactory = get_session_factory(engine)
+    init_db()  # 确保数据库已初始化
+    SessionFactory = get_session_factory()
     return SessionFactory()
 
 
-def create_instance(
-    session_id: str, stage_id: str, name: Optional[str] = None
-) -> Optional[StageInstance]:
+def create_instance(session_id: str, stage_id: str, name: Optional[str] = None) -> Optional[StageInstance]:
     """创建新的阶段实例的便捷函数
 
     Args:
@@ -56,9 +54,7 @@ def get_instance(instance_id: str) -> Optional[StageInstance]:
         return manager.get_instance(instance_id)
 
 
-def list_instances(
-    session_id: Optional[str] = None, status: Optional[str] = None
-) -> List[StageInstance]:
+def list_instances(session_id: Optional[str] = None, status: Optional[str] = None) -> List[StageInstance]:
     """列出阶段实例的便捷函数
 
     Args:
@@ -102,9 +98,7 @@ def start_instance(instance_id: str) -> Optional[StageInstance]:
         return manager.start_instance(instance_id)
 
 
-def complete_instance(
-    instance_id: str, deliverables: Optional[Dict[str, Any]] = None
-) -> Optional[StageInstance]:
+def complete_instance(instance_id: str, deliverables: Optional[Dict[str, Any]] = None) -> Optional[StageInstance]:
     """完成阶段实例的便捷函数
 
     Args:

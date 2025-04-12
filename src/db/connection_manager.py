@@ -23,6 +23,7 @@ class DBConnectionManager:
 
     _instance = None
     _initialized = False
+    _tables_ensured = False  # 新增变量，跟踪表是否已确保存在
     _engine = None
     _session_factory = None
 
@@ -37,6 +38,13 @@ class DBConnectionManager:
 
     def _initialize(self):
         """初始化数据库连接"""
+        import traceback
+
+        # 获取调用栈信息
+        caller_info = "".join(traceback.format_stack()[:-1])
+        logger.info(f"DBConnectionManager._initialize 被调用")
+        logger.debug(f"调用栈信息: \n{caller_info}")
+
         try:
             db_path = self._get_db_path()
 
@@ -56,7 +64,7 @@ class DBConnectionManager:
 
             # 记录初始化
             self._initialized = True
-            logger.debug(f"数据库连接管理器初始化: {database_url}")
+            logger.info(f"数据库连接管理器初始化完成: {database_url}")
         except Exception as e:
             logger.error(f"初始化数据库连接管理器失败: {e}")
             raise
@@ -107,7 +115,19 @@ class DBConnectionManager:
         Args:
             force_recreate: 是否强制重新创建表
         """
+        # import traceback
+
+        # 获取调用栈信息
+        # caller_info = "".join(traceback.format_stack()[:-1])
+        logger.info(f"ensure_tables_exist 被调用 (force_recreate={force_recreate})")
+
+        # 如果已确保表存在且不需要强制重建，则直接返回
+        if self._tables_ensured and not force_recreate:
+            logger.info("表已经确保存在，跳过表创建过程")
+            return True
+
         if not self._initialized:
+            logger.info("数据库连接未初始化，进行初始化...")
             self._initialize()
 
         if force_recreate:
@@ -116,7 +136,10 @@ class DBConnectionManager:
 
         # 创建所有表 (如果不存在)
         Base.metadata.create_all(self._engine)
-        logger.debug("确保数据库表已存在")
+        logger.info("数据库表创建/验证完成")
+
+        # 标记表已经确保存在
+        self._tables_ensured = True
 
         return True
 

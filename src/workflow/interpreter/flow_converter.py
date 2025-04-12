@@ -7,9 +7,11 @@
 """
 
 import logging
-import re
-import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
+
+from src.llm.llm_interface import LLMInterface
+from src.parsing.processors.workflow_processor import WorkflowProcessor
+from src.validation.core.workflow_validator import WorkflowValidator
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +19,17 @@ logger = logging.getLogger(__name__)
 class FlowConverter:
     """流程转换器，将规则数据转换为工作流定义"""
 
-    def __init__(self):
-        self.checklist_pattern = re.compile(r"^[-*]\s+(.+)$", re.MULTILINE)
-        self.deliverable_pattern = re.compile(r"交付物[:：](.+?)(?=\n\n|\n#|\n$|$)", re.DOTALL)
-        self.transition_pattern = re.compile(r"([^→]+)→([^→]+)", re.DOTALL)
+    def __init__(self, llm: LLMInterface):
+        """
+        初始化流程转换器
 
-    def convert_rule_to_workflow(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        Args:
+            llm: LLM接口实例
+        """
+        self.workflow_processor = WorkflowProcessor(llm)
+        self.workflow_validator = WorkflowValidator()
+
+    async def convert_rule_to_workflow(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         将规则数据转换为工作流定义
 
@@ -37,167 +44,143 @@ class FlowConverter:
             return None
 
         try:
-            # 提取基本信息
-            rule_id = rule_data.get("rule_id", "")
-            metadata = rule_data.get("metadata", {})
-            rule_name = metadata.get("title", rule_id)
+            logger.info("开始将规则转换为工作流...")
 
-            # 创建工作流基本结构
-            workflow = {
-                "id": f"{rule_id}-workflow",
-                "name": f"{rule_name} 工作流",
-                "description": metadata.get("description", ""),
-                "version": metadata.get("version", "1.0.0"),
-                "source_rule": rule_id,
-                "stages": [],
-                "transitions": [],
-            }
+            # 使用WorkflowProcessor解析规则内容
+            workflow = await self.workflow_processor.parse_workflow_rule(rule_data.get("raw_content", ""))
+            if not workflow:
+                logger.error("工作流解析失败")
+                return None
 
-            # 解析各阶段
-            sections = rule_data.get("sections", [])
-            for i, section in enumerate(sections):
-                stage = self._convert_section_to_stage(section, i)
-                if stage:
-                    workflow["stages"].append(stage)
-
-            # 根据段落顺序添加默认转换
-            for i in range(len(workflow["stages"]) - 1):
-                workflow["transitions"].append(
-                    {
-                        "id": f"t{i+1}",
-                        "from_stage": workflow["stages"][i]["id"],
-                        "to_stage": workflow["stages"][i + 1]["id"],
-                        "condition": "自动",
-                        "description": f"从 {workflow['stages'][i]['name']} 到 {workflow['stages'][i+1]['name']}",
-                    }
-                )
-
-            # 解析特殊转换条件
-            self._parse_transitions(workflow, rule_data.get("raw_content", ""))
-
+            logger.info(f"工作流转换完成: {workflow['name']}")
             return workflow
+
         except Exception as e:
             logger.error(f"转换规则到工作流失败: {str(e)}")
             return None
 
-    def _convert_section_to_stage(
-        self, section: Dict[str, Any], order: int
-    ) -> Optional[Dict[str, Any]]:
+    def convert_to_workflow(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        将段落转换为工作流阶段
+        将规则数据转换为工作流定义
 
         Args:
-            section: 段落数据
-            order: 阶段顺序
+            rule_data: 规则数据
 
         Returns:
-            阶段定义
+            工作流定义
         """
-        if not section:
+        try:
+            logger.info(f"开始转换规则 '{rule_data.get('rule_id', '')}' 为工作流...")
+
+            # 提取工作流基本信息
+            workflow = self._extract_workflow_info(rule_data)
+            if not workflow:
+                logger.error("工作流基本信息提取失败")
+                return None
+
+            # 提取阶段定义
+            stages = self._extract_stages(rule_data)
+            if not stages:
+                logger.error("工作流阶段提取失败")
+                return None
+            workflow["stages"] = stages
+
+            # 提取转换定义
+            transitions = self._extract_transitions(rule_data)
+            if not transitions:
+                logger.error("工作流转换提取失败")
+                return None
+            workflow["transitions"] = transitions
+
+            # 验证工作流定义
+            is_valid, errors = self.workflow_validator.validate_workflow(workflow)
+            if not is_valid:
+                logger.error("工作流验证失败:")
+                for error in errors:
+                    logger.error(f"  - {error}")
+                return None
+
+            logger.info(f"工作流 '{workflow['name']}' 转换完成")
+            return workflow
+
+        except Exception as e:
+            logger.error(f"工作流转换失败: {str(e)}")
             return None
 
-        title = section.get("title", "")
-        content = section.get("content", "")
-
-        stage_id = f"stage_{order+1}"
-        stage = {
-            "id": stage_id,
-            "name": title,
-            "description": self._extract_description(content),
-            "order": order,
-            "checklist": self._extract_checklist(content),
-            "deliverables": self._extract_deliverables(content),
-        }
-
-        return stage
-
-    def _extract_description(self, content: str) -> str:
+    def _extract_workflow_info(self, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        提取描述文本
+        提取工作流基本信息
 
         Args:
-            content: 内容文本
+            rule_data: 规则数据
 
         Returns:
-            描述文本
+            工作流基本信息
         """
-        # 获取第一段作为描述
-        paragraphs = content.split("\n\n")
-        if paragraphs:
-            return paragraphs[0].strip()
-        return ""
+        try:
+            metadata = rule_data.get("metadata", {})
+            workflow = {
+                "id": f"{rule_data['rule_id']}-workflow",
+                "name": f"{metadata.get('title', '')} 工作流",
+                "description": metadata.get("description", ""),
+                "version": metadata.get("version", "1.0.0"),
+                "source_rule": rule_data["rule_id"],
+            }
+            logger.debug(f"提取工作流基本信息: {workflow}")
+            return workflow
 
-    def _extract_checklist(self, content: str) -> List[str]:
+        except Exception as e:
+            logger.error(f"工作流基本信息提取失败: {str(e)}")
+            return None
+
+    def _extract_stages(self, rule_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         """
-        提取检查清单项
+        提取工作流阶段定义
 
         Args:
-            content: 内容文本
+            rule_data: 规则数据
 
         Returns:
-            检查清单项列表
+            工作流阶段列表
         """
-        checklist = []
-        for match in self.checklist_pattern.finditer(content):
-            item = match.group(1).strip()
-            if item:
-                checklist.append(item)
-        return checklist
+        try:
+            content = rule_data.get("content", {})
+            if not content:
+                raise ValueError("规则内容为空")
 
-    def _extract_deliverables(self, content: str) -> List[str]:
+            stages = content.get("stages", [])
+            if not stages:
+                raise ValueError("未找到阶段定义")
+
+            logger.debug(f"提取到 {len(stages)} 个工作流阶段")
+            return stages
+
+        except Exception as e:
+            logger.error(f"工作流阶段提取失败: {str(e)}")
+            return None
+
+    def _extract_transitions(self, rule_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         """
-        提取交付物
+        提取工作流转换定义
 
         Args:
-            content: 内容文本
+            rule_data: 规则数据
 
         Returns:
-            交付物列表
+            工作流转换列表
         """
-        deliverables = []
-        match = self.deliverable_pattern.search(content)
-        if match:
-            deliverable_text = match.group(1).strip()
-            for item in re.split(r"[,，;；\n]", deliverable_text):
-                item = item.strip()
-                if item:
-                    deliverables.append(item)
-        return deliverables
+        try:
+            content = rule_data.get("content", {})
+            if not content:
+                raise ValueError("规则内容为空")
 
-    def _parse_transitions(self, workflow: Dict[str, Any], content: str) -> None:
-        """
-        解析转换条件
+            transitions = content.get("transitions", [])
+            if not transitions:
+                raise ValueError("未找到转换定义")
 
-        Args:
-            workflow: 工作流定义
-            content: 原始内容
-        """
-        # 构建阶段名称到ID的映射
-        stage_map = {stage["name"]: stage["id"] for stage in workflow["stages"]}
+            logger.debug(f"提取到 {len(transitions)} 个工作流转换")
+            return transitions
 
-        # 查找所有转换表达式
-        for match in self.transition_pattern.finditer(content):
-            from_stage = match.group(1).strip()
-            to_stage = match.group(2).strip()
-
-            if from_stage in stage_map and to_stage in stage_map:
-                # 检查是否已存在相同的转换
-                transition_exists = False
-                for t in workflow["transitions"]:
-                    if (
-                        t["from_stage"] == stage_map[from_stage]
-                        and t["to_stage"] == stage_map[to_stage]
-                    ):
-                        transition_exists = True
-                        break
-
-                if not transition_exists:
-                    workflow["transitions"].append(
-                        {
-                            "id": f"t{len(workflow['transitions'])+1}",
-                            "from_stage": stage_map[from_stage],
-                            "to_stage": stage_map[to_stage],
-                            "condition": "条件",
-                            "description": f"从 {from_stage} 到 {to_stage} 的条件转换",
-                        }
-                    )
+        except Exception as e:
+            logger.error(f"工作流转换提取失败: {str(e)}")
+            return None

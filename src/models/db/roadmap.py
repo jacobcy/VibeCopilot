@@ -55,6 +55,7 @@ class Roadmap(Base):
         return {
             "id": self.id,
             "title": self.title,
+            "name": self.title,
             "description": self.description,
             "version": self.version,
             "status": self.status,

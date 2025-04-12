@@ -1,70 +1,12 @@
-[build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.black]
-line-length = 99
-target-version = ['py39', 'py310', 'py311', 'py312']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
-
-[tool.isort]
-profile = "black"
-line_length = 99
-multi_line_output = 3
-
-[tool.mypy]
-python_version = "3.13"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_functions = "test_*"
-python_classes = "Test*"
-addopts = "--cov=src --cov-report=term-missing"
-
 [project]
-name = "vibecopilot"
+name = "vibe-copilot"
 version = "0.1.0"
-description = "AI-powered development workflow assistant"
-readme = "README.md"
-requires-python = ">=3.9,<3.14"
-license = {file = "LICENSE"}
+description = "VibeCopilot - AI辅助开发工具"
 authors = [
-    {name = "Jacob Chen", email = "example@example.com"}
-]
-maintainers = [
-    {name = "Jacob Chen", email = "example@example.com"}
-]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    {name = "Jacob Chen", email = "jacob@example.com"},
 ]
 dependencies = [
+    # Core dependencies
     "pydantic>=2.5.0",
     "typer>=0.9.0",
     "rich>=13.4.0",
@@ -72,19 +14,29 @@ dependencies = [
     "pyyaml>=6.0.0",
     "python-dotenv>=1.0.0",
     "requests>=2.31.0",
+    "tenacity>=8.2.0",
+    "click>=8.1.3",
+    "mcp>=1.6.0",
+
+    # AI integration
     "langchain>=0.0.334",
     "langchain-openai>=0.0.2",
     "langchain-community>=0.0.10",
-    "openai>=1.0.0",
-    "faiss-cpu>=1.7.4",
-    "chromadb>=0.4.18",
-    "sentence-transformers>=2.2.2",
+
+    # Vector databases and embeddings
+    # "chromadb>=0.4.18",
+    # "sentence-transformers>=2.2.2",
+
+    # Document processing
     "unstructured>=0.10.30",
     "markdown>=3.4.4",
     "beautifulsoup4>=4.12.2",
     "python-frontmatter>=1.0.0",
+
+    # Database
     "sqlalchemy>=2.0.20",
 ]
+requires-python = ">=3.9"
 
 [project.optional-dependencies]
 dev = [
@@ -94,6 +46,7 @@ dev = [
     "isort>=5.12.0",
     "mypy>=1.5.0",
     "flake8>=6.1.0",
+    "tabulate>=0.9.0",
     "pre-commit>=3.4.0",
 ]
 docs = [
@@ -101,13 +54,10 @@ docs = [
     "mkdocs-material>=9.2.5",
 ]
 
-[project.urls]
-"Homepage" = "https://github.com/jacobcy/VibeCopilot"
-"Bug Tracker" = "https://github.com/jacobcy/VibeCopilot/issues"
-"Documentation" = "https://github.com/jacobcy/VibeCopilot/docs"
-
 [project.scripts]
 vibecopilot = "src.cli.main:main"
+vibe-copilot-mcp = "src.cursor.server:main"
 
-[tool.uv]
-excludes = [".git", "__pycache__", "*.pyc", ".tox", ".venv"]
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"

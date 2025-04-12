@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GitHub Issues核心功能模块.
+GitHub Issues核心模块.
 
-提供Issues基本操作，如获取、创建和更新Issue。
+提供Issues相关的核心功能，如获取、创建和更新Issues。
 """
 
 import logging
@@ -11,10 +11,10 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from ...github_client import GitHubClient
+from ..github_client import GitHubClientBase
 
 
-class GitHubIssuesCoreClient(GitHubClient):
+class GitHubIssuesCoreClient(GitHubClientBase):
     """GitHub Issues核心功能客户端."""
 
     def __init__(self, token: Optional[str] = None, base_url: str = "https://api.github.com"):

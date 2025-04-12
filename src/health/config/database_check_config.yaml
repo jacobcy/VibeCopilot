@@ -1,0 +1,222 @@
+# 数据库健康检查配置
+
+# 核心表配置
+core_tables:
+  rules:
+    min_records: 1
+    required_columns:
+      - id
+      - name
+      - type
+      - content
+    description: "规则系统核心表"
+
+  templates:
+    min_records: 0
+    required_columns:
+      - id
+      - name
+      - type
+      - content
+    description: "模板系统表"
+
+  memory_items:
+    min_records: 0
+    required_columns:
+      - id
+      - title
+      - content
+      - folder
+    description: "知识库记忆表"
+
+# 工作流相关表配置
+workflow_tables:
+  workflows:
+    min_records: 0
+    required_columns:
+      - id
+      - name
+      - description
+      - version
+      - is_active
+      - tags
+    description: "工作流定义表"
+
+  stages:
+    min_records: 0
+    required_columns:
+      - id
+      - workflow_id
+      - name
+      - description
+      - order_index
+      - checklist
+      - deliverables
+      - weight
+    description: "工作流阶段表"
+
+  transitions:
+    min_records: 0
+    required_columns:
+      - id
+      - workflow_id
+      - from_stage
+      - to_stage
+      - condition
+    description: "阶段转换表"
+
+  workflow_definitions:
+    min_records: 0
+    required_columns:
+      - id
+      - name
+      - type
+      - description
+      - stages
+      - source_rule
+    description: "工作流模板定义表"
+
+  flow_sessions:
+    min_records: 0
+    required_columns:
+      - id
+      - workflow_id
+      - name
+      - status
+      - current_stage_id
+      - completed_stages
+      - context
+    description: "工作流会话表"
+
+  stage_instances:
+    min_records: 0
+    required_columns:
+      - id
+      - session_id
+      - stage_id
+      - name
+      - status
+      - started_at
+      - completed_at
+      - context
+    description: "阶段实例表"
+
+# 任务相关表配置
+task_tables:
+  stories:
+    min_records: 0
+    required_columns:
+      - id
+      - title
+      - description
+      - epic_id
+      - status
+      - priority
+    description: "用户故事表"
+
+  tasks:
+    min_records: 0
+    required_columns:
+      - id
+      - title
+      - description
+      - status
+      - priority
+      - estimated_hours
+      - story_id
+      - assignee
+    description: "任务表"
+
+  task_comments:
+    min_records: 0
+    required_columns:
+      - id
+      - task_id
+      - content
+      - author
+      - created_at
+      - updated_at
+      - parent_id
+      - status
+    description: "任务评论表"
+
+  epics:
+    min_records: 0
+    required_columns:
+      - id
+      - title
+      - description
+      - roadmap_id
+      - status
+    description: "Epic表"
+
+  roadmaps:
+    min_records: 0
+    required_columns:
+      - id
+      - name
+      - description
+      - status
+    description: "路线图表"
+
+  milestones:
+    min_records: 0
+    required_columns:
+      - id
+      - name
+      - description
+      - due_date
+      - roadmap_id
+    description: "里程碑表"
+
+# 必要文件配置
+required_files:
+  database_core:
+    - path: "src/db/connection_manager.py"
+      description: "数据库连接管理器"
+    - path: "src/db/repository.py"
+      description: "数据访问对象基类"
+    - path: "src/db/service.py"
+      description: "数据库服务接口"
+
+  documentation:
+    - path: "src/db/README.md"
+      description: "数据库模块说明文档"
+    - path: "src/workflow/docs/data-structure.md"
+      description: "工作流数据结构文档"
+    - path: "src/roadmap/docs/entity_relationships.md"
+      description: "实体关系说明文档"
+
+  models:
+    - path: "src/db/models/__init__.py"
+      description: "数据库模型定义"
+    - path: "src/db/models/workflow.py"
+      description: "工作流相关模型"
+    - path: "src/db/models/task.py"
+      description: "任务相关模型"
+
+  repositories:
+    - path: "src/db/repositories/__init__.py"
+      description: "仓库模块初始化文件"
+    - path: "src/db/repositories/workflow.py"
+      description: "工作流仓库实现"
+    - path: "src/db/repositories/task.py"
+      description: "任务仓库实现"
+
+# 性能检查配置
+performance_checks:
+  connection_timeout: 5  # 数据库连接超时时间（秒）
+  query_timeout: 10      # 查询超时时间（秒）
+  max_connections: 100   # 最大连接数
+
+# 数据完整性检查配置
+integrity_checks:
+  check_foreign_keys: true    # 是否检查外键完整性
+  check_indexes: true         # 是否检查索引存在
+  check_constraints: true     # 是否检查约束完整性
+
+# 安全检查配置
+security_checks:
+  check_permissions: true     # 检查数据库权限
+  check_encryption: true      # 检查是否启用加密
+  check_backup: true         # 检查备份配置

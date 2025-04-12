@@ -22,6 +22,16 @@ class StageInstanceRepository(Repository[StageInstance]):
         """
         super().__init__(session, StageInstance)
 
+    def get_all(self) -> List[StageInstance]:
+        """获取所有阶段实例
+
+        重写父类的get_all方法，确保返回StageInstance对象列表而非字典列表
+
+        Returns:
+            阶段实例对象列表
+        """
+        return self.session.query(StageInstance).all()
+
     def get_by_session_id(self, session_id: str) -> List[StageInstance]:
         """根据会话ID获取阶段实例列表
 
@@ -34,7 +44,7 @@ class StageInstanceRepository(Repository[StageInstance]):
         return (
             self.session.query(StageInstance)
             .filter(StageInstance.session_id == session_id)
-            .order_by(StageInstance.created_at)  # Usually good to have an order
+            .order_by(StageInstance.started_at)  # 使用started_at而不是created_at排序
             .all()
         )
 
@@ -48,17 +58,15 @@ class StageInstanceRepository(Repository[StageInstance]):
         Returns:
             阶段实例对象或None
         """
-        # Assuming stage_id corresponds to StageInstance.stage_name or similar identifier
-        # Adjust filter if stage_id refers to a different field
         return (
             self.session.query(StageInstance)
             .filter(
                 and_(
                     StageInstance.session_id == session_id,
-                    StageInstance.stage_name == stage_id,  # Assuming stage_id matches stage_name
+                    StageInstance.stage_id == stage_id,  # 使用stage_id而不是stage_name
                 )
             )
-            .order_by(StageInstance.created_at.desc())  # Get the latest if multiple exist?
+            .order_by(StageInstance.started_at.desc())  # 使用started_at替代created_at
             .first()
         )
 
@@ -73,18 +81,16 @@ class StageInstanceRepository(Repository[StageInstance]):
         Returns:
             最新的阶段实例对象或None
         """
-        # It's safer to query by a unique stage ID if available on the instance
-        # If stage_id_or_name is the *definition* stage ID/name, query by that.
-        # Let's assume it refers to the stage identifier stored on the instance (e.g., stage_name)
+        # 首先尝试作为stage_id查找
         return (
             self.session.query(StageInstance)
             .filter(
                 and_(
                     StageInstance.session_id == session_id,
-                    StageInstance.stage_name == stage_id_or_name,  # Adjust field if necessary
+                    StageInstance.stage_id == stage_id_or_name,  # 使用stage_id而不是stage_name
                 )
             )
-            .order_by(StageInstance.created_at.desc())  # Get the most recent instance for that stage
+            .order_by(StageInstance.started_at.desc())  # 使用started_at替代created_at
             .first()
         )
 
@@ -97,7 +103,7 @@ class StageInstanceRepository(Repository[StageInstance]):
         Returns:
             阶段实例列表
         """
-        return self.session.query(StageInstance).filter(StageInstance.status == status).order_by(StageInstance.created_at).all()
+        return self.session.query(StageInstance).filter(StageInstance.status == status).order_by(StageInstance.started_at).all()
 
     def get_by_session_and_status(self, session_id: str, status: str) -> List[StageInstance]:
         """根据会话ID和状态获取阶段实例列表
@@ -112,7 +118,7 @@ class StageInstanceRepository(Repository[StageInstance]):
         return (
             self.session.query(StageInstance)
             .filter(and_(StageInstance.session_id == session_id, StageInstance.status == status))
-            .order_by(StageInstance.created_at)
+            .order_by(StageInstance.started_at)  # 使用started_at替代created_at
             .all()
         )
 

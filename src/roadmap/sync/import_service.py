@@ -74,9 +74,7 @@ class RoadmapImportService:
         self.service = service
         self.validator = RoadmapValidator()
 
-    async def import_from_yaml(
-        self, file_path: str, roadmap_id: Optional[str] = None, verbose: bool = False, force_llm: bool = False
-    ) -> Dict[str, Any]:
+    def import_from_yaml(self, file_path: str, roadmap_id: Optional[str] = None, verbose: bool = False, force_llm: bool = False) -> Dict[str, Any]:
         """
         从YAML文件导入路线图数据
 
@@ -185,7 +183,7 @@ class RoadmapImportService:
             print_error(error_msg, e, show_traceback=verbose)
             return {"success": False, "error": f"{error_msg}: {str(e)}"}
 
-    async def _validate_and_fix_yaml(self, file_path: str, verbose: bool, force_llm: bool = False) -> Tuple[str, Optional[Dict[str, Any]]]:
+    def _validate_and_fix_yaml(self, file_path: str, verbose: bool, force_llm: bool = False) -> Tuple[str, Optional[Dict[str, Any]]]:
         """
         验证并修复YAML文件
 
@@ -225,7 +223,7 @@ class RoadmapImportService:
                     print(colorize(f"开始解析文件: {file_path}", "cyan"))
 
             # 使用parse_roadmap方法处理YAML内容
-            processed_data = await processor.parse_roadmap(content)
+            processed_data = processor.parse_roadmap(content)
 
             if not processed_data or not isinstance(processed_data, dict):
                 logger.error("RoadmapProcessor返回的数据无效或不是字典类型")
@@ -261,7 +259,7 @@ class RoadmapImportService:
                 print(colorize(f"❌ 处理文件失败: {str(e)}", "red"))
             return file_path, None
 
-    async def _read_yaml_file(self, file_path: str, verbose: bool, force_llm: bool = False) -> Optional[Dict[str, Any]]:
+    def _read_yaml_file(self, file_path: str, verbose: bool, force_llm: bool = False) -> Optional[Dict[str, Any]]:
         """
         读取YAML文件内容
 
@@ -285,7 +283,7 @@ class RoadmapImportService:
                 return None
 
             # 调用_validate_and_fix_yaml处理文件，传递force_llm参数
-            _, yaml_data = await self._validate_and_fix_yaml(file_path, verbose, force_llm)
+            _, yaml_data = self._validate_and_fix_yaml(file_path, verbose, force_llm)
             return yaml_data
 
         except Exception as e:

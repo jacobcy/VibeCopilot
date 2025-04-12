@@ -23,7 +23,7 @@ def parse_rule_content(content: str) -> Dict[str, Any]:
         content: 规则文件内容
 
     Returns:
-        Dict[str, Any]: 解析后的规则数据，包含metadata和sections
+        Dict[str, Any]: 解析后的规则数据，包含metadata、sections和raw_content
     """
     try:
         # 分离Front Matter和Markdown内容
@@ -43,13 +43,13 @@ def parse_rule_content(content: str) -> Dict[str, Any]:
         sections = _parse_markdown_sections(body)
 
         # 组合结果
-        result = {"metadata": meta_data, "sections": sections}
+        result = {"metadata": meta_data, "sections": sections, "raw_content": content}  # 添加原始内容
 
         return result
 
     except Exception as e:
         logger.error(f"解析规则内容时出错: {str(e)}", exc_info=True)
-        return {"metadata": {}, "sections": {}}
+        return {"metadata": {}, "sections": {}, "raw_content": content}  # 即使出错也保留原始内容
 
 
 def _split_front_matter(content: str) -> Tuple[str, str]:

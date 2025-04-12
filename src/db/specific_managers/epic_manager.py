@@ -16,15 +16,13 @@ class EpicManager:
     提供Epic实体的管理功能。
     """
 
-    def __init__(self, entity_manager, mock_storage):
+    def __init__(self, entity_manager):
         """初始化Epic管理器
 
         Args:
             entity_manager: 实体管理器
-            mock_storage: 模拟存储
         """
         self._entity_manager = entity_manager
-        self._mock_storage = mock_storage
 
     def get_epic(self, epic_id: str) -> Dict[str, Any]:
         """获取Epic信息
@@ -43,7 +41,16 @@ class EpicManager:
         Returns:
             Epic列表
         """
-        return self._entity_manager.get_entities("epic")
+        logger.info("获取所有Epic列表")
+        try:
+            # 直接使用实体管理器获取Epic列表
+            epics = self._entity_manager.get_entities("epic")
+            logger.info(f"获取到 {len(epics)} 个Epic")
+            return epics
+        except Exception as e:
+            logger.error(f"获取Epic列表失败: {e}", exc_info=True)
+            # 不要抛出异常，返回空列表
+            return []
 
     def create_epic(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """创建Epic

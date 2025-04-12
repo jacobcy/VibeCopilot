@@ -6,96 +6,107 @@
 
 import json
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
+import click
+import yaml
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.commands.db.base import BaseDatabaseCommand
+from src.cli.decorators import pass_service
+
+from .base_handler import ClickBaseHandler
+from .exceptions import DatabaseError, ValidationError
+from .validators import validate_db_name
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
-class ListHandler(BaseDatabaseCommand):
-    """数据库列表处理器"""
+class ListHandler(ClickBaseHandler):
+    """数据库列表命令处理器"""
+
+    VALID_TYPES = {"epic", "story", "task", "label", "template"}
+    VALID_FORMATS = {"table", "json", "yaml"}
 
     def __init__(self):
-        """初始化处理器"""
         super().__init__()
-        self.console = Console()
 
-    def handle(self, args: Dict) -> int:
-        """处理列表命令
+    def validate(self, **kwargs: Dict[str, Any]) -> bool:
+        """
+        验证列表命令参数
 
         Args:
-            args: 命令参数
+            **kwargs: 命令参数
 
         Returns:
-            执行结果代码
+            bool: 验证是否通过
+
+        Raises:
+            ValidationError: 验证失败时抛出
         """
-        entity_type = args.get("type")
-        verbose = args.get("verbose", False)
-        output_format = args.get("format", "text")
+        entity_type = kwargs.get("type")
+        output_format = kwargs.get("format", "table")
+
+        if not entity_type:
+            raise ValidationError("实体类型不能为空")
+
+        if entity_type not in self.VALID_TYPES:
+            raise ValidationError(f"不支持的实体类型: {entity_type}")
+
+        if output_format not in self.VALID_FORMATS:
+            raise ValidationError(f"不支持的输出格式: {output_format}")
+
+        return True
+
+    def handle(self, **kwargs: Dict[str, Any]) -> int:
+        """
+        处理列表命令
+
+        Args:
+            **kwargs: 命令参数
+
+        Returns:
+            int: 0表示成功，1表示失败
+
+        Raises:
+            DatabaseError: 数据库操作失败时抛出
+        """
+        entity_type = kwargs.get("type")
+        verbose = kwargs.get("verbose", False)
+        output_format = kwargs.get("format", "table")
+        service = kwargs.get("service")
 
         if verbose:
-            self.console.print(f"列出所有 {entity_type}")
+            console.print(f"列出所有 {entity_type}")
+
+        if not service:
+            raise DatabaseError("数据库服务未初始化")
 
         try:
-            # 使用数据库服务获取实体列表
-            if not self.db_service:
-                logger.error("数据库服务未初始化")
-                self.console.print("[red]错误: 数据库服务未初始化[/red]")
-                return 1
-
-            entities = self.db_service.get_entities(entity_type)
-
-            # 格式化并显示实体列表
+            entities = service.get_entities(entity_type)
             return self._format_and_display_entities(entities, entity_type, output_format)
-
         except Exception as e:
-            logger.error(f"列出 {entity_type} 失败: {e}")
-            self.console.print(f"[red]列出 {entity_type} 失败: {e}[/red]")
-            return 1
+            raise DatabaseError(f"列出 {entity_type} 失败: {str(e)}")
 
-    def _format_and_display_entities(
-        self, entities: List[Dict], entity_type: str, output_format: str
-    ) -> int:
-        """格式化并显示实体列表
-
-        Args:
-            entities: 实体列表
-            entity_type: 实体类型
-            output_format: 输出格式
-
-        Returns:
-            执行结果代码
-        """
+    def _format_and_display_entities(self, entities: List[Dict], entity_type: str, output_format: str) -> int:
+        """格式化并显示实体列表"""
         if not entities:
-            self.console.print(f"[yellow]未找到 {entity_type} 类型的条目[/yellow]")
+            console.print(f"[yellow]未找到 {entity_type} 类型的条目[/yellow]")
             return 0
 
         if output_format == "json":
-            # JSON输出
             print(json.dumps(entities, indent=2, ensure_ascii=False))
+        elif output_format == "yaml":
+            print(yaml.dump(entities, allow_unicode=True, sort_keys=False))
         else:
-            # 表格输出
-            if entity_type == "task":
-                self._display_task_table(entities)
-            elif entity_type == "epic":
-                self._display_epic_table(entities)
-            elif entity_type == "story":
-                self._display_story_table(entities)
-            else:
-                self._display_generic_table(entities, entity_type)
+            display_method = getattr(self, f"_display_{entity_type}_table", self._display_generic_table)
+            display_method(entities, entity_type)
 
         return 0
 
-    def _display_task_table(self, tasks: List[Dict]) -> None:
-        """显示任务表格
-
-        Args:
-            tasks: 任务列表
-        """
+    def _display_task_table(self, tasks: List[Dict], _: str) -> None:
+        """显示任务表格"""
         table = Table(title="任务列表")
         table.add_column("ID", style="cyan")
         table.add_column("标题")
@@ -110,14 +121,10 @@ class ListHandler(BaseDatabaseCommand):
                 str(task.get("priority", "")),
             )
 
-        self.console.print(table)
+        console.print(table)
 
-    def _display_epic_table(self, epics: List[Dict]) -> None:
-        """显示史诗表格
-
-        Args:
-            epics: 史诗列表
-        """
+    def _display_epic_table(self, epics: List[Dict], _: str) -> None:
+        """显示史诗表格"""
         table = Table(title="史诗列表")
         table.add_column("ID", style="cyan")
         table.add_column("标题")
@@ -132,14 +139,10 @@ class ListHandler(BaseDatabaseCommand):
                 str(len(epic.get("tasks", []))),
             )
 
-        self.console.print(table)
+        console.print(table)
 
-    def _display_story_table(self, stories: List[Dict]) -> None:
-        """显示故事表格
-
-        Args:
-            stories: 故事列表
-        """
+    def _display_story_table(self, stories: List[Dict], _: str) -> None:
+        """显示故事表格"""
         table = Table(title="故事列表")
         table.add_column("ID", style="cyan")
         table.add_column("标题")
@@ -154,15 +157,10 @@ class ListHandler(BaseDatabaseCommand):
                 str(story.get("epic_id", "")),
             )
 
-        self.console.print(table)
+        console.print(table)
 
     def _display_generic_table(self, entities: List[Dict], entity_type: str) -> None:
-        """显示通用表格
-
-        Args:
-            entities: 实体列表
-            entity_type: 实体类型
-        """
+        """显示通用表格"""
         table = Table(title=f"{entity_type} 列表")
 
         # 获取所有字段
@@ -179,4 +177,39 @@ class ListHandler(BaseDatabaseCommand):
             row = [str(entity.get(field, "")) for field in sorted(list(all_fields))]
             table.add_row(*row)
 
-        self.console.print(table)
+        console.print(table)
+
+    def error_handler(self, error: Exception) -> None:
+        """
+        处理列表命令错误
+
+        Args:
+            error: 捕获的异常
+        """
+        if isinstance(error, (ValidationError, DatabaseError)):
+            console.print(f"[red]{str(error)}[/red]")
+        else:
+            super().error_handler(error)
+
+
+@click.command(name="list", help="列出数据库内容")
+@click.option("--type", required=True, help="实体类型(epic/story/task/label/template)")
+@click.option("--verbose", is_flag=True, help="显示详细信息")
+@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
+@pass_service(service_type="db")
+def list_db(service, type: str, verbose: bool, format: str) -> None:
+    """
+    列出数据库内容命令
+
+    Args:
+        service: 数据库服务实例
+        type: 实体类型
+        verbose: 是否显示详细信息
+        format: 输出格式
+    """
+    handler = ListHandler()
+    try:
+        result = handler.execute(service=service, type=type, verbose=verbose, format=format)
+        return result
+    except Exception:
+        return 1

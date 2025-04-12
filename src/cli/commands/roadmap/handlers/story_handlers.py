@@ -2,87 +2,20 @@
 路线图故事处理器
 
 处理路线图故事的创建、更新、删除和显示等操作。
-使用模块化设计，每个函数专注于单一职责。
 """
 
 import json
-from typing import Any, Dict, List, Literal, Optional
+from typing import Dict, List, Optional
 
 from rich.console import Console
 from tabulate import tabulate
 
 from src.roadmap import RoadmapService
 
-from .delete_handlers import handle_delete
-
 console = Console()
 
-# 常量定义
-STORY_PRIORITIES = ["P0", "P1", "P2", "P3"]
-STORY_STATUSES = ["not_started", "in_progress", "completed", "blocked"]
 
-
-def handle_story_command(
-    service: RoadmapService,
-    story_id: Optional[str] = None,
-    title: Optional[str] = None,
-    milestone_id: Optional[str] = None,
-    description: Optional[str] = None,
-    priority: Optional[str] = None,
-    assignee: Optional[str] = None,
-    labels: Optional[str] = None,
-    status: Optional[str] = None,
-    comment: Optional[str] = None,
-    format: str = "text",
-    delete: bool = False,
-    force: bool = False,
-) -> Dict[str, Any]:
-    """统一处理故事命令的入口函数"""
-    try:
-        # 处理删除操作
-        if delete and story_id:
-            return handle_story_delete(service, story_id, force)
-
-        # 处理创建操作
-        if title and milestone_id and not story_id:
-            return handle_story_create(
-                service=service,
-                title=title,
-                milestone_id=milestone_id,
-                description=description,
-                priority=priority or "P2",
-                assignee=assignee,
-                labels=labels.split(",") if labels else None,
-            )
-
-        # 处理更新操作
-        if story_id and (title or description or milestone_id or priority or assignee or labels):
-            return handle_story_update(
-                service=service,
-                story_id=story_id,
-                title=title,
-                description=description,
-                milestone_id=milestone_id,
-                priority=priority,
-                assignee=assignee,
-                labels=labels.split(",") if labels else None,
-            )
-
-        # 处理状态更新
-        if story_id and status:
-            return handle_story_status_update(service=service, story_id=story_id, status=status, comment=comment)
-
-        # 处理显示操作
-        if story_id:
-            return handle_story_show(service=service, story_id=story_id, format=format)
-
-        return {"success": False, "message": "请提供必要的参数来执行具体操作"}
-
-    except Exception as e:
-        return {"success": False, "message": f"执行出错: {str(e)}"}
-
-
-def handle_story_create(
+def handle_create_story(
     service: RoadmapService,
     title: str,
     milestone_id: str,
@@ -90,13 +23,9 @@ def handle_story_create(
     priority: str = "P2",
     assignee: Optional[str] = None,
     labels: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+) -> Dict:
     """处理故事创建"""
     try:
-        # 验证参数
-        if priority not in STORY_PRIORITIES:
-            return {"success": False, "message": f"无效的优先级: {priority}"}
-
         # 验证里程碑存在
         if not service.milestone_exists(milestone_id):
             return {"success": False, "message": f"里程碑不存在: {milestone_id}"}
@@ -112,15 +41,15 @@ def handle_story_create(
         )
 
         if result.get("success"):
-            return {"success": True, "message": f"已创建故事: {title}", "data": {"story_id": result.get("story_id")}}
-
-        return {"success": False, "message": f"创建故事失败: {result.get('error', '未知错误')}"}
+            return {"success": True, "story_id": result.get("story_id"), "message": f"已创建故事: {title}"}
+        else:
+            return {"success": False, "message": f"创建故事失败: {result.get('error', '未知错误')}"}
 
     except Exception as e:
         return {"success": False, "message": f"创建故事时出错: {str(e)}"}
 
 
-def handle_story_update(
+def handle_update_story(
     service: RoadmapService,
     story_id: str,
     title: Optional[str] = None,
@@ -129,13 +58,9 @@ def handle_story_update(
     priority: Optional[str] = None,
     assignee: Optional[str] = None,
     labels: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+) -> Dict:
     """处理故事更新"""
     try:
-        # 验证参数
-        if priority and priority not in STORY_PRIORITIES:
-            return {"success": False, "message": f"无效的优先级: {priority}"}
-
         # 验证故事存在
         if not service.story_exists(story_id):
             return {"success": False, "message": f"故事不存在: {story_id}"}
@@ -157,19 +82,38 @@ def handle_story_update(
 
         if result.get("success"):
             return {"success": True, "message": f"已更新故事: {story_id}"}
-
-        return {"success": False, "message": f"更新故事失败: {result.get('error', '未知错误')}"}
+        else:
+            return {"success": False, "message": f"更新故事失败: {result.get('error', '未知错误')}"}
 
     except Exception as e:
         return {"success": False, "message": f"更新故事时出错: {str(e)}"}
 
 
-def handle_story_delete(service: RoadmapService, story_id: str, force: bool = False) -> Dict[str, Any]:
+def handle_delete_story(service: RoadmapService, story_id: str, force: bool = False) -> Dict:
     """处理故事删除"""
-    return handle_delete(service, "story", story_id, force)
+    try:
+        # 验证故事存在
+        if not service.story_exists(story_id):
+            return {"success": False, "message": f"故事不存在: {story_id}"}
+
+        # 获取故事信息用于确认
+        story = service.get_story(story_id)
+        if not story:
+            return {"success": False, "message": f"获取故事信息失败: {story_id}"}
+
+        # 删除故事
+        result = service.delete_story(story_id)
+
+        if result.get("success"):
+            return {"success": True, "message": f"已删除故事: {story_id}"}
+        else:
+            return {"success": False, "message": f"删除故事失败: {result.get('error', '未知错误')}"}
+
+    except Exception as e:
+        return {"success": False, "message": f"删除故事时出错: {str(e)}"}
 
 
-def handle_story_show(service: RoadmapService, story_id: str, format: Literal["json", "text", "table"] = "text") -> Dict[str, Any]:
+def handle_show_story(service: RoadmapService, story_id: str, format: str = "text") -> Dict:
     """处理故事显示"""
     try:
         # 获取故事信息
@@ -215,13 +159,9 @@ def handle_story_show(service: RoadmapService, story_id: str, format: Literal["j
         return {"success": False, "message": f"显示故事时出错: {str(e)}"}
 
 
-def handle_story_status_update(service: RoadmapService, story_id: str, status: str, comment: Optional[str] = None) -> Dict[str, Any]:
+def handle_update_story_status(service: RoadmapService, story_id: str, status: str, comment: Optional[str] = None) -> Dict:
     """处理故事状态更新"""
     try:
-        # 验证参数
-        if status not in STORY_STATUSES:
-            return {"success": False, "message": f"无效的状态值: {status}"}
-
         # 验证故事存在
         if not service.story_exists(story_id):
             return {"success": False, "message": f"故事不存在: {story_id}"}
@@ -235,8 +175,72 @@ def handle_story_status_update(service: RoadmapService, story_id: str, status: s
 
         if result.get("success"):
             return {"success": True, "message": f"已更新故事状态为 {status}: {story_id}"}
-
-        return {"success": False, "message": f"更新故事状态失败: {result.get('error', '未知错误')}"}
+        else:
+            return {"success": False, "message": f"更新故事状态失败: {result.get('error', '未知错误')}"}
 
     except Exception as e:
         return {"success": False, "message": f"更新故事状态时出错: {str(e)}"}
+
+
+def handle_story_command(
+    service: RoadmapService,
+    story_id: Optional[str] = None,
+    title: Optional[str] = None,
+    milestone: Optional[str] = None,
+    description: Optional[str] = None,
+    priority: Optional[str] = None,
+    assignee: Optional[str] = None,
+    labels: Optional[str] = None,
+    status: Optional[str] = None,
+    comment: Optional[str] = None,
+    format: str = "text",
+    delete: bool = False,
+    force: bool = False,
+) -> Dict:
+    """统一处理故事命令的入口函数"""
+    try:
+        # 如果是删除操作
+        if delete:
+            if not story_id:
+                return {"success": False, "message": "删除操作需要指定故事ID"}
+            return handle_delete_story(service, story_id, force)
+
+        # 如果指定了story_id但没有其他参数，显示故事信息
+        if story_id and not any([title, milestone, description, priority, assignee, labels, status]):
+            return handle_show_story(service, story_id, format)
+
+        # 如果指定了status，更新故事状态
+        if status and story_id:
+            return handle_update_story_status(service, story_id, status, comment)
+
+        # 如果有story_id，更新故事
+        if story_id:
+            labels_list = labels.split(",") if labels else None
+            return handle_update_story(
+                service=service,
+                story_id=story_id,
+                title=title,
+                description=description,
+                milestone_id=milestone,
+                priority=priority,
+                assignee=assignee,
+                labels=labels_list,
+            )
+
+        # 创建新故事
+        if title and milestone:
+            labels_list = labels.split(",") if labels else None
+            return handle_create_story(
+                service=service,
+                title=title,
+                milestone_id=milestone,
+                description=description,
+                priority=priority or "P2",
+                assignee=assignee,
+                labels=labels_list,
+            )
+
+        return {"success": False, "message": "无效的命令参数组合"}
+
+    except Exception as e:
+        return {"success": False, "message": f"处理故事命令时出错: {str(e)}"}

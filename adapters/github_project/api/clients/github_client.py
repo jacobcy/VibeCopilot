@@ -1,282 +1,170 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GitHub API基础客户端模块.
+GitHub API客户端基础模块.
 
-提供与GitHub API交互的基础功能，封装REST和GraphQL请求处理。
+提供GitHub API通用客户端功能，包括REST和GraphQL API调用。
 """
 
-import json
 import logging
 import os
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 
-logger = logging.getLogger(__name__)
-
 
 class GitHubClientBase:
-    """GitHub API客户端基类，提供REST和GraphQL API交互功能."""
+    """GitHub API基础客户端类.
+
+    提供REST和GraphQL API的基础通信功能和身份验证。作为所有专用GitHub客户端的基类。
+    """
 
     def __init__(self, token: Optional[str] = None, base_url: str = "https://api.github.com"):
-        """初始化GitHub API客户端.
+        """初始化GitHub客户端.
 
         Args:
-            token: GitHub个人访问令牌，如果未提供，将从环境变量获取
-            base_url: GitHub API的基础URL
+            token: GitHub个人访问令牌，如未提供则尝试从环境变量中读取
+            base_url: GitHub API基础URL
         """
         self.token = token or os.environ.get("GITHUB_TOKEN")
         if not self.token:
-            logger.warning("未提供GitHub令牌，API请求可能受到限制")
+            logging.warning("未提供GitHub令牌，API访问将受到严格限制")
 
-        self.headers: Dict[str, str] = {"Accept": "application/vnd.github.v3+json"}
+        self.base_url = base_url
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "VibeCopilot-GitHub-Client",
+            }
+        )
+
         if self.token:
-            self.headers["Authorization"] = f"Bearer {self.token}"
+            self.session.headers.update({"Authorization": f"token {self.token}"})
 
-        self.rest_url = base_url
-        self.graphql_url = f"{self.rest_url}/graphql"
+        self.logger = logging.getLogger(__name__)
 
-    def _make_rest_request(self, method: str, endpoint: str, **kwargs: Any) -> requests.Response:
-        """发送REST API请求.
+    def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        """发送GET请求到GitHub REST API.
 
         Args:
-            method: HTTP方法 (GET, POST, PUT, DELETE等)
-            endpoint: API端点，不包含基础URL
-            **kwargs: 传递给requests的其他参数
+            endpoint: API端点路径（不含基础URL）
+            params: 查询参数
 
         Returns:
-            requests.Response: 响应对象
+            Any: API响应数据
+
+        Raises:
+            requests.HTTPError: 当API请求失败时
         """
-        url = f"{self.rest_url}/{endpoint.lstrip('/')}"
-        headers = kwargs.pop("headers", {})
-        headers.update(self.headers)
+        url = f"{self.base_url}/{endpoint}"
+        response = self.session.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
 
-        logger.debug(f"发送 {method} 请求到 {url}")
-        response = requests.request(method, url, headers=headers, **kwargs)
-        return response
-
-    def _make_graphql_request(self, query: str, variables: Optional[Dict[str, Any]] = None) -> requests.Response:
-        """发送GraphQL API请求.
+    def post(self, endpoint: str, json: Optional[Dict[str, Any]] = None, payload: Optional[Dict[str, Any]] = None) -> Any:
+        """发送POST请求到GitHub REST API.
 
         Args:
-            query: GraphQL查询
+            endpoint: API端点路径（不含基础URL）
+            json: JSON请求体
+            payload: 表单数据请求体
+
+        Returns:
+            Any: API响应数据
+
+        Raises:
+            requests.HTTPError: 当API请求失败时
+        """
+        url = f"{self.base_url}/{endpoint}"
+        response = self.session.post(url, json=json, data=payload)
+        response.raise_for_status()
+        return response.json() if response.content else None
+
+    def patch(self, endpoint: str, json: Optional[Dict[str, Any]] = None) -> Any:
+        """发送PATCH请求到GitHub REST API.
+
+        Args:
+            endpoint: API端点路径（不含基础URL）
+            json: JSON请求体
+
+        Returns:
+            Any: API响应数据
+
+        Raises:
+            requests.HTTPError: 当API请求失败时
+        """
+        url = f"{self.base_url}/{endpoint}"
+        response = self.session.patch(url, json=json)
+        response.raise_for_status()
+        return response.json()
+
+    def put(self, endpoint: str, json: Optional[Dict[str, Any]] = None) -> Any:
+        """发送PUT请求到GitHub REST API.
+
+        Args:
+            endpoint: API端点路径（不含基础URL）
+            json: JSON请求体
+
+        Returns:
+            Any: API响应数据
+
+        Raises:
+            requests.HTTPError: 当API请求失败时
+        """
+        url = f"{self.base_url}/{endpoint}"
+        response = self.session.put(url, json=json)
+        response.raise_for_status()
+        return response.json() if response.content else None
+
+    def delete(self, endpoint: str) -> Any:
+        """发送DELETE请求到GitHub REST API.
+
+        Args:
+            endpoint: API端点路径（不含基础URL）
+
+        Returns:
+            Any: API响应数据
+
+        Raises:
+            requests.HTTPError: 当API请求失败时
+        """
+        url = f"{self.base_url}/{endpoint}"
+        response = self.session.delete(url)
+        response.raise_for_status()
+        return response.json() if response.content else None
+
+    def graphql(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """发送GraphQL查询到GitHub API.
+
+        Args:
+            query: GraphQL查询字符串
             variables: 查询变量
 
         Returns:
-            requests.Response: 响应对象
+            Dict[str, Any]: GraphQL响应数据
+
+        Raises:
+            requests.HTTPError: 当API请求失败时
+            ValueError: 当响应包含错误时
         """
+        graphql_url = "https://api.github.com/graphql"
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+
         payload = {"query": query}
         if variables:
             payload["variables"] = variables
 
-        logger.debug(f"发送GraphQL请求到 {self.graphql_url}")
+        response = requests.post(graphql_url, json=payload, headers=headers)
+        response.raise_for_status()
+        result = response.json()
 
-        response = requests.post(
-            self.graphql_url,
-            headers=self.headers,
-            json=payload,
-        )
-        return response
+        if "errors" in result:
+            error_message = "; ".join([error.get("message", "未知错误") for error in result["errors"]])
+            self.logger.error(f"GraphQL查询错误: {error_message}")
+            raise ValueError(f"GraphQL查询错误: {error_message}")
 
-    def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
-        """发送GET请求并返回JSON响应.
-
-        Args:
-            endpoint: API端点
-            params: URL查询参数
-            **kwargs: 传递给requests的其他参数
-
-        Returns:
-            Dict[str, Any]: JSON响应
-
-        Raises:
-            requests.HTTPError: 当API请求失败时
-        """
-        try:
-            response = self._make_rest_request("GET", endpoint, params=params, **kwargs)
-            response.raise_for_status()
-            try:
-                return response.json()
-            except ValueError:
-                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
-                return None
-        except requests.HTTPError as e:
-            logger.error(f"GET请求失败: {endpoint} - {str(e)}")
-            raise
-
-    def post(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
-        """发送POST请求并返回JSON响应.
-
-        Args:
-            endpoint: API端点
-            payload: 请求体JSON数据 (原名json)
-            **kwargs: 传递给requests的其他参数
-
-        Returns:
-            Dict[str, Any]: JSON响应
-
-        Raises:
-            requests.HTTPError: 当API请求失败时
-        """
-        try:
-            response = self._make_rest_request("POST", endpoint, json=payload, **kwargs)
-            response.raise_for_status()
-            try:
-                return response.json()
-            except ValueError:
-                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
-                return None
-        except requests.HTTPError as e:
-            logger.error(f"POST请求失败: {endpoint} - {str(e)}")
-            raise
-
-    def patch(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
-        """发送PATCH请求并返回JSON响应.
-
-        Args:
-            endpoint: API端点
-            payload: 请求体JSON数据 (原名json)
-            **kwargs: 传递给requests的其他参数
-
-        Returns:
-            Dict[str, Any]: JSON响应
-
-        Raises:
-            requests.HTTPError: 当API请求失败时
-        """
-        try:
-            response = self._make_rest_request("PATCH", endpoint, json=payload, **kwargs)
-            response.raise_for_status()
-            try:
-                return response.json()
-            except ValueError:
-                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
-                return None
-        except requests.HTTPError as e:
-            logger.error(f"PATCH请求失败: {endpoint} - {str(e)}")
-            raise
-
-    def put(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
-        """发送PUT请求并返回JSON响应.
-
-        Args:
-            endpoint: API端点
-            payload: 请求体JSON数据 (原名json)
-            **kwargs: 传递给requests的其他参数
-
-        Returns:
-            Dict[str, Any]: JSON响应
-
-        Raises:
-            requests.HTTPError: 当API请求失败时
-        """
-        try:
-            response = self._make_rest_request("PUT", endpoint, json=payload, **kwargs)
-            response.raise_for_status()
-            try:
-                return response.json()
-            except ValueError:
-                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
-                return None
-        except requests.HTTPError as e:
-            logger.error(f"PUT请求失败: {endpoint} - {str(e)}")
-            raise
-
-    def delete(self, endpoint: str, **kwargs: Any) -> Any:
-        """发送DELETE请求并返回JSON响应.
-
-        Args:
-            endpoint: API端点
-            **kwargs: 传递给requests的其他参数
-
-        Returns:
-            Dict[str, Any]: JSON响应，如果响应为空则返回None
-
-        Raises:
-            requests.HTTPError: 当API请求失败时
-        """
-        try:
-            response = self._make_rest_request("DELETE", endpoint, **kwargs)
-            response.raise_for_status()
-            # DELETE请求可能返回空响应
-            try:
-                return response.json() if response.content else None
-            except ValueError:
-                logger.error(f"无法解码GitHub API响应为JSON: {response.text[:100]}")
-                return None
-        except requests.HTTPError as e:
-            logger.error(f"DELETE请求失败: {endpoint} - {str(e)}")
-            raise
-
-    def graphql(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """发送GraphQL查询并返回JSON响应.
-
-        Args:
-            query: GraphQL查询
-            variables: 查询变量
-
-        Returns:
-            Dict[str, Any]: JSON响应
-
-        Raises:
-            requests.HTTPError: 如果请求失败
-            ValueError: 如果响应中包含错误
-        """
-        try:
-            response = self._make_graphql_request(query, variables)
-            response.raise_for_status()
-
-            data = response.json()
-            if "errors" in data:
-                error_msg = "; ".join(err.get("message", "未知错误") for err in data["errors"])
-                logger.error(f"GraphQL查询错误: {error_msg}")
-                raise ValueError(f"GraphQL查询错误: {error_msg}")
-
-            return data
-        except (requests.HTTPError, ValueError) as e:
-            logger.error(f"GraphQL请求失败: {str(e)}")
-            raise
-
-
-class GitHubClient(GitHubClientBase):
-    """GitHub API客户端，继承基类功能，可扩展特定功能."""
-
-    def __init__(self, token: Optional[str] = None, base_url: str = "https://api.github.com"):
-        """初始化GitHub API客户端.
-
-        Args:
-            token: GitHub个人访问令牌，如果未提供，将从环境变量获取
-            base_url: GitHub API的基础URL
-        """
-        super().__init__(token, base_url)
-        self.logger = logging.getLogger(__name__)
-
-
-if __name__ == "__main__":
-    # 配置日志
-    logging.basicConfig(level=logging.DEBUG)
-
-    # 简单的使用示例
-    client = GitHubClient()
-    try:
-        # 获取当前用户信息
-        user_info = client.get("user")
-        if user_info:
-            logger.info(f"当前用户: {user_info.get('login')}")
-
-        # 尝试一个GraphQL查询
-        query = """
-        query {
-          viewer {
-            login
-            name
-          }
-        }
-        """
-        result = client.graphql(query)
-        if result and "data" in result:
-            viewer = result["data"]["viewer"]
-            logger.info(f"GraphQL查询结果: {viewer.get('name')} ({viewer.get('login')})")
-    except Exception as e:
-        logger.error(f"示例失败: {e}")
+        return result

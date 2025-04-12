@@ -82,13 +82,13 @@ alwaysApply: true
 
 ## MCP服务器配置
 
-### 文件系统配置
+### 文件系统配置(filesystem)
 
 - **允许目录**：`~/Public/VibeCopilot`
 - **文件操作使用绝对路径**
-- **默认临时目录**：`/tmp/vibecopilot`
+- **默认临时目录**：`/tmp`
 
-### 记忆工具配置
+### 记忆工具配置(basic_memory)
 
 - **项目目录**：`VibeCopilot`
 - **内容分类**：`开发日志`、`决策记录`、`问题追踪`

@@ -7,7 +7,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from src.roadmap import RoadmapService, RoadmapStatus
+from src.roadmap.service.roadmap_service import RoadmapService
+from src.roadmap.service.roadmap_status import RoadmapStatus
 from src.status.interfaces import IStatusProvider
 
 logger = logging.getLogger(__name__)
@@ -34,18 +35,16 @@ class RoadmapStatusProvider(IStatusProvider):
         """获取路线图状态
 
         Args:
-            entity_id: 可选，实体ID。格式为 "milestone:<id>" 或 "task:<id>"。
-                       不提供则获取整个路线图的状态。
+            entity_id: 可选的实体ID，格式为 'type:id' 或直接使用ID。
+                      如果不提供，则返回整个路线图的状态。
 
         Returns:
-            Dict[str, Any]: 状态信息
+            包含状态信息的字典
         """
         try:
             # 获取整个路线图状态
             if not entity_id:
-                result = self.roadmap_service.check_roadmap_status(
-                    check_type="roadmap", element_id=None
-                )
+                result = self.roadmap_service.check_roadmap_status(check_type="roadmap", element_id=None)
                 if not result.get("success", False):
                     return {"error": result.get("error", "获取路线图状态失败")}
 
@@ -73,13 +72,9 @@ class RoadmapStatusProvider(IStatusProvider):
 
             # 获取特定实体状态
             if entity_type == "milestone":
-                result = self.roadmap_service.check_roadmap_status(
-                    check_type="milestone", element_id=real_id
-                )
+                result = self.roadmap_service.check_roadmap_status(check_type="milestone", element_id=real_id)
             elif entity_type == "task":
-                result = self.roadmap_service.check_roadmap_status(
-                    check_type="task", element_id=real_id
-                )
+                result = self.roadmap_service.check_roadmap_status(check_type="task", element_id=real_id)
             else:
                 return {
                     "error": f"未知实体类型: {entity_type}",
@@ -148,9 +143,7 @@ class RoadmapStatusProvider(IStatusProvider):
                 real_id = entity_id
 
             # 更新状态
-            result = self.roadmap_status.update_element(
-                element_id=real_id, element_type=entity_type, status=status
-            )
+            result = self.roadmap_status.update_element(element_id=real_id, element_type=entity_type, status=status)
 
             if "error" in result:
                 return {**result, "updated": False}
@@ -171,9 +164,7 @@ class RoadmapStatusProvider(IStatusProvider):
             List[Dict[str, Any]]: 实体列表
         """
         try:
-            result = self.roadmap_service.check_roadmap_status(
-                check_type="roadmap", element_id=None
-            )
+            result = self.roadmap_service.check_roadmap_status(check_type="roadmap", element_id=None)
             if not result.get("success", False):
                 logger.warning(f"获取路线图状态失败: {result.get('error', '未知错误')}")
                 return []
@@ -199,7 +190,7 @@ class RoadmapStatusProvider(IStatusProvider):
 
             try:
                 # 尝试获取任务列表
-                all_tasks = self.roadmap_service.list_tasks()
+                all_tasks = self.roadmap_service.get_tasks()
 
                 # 添加任务
                 for task in all_tasks:

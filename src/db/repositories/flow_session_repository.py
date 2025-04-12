@@ -4,6 +4,7 @@ Flow Session Repository Module
 Provides data access functionality for FlowSession entities.
 """
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -12,6 +13,9 @@ from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
 from src.models.db import FlowSession  # Only import FlowSession model
+
+# 创建日志记录器
+logger = logging.getLogger(__name__)
 
 
 class FlowSessionRepository(Repository[FlowSession]):
@@ -24,6 +28,23 @@ class FlowSessionRepository(Repository[FlowSession]):
             session: SQLAlchemy会话对象
         """
         super().__init__(session, FlowSession)
+
+    def get_all(self) -> List[FlowSession]:
+        """获取所有会话
+
+        重写父类的get_all方法，确保返回FlowSession对象列表而非字典列表
+
+        Returns:
+            会话对象列表
+        """
+        logger.debug("FlowSessionRepository.get_all() 被调用")
+        sessions = self.session.query(FlowSession).all()
+        logger.debug(f"获取到 {len(sessions)} 个会话对象")
+
+        for i, s in enumerate(sessions):
+            logger.debug(f"会话 {i+1}: ID={s.id}, 名称={s.name}, 工作流={s.workflow_id}, 状态={s.status}")
+
+        return sessions
 
     def get_active_sessions(self) -> List[FlowSession]:
         """获取所有活动中的会话
@@ -177,3 +198,63 @@ class FlowSessionRepository(Repository[FlowSession]):
         session.updated_at = datetime.utcnow()
         self.session.commit()
         return session
+
+    def get_by_name(self, name: str) -> Optional[FlowSession]:
+        """根据会话名称获取会话
+
+        Args:
+            name: 会话名称
+
+        Returns:
+            会话对象或None
+        """
+        return self.session.query(FlowSession).filter(FlowSession.name == name).first()
+
+    def find_session_by_id_or_name(self, id_or_name: str) -> Optional[FlowSession]:
+        """根据ID或名称查找会话
+
+        首先尝试按ID查找，如果没有找到，再按名称查找
+
+        Args:
+            id_or_name: 会话ID或名称
+
+        Returns:
+            会话对象或None
+        """
+        # 先尝试作为ID查找
+        session = self.get_by_id(id_or_name)
+        if session:
+            return session
+
+        # 如果没找到，尝试作为名称查找
+        return self.get_by_name(id_or_name)
+
+    def link_to_task(self, session_id: str, task_id: Optional[str]) -> Optional[FlowSession]:
+        """关联或取消关联会话到任务
+
+        Args:
+            session_id: 会话ID
+            task_id: 任务ID，None表示取消关联
+
+        Returns:
+            更新后的会话对象或None
+        """
+        session = self.get_by_id(session_id)
+        if not session:
+            return None
+
+        session.task_id = task_id
+        session.updated_at = datetime.utcnow()
+        self.session.commit()
+        return session
+
+    def get_by_task_id(self, task_id: str) -> List[FlowSession]:
+        """根据任务ID获取相关的所有会话
+
+        Args:
+            task_id: 任务ID
+
+        Returns:
+            会话列表
+        """
+        return self.session.query(FlowSession).filter(FlowSession.task_id == task_id).all()

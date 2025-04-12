@@ -1,0 +1,128 @@
+# 工作流会话命令组配置
+
+commands:
+  "flow session list":
+    description: "列出所有会话"
+    subcommands:
+      "--format":
+        description: "输出格式"
+        values: ["json", "text"]
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["会话列表"]
+    timeout: 5
+    critical: true
+
+  "flow session show":
+    description: "显示会话详情"
+    subcommands:
+      "--id":
+        description: "会话ID"
+        type: "string"
+        required: true
+      "--format":
+        description: "输出格式"
+        values: ["json", "text"]
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["会话详情"]
+    timeout: 5
+    critical: true
+
+  "flow session create":
+    description: "创建并启动新会话"
+    subcommands:
+      "--workflow":
+        description: "工作流ID"
+        type: "string"
+        required: true
+      "--name":
+        description: "会话名称"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["会话创建成功"]
+    timeout: 10
+    critical: true
+
+  "flow session close":
+    description: "结束会话"
+    subcommands:
+      "--id":
+        description: "会话ID"
+        type: "string"
+        required: true
+      "--force":
+        description: "强制结束"
+        type: "flag"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["会话已结束"]
+    timeout: 5
+    critical: true
+
+  "flow session switch":
+    description: "切换当前活动会话"
+    subcommands:
+      "--id":
+        description: "目标会话ID"
+        type: "string"
+        required: true
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["已切换会话"]
+    timeout: 5
+    critical: true
+
+  "flow session update":
+    description: "更新会话属性"
+    subcommands:
+      "--id":
+        description: "会话ID"
+        type: "string"
+        required: true
+      "--name":
+        description: "新的会话名称"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["会话已更新"]
+    timeout: 5
+    critical: true
+
+  "flow session delete":
+    description: "永久删除会话"
+    subcommands:
+      "--id":
+        description: "会话ID"
+        type: "string"
+        required: true
+      "--force":
+        description: "强制删除"
+        type: "flag"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["会话已删除"]
+    timeout: 5
+    critical: true
+
+# 会话组特定配置
+group_config:
+  max_concurrent_sessions: 3   # 最大并发会话数
+  session_timeout: 3600       # 会话超时时间（秒）
+  auto_save: true            # 是否自动保存会话状态
+  keep_history: true         # 是否保留历史记录
+
+# 会话验证配置
+validation:
+  check_workflow: true       # 检查工作流有效性
+  check_resources: true      # 检查资源可用性
+  validate_params: true      # 验证参数
+  check_permissions: true    # 检查权限

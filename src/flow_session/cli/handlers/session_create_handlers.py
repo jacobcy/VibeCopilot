@@ -7,25 +7,20 @@ from typing import Optional
 
 import click
 
-from src.flow_session.cli.utils import (
-    echo_error,
-    echo_info,
-    echo_success,
-    get_db_session,
-    get_error_code,
-)
-from src.flow_session.session_manager import FlowSessionManager
-from src.flow_session.status_integration import FlowStatusIntegration
+from src.flow_session.cli.utils import echo_error, echo_info, echo_success, get_db_session, get_error_code
+from src.flow_session.session.manager import FlowSessionManager
+from src.flow_session.status.integration import FlowStatusIntegration
 
 
 def handle_create_session(
-    workflow_id: str, name: Optional[str] = None, verbose: bool = False, agent_mode: bool = False
+    workflow_id: str, name: Optional[str] = None, task_id: Optional[str] = None, verbose: bool = False, agent_mode: bool = False
 ):
     """处理创建新会话的逻辑
 
     Args:
         workflow_id: 工作流ID
         name: 会话名称
+        task_id: 关联的任务ID
         verbose: 是否显示详细信息
         agent_mode: 是否为程序处理模式
     """
@@ -36,7 +31,7 @@ def handle_create_session(
             manager = FlowSessionManager(session)
 
             try:
-                flow_session = manager.create_session(workflow_id, name)
+                flow_session = manager.create_session(workflow_id, name, task_id)
 
                 # 同步到状态系统
                 integration = FlowStatusIntegration(session)
@@ -48,9 +43,8 @@ def handle_create_session(
                     "name": flow_session.name,
                     "workflow_id": flow_session.workflow_id,
                     "status": flow_session.status,
-                    "created_at": flow_session.created_at.isoformat()
-                    if flow_session.created_at
-                    else None,
+                    "task_id": flow_session.task_id,
+                    "created_at": flow_session.created_at.isoformat() if flow_session.created_at else None,
                 }
 
                 if verbose:
@@ -58,9 +52,7 @@ def handle_create_session(
                     session_data.update(
                         {
                             "context": flow_session.context,
-                            "updated_at": flow_session.updated_at.isoformat()
-                            if flow_session.updated_at
-                            else None,
+                            "updated_at": flow_session.updated_at.isoformat() if flow_session.updated_at else None,
                         }
                     )
 
@@ -73,6 +65,8 @@ def handle_create_session(
                     return result_data
 
                 echo_success(f"已创建会话: {flow_session.id} ({flow_session.name})")
+                if flow_session.task_id:
+                    echo_info(f"已关联到任务: {flow_session.task_id}")
                 echo_info(f"可使用 'vc flow session show {flow_session.id}' 查看详情")
 
                 return result_data

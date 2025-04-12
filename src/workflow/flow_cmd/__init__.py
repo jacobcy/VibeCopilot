@@ -7,7 +7,7 @@
 """
 
 from src.workflow.flow_cmd.workflow_creator import create_workflow_from_rule, create_workflow_from_template_with_vars
-from src.workflow.flow_cmd.workflow_runner import run_workflow_stage
+from src.workflow.flow_cmd.workflow_runner import get_workflow_context, run_workflow_stage
 
 __all__ = [
     # 工作流创建
@@ -15,4 +15,5 @@ __all__ = [
     "create_workflow_from_template_with_vars",
     # 工作流运行
     "run_workflow_stage",
+    "get_workflow_context",
 ]

@@ -1,0 +1,182 @@
+# 数据库命令组配置
+
+commands:
+  # 数据库基础命令
+  "db init":
+    description: "初始化数据库"
+    subcommands:
+      "--force":
+        description: "强制重新初始化数据库"
+        type: "flag"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["数据库初始化成功"]
+    timeout: 10
+    critical: true
+
+  "db list":
+    description: "列出数据库内容"
+    subcommands:
+      "--type":
+        description: "实体类型(epic/story/task/label/template)"
+        type: "string"
+        required: true
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+      "--format":
+        description: "输出格式"
+        values: ["text", "json"]
+        default: "text"
+    expected_output: ["数据库内容列表"]
+    timeout: 5
+    critical: true
+
+  "db show":
+    description: "显示数据库条目"
+    subcommands:
+      "--type":
+        description: "实体类型(epic/story/task/label/template)"
+        type: "string"
+        required: true
+      "--id":
+        description: "实体ID"
+        type: "string"
+        required: true
+      "--format":
+        description: "输出格式"
+        values: ["text", "json"]
+        default: "text"
+    expected_output: ["条目详情"]
+    timeout: 5
+    critical: true
+
+  "db query":
+    description: "查询数据"
+    subcommands:
+      "--type":
+        description: "实体类型"
+        type: "string"
+        required: true
+      "--id":
+        description: "实体ID"
+        type: "string"
+      "--query":
+        description: "查询字符串"
+        type: "string"
+      "--format":
+        description: "输出格式"
+        values: ["text", "json"]
+        default: "text"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["查询结果"]
+    timeout: 5
+    critical: true
+
+  "db create":
+    description: "创建数据库条目"
+    subcommands:
+      "--type":
+        description: "实体类型"
+        type: "string"
+        required: true
+      "--data":
+        description: "JSON格式的数据"
+        type: "string"
+        required: true
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["创建成功"]
+    timeout: 10
+    critical: true
+
+  "db update":
+    description: "更新数据库条目"
+    subcommands:
+      "--type":
+        description: "实体类型"
+        type: "string"
+        required: true
+      "--id":
+        description: "实体ID"
+        type: "string"
+        required: true
+      "--data":
+        description: "JSON格式的数据"
+        type: "string"
+        required: true
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["更新成功"]
+    timeout: 10
+    critical: true
+
+  "db delete":
+    description: "删除数据库条目"
+    subcommands:
+      "--type":
+        description: "实体类型"
+        type: "string"
+        required: true
+      "--id":
+        description: "实体ID"
+        type: "string"
+        required: true
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+      "--force":
+        description: "强制删除，不提示确认"
+        type: "flag"
+    expected_output: ["删除成功"]
+    timeout: 5
+    critical: true
+
+  "db backup":
+    description: "备份数据库"
+    subcommands:
+      "--output":
+        description: "备份文件输出路径"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["备份成功"]
+    timeout: 30
+    critical: true
+
+  "db restore":
+    description: "恢复数据库"
+    subcommands:
+      "backup_file":
+        description: "备份文件路径"
+        type: "string"
+        required: true
+      "--force":
+        description: "强制恢复，不提示确认"
+        type: "flag"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["恢复成功"]
+    timeout: 30
+    critical: true
+
+# 命令组特定配置
+group_config:
+  max_concurrent_operations: 1  # 最大并发操作数
+  default_timeout: 30          # 默认超时时间（秒）
+  auto_backup: true           # 是否在危险操作前自动备份
+  keep_backup_days: 7         # 保留备份天数
+
+# 数据库验证配置
+validation:
+  check_connection: true     # 检查数据库连接
+  validate_schema: true      # 验证数据库架构
+  check_constraints: true    # 检查约束条件
+  verify_backup: true       # 验证备份完整性

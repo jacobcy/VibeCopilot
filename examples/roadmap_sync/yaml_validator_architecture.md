@@ -158,15 +158,15 @@
 
 ```python
 # 基本用法
-from src.roadmap.sync.yaml_validator import RoadmapYamlValidator
+from src.roadmap.validator.yaml_validator  import RoadmapYamlValidator
 
 validator = RoadmapYamlValidator()
 is_valid, report = validator.check_and_suggest("path/to/roadmap.yaml", fix=True)
 print(report)
 
 # 高级用法 - 直接使用子模块
-from src.roadmap.sync.yaml_validator_template import TemplateManager
-from src.roadmap.sync.yaml_validator_core import RoadmapValidator
+from src.roadmap.validator.yaml_validator _template import TemplateManager
+from src.roadmap.validator.yaml_validator _core import RoadmapValidator
 
 template_manager = TemplateManager()
 validator = RoadmapValidator(template_manager)

@@ -7,7 +7,7 @@
 import logging
 from typing import Any, Dict, List
 
-from src.cli.commands.rule.rule_command_utils import validate_single_rule
+from src.cli.commands.rule.utils import validate_single_rule
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,7 @@ def validate_rule(template_manager, args) -> Dict[str, Any]:
         处理结果
     """
     try:
-        validate_all = (
-            args.get("all", False) if isinstance(args, dict) else getattr(args, "all", False)
-        )
+        validate_all = args.get("all", False) if isinstance(args, dict) else getattr(args, "all", False)
 
         if validate_all:
             rules = template_manager.get_all_templates()

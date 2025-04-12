@@ -19,15 +19,13 @@ from src.workflow.flow_cmd import (
     handle_create_command,
     handle_export_command,
     handle_list_command,
-    handle_run_command,
     handle_show_command,
     handle_start_command,
     run_workflow_stage,
 )
+from src.workflow.handlers import handle_run_command
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -56,12 +54,29 @@ def main():
     show_parser.add_argument("--diagram", action="store_true", help="生成图表")
 
     # 运行子命令
-    run_parser = subparsers.add_parser("run", help="运行工作流")
-    run_parser.add_argument("workflow_id", help="工作流ID")
-    run_parser.add_argument("--stage", required=True, help="阶段ID")
-    run_parser.add_argument("--name", help="会话名称")
-    run_parser.add_argument("--session", help="会话ID")
-    run_parser.add_argument("--completed", nargs="*", default=[], help="已完成的检查项")
+    run_parser = subparsers.add_parser(
+        "run",
+        help="运行工作流或继续当前会话",
+        description="""
+运行工作流或继续当前会话。
+
+不指定参数时，继续执行当前活跃会话的当前阶段。
+指定STAGE参数时，在当前会话中运行指定阶段。
+使用--workflow启动新的工作流，可以使用"工作流名称:阶段名称"格式指定阶段。
+
+示例:
+  vibecopilot flow run                     # 继续当前会话的当前阶段
+  vibecopilot flow run planning            # 在当前会话中运行planning阶段
+  vibecopilot flow run --workflow dev      # 启动dev工作流（从第一个阶段开始）
+  vibecopilot flow run --workflow dev:test # 启动dev工作流的test阶段
+    """,
+    )
+    run_parser.add_argument("stage", nargs="?", help="当前会话中要运行的阶段名称（可选）")
+    run_parser.add_argument("--workflow", "-w", help="启动新工作流（格式：工作流名称 或 工作流名称:阶段名称）")
+    run_parser.add_argument("--name", "-n", help="新会话的名称 (仅用于创建新会话)")
+    run_parser.add_argument("--checklist", "-c", nargs="*", default=[], help="已完成的检查项")
+    run_parser.add_argument("--session", "-s", help="指定会话ID (不指定则使用当前活跃会话)")
+    run_parser.add_argument("--verbose", "-v", action="store_true", help="显示详细信息")
 
     # 启动子命令
     start_parser = subparsers.add_parser("start", help="启动工作流")

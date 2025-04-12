@@ -40,6 +40,41 @@ class ConfigError(VibeCopilotError):
         super().__init__(message, code)
 
 
+class ParseError(VibeCopilotError):
+    """解析相关异常"""
+
+    def __init__(self, message: str, code: str = "E500"):
+        super().__init__(message, code)
+
+
+class APIError(VibeCopilotError):
+    """API调用相关异常"""
+
+    def __init__(self, message: str, code: str = "E600"):
+        super().__init__(message, code)
+
+
+class WorkflowError(VibeCopilotError):
+    """工作流相关异常"""
+
+    def __init__(self, message: str, code: str = "E700"):
+        super().__init__(message, code)
+
+
+class DatabaseError(VibeCopilotError):
+    """数据库相关异常"""
+
+    def __init__(self, message: str, code: str = "E800"):
+        super().__init__(message, code)
+
+
+class TemplateError(VibeCopilotError):
+    """模板相关异常"""
+
+    def __init__(self, message: str, code: str = "E900"):
+        super().__init__(message, code)
+
+
 # 错误码定义
 ERROR_CODES = {
     # 通用错误 (E0xx)
@@ -63,4 +98,24 @@ ERROR_CODES = {
     "E400": "配置错误",
     "E401": "配置加载失败",
     "E402": "配置验证失败",
+    # 解析错误 (E5xx)
+    "E500": "解析失败",
+    "E501": "格式解析失败",
+    "E502": "内容解析失败",
+    # API错误 (E6xx)
+    "E600": "API调用失败",
+    "E601": "API连接失败",
+    "E602": "API响应无效",
+    # 工作流错误 (E7xx)
+    "E700": "工作流执行失败",
+    "E701": "工作流状态无效",
+    "E702": "工作流转换失败",
+    # 数据库错误 (E8xx)
+    "E800": "数据库操作失败",
+    "E801": "数据库连接失败",
+    "E802": "数据查询失败",
+    # 模板错误 (E9xx)
+    "E900": "模板处理失败",
+    "E901": "模板渲染失败",
+    "E902": "模板不存在",
 }

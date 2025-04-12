@@ -37,35 +37,26 @@ def handle_list_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
         output_format = args.get("format", "text")
 
         # 获取工作流列表
-        result_dict = list_workflows()  # No arguments needed
+        workflows = list_workflows()  # 返回的是一个工作流列表
 
-        # 处理 list_workflows 的返回值
-        if isinstance(result_dict, dict) and "workflows" in result_dict:
-            workflow_data = result_dict["workflows"]
-        else:
-            # 如果返回的不是字典或没有workflows键，视为空列表
-            workflow_data = []
-
-        if not workflow_data:
+        # 如果没有找到工作流
+        if not workflows:
             result["status"] = "success"
             result["code"] = 0
             result["message"] = "没有找到工作流定义"
             result["data"] = {"workflows": []}
             return result
 
-        # Prepare data structure - workflow_data is already a list of dicts
-        # workflow_data = [wf for wf in workflows]
-
         result["status"] = "success"
         result["code"] = 0
-        result["message"] = f"共找到 {len(workflow_data)} 个工作流定义"
-        result["data"] = {"workflows": workflow_data}
+        result["message"] = f"共找到 {len(workflows)} 个工作流定义"
+        result["data"] = {"workflows": workflows}
 
         # Format for console output if not agent mode and format is text
         if output_format == "text" and not args.get("_agent_mode", False):
             # 文本格式处理
             output_lines = []
-            for workflow in workflow_data:
+            for workflow in workflows:
                 # 确保 workflow 是字典
                 if isinstance(workflow, dict):
                     info = f"{workflow.get('id', 'N/A')}: {workflow.get('name', 'Unnamed')}"
@@ -82,7 +73,7 @@ def handle_list_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
                     logger.warning(f"工作流数据格式不正确: {workflow}")
 
             # Override message with formatted text for direct console display
-            result["message"] = f"共找到 {len(workflow_data)} 个工作流定义:\n" + "\n".join(output_lines)
+            result["message"] = f"共找到 {len(workflows)} 个工作流定义:\n" + "\n".join(output_lines)
 
         return result
 

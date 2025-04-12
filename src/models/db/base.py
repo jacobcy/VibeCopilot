@@ -15,6 +15,21 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 
+# 自定义Base.to_dict方法
+def _to_dict(self):
+    """安全地将模型实例转换为字典，只包含直接属性而不包含关系"""
+    result = {}
+    for column in self.__table__.columns:
+        column_name = column.name
+        attr_value = getattr(self, column_name, None)
+        result[column_name] = attr_value
+    return result
+
+
+# 添加方法到Base类
+Base.to_dict = _to_dict
+
+
 class RuleType(str, Enum):
     """规则类型枚举"""
 

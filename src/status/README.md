@@ -6,30 +6,30 @@ Status 模块是 VibeCopilot 的核心状态管理中心，负责统一管理和
 
 ## 架构设计
 
-```
-┌───────────────┐      ┌──────────────┐      ┌─────────────────┐
-│ 状态生产者     │──────▶│  Status模块  │──────▶│   状态订阅者    │
-│ (Roadmap模块) │      │              │      │ (Status_Sync)   │
-│ (Workflow模块) │      │              │      │                │
-└───────────────┘      └──────────────┘      └─────────────────┘
-                             │                        │
-                             │                        ▼
-                             │                ┌─────────────────┐
-                             │                │   外部系统      │
-                             │                │    (n8n)        │
-                             ▼                └─────────────────┘
-                      ┌──────────────┐
-                      │   状态查询    │
-                      │   (API)      │
-                      └──────────────┘
+```mermaid
+graph TD
+    SS[StatusService] --> PM[ProviderManager]
+    SS --> SM[SubscriberManager]
+    SS --> HC[HealthCalculator]
+    SS --> PS[ProjectState]
+    PM --> RP[RoadmapProvider]
+    PM --> WP[WorkflowProvider]
+    PM --> TP[TaskProvider]
+    PM --> FP[FunctionProvider]
+    SM --> LS[LogSubscriber]
+    SM --> CB[回调函数订阅]
+    RP --> RS[RoadmapService]
+    WP --> FS[FlowSessionManager]
 ```
 
 ### 核心组件
 
 1. **StatusService**: 中央状态服务，管理状态提供者和订阅者
-2. **IStatusProvider**: 状态提供者接口，由各领域模块实现
-3. **IStatusSubscriber**: 状态订阅者接口，用于响应状态变更
-4. **状态枚举**: 定义各领域的状态常量
+2. **ProviderManager**: 管理状态提供者的注册和获取
+3. **SubscriberManager**: 管理状态订阅者的注册和通知
+4. **IStatusProvider**: 状态提供者接口，由各领域模块实现
+5. **IStatusSubscriber**: 状态订阅者接口，用于响应状态变更
+6. **LogSubscriber**: 基本日志订阅者实现，记录状态变更
 
 ## 模块结构
 
@@ -40,10 +40,20 @@ src/status/
 ├── interfaces.py      # 接口定义
 ├── README.md          # 本文档
 ├── service.py         # 状态服务实现
-└── providers/         # 状态提供者实现
+├── core/              # 核心组件
+│   ├── __init__.py
+│   ├── health_calculator.py    # 健康状态计算
+│   ├── project_state.py        # 项目状态管理
+│   ├── provider_manager.py     # 提供者管理
+│   └── subscriber_manager.py   # 订阅者管理
+├── providers/         # 状态提供者实现
+│   ├── __init__.py
+│   ├── roadmap_provider.py     # 路线图状态提供者
+│   ├── task_provider.py        # 任务状态提供者
+│   └── workflow_provider.py    # 工作流状态提供者
+└── subscribers/       # 状态订阅者实现
     ├── __init__.py
-    ├── roadmap_provider.py
-    └── workflow_provider.py
+    └── log_subscriber.py       # 日志订阅者
 ```
 
 ## 主要接口
@@ -51,7 +61,7 @@ src/status/
 ### IStatusProvider
 
 ```python
-class IStatusProvider(Protocol):
+class IStatusProvider(ABC):
     """状态提供者接口"""
 
     @property
@@ -75,7 +85,7 @@ class IStatusProvider(Protocol):
 ### IStatusSubscriber
 
 ```python
-class IStatusSubscriber(Protocol):
+class IStatusSubscriber(ABC):
     """状态订阅者接口"""
 
     def on_status_changed(
@@ -84,7 +94,7 @@ class IStatusSubscriber(Protocol):
         entity_id: str,
         old_status: str,
         new_status: str,
-        context: Dict[str, Any]
+        data: Dict[str, Any]
     ) -> None:
         """状态变更处理"""
         ...
@@ -95,29 +105,38 @@ class IStatusSubscriber(Protocol):
 ### 获取系统状态
 
 ```python
-from src.status import StatusService
+from src.status.service import StatusService
 
 status_service = StatusService.get_instance()
+
 # 获取系统整体状态
 system_status = status_service.get_system_status()
 
 # 获取特定领域状态
 roadmap_status = status_service.get_domain_status("roadmap")
-workflow_status = status_service.get_domain_status("workflow", workflow_id)
+workflow_status = status_service.get_domain_status("workflow", entity_id="flow-123")
 ```
 
 ### 更新状态
 
 ```python
-from src.status import StatusService, WorkflowStatus
+from src.status.service import StatusService
 
 status_service = StatusService.get_instance()
+
 # 更新工作流状态
 result = status_service.update_status(
     domain="workflow",
-    entity_id=workflow_id,
-    status=WorkflowStatus.ACTIVE
+    entity_id="flow-123",
+    status="IN_PROGRESS",
+    metadata={"reason": "用户操作"}
 )
+
+# 检查更新结果
+if result.get("updated", False):
+    print("状态更新成功")
+else:
+    print(f"状态更新失败: {result.get('error')}")
 ```
 
 ### 实现状态提供者
@@ -132,19 +151,47 @@ class CustomStatusProvider(IStatusProvider):
 
     def get_status(self, entity_id: Optional[str] = None) -> Dict[str, Any]:
         # 实现获取状态的逻辑
-        ...
+        if entity_id:
+            return {"id": entity_id, "status": "active", "domain": self.domain}
+        return {"status": "ok", "entities_count": 5, "domain": self.domain}
 
     def update_status(self, entity_id: str, status: str, **kwargs) -> Dict[str, Any]:
         # 实现更新状态的逻辑
-        ...
+        return {"updated": True, "entity_id": entity_id, "status": status, "domain": self.domain}
 
     def list_entities(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         # 实现列出实体的逻辑
-        ...
+        entities = [
+            {"id": "item-1", "status": "active", "domain": self.domain},
+            {"id": "item-2", "status": "inactive", "domain": self.domain}
+        ]
+        if status:
+            return [e for e in entities if e["status"] == status]
+        return entities
 
 # 注册到状态服务
 status_service = StatusService.get_instance()
-status_service.register_provider(CustomStatusProvider())
+status_service.register_provider("custom_domain", CustomStatusProvider())
+```
+
+### 使用函数式提供者
+
+```python
+from src.status.service import StatusService
+
+# 使用函数创建简单提供者
+def get_simple_status():
+    return {
+        "status": "ok",
+        "uptime": 3600,
+        "version": "1.0.0"
+    }
+
+status_service = StatusService.get_instance()
+status_service.register_provider("simple", get_simple_status)
+
+# 获取状态
+simple_status = status_service.get_domain_status("simple")
 ```
 
 ### 实现状态订阅者
@@ -159,57 +206,88 @@ class CustomSubscriber(IStatusSubscriber):
         entity_id: str,
         old_status: str,
         new_status: str,
-        context: Dict[str, Any]
+        data: Dict[str, Any]
     ) -> None:
         # 实现状态变更处理逻辑
         print(f"状态变更: {domain}/{entity_id}: {old_status} -> {new_status}")
+        # 可基于变更执行操作
+        if domain == "workflow" and new_status == "COMPLETED":
+            self.handle_workflow_completion(entity_id, data)
+
+    def handle_workflow_completion(self, workflow_id, data):
+        # 处理工作流完成事件
+        pass
 
 # 注册到状态服务
 status_service = StatusService.get_instance()
 status_service.register_subscriber(CustomSubscriber())
 ```
 
-## 后续开发方向
+### 使用回调函数订阅状态
 
-1. **扩展状态提供者**：
-   - 为更多领域添加状态提供者，如任务状态、项目状态等
-   - 丰富现有提供者的功能，如添加状态历史记录
+```python
+from src.status.service import StatusService
 
-2. **增强订阅机制**：
-   - 添加状态变更过滤功能，允许订阅者只关注特定领域或状态变更
-   - 实现事件队列，提高系统吞吐量和稳定性
+def on_health_changed(status_type, status):
+    health_level = status.get("overall_health", 0)
+    print(f"系统健康状态变更: {health_level}%")
+    if health_level < 50:
+        print("警告: 系统健康度低!")
 
-3. **系统集成**：
-   - 与通知系统集成，提供状态变更通知
-   - 提供API接口，允许外部系统查询和更新状态
+status_service = StatusService.get_instance()
+subscription_id = status_service.subscribe("health", on_health_changed)
 
-4. **性能优化**：
-   - 状态缓存机制，减少数据库访问
-   - 批量状态更新支持
+# 稍后可取消订阅
+# status_service.unsubscribe(subscription_id)
+```
 
-5. **监控与日志**：
-   - 状态变更审计日志
-   - 状态健康监控面板
+## 当前提供者
 
-6. **API集成**：
-   - REST API接口，用于查询和更新状态
-   - WebSocket支持，用于实时状态推送
+当前系统已实现以下状态提供者：
+
+1. **RoadmapStatusProvider**: 提供路线图状态，包括里程碑和任务
+2. **WorkflowStatusProvider**: 提供工作流状态，基于FlowSessionManager
+3. **TaskProvider**: 提供任务统计信息（简化实现）
+4. **内置提供者**:
+   - **health**: 提供系统健康状态
+   - **project_state**: 提供项目状态信息
+
+## 状态订阅者
+
+目前系统实现了以下状态订阅者：
+
+1. **LogSubscriber**: 基本日志订阅者，将状态变更记录到日志系统
+
+## 改进说明
+
+以下问题已在最新版本中解决：
+
+1. ✅ **订阅机制缺少实际订阅者**:
+   - 添加了LogSubscriber作为基本订阅者实现
+   - 改进了注册和通知机制
+
+2. ✅ **FunctionStatusProvider接口实现不完整**:
+   - 为update_status和list_entities方法提供了合理的默认实现
+   - 确保函数式提供者返回的状态信息包含domain字段
+
+3. ✅ **状态更新路径不完整**:
+   - 添加了统一的update_status方法作为状态更新入口
+   - 确保状态更新能正确通知订阅者
+   - 完善了状态变更通知流程
 
 ## 最佳实践
 
-1. **状态定义**：所有状态应在`enums.py`中集中定义，避免硬编码
-2. **错误处理**：状态提供者和订阅者应妥善处理异常，避免影响整个应用
-3. **状态一致性**：确保状态变更的原子性，避免状态不一致
-4. **性能考虑**：状态订阅者的处理逻辑应尽量轻量，避免阻塞
+1. **状态定义**: 所有状态应在`enums.py`中集中定义，避免硬编码
+2. **错误处理**: 状态提供者应妥善处理异常，提供恰当的错误信息和建议
+3. **状态一致性**: 确保状态变更的原子性，避免状态不一致
+4. **性能考虑**: 对于频繁访问的状态，考虑添加缓存机制
+5. **订阅者设计**: 订阅者应快速处理通知，避免阻塞状态服务
+6. **字段规范**: 状态信息应始终包含`domain`字段，更新结果应包含`updated`字段
 
-## 示例流程
+## 后续开发计划
 
-以下是一个工作流状态变更的完整流程示例：
-
-1. 用户通过API请求激活工作流
-2. Workflow模块更新工作流状态为"active"
-3. Workflow模块调用Status服务的`update_status`方法
-4. Status服务通知所有订阅者状态已变更
-5. StatusSyncSubscriber接收通知并处理状态变更
-6. StatusSyncSubscriber使用N8n适配器将状态同步到n8n系统
-7. 状态变更完成，各系统状态一致
+1. **增强状态持久化**: 添加状态历史记录和变更追踪
+2. **提供API接口**: 对接外部系统查询和订阅状态变更
+3. **状态可视化**: 实现状态监控面板，直观展示系统状态
+4. **扩展订阅者**: 实现更多特定功能的订阅者（如通知、自动化操作等）
+5. **缓存机制**: 为频繁访问的状态添加缓存，提高性能

@@ -27,16 +27,15 @@ from typer.main import get_command
 
 from src.cli.command import Command
 from src.cli.command_parser import CommandParser
-from src.cli.commands.db import DatabaseCommand
 from src.cli.commands.db.db_click import db as db_click_group
 from src.cli.commands.flow.flow_click import flow as flow_click_group
-from src.cli.commands.help.help_command import HelpCommand  # Keep for now, might refactor later
+from src.cli.commands.help.help_click import help as help_command
 from src.cli.commands.memory.memory_click import memory as memory_click_group
 from src.cli.commands.roadmap.roadmap_click import roadmap as roadmap_click_group
 from src.cli.commands.rule.rule_click import rule as rule_click_group
-from src.cli.commands.status import StatusCommand  # Keep for now, might refactor later
+from src.cli.commands.status.status_click import status as status_command
 from src.cli.commands.task import task_app
-from src.cli.commands.template.template_command import TemplateCommand  # Keep for now, might refactor later
+from src.cli.commands.template.template_click import template as template_command
 
 # 预初始化数据库连接管理器
 from src.db.connection_manager import ensure_tables_exist
@@ -52,19 +51,18 @@ logger = logging.getLogger(__name__)
 
 # 命令映射
 # Note: Typer app 'task' is handled specially in get_cli_app
-# Remove 'rule', 'flow' and 'memory' from this dict as they're now handled directly as click groups
+# All commands are now using click groups
 COMMANDS: Dict[str, Type[Command]] = {
-    "status": StatusCommand,  # Keep for now
-    "db": DatabaseCommand,
-    "help": HelpCommand,
-    "template": TemplateCommand,
+    "status": status_command,
+    "db": db_click_group,
+    "help": help_command,
 }
 
 
 def create_cli_command(command_class: Type[Command]):
     """为命令类创建Click命令"""
 
-    @click.command(help=command_class.get_help())
+    @click.command(help=command_class.__doc__ or "暂无帮助信息")
     @click.argument("args", nargs=-1)
     def command_func(args):
         cmd = command_class()
@@ -93,6 +91,7 @@ def get_cli_app():
     cli.add_command(db_click_group, name="db")
     cli.add_command(flow_click_group, name="flow")
     cli.add_command(memory_click_group, name="memory")
+    cli.add_command(template_command, name="template")
 
     # Add the Typer app task_app (already converted to Click command)
     # 将 Typer 应用转换为 Click 命令并添加

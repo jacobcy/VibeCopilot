@@ -1,23 +1,56 @@
 """
-CLI命令模块
+VibeCopilot CLI命令包
 
-提供各种命令行命令的实现
+包含所有CLI命令的实现。每个命令都是一个Click命令组。
 """
 
-from src.cli.commands.db_commands import add_db_commands, handle_db_command
-from src.cli.commands.template_commands import add_template_commands, generate_template, handle_template_command, list_templates, show_template
+from src.cli.commands.db.db_click import db
+from src.cli.commands.flow.flow_click import flow
+from src.cli.commands.help.help_click import help
+from src.cli.commands.memory.memory_click import memory
+from src.cli.commands.roadmap.roadmap_click import roadmap
+from src.cli.commands.rule.rule_click import rule
+from src.cli.commands.status.status_click import status
+from src.cli.commands.task import task_app as task
+from src.cli.commands.template.template_click import template
 
-# 命令注册表字典，存储命令名称和处理函数的映射
-COMMAND_REGISTRY = {"mock": lambda args: {"success": True, "message": "Mock command executed", "args": args}}
-
-# 导出命令函数
 __all__ = [
-    "add_db_commands",
-    "handle_db_command",
-    "add_template_commands",
-    "handle_template_command",
-    "generate_template",
-    "list_templates",
-    "show_template",
-    "COMMAND_REGISTRY",
+    "db",
+    "flow",
+    "help",
+    "memory",
+    "roadmap",
+    "rule",
+    "status",
+    "task",
+    "template",
 ]
+
+# 所有Click命令组
+CLICK_COMMANDS = [
+    db,
+    flow,
+    help,
+    memory,
+    roadmap,
+    rule,
+    status,
+    task,
+    template,
+]
+
+# 旧版命令（如果需要兼容）
+OLD_COMMANDS = {}
+
+# 命令注册表
+COMMAND_REGISTRY = {
+    "db": db,
+    "flow": flow,
+    "help": help,
+    "memory": memory,
+    "roadmap": roadmap,
+    "rule": rule,
+    "status": status,
+    "task": task,
+    "template": template,
+}

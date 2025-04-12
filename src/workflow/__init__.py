@@ -4,7 +4,7 @@
 工作流系统
 
 提供工作流的创建、读取、更新、删除等管理功能，
-以及工作流的执行、进度跟踪等高级功能。
+以及工作流的进度跟踪等功能。
 """
 
 from src.workflow.flow_cmd.workflow_creator import create_workflow_from_rule, create_workflow_from_template_with_vars
@@ -13,7 +13,6 @@ from src.workflow.flow_cmd.workflow_creator import create_workflow_from_rule, cr
 # from src.workflow.flow_cmd.workflow_runner import get_workflow_context
 from src.workflow.workflow_advanced_operations import (
     calculate_progress_statistics,
-    execute_workflow,
     get_executions_for_workflow,
     get_workflow_context,
     get_workflow_executions,
@@ -52,7 +51,6 @@ __all__ = [
     "delete_workflow",
     "get_workflows_directory",
     "get_workflow_file_path",
-    "execute_workflow",
     "get_workflow_executions",
     "get_executions_for_workflow",
     "save_execution",

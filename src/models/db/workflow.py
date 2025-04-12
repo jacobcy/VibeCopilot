@@ -4,6 +4,8 @@
 定义工作流相关的数据模型，包括Workflow、WorkflowStep、WorkflowExecution等实体。
 """
 
+from __future__ import annotations
+
 import json
 import uuid
 from datetime import datetime
@@ -31,6 +33,8 @@ class Workflow(Base):
     # 关系
     steps = relationship("WorkflowStep", back_populates="workflow", cascade="all, delete-orphan", order_by="WorkflowStep.order")
     executions = relationship("WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan")
+    stages = relationship("Stage", back_populates="workflow", cascade="all, delete-orphan")
+    transitions = relationship("Transition", back_populates="workflow", cascade="all, delete-orphan")
 
     def __init__(self, **kwargs):
         """初始化Workflow，确保ID字段不为空"""
@@ -62,6 +66,8 @@ class Workflow(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "steps": [step.to_dict() for step in self.steps] if self.steps else [],
+            "stages": [stage.to_dict() for stage in self.stages] if self.stages else [],
+            "transitions": [transition.to_dict() for transition in self.transitions] if self.transitions else [],
         }
 
 

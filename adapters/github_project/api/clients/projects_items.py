@@ -7,12 +7,15 @@ GitHub项目条目管理模块.
 提供与GitHub Projects条目（如任务、工作项等）相关的API交互功能。
 """
 
-from typing import Any, Dict, Union
+import logging
+from typing import Any, Dict, List, Optional, Union
 
-from ..github_client import GitHubClient
+import requests
+
+from .github_client import GitHubClientBase
 
 
-class GitHubProjectItemsClient(GitHubClient):
+class GitHubProjectItemsClient(GitHubClientBase):
     """GitHub项目条目客户端."""
 
     def add_issue_to_project(self, owner: str, repo: str, project_id: str, issue_id: str) -> bool:
@@ -95,9 +98,7 @@ class GitHubProjectItemsClient(GitHubClient):
             print(f"更新项目条目字段值失败: {e}")
             return False
 
-    def get_project_items(
-        self, project_id: str, cursor: str = None, page_size: int = 100
-    ) -> Dict[str, Any]:
+    def get_project_items(self, project_id: str, cursor: str = None, page_size: int = 100) -> Dict[str, Any]:
         """获取项目中的条目.
 
         Args:

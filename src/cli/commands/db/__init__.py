@@ -4,6 +4,6 @@
 包含数据库初始化、更新等命令
 """
 
-from src.cli.commands.db.command import DatabaseCommand
+from src.cli.commands.db.db_click import db
 
-__all__ = ["DatabaseCommand"]
+__all__ = ["db"]

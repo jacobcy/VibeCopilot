@@ -1,0 +1,146 @@
+---
+# 工作流数据验证模式
+id: workflow_schema
+name: 工作流验证模式
+version: 1.0.0
+description: VibeCopilot工作流数据的验证模式
+
+# 工作流基本结构
+structure:
+  id:
+    type: string
+    required: true
+    pattern: ^[a-zA-Z0-9-_]+$
+    minLength: 6
+    maxLength: 36
+    description: 工作流唯一标识符，使用UUID格式
+
+  name:
+    type: string
+    required: true
+    pattern: ^[\u4e00-\u9fa5a-zA-Z0-9-_]+$
+    minLength: 2
+    maxLength: 50
+    description: 工作流名称，支持中英文、数字、连字符和下划线
+
+  type:
+    type: string
+    required: true
+    enum:
+      - story
+      - dev
+      - test
+      - deploy
+      - general
+    description: 工作流类型
+
+  description:
+    type: string
+    required: true
+    minLength: 10
+    maxLength: 500
+    description: 工作流详细描述
+
+  version:
+    type: string
+    required: true
+    pattern: ^\d+\.\d+\.\d+$
+    description: 工作流版本号，采用语义化版本
+
+  source_rule:
+    type: string
+    required: false
+    description: 源规则路径，如果工作流是从规则生成的
+
+  stages:
+    type: array
+    required: true
+    minItems: 1
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          required: true
+          pattern: ^[a-zA-Z0-9-_]+$
+          description: 阶段唯一标识符
+
+        name:
+          type: string
+          required: true
+          description: 阶段名称
+
+        description:
+          type: string
+          required: true
+          description: 阶段描述
+
+        order:
+          type: integer
+          required: true
+          minimum: 1
+          description: 阶段顺序
+
+        checklist:
+          type: array
+          required: false
+          items:
+            type: string
+          description: 阶段检查项列表
+
+        deliverables:
+          type: array
+          required: false
+          items:
+            type: string
+          description: 阶段交付物列表
+
+  transitions:
+    type: array
+    required: true
+    minItems: 1
+    items:
+      type: object
+      properties:
+        from:
+          type: string
+          required: true
+          description: 起始阶段ID
+
+        to:
+          type: string
+          required: true
+          description: 目标阶段ID
+
+        condition:
+          type: string
+          required: true
+          description: 转换条件
+
+  metadata:
+    type: object
+    required: false
+    properties:
+      created_at:
+        type: string
+        required: true
+        format: date-time
+        description: 创建时间
+
+      updated_at:
+        type: string
+        required: true
+        format: date-time
+        description: 更新时间
+
+      creator:
+        type: string
+        required: false
+        description: 创建者
+
+      tags:
+        type: array
+        required: false
+        items:
+          type: string
+        description: 工作流标签

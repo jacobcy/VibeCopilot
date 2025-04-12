@@ -28,9 +28,7 @@ class StageInstanceManager:
         self.session_repo = FlowSessionRepository(session)
         self.stage_repo = StageInstanceRepository(session)
 
-    def create_instance(
-        self, session_id: str, stage_id: str, name: Optional[str] = None
-    ) -> Optional[StageInstance]:
+    def create_instance(self, session_id: str, stage_id: str, name: Optional[str] = None) -> Optional[StageInstance]:
         """创建新的阶段实例
 
         Args:
@@ -101,9 +99,7 @@ class StageInstanceManager:
         """
         return self.stage_repo.get_by_id(instance_id)
 
-    def list_instances(
-        self, session_id: Optional[str] = None, status: Optional[str] = None
-    ) -> List[StageInstance]:
+    def list_instances(self, session_id: Optional[str] = None, status: Optional[str] = None) -> List[StageInstance]:
         """列出阶段实例，可按会话ID和状态过滤
 
         Args:
@@ -150,9 +146,7 @@ class StageInstanceManager:
         # 更新状态为激活
         return self.stage_repo.update_status(instance_id, "ACTIVE")
 
-    def complete_instance(
-        self, instance_id: str, deliverables: Optional[Dict[str, Any]] = None
-    ) -> Optional[StageInstance]:
+    def complete_instance(self, instance_id: str, deliverables: Optional[Dict[str, Any]] = None) -> Optional[StageInstance]:
         """完成阶段实例
 
         Args:
@@ -175,9 +169,7 @@ class StageInstanceManager:
 
         # 更新会话中的已完成阶段列表
         if completed_instance:
-            self.session_repo.add_completed_stage(
-                completed_instance.session_id, completed_instance.stage_id
-            )
+            self.session_repo.add_completed_stage(completed_instance.session_id, completed_instance.stage_id)
 
         return completed_instance
 
@@ -228,9 +220,7 @@ class StageInstanceManager:
         """
         return self.stage_repo.update_context(instance_id, context)
 
-    def update_deliverables(
-        self, instance_id: str, deliverables: Dict[str, Any]
-    ) -> Optional[StageInstance]:
+    def update_deliverables(self, instance_id: str, deliverables: Dict[str, Any]) -> Optional[StageInstance]:
         """更新阶段实例交付物
 
         Args:
@@ -241,3 +231,60 @@ class StageInstanceManager:
             更新后的阶段实例对象或None
         """
         return self.stage_repo.update_deliverables(instance_id, deliverables)
+
+    def get_instance_progress(self, instance_id: str) -> Dict[str, Any]:
+        """获取阶段实例的进度信息
+
+        Args:
+            instance_id: 阶段实例ID
+
+        Returns:
+            包含阶段实例进度信息的字典
+
+        Raises:
+            ValueError: 如果找不到指定的阶段实例
+        """
+        instance = self.stage_repo.get_by_id(instance_id)
+        if not instance:
+            raise ValueError(f"找不到ID为 {instance_id} 的阶段实例")
+
+        # 获取会话和工作流信息以查找阶段详情
+        flow_session = self.session_repo.get_by_id(instance.session_id)
+        if not flow_session:
+            return {"items": [], "completed": 0, "total": 0, "progress": 0}
+
+        workflow = self.workflow_repo.get_by_id(flow_session.workflow_id)
+        if not workflow or not hasattr(workflow, "stages") or not workflow.stages:
+            return {"items": [], "completed": 0, "total": 0, "progress": 0}
+
+        # 查找阶段定义
+        stage_def = None
+
+        if isinstance(workflow.stages, list):
+            stage_def = next((s for s in workflow.stages if s.get("id") == instance.stage_id), None)
+        elif isinstance(workflow.stages, dict):
+            stage_def = workflow.stages.get(instance.stage_id)
+
+        if not stage_def:
+            return {"items": [], "completed": 0, "total": 0, "progress": 0}
+
+        # 获取阶段项目
+        items = []
+        stage_items = stage_def.get("items", [])
+
+        if isinstance(stage_items, dict):
+            stage_items = [{"id": k, "name": v.get("name", k)} for k, v in stage_items.items()]
+
+        completed_items = instance.completed_items or []
+
+        for item in stage_items:
+            item_id = item.get("id")
+            item_data = {"id": item_id, "name": item.get("name", item_id), "status": "COMPLETED" if item_id in completed_items else "PENDING"}
+            items.append(item_data)
+
+        # 计算完成情况
+        total = len(items)
+        completed = len(completed_items)
+        progress = (completed / total * 100) if total > 0 else 0
+
+        return {"items": items, "completed": completed, "total": total, "progress": round(progress, 2)}

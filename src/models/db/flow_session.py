@@ -4,6 +4,8 @@
 定义工作流会话相关的数据模型，包括FlowSession、StageInstance等实体。
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -13,60 +15,13 @@ from sqlalchemy.orm import relationship
 from .base import Base
 
 
-class WorkflowDefinition(Base):
-    """工作流定义实体模型"""
-
-    __tablename__ = "workflow_definitions"
-
-    id = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    type = Column(String, nullable=True)
-    description = Column(Text, nullable=True)
-    stages = Column(JSON, nullable=False)  # 可用阶段列表，JSON格式
-    source_rule = Column(String, nullable=True)  # 来源规则文件
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # 关系
-    sessions = relationship(
-        "FlowSession", back_populates="workflow_definition", cascade="all, delete-orphan"
-    )
-
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "type": self.type,
-            "description": self.description,
-            "stages": self.stages,
-            "source_rule": self.source_rule,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]):
-        """从字典创建实例"""
-        return cls(
-            id=data.get("id"),
-            name=data.get("name", ""),
-            type=data.get("type"),
-            description=data.get("description", ""),
-            stages=data.get("stages", []),
-            source_rule=data.get("source_rule"),
-        )
-
-
 class FlowSession(Base):
     """工作流会话实体模型"""
 
     __tablename__ = "flow_sessions"
 
     id = Column(String, primary_key=True)
-    workflow_id = Column(
-        String, ForeignKey("workflow_definitions.id", ondelete="CASCADE"), nullable=False
-    )
+    workflow_id = Column(String, ForeignKey("workflow_definitions.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     status = Column(String, default="ACTIVE")  # ACTIVE, PAUSED, COMPLETED, ABORTED
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -74,12 +29,12 @@ class FlowSession(Base):
     current_stage_id = Column(String, nullable=True)  # 当前阶段ID
     completed_stages = Column(JSON, default=list)  # 已完成阶段ID列表，JSON格式
     context = Column(JSON, nullable=True)  # 会话上下文，JSON格式
+    task_id = Column(String, ForeignKey("tasks.id"), nullable=True)  # 关联的任务ID
 
     # 关系
     workflow_definition = relationship("WorkflowDefinition", back_populates="sessions")
-    stage_instances = relationship(
-        "StageInstance", back_populates="session", cascade="all, delete-orphan"
-    )
+    stage_instances = relationship("StageInstance", back_populates="session", cascade="all, delete-orphan")
+    task = relationship("Task", back_populates="flow_sessions")
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -93,6 +48,7 @@ class FlowSession(Base):
             "current_stage_id": self.current_stage_id,
             "completed_stages": self.completed_stages,
             "context": self.context,
+            "task_id": self.task_id,
         }
 
     @classmethod
@@ -106,6 +62,7 @@ class FlowSession(Base):
             current_stage_id=data.get("current_stage_id"),
             completed_stages=data.get("completed_stages", []),
             context=data.get("context", {}),
+            task_id=data.get("task_id"),
         )
 
 
@@ -116,7 +73,7 @@ class StageInstance(Base):
 
     id = Column(String, primary_key=True)
     session_id = Column(String, ForeignKey("flow_sessions.id", ondelete="CASCADE"), nullable=False)
-    stage_id = Column(String, nullable=False)  # 工作流定义中阶段的ID
+    stage_id = Column(String, ForeignKey("stages.id"), nullable=False)  # 阶段ID，引用Stage表
     name = Column(String, nullable=False)
     status = Column(String, default="PENDING")  # PENDING, ACTIVE, COMPLETED, FAILED
     started_at = Column(DateTime, nullable=True)
@@ -127,6 +84,7 @@ class StageInstance(Base):
 
     # 关系
     session = relationship("FlowSession", back_populates="stage_instances")
+    stage = relationship("Stage", back_populates="instances")
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""

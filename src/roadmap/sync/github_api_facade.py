@@ -8,9 +8,9 @@ relevant to roadmap synchronization.
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-# Assumes the adapter clients are importable
-from adapters.github_project.api.issues_client import GitHubIssuesClient
-from adapters.github_project.api.projects_client import GitHubProjectsClient
+# 直接从实际模块导入
+from adapters.github_project.api.clients.issues_client import GitHubIssuesClient
+from adapters.github_project.api.clients.projects_client import GitHubProjectsClient
 
 logger = logging.getLogger(__name__)
 
@@ -40,23 +40,33 @@ class GitHubApiFacade:
         self._issue_cache = {}
 
     def get_or_create_project(self, name: str, body: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """Gets a GitHub project by name, or creates it if not found."""
+        """Gets a GitHub project by name, or creates it if not found.
+
+        Args:
+            name: Project name/title
+            body: Project description
+
+        Returns:
+            Optional[Dict[str, Any]]: Project data if found or created, None if failed
+        """
         if name in self._project_cache:
             return self._project_cache[name]
 
         try:
             projects = self.projects_client.get_projects(self.owner, self.repo)
             for project in projects:
-                if project.get("name") == name:
+                if project.get("title") == name:
                     self._project_cache[name] = project
                     logger.info(f"Found existing GitHub project: '{name}' (ID: {project.get('id')})")
                     return project
 
             # Not found, create it
             logger.info(f"GitHub project '{name}' not found. Creating...")
-            project_data = {"name": name, "body": body or f"{name} - Project Tracking"}
-            new_project = self.projects_client.create_project(self.owner, self.repo, project_data)
-            self._project_cache[name] = new_project
+            new_project = self.projects_client.create_project(
+                self.owner, self.repo, name, body or f"{name} - Project Tracking"  # This is the title  # This is the description
+            )
+            if new_project:
+                self._project_cache[name] = new_project
             return new_project
         except Exception as e:
             logger.error(f"Error getting or creating GitHub project '{name}': {e}", exc_info=True)

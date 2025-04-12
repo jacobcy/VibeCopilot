@@ -4,20 +4,16 @@
 提供路线图管理功能入口。
 """
 
-from src.cli.commands.roadmap.create_command import CreateCommand
-from src.cli.commands.roadmap.list_command import RoadmapListCommand
-from src.cli.commands.roadmap.roadmap_command import RoadmapCommand
-from src.cli.commands.roadmap.story_command import StoryCommand
-from src.cli.commands.roadmap.switch_command import SwitchCommand
-from src.cli.commands.roadmap.sync_command import SyncCommand
-from src.cli.commands.roadmap.update_command import UpdateRoadmapCommand
+from src.cli.commands.roadmap.handlers.delete_handlers import handle_delete
+from src.cli.commands.roadmap.handlers.import_handlers import handle_import
+from src.cli.commands.roadmap.handlers.list_handlers import handle_list_elements, handle_list_roadmaps
+from src.cli.commands.roadmap.handlers.show_handlers import handle_show_roadmap
 
 __all__ = [
-    "RoadmapCommand",
-    "CreateCommand",
-    "RoadmapListCommand",
-    "StoryCommand",
-    "SwitchCommand",
-    "SyncCommand",
-    "UpdateRoadmapCommand",
+    # 处理器函数
+    "handle_delete",
+    "handle_import",
+    "handle_list_elements",
+    "handle_list_roadmaps",
+    "handle_show_roadmap",
 ]

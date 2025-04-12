@@ -8,7 +8,7 @@
 
 # 从各个子模块导入公共API
 from src.workflow.analytics.workflow_analytics import calculate_progress_statistics, get_workflow_executions
-from src.workflow.execution.workflow_execution import execute_workflow, get_executions_for_workflow, save_execution
+from src.workflow.execution import get_executions_for_workflow, save_execution
 from src.workflow.search.workflow_search import get_workflow_context, get_workflow_fuzzy
 
 # 公共API
@@ -17,7 +17,6 @@ __all__ = [
     "calculate_progress_statistics",
     "get_workflow_executions",
     # 工作流执行功能
-    "execute_workflow",
     "get_executions_for_workflow",
     "save_execution",
     # 工作流搜索功能

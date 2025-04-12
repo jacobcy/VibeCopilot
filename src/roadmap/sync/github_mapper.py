@@ -14,8 +14,8 @@ def map_roadmap_to_github_project(roadmap: Dict[str, Any]) -> Dict[str, Any]:
     """Maps local roadmap data to GitHub project creation payload."""
     roadmap_name = roadmap.get("name", "Unnamed Roadmap")
     return {
-        "name": roadmap_name,
-        "body": roadmap.get("description", f"{roadmap_name} - Project Tracking"),
+        "title": roadmap_name,
+        "description": roadmap.get("description", f"{roadmap_name} - Project Tracking"),
     }
 
 

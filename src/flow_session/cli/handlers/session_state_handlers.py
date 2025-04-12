@@ -7,16 +7,9 @@ from typing import Optional
 
 import click
 
-from src.flow_session.cli.utils import (
-    echo_error,
-    echo_info,
-    echo_success,
-    format_time,
-    get_db_session,
-    get_error_code,
-)
-from src.flow_session.session_manager import FlowSessionManager
-from src.flow_session.status_integration import FlowStatusIntegration
+from src.flow_session.cli.utils import echo_error, echo_info, echo_success, echo_warning, format_time, get_db_session, get_error_code
+from src.flow_session.session.manager import FlowSessionManager
+from src.flow_session.status.integration import FlowStatusIntegration
 
 
 def handle_pause_session(session_id: str, verbose: bool = False, agent_mode: bool = False):
@@ -56,9 +49,7 @@ def handle_pause_session(session_id: str, verbose: bool = False, agent_mode: boo
                 "id": flow_session.id,
                 "name": flow_session.name,
                 "status": flow_session.status,
-                "updated_at": flow_session.updated_at.isoformat()
-                if flow_session.updated_at
-                else None,
+                "updated_at": flow_session.updated_at.isoformat() if flow_session.updated_at else None,
             }
 
             if verbose:
@@ -66,9 +57,7 @@ def handle_pause_session(session_id: str, verbose: bool = False, agent_mode: boo
                 session_data.update(
                     {
                         "workflow_id": flow_session.workflow_id,
-                        "created_at": flow_session.created_at.isoformat()
-                        if flow_session.created_at
-                        else None,
+                        "created_at": flow_session.created_at.isoformat() if flow_session.created_at else None,
                         "current_stage_id": flow_session.current_stage_id,
                     }
                 )
@@ -137,9 +126,7 @@ def handle_resume_session(session_id: str, verbose: bool = False, agent_mode: bo
                 "id": flow_session.id,
                 "name": flow_session.name,
                 "status": flow_session.status,
-                "updated_at": flow_session.updated_at.isoformat()
-                if flow_session.updated_at
-                else None,
+                "updated_at": flow_session.updated_at.isoformat() if flow_session.updated_at else None,
                 "current_stage_id": flow_session.current_stage_id,
             }
 
@@ -148,9 +135,7 @@ def handle_resume_session(session_id: str, verbose: bool = False, agent_mode: bo
                 session_data.update(
                     {
                         "workflow_id": flow_session.workflow_id,
-                        "created_at": flow_session.created_at.isoformat()
-                        if flow_session.created_at
-                        else None,
+                        "created_at": flow_session.created_at.isoformat() if flow_session.created_at else None,
                         "context": flow_session.context,
                     }
                 )
@@ -187,11 +172,13 @@ def handle_resume_session(session_id: str, verbose: bool = False, agent_mode: bo
         return result_data
 
 
-def handle_abort_session(session_id: str, verbose: bool = False, agent_mode: bool = False):
-    """处理终止会话的逻辑
+def handle_close_session(session_id: str, reason: Optional[str] = None, force: bool = False, verbose: bool = False, agent_mode: bool = False):
+    """处理结束会话的逻辑
 
     Args:
         session_id: 会话ID
+        reason: 结束原因
+        force: 是否强制结束
         verbose: 是否显示详细信息
         agent_mode: 是否为程序处理模式
     """
@@ -200,7 +187,14 @@ def handle_abort_session(session_id: str, verbose: bool = False, agent_mode: boo
     try:
         with get_db_session() as session:
             manager = FlowSessionManager(session)
-            flow_session = manager.abort_session(session_id)
+
+            # 如果不是强制模式且没有提供agent模式，询问用户确认
+            if not force and not agent_mode:
+                if not click.confirm(f"确定要结束会话 {session_id} 吗?", default=False):
+                    echo_info("操作已取消")
+                    return {"success": False, "error_code": "USER_CANCELLED"}
+
+            flow_session = manager.complete_session(session_id)
 
             if not flow_session:
                 error_code = get_error_code("SESSION_NOT_FOUND")
@@ -224,9 +218,7 @@ def handle_abort_session(session_id: str, verbose: bool = False, agent_mode: boo
                 "id": flow_session.id,
                 "name": flow_session.name,
                 "status": flow_session.status,
-                "updated_at": flow_session.updated_at.isoformat()
-                if flow_session.updated_at
-                else None,
+                "updated_at": flow_session.updated_at.isoformat() if flow_session.updated_at else None,
             }
 
             if verbose:
@@ -234,10 +226,9 @@ def handle_abort_session(session_id: str, verbose: bool = False, agent_mode: boo
                 session_data.update(
                     {
                         "workflow_id": flow_session.workflow_id,
-                        "created_at": flow_session.created_at.isoformat()
-                        if flow_session.created_at
-                        else None,
+                        "created_at": flow_session.created_at.isoformat() if flow_session.created_at else None,
                         "current_stage_id": flow_session.current_stage_id,
+                        "closed_reason": reason,
                     }
                 )
 
@@ -249,13 +240,15 @@ def handle_abort_session(session_id: str, verbose: bool = False, agent_mode: boo
                 click.echo(json.dumps(result_data, indent=2))
                 return result_data
 
-            echo_success(f"已终止会话: {flow_session.id} ({flow_session.name})")
+            echo_success(f"已结束会话: {flow_session.id} ({flow_session.name})")
+            if reason:
+                echo_info(f"结束原因: {reason}")
 
             return result_data
 
     except Exception as e:
-        error_code = get_error_code("ABORT_SESSION_ERROR")
-        error_message = f"终止会话时发生错误: {str(e)}"
+        error_code = get_error_code("CLOSE_SESSION_ERROR")
+        error_message = f"结束会话时发生错误: {str(e)}"
         result_data.update({"error_code": error_code, "error_message": error_message})
 
         if agent_mode:

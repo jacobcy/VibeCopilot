@@ -7,21 +7,11 @@ from typing import Optional
 
 import click
 
-from src.flow_session.cli.utils import (
-    confirm_action,
-    echo_error,
-    echo_info,
-    echo_success,
-    format_time,
-    get_db_session,
-    get_error_code,
-)
-from src.flow_session.session_manager import FlowSessionManager
+from src.flow_session.cli.utils import confirm_action, echo_error, echo_info, echo_success, echo_warning, format_time, get_db_session, get_error_code
+from src.flow_session.session.manager import FlowSessionManager
 
 
-def handle_delete_session(
-    session_id: str, force: bool = False, verbose: bool = False, agent_mode: bool = False
-):
+def handle_delete_session(session_id: str, force: bool = False, verbose: bool = False, agent_mode: bool = False):
     """处理删除会话的逻辑
 
     Args:
