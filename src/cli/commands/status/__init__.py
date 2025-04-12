@@ -4,6 +4,6 @@
 提供查询和管理系统状态的命令集合。
 """
 
-from src.cli.commands.status.status_command import StatusCommand
+from src.cli.commands.status.status_click import status
 
-__all__ = ["StatusCommand"]
+__all__ = ["status"]

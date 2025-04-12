@@ -16,15 +16,13 @@ class StoryManager:
     提供Story实体的管理功能。
     """
 
-    def __init__(self, entity_manager, mock_storage):
+    def __init__(self, entity_manager):
         """初始化Story管理器
 
         Args:
             entity_manager: 实体管理器
-            mock_storage: 模拟存储
         """
         self._entity_manager = entity_manager
-        self._mock_storage = mock_storage
 
     def get_story(self, story_id: str) -> Dict[str, Any]:
         """获取Story信息
@@ -43,7 +41,16 @@ class StoryManager:
         Returns:
             Story列表
         """
-        return self._entity_manager.get_entities("story")
+        logger.info("获取所有Story列表")
+        try:
+            # 直接使用实体管理器获取Story列表
+            stories = self._entity_manager.get_entities("story")
+            logger.info(f"获取到 {len(stories)} 个Story")
+            return stories
+        except Exception as e:
+            logger.error(f"获取Story列表失败: {e}", exc_info=True)
+            # 不要抛出异常，返回空列表
+            return []
 
     def create_story(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """创建Story

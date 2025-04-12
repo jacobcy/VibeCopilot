@@ -37,7 +37,7 @@ class ProjectState:
         """从文件加载项目状态"""
         try:
             # 确保状态目录存在
-            status_dir = os.path.join(os.path.expanduser("~"), ".vibecopilot", "status")
+            status_dir = os.path.join(os.path.expanduser("~"), "data/temp", "status")
             if not os.path.exists(status_dir):
                 os.makedirs(status_dir)
 
@@ -57,7 +57,7 @@ class ProjectState:
         """保存项目状态到文件"""
         try:
             # 确保状态目录存在
-            status_dir = os.path.join(os.path.expanduser("~"), ".vibecopilot", "status")
+            status_dir = os.path.join(os.path.expanduser("~"), "data/temp", "status")
             if not os.path.exists(status_dir):
                 os.makedirs(status_dir)
 

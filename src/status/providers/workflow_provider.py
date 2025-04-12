@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db import get_session_factory, init_db
+from src.db import ensure_tables_exist, get_session_factory, init_db
 from src.flow_session import FlowSessionManager, FlowStatusIntegration
 from src.status.interfaces import IStatusProvider
 
@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 class WorkflowStatusProvider(IStatusProvider):
     """工作流状态提供者"""
 
+    def __init__(self):
+        """初始化工作流状态提供者"""
+        self._db_session = None
+
     @property
     def domain(self) -> str:
         """获取状态提供者的领域名称"""
@@ -26,9 +30,14 @@ class WorkflowStatusProvider(IStatusProvider):
 
     def _get_db_session(self) -> Session:
         """获取数据库会话"""
-        engine = init_db()
-        SessionFactory = get_session_factory(engine)
-        return SessionFactory()
+        if self._db_session is None:
+            # 确保数据库表存在
+            ensure_tables_exist()
+
+            # 获取数据库会话
+            self._db_session = get_session_factory()()
+
+        return self._db_session
 
     def get_status(self, entity_id: Optional[str] = None) -> Dict[str, Any]:
         """获取工作流状态
@@ -122,7 +131,7 @@ class WorkflowStatusProvider(IStatusProvider):
                 elif status == "COMPLETED":
                     session_manager.complete_session(session_id)
                 elif status == "CANCELED":
-                    session_manager.abort_session(session_id)
+                    session_manager.close_session(session_id)
 
                 # 获取更新后的会话状态
                 status_integration = FlowStatusIntegration(db_session)

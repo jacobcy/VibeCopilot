@@ -1,7 +1,7 @@
 """
 解析器工厂
 
-根据内容类型和后端类型创建合适的解析器实例。
+根据内容类型和提供者类型创建合适的解析器实例。
 """
 
 import os
@@ -9,8 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from src.parsing.base_parser import BaseParser
-from src.parsing.parsers.ollama_parser import OllamaParser
-from src.parsing.parsers.openai_parser import OpenAIParser
+from src.parsing.parsers.llm_parser import LLMParser
 from src.parsing.parsers.regex_parser import RegexParser
 
 
@@ -20,25 +19,25 @@ def create_parser(content_type: str = "generic", backend: str = "openai", config
 
     Args:
         content_type: 内容类型，如'rule'、'document'、'generic'等
-        backend: 后端类型，如'openai'、'ollama'、'regex'等
+        backend: 提供者类型，如'openai'、'ollama'、'regex'等
         config: 配置参数
 
     Returns:
         解析器实例
 
     Raises:
-        ValueError: 如果指定的后端不存在
+        ValueError: 如果指定的提供者不存在
     """
     config = config or {}
 
     # 添加内容类型到配置中
     config["content_type"] = content_type
 
-    # 根据后端类型创建解析器
-    if backend == "openai":
-        return OpenAIParser(config)
-    elif backend == "ollama":
-        return OllamaParser(config)
+    # 根据提供者类型创建解析器
+    if backend in ["openai", "ollama"]:
+        # 添加提供者信息到配置中
+        config["provider"] = backend
+        return LLMParser(config)
     elif backend == "regex":
         return RegexParser(config)
     else:
@@ -93,7 +92,7 @@ def get_parser_for_file(file_path: str, config: Optional[Dict[str, Any]] = None)
     elif ext in [".py", ".js", ".ts", ".java", ".c", ".cpp"]:
         content_type = "code"
 
-    # 选择解析器后端
+    # 选择解析器提供者
     # 对于复杂格式（如MDC），使用LLM解析
     if ext in [".md", ".mdc", ".markdown"]:
         backend = config.get("default_backend", "openai")

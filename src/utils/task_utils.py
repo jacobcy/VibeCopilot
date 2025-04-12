@@ -42,7 +42,7 @@ def update_task(
     path = project_path or os.getcwd()
 
     # 检查项目是否已初始化
-    if not os.path.exists(os.path.join(path, ".vibecopilot")):
+    if not os.path.exists(os.path.join(path, "data/temp")):
         logger.error(f"项目未初始化: {path}")
         return False
 
@@ -86,7 +86,7 @@ def advance_phase(project_path: Optional[str] = None) -> bool:
     path = project_path or os.getcwd()
 
     # 检查项目是否已初始化
-    if not os.path.exists(os.path.join(path, ".vibecopilot")):
+    if not os.path.exists(os.path.join(path, "data/temp")):
         logger.error(f"项目未初始化: {path}")
         return False
 
@@ -105,9 +105,7 @@ def advance_phase(project_path: Optional[str] = None) -> bool:
     return result
 
 
-def update_document(
-    project_path: Optional[str] = None, doc_type: str = None, status: str = None
-) -> bool:
+def update_document(project_path: Optional[str] = None, doc_type: str = None, status: str = None) -> bool:
     """
     更新文档状态
 
@@ -126,7 +124,7 @@ def update_document(
     path = project_path or os.getcwd()
 
     # 检查项目是否已初始化
-    if not os.path.exists(os.path.join(path, ".vibecopilot")):
+    if not os.path.exists(os.path.join(path, "data/temp")):
         logger.error(f"项目未初始化: {path}")
         return False
 

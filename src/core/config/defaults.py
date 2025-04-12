@@ -38,7 +38,7 @@ DEFAULT_CONFIG = {
     },
     "ai": {
         "provider": ConfigValue("openai", env_key="AI_PROVIDER"),
-        "model": ConfigValue("gpt-4", env_key="AI_MODEL"),
+        "model": ConfigValue("gpt-4o-mini", env_key="AI_MODEL"),
         "temperature": ConfigValue(0.7, env_key="AI_TEMPERATURE"),
         "openai": {
             "api_key": ConfigValue(None, env_key="OPENAI_API_KEY"),

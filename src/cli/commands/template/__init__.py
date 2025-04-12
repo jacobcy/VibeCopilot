@@ -4,6 +4,6 @@
 提供模板管理和操作命令
 """
 
-from .template_command import TemplateCommand
+from .template_click import template
 
-__all__ = ["TemplateCommand"]
+__all__ = ["template"]

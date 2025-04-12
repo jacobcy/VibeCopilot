@@ -1,12 +1,16 @@
 # src/db/repositories/task_repository.py
 
+import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 
 from src.db.repository import Repository
-from src.models.db.task import Task, TaskComment
+from src.models.db import Task, TaskComment
+
+logger = logging.getLogger(__name__)
 
 
 class TaskRepository(Repository[Task]):
@@ -14,6 +18,7 @@ class TaskRepository(Repository[Task]):
 
     def __init__(self, session: Session):
         super().__init__(session, Task)
+        self.logger = logger
 
     def create_task(self, data: Dict[str, Any]) -> Task:
         """创建任务，特殊处理 labels, linked_prs, linked_commits"""
@@ -54,8 +59,6 @@ class TaskRepository(Repository[Task]):
         assignee: Optional[str] = None,
         labels: Optional[List[str]] = None,
         roadmap_item_id: Optional[str] = None,
-        workflow_session_id: Optional[str] = None,
-        workflow_stage_instance_id: Optional[str] = None,
         is_independent: Optional[bool] = None,  # True: 只返回无roadmap关联的任务, False: 只返回有关联的任务
         limit: Optional[int] = None,
         offset: Optional[int] = None,
@@ -69,10 +72,6 @@ class TaskRepository(Repository[Task]):
             query = query.filter(Task.assignee == assignee)
         if roadmap_item_id:
             query = query.filter(Task.roadmap_item_id == roadmap_item_id)
-        if workflow_session_id:
-            query = query.filter(Task.workflow_session_id == workflow_session_id)
-        if workflow_stage_instance_id:
-            query = query.filter(Task.workflow_stage_instance_id == workflow_stage_instance_id)
 
         if is_independent is True:
             query = query.filter(Task.roadmap_item_id.is_(None))
@@ -102,10 +101,6 @@ class TaskRepository(Repository[Task]):
     def link_to_roadmap(self, task_id: str, roadmap_item_id: Optional[str]) -> Optional[Task]:
         """关联或取消关联任务到 Roadmap Item"""
         return self.update_task(task_id, {"roadmap_item_id": roadmap_item_id})
-
-    def link_to_workflow_session(self, task_id: str, workflow_session_id: Optional[str]) -> Optional[Task]:
-        """关联或取消关联任务到 Workflow Session"""
-        return self.update_task(task_id, {"workflow_session_id": workflow_session_id})
 
     def link_to_workflow_stage(self, task_id: str, workflow_stage_instance_id: Optional[str]) -> Optional[Task]:
         """关联或取消关联任务到 Workflow Stage Instance"""
@@ -163,12 +158,52 @@ class TaskRepository(Repository[Task]):
             return self.update_task(task_id, {"linked_commits": linked_commits})
         return task
 
+    def get_by_story_id(self, story_id: str) -> List[Task]:
+        """根据故事ID获取任务列表
+
+        Args:
+            story_id: 故事ID
+
+        Returns:
+            List[Task]: 任务列表
+        """
+        return self.session.query(Task).filter(Task.story_id == story_id).all()
+
+    def get_by_roadmap_id(self, roadmap_id: str) -> List[Task]:
+        """获取指定路线图的所有任务
+
+        Args:
+            roadmap_id: 路线图ID
+
+        Returns:
+            List[Task]: 任务列表
+        """
+        try:
+            # 通过Story和Epic关联查询
+            from src.models.db import Epic, Story
+
+            tasks = (
+                self.session.query(Task)
+                .join(Story, Task.story_id == Story.id)
+                .join(Epic, Story.epic_id == Epic.id)
+                .filter(Epic.roadmap_id == roadmap_id)
+                .all()
+            )
+
+            self.logger.info(f"从路线图 {roadmap_id} 找到 {len(tasks)} 个任务")
+            return tasks
+
+        except Exception as e:
+            self.logger.error(f"获取路线图任务时出错: {e}")
+            return []
+
 
 class TaskCommentRepository(Repository[TaskComment]):
     """TaskComment仓库"""
 
     def __init__(self, session: Session):
         super().__init__(session, TaskComment)
+        self.logger = logger
 
     def get_comments_for_task(self, task_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> List[TaskComment]:
         """获取指定任务的所有评论"""

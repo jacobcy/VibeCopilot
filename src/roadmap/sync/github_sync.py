@@ -89,7 +89,7 @@ class GitHubSyncService:
             roadmap = self.roadmap_service.get_roadmap(roadmap_id)
             result["status"] = "success"
             result["code"] = 0
-            result["message"] = f"模拟同步路线图 '{roadmap.get('name', roadmap_id)}' 到 GitHub 成功"
+            result["message"] = f"模拟同步路线图 '{roadmap.get('title', roadmap_id) or roadmap.get('name', roadmap_id) or '[未命名路线图]'} 到 GitHub 成功"
             result["data"] = {
                 "note": "使用模拟数据",
                 "roadmap_id": roadmap_id,
@@ -118,9 +118,9 @@ class GitHubSyncService:
 
             # 2. Get/Create GitHub Project
             project_payload = map_roadmap_to_github_project(roadmap)
-            gh_project = self.api_facade.get_or_create_project(project_payload["name"], project_payload["body"])
+            gh_project = self.api_facade.get_or_create_project(project_payload["title"], project_payload["description"])
             if not gh_project:
-                result["message"] = f"无法获取或创建GitHub项目: {project_payload['name']}"
+                result["message"] = f"无法获取或创建GitHub项目: {project_payload['title']}"
                 stats["errors"] += 1
                 # Continue syncing milestones/issues even if project fails?
                 # For now, let's stop if project fails.
@@ -144,7 +144,7 @@ class GitHubSyncService:
                     gh_milestone_map[ms["id"]] = gh_ms.get("number")  # Use number for linking issues
                 else:
                     stats["errors"] += 1
-                    logger.warning(f"无法同步里程碑: {ms.get('name')}")
+                    logger.warning(f"无法同步里程碑: {ms.get('title') or ms.get('name')}")
 
             # 4. Sync Epics/Stories as Issues
             epics = self.roadmap_service.get_epics(roadmap_id)
@@ -196,7 +196,9 @@ class GitHubSyncService:
 
             result["status"] = "success"
             result["code"] = 0
-            result["message"] = f"路线图 '{roadmap.get('name')}' 同步到 GitHub 完成"
+            # 优先使用title字段，然后是name字段
+            roadmap_name = roadmap.get("title") or roadmap.get("name") or "[未命名路线图]"
+            result["message"] = f"路线图 '{roadmap_name}' 同步到 GitHub 完成"
             result["data"] = {
                 "roadmap_id": roadmap_id,
                 "github_project_url": project_url,
@@ -272,7 +274,7 @@ class GitHubSyncService:
 
             for local_ms in local_milestones:
                 stats["milestones_checked"] += 1
-                gh_ms = gh_milestone_map_by_title.get(local_ms.get("name"))  # Match by name
+                gh_ms = gh_milestone_map_by_title.get(local_ms.get("title"))  # Match by title
                 if gh_ms:
                     update_data = map_github_milestone_to_milestone_update(gh_ms)
                     # Use db_service to update the local milestone
@@ -280,10 +282,10 @@ class GitHubSyncService:
                     if updated:
                         stats["milestones_updated"] += 1
                     else:
-                        logger.warning(f"无法更新本地里程碑状态: {local_ms.get('name')}")
+                        logger.warning(f"无法更新本地里程碑状态: {local_ms.get('title') or local_ms.get('name')}")
                         stats["errors"] += 1
                 else:
-                    logger.info(f"本地里程碑 '{local_ms.get('name')}' 在 GitHub 上未找到对应项")
+                    logger.info(f"本地里程碑 '{local_ms.get('title') or local_ms.get('name')}' 在 GitHub 上未找到对应项")
 
             # 3. Fetch GitHub Issues and update local Epics/Stories/Tasks
             # This requires local items to store the corresponding github_issue_number
@@ -316,13 +318,175 @@ class GitHubSyncService:
 
             result["status"] = "success"
             result["code"] = 0
-            result["message"] = f"从 GitHub 同步状态到路线图 '{roadmap.get('name')}' 完成"
+            # 优先使用title字段，然后是name字段
+            roadmap_name = roadmap.get("title") or roadmap.get("name") or "[未命名路线图]"
+            result["message"] = f"从 GitHub 同步状态到路线图 '{roadmap_name}' 完成"
             result["data"] = {"roadmap_id": roadmap_id, "stats": stats}
             return result
 
         except Exception as e:
             logger.exception(f"从 GitHub 同步状态时出错 (Roadmap: {roadmap_id}): {e}")
             result["message"] = f"从 GitHub 同步状态错误: {e}"
+            result["code"] = 500
+            result["data"] = {"roadmap_id": roadmap_id, "stats": stats}
+            return result
+
+    def sync_from_github(self, repo_name: str, branch: str = "main", theme: Optional[str] = None, roadmap_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        从GitHub仓库同步数据到本地路线图
+
+        Args:
+            repo_name: GitHub仓库名称（格式：owner/repo）
+            branch: 要同步的分支名称，默认为main
+            theme: GitHub项目主题标签，用于筛选特定主题的问题
+            roadmap_id: 路线图ID，不提供则使用活跃路线图或创建新路线图
+
+        Returns:
+            Dict[str, Any]: 同步结果
+        """
+        result = {"status": "error", "code": 1, "message": "", "data": None}
+
+        # 验证参数
+        if not repo_name or "/" not in repo_name:
+            result["message"] = "无效的仓库名称，格式应为：所有者/仓库名"
+            result["code"] = 400
+            return result
+
+        # 解析仓库信息
+        owner, repo = repo_name.split("/", 1)
+
+        # 创建临时API外观
+        temp_api = GitHubApiFacade(token=self.github_token, owner=owner, repo=repo)
+
+        # 初始化统计信息
+        stats = {"milestones_imported": 0, "issues_imported": 0, "tasks_created": 0, "errors": 0}
+
+        # Mock mode handling
+        if self._mock_mode:
+            logger.info(f"[MOCK] 从GitHub仓库 {repo_name} 同步数据")
+            result["status"] = "success"
+            result["code"] = 0
+            result["message"] = f"模拟从 GitHub 仓库 {repo_name} 同步数据成功"
+            result["data"] = {
+                "note": "使用模拟数据",
+                "roadmap_id": roadmap_id or "new_roadmap",
+                "stats": {
+                    "milestones_imported": 2,
+                    "issues_imported": 5,
+                    "tasks_created": 10,
+                },
+            }
+            return result
+
+        try:
+            # 1. 获取GitHub仓库信息
+            repo_info = temp_api.get_repo_info()
+            if not repo_info:
+                result["message"] = f"无法获取仓库信息: {repo_name}"
+                result["code"] = 404
+                return result
+
+            # 2. 创建或获取本地路线图
+            if not roadmap_id:
+                # 创建新路线图
+                new_roadmap = self.roadmap_service.create_roadmap(
+                    name=f"从GitHub导入: {repo_info.get('name', repo_name)}", description=repo_info.get("description", f"从GitHub仓库 {repo_name} 导入的路线图")
+                )
+                if not new_roadmap.get("success", False):
+                    result["message"] = "创建路线图失败"
+                    result["code"] = 500
+                    return result
+                roadmap_id = new_roadmap.get("roadmap_id")
+
+            # 3. 获取里程碑数据
+            milestones = temp_api.list_milestones()
+            milestone_map = {}  # GitHub里程碑编号到本地里程碑ID的映射
+
+            for ms in milestones:
+                milestone_data = {
+                    "name": ms.get("title"),
+                    "description": ms.get("description", ""),
+                    "status": "completed" if ms.get("state") == "closed" else "in_progress",
+                    "due_date": ms.get("due_on", "").split("T")[0] if ms.get("due_on") else None,
+                    "roadmap_id": roadmap_id,
+                }
+
+                # 创建里程碑
+                new_milestone = self.roadmap_service.create_milestone(roadmap_id, milestone_data)
+                if new_milestone.get("success", False):
+                    milestone_map[ms.get("number")] = new_milestone.get("milestone_id")
+                    stats["milestones_imported"] += 1
+                else:
+                    stats["errors"] += 1
+
+            # 4. 获取问题数据（可选过滤主题标签）
+            issues_params = {"state": "all"}
+            if theme:
+                issues_params["labels"] = theme
+
+            issues = temp_api.list_issues(params=issues_params)
+
+            for issue in issues:
+                # 跳过拉取请求
+                if "pull_request" in issue:
+                    continue
+
+                # 确定类型（Epic或Story）
+                is_epic = any(label.get("name") == "epic" for label in issue.get("labels", []))
+
+                # 获取里程碑ID
+                milestone_id = None
+                if issue.get("milestone"):
+                    milestone_number = issue.get("milestone", {}).get("number")
+                    milestone_id = milestone_map.get(milestone_number)
+
+                # 确定状态
+                status = "completed" if issue.get("state") == "closed" else "in_progress"
+                if any(label.get("name") == "blocked" for label in issue.get("labels", [])):
+                    status = "blocked"
+
+                # 提取标签
+                labels = [label.get("name") for label in issue.get("labels", [])]
+
+                # 创建Epic或Story
+                item_data = {
+                    "name": issue.get("title"),
+                    "description": issue.get("body", ""),
+                    "type": "epic" if is_epic else "story",
+                    "status": status,
+                    "milestone_id": milestone_id,
+                    "labels": labels,
+                    "assignee": issue.get("assignee", {}).get("login") if issue.get("assignee") else None,
+                    "roadmap_id": roadmap_id,
+                    "github_url": issue.get("html_url"),
+                    "github_number": issue.get("number"),
+                }
+
+                # 创建条目
+                if is_epic:
+                    new_item = self.roadmap_service.create_epic(roadmap_id, item_data)
+                else:
+                    new_item = self.roadmap_service.create_story(roadmap_id, item_data)
+
+                if new_item.get("success", False):
+                    stats["issues_imported"] += 1
+                else:
+                    stats["errors"] += 1
+
+            # 5. 设置为活动路线图
+            self.roadmap_service.set_active_roadmap(roadmap_id)
+
+            result["status"] = "success"
+            result["code"] = 0
+            # 优先使用title字段，然后是name字段
+            roadmap_name = roadmap.get("title") or roadmap.get("name") or "[未命名路线图]"
+            result["message"] = f"从GitHub仓库 {repo_name} 同步数据成功"
+            result["data"] = {"roadmap_id": roadmap_id, "stats": stats}
+            return result
+
+        except Exception as e:
+            logger.exception(f"从GitHub仓库 {repo_name} 同步数据时出错: {e}")
+            result["message"] = f"从GitHub同步错误: {e}"
             result["code"] = 500
             result["data"] = {"roadmap_id": roadmap_id, "stats": stats}
             return result

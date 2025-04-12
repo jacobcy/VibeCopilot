@@ -1,5 +1,29 @@
 # VibeCopilot 命令系统命令表（标准化版）
 
+## 命令系统定位说明
+
+VibeCopilot命令系统作为工作流解释器，主要职责是：
+
+1. **工作流解释**：
+   - 解释和理解工作流定义
+   - 提供工作流上下文分析
+   - 生成下一步建议
+   - 不直接执行具体操作
+
+2. **状态追踪**：
+   - 维护工作流会话状态
+   - 记录执行进度
+   - 提供可视化支持
+   - 管理会话生命周期
+
+3. **协调角色**：
+   - 连接用户意图和系统功能
+   - 提供自然语言理解
+   - 转换命令格式
+   - 管理执行上下文
+
+## 命令表
+
 | 命令类别 | 命令名称 | 子命令 | 描述 | 用法示例 |
 |---------|---------|-------|------|---------|
 | **规则管理** | rule | | 规则管理命令 | |
@@ -13,23 +37,24 @@
 | | | import | 导入规则 | `vibecopilot rule import <file_path> [--overwrite]` |
 | **工作流定义** | flow | | 工作流定义管理命令 | |
 | | | list | 列出所有工作流定义 | `vibecopilot flow list [--type=<workflow_type>] [--verbose]` |
-| | | show | 查看工作流定义详情 | `vibecopilot flow show <id> [--format=<json\|text>]` |
-| | | create | 创建工作流定义 | `vibecopilot flow create <workflow_type> [--name=<name>] [--desc=<description>]` |
-| | | update | 更新工作流定义 | `vibecopilot flow update <id> [--name=<name>] [--desc=<description>]` |
-| | | export | 导出工作流定义 | `vibecopilot flow export <id> [--format=<format>] [--output=<path>]` |
-| | | import | 导入工作流定义 | `vibecopilot flow import <file_path> [--overwrite]` |
-| | | run | 运行工作流阶段（开始执行） | `vibecopilot flow run <workflow_name>:<stage_name> [--name=<name>] [--session=<session_id>]` |
-| | | context | 获取工作流阶段上下文 | `vibecopilot flow context <workflow_id> <stage_id>` |
-| | | next | 获取下一阶段建议 | `vibecopilot flow next <workflow_id> <stage_id>` |
-| | | visualize | 可视化工作流结构 | `vibecopilot flow visualize <id> [--format=mermaid]` |
+| | | show | 查看工作流定义详情 | `vibecopilot flow show --id=<id> [--format=<json\|text>]` |
+| | | create | 创建工作流定义 | `vibecopilot flow create --source=<path> [--template=<template>] [--name=<name>]` |
+| | | update | 更新工作流定义 | `vibecopilot flow update --id=<id> [--name=<name>]` |
+| | | delete | 删除工作流定义 | `vibecopilot flow delete --id=<id> [--force]` |
+| | | export | 导出工作流定义 | `vibecopilot flow export --id=<id> [--format=<json\|yaml>] [--output=<path>]` |
+| | | import | 导入工作流定义 | `vibecopilot flow import --file=<path> [--overwrite]` |
+| | | context | 获取工作流阶段上下文 | `vibecopilot flow context [--stage=<stage_id>] [--session=<session_id>]` |
+| | | next | 获取下一阶段建议 | `vibecopilot flow next [--session=<session_id>] [--current=<stage_id>]` |
+| | | validate | 验证工作流一致性 | `vibecopilot flow validate [--id=<id>] [--fix]` |
+| | | visualize | 可视化工作流结构 | `vibecopilot flow visualize --id=<id> [--format=<mermaid\|dot>]` |
 | **工作流会话** | flow session | | 工作流会话管理命令 | |
-| | | list | 列出所有会话实例 | `vibecopilot flow session list [--status=<status>] [--workflow=<workflow_id>] [--verbose]` |
-| | | show | 查看会话详情和进度 | `vibecopilot flow session show <id> [--format=<json\|text>]` |
-| | | create | 创建新的工作流会话实例 | `vibecopilot flow session create <workflow_id> [--name=<name>]` |
-| | | pause | 暂停工作流会话执行 | `vibecopilot flow session pause <id>` |
-| | | resume | 恢复暂停的会话执行 | `vibecopilot flow session resume <id>` |
-| | | abort | 终止工作流会话执行 | `vibecopilot flow session abort <id>` |
-| | | delete | 删除工作流会话记录 | `vibecopilot flow session delete <id> [--force]` |
+| | | list | 列出所有会话 | `vibecopilot flow session list [--format=<json\|text>]` |
+| | | show | 显示会话详情 | `vibecopilot flow session show --id=<id> [--format=<json\|text>]` |
+| | | create | 创建并启动新会话 | `vibecopilot flow session create --workflow=<workflow_id> [--name=<name>]` |
+| | | close | 结束会话 | `vibecopilot flow session close --id=<id> [--force]` |
+| | | switch | 切换当前活动会话 | `vibecopilot flow session switch --id=<id>` |
+| | | update | 更新会话属性 | `vibecopilot flow session update --id=<id> [--name=<name>]` |
+| | | delete | 永久删除会话 | `vibecopilot flow session delete --id=<id> [--force]` |
 | **路线图管理** | roadmap | | 路线图管理命令 | |
 | | | list | 列出所有路线图 | `vibecopilot roadmap list [--verbose]` |
 | | | show | 查看路线图详情 | `vibecopilot roadmap show <id> [--format=<json\|text>]` |
@@ -88,58 +113,54 @@
 
 ## 命令设计说明
 
-1. **标准化子命令集**：
-   - 所有主命令都使用统一的核心子命令：`list`, `show`, `create`, `update`, `delete`
+1. **工作流解释器定位**：
+   - 命令系统专注于解释和理解工作流
+   - 不直接执行业务逻辑，而是提供执行建议
+   - 维护工作流状态和上下文
+   - 协助用户理解和决策
+
+2. **标准化子命令集**：
+   - 所有主命令使用统一的核心子命令：`list`, `show`, `create`, `update`, `delete`
    - 特殊子命令在基础集之外增加，确保逻辑清晰
    - 将`view`统一为`show`，保持一致性
 
-2. **命令/参数风格统一**：
+3. **命令/参数风格统一**：
    - 长选项统一使用`--参数名=值`格式
    - 所有命令支持`--verbose`选项，提供详细输出
    - 危险操作（如删除）支持`--force`选项
    - 输出格式控制统一使用`--format=<json|text>`
 
-3. **任务管理独立化**：
-   - 将`task`提升为顶级命令，类似GitHub issue系统
-   - 可以独立于完整roadmap工作
-   - 添加评论和关联功能，增强协作能力
-
-4. **状态视图关联性**：
-   - 将`status`定位为各系统状态的视图层
-   - 通过子命令关联到`flow`、`roadmap`和`task`
-   - 提供统一的状态查看入口
-
-5. **工作流定义与会话分离**：
+4. **工作流定义与会话分离**：
    - 明确区分工作流定义和工作流会话：
      - 工作流定义：静态模板，描述可用阶段及其特性
-     - 工作流会话：动态实例，表示执行中的工作流及其状态
+     - 工作流会话：动态实例，表示解释中的工作流及其状态
    - `flow`命令主要管理工作流定义（创建、更新模板）
-   - `flow session`命令管理工作流执行实例（创建、暂停、恢复会话）
-   - `flow run`是连接定义和会话的桥梁，它可以在现有会话中执行或创建新会话
+   - `flow session`命令管理工作流会话（创建、切换、关闭会话）
+   - 通过`context`和`next`提供解释和建议
 
-6. **工作流会话持久化**：
-   - 会话支持完整的生命周期管理（创建、暂停、恢复、完成、终止）
-   - 允许在同一会话中执行多个阶段，保持上下文连续性
-   - 支持通过`--session`参数在已有会话中运行阶段
-   - 提供会话进度跟踪和阶段完成度显示
+5. **工作流会话持久化**：
+   - 会话支持完整的生命周期管理
+   - 允许在同一会话中保持上下文连续性
+   - 提供会话切换和状态追踪
+   - 支持会话属性的动态更新
 
-7. **错误处理增强**：
+6. **错误处理增强**：
    - 所有命令支持统一的错误输出格式
    - 详细模式（`--verbose`）提供更多错误上下文
    - 错误发生时提供可能的解决方案建议
-   - 示例：`❌ 创建任务失败: 无法连接数据库。建议: 请检查数据库连接或运行 'vibecopilot db init'`
+   - 示例：`❌ 创建会话失败: 工作流定义无效。建议: 请使用 'vibecopilot flow validate' 检查工作流定义`
 
-8. **进度显示**：
-   - 长时间运行的命令（如同步、导入）显示进度
-   - 使用统一的进度格式：`[===>    ] 30% 正在处理...`
-   - 完成后显示总结信息：`✅ 已同步 15 个文件，跳过 3 个文件，用时 5 秒`
+7. **进度显示**：
+   - 长时间运行的命令显示解释进度
+   - 使用统一的进度格式：`[===>    ] 30% 正在分析...`
+   - 完成后显示总结信息：`✅ 已解释 15 个阶段，发现 3 个潜在问题`
 
-9. **向后兼容**：
+8. **向后兼容**：
    - 保留原有命令别名，确保不破坏现有脚本
    - 逐步引导用户使用新格式
    - 在使用旧命令时提示新命令格式
 
-10. **Agent调用支持**：
+9. **Agent调用支持**：
 
 - 所有命令默认支持`--agent-mode`选项，启用agent优化的输出格式
 - 命令输出为结构化JSON，包含状态码和明确的下一步操作建议
@@ -147,8 +168,6 @@
 - 支持Agent进度跟踪和异步操作状态查询
 
 ## Agent调用规范
-
-### 输出格式
 
 所有命令在Agent模式下输出标准化JSON：
 
@@ -160,11 +179,14 @@
   "data": {
     // 命令特定的数据
   },
-  "next_actions": [
-    {
-      "command": "建议的后续命令",
-      "description": "命令的作用描述"
-    }
-  ]
+  "interpretation": {
+    "context": "当前上下文描述",
+    "suggestions": [
+      {
+        "action": "建议的后续动作",
+        "reason": "建议原因"
+      }
+    ]
+  }
 }
 ```

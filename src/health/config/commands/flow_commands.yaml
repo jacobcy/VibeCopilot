@@ -1,0 +1,215 @@
+# 工作流命令组配置
+
+commands:
+  # Flow基础命令
+  "flow list":
+    description: "列出所有工作流定义"
+    subcommands:
+      "--type":
+        description: "按工作流类型筛选"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["工作流定义列表"]
+    timeout: 5
+    critical: true
+
+  "flow show":
+    description: "查看会话或工作流定义详情"
+    subcommands:
+      "--id":
+        description: "工作流或会话ID"
+        type: "string"
+      "--format":
+        description: "输出格式"
+        values: ["json", "text"]
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["详情"]
+    timeout: 5
+    critical: true
+
+  "flow create":
+    description: "创建工作流定义"
+    subcommands:
+      "--source":
+        description: "源文件路径"
+        type: "string"
+        required: true
+      "--template":
+        description: "工作流模板路径"
+        type: "string"
+        default: "templates/flow/default_flow.json"
+      "--name":
+        description: "工作流名称"
+        type: "string"
+      "--output":
+        description: "输出工作流文件路径"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["创建成功"]
+    timeout: 10
+    critical: true
+
+  "flow update":
+    description: "更新工作流定义"
+    subcommands:
+      "--id":
+        description: "工作流ID"
+        type: "string"
+        required: true
+      "--name":
+        description: "新的工作流名称"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["更新成功"]
+    timeout: 10
+    critical: true
+
+  "flow delete":
+    description: "删除工作流定义"
+    subcommands:
+      "--id":
+        description: "工作流ID"
+        type: "string"
+        required: true
+      "--force":
+        description: "强制删除"
+        type: "flag"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["删除成功"]
+    timeout: 5
+    critical: true
+
+  "flow export":
+    description: "导出工作流定义"
+    subcommands:
+      "--id":
+        description: "工作流ID"
+        type: "string"
+        required: true
+      "--format":
+        description: "输出格式"
+        values: ["json", "yaml"]
+      "--output":
+        description: "输出路径"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["导出成功"]
+    timeout: 10
+    critical: false
+
+  "flow import":
+    description: "导入工作流定义"
+    subcommands:
+      "--file":
+        description: "文件路径"
+        type: "string"
+        required: true
+      "--overwrite":
+        description: "覆盖已存在的定义"
+        type: "flag"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["导入成功"]
+    timeout: 10
+    critical: false
+
+  "flow context":
+    description: "获取并解释工作流阶段上下文"
+    subcommands:
+      "--stage":
+        description: "阶段ID"
+        type: "string"
+      "--session":
+        description: "会话ID或名称"
+        type: "string"
+      "--format":
+        description: "输出格式"
+        values: ["json", "text"]
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["上下文信息"]
+    timeout: 5
+    critical: false
+
+  "flow next":
+    description: "获取下一阶段建议"
+    subcommands:
+      "--session":
+        description: "会话ID或名称"
+        type: "string"
+      "--current":
+        description: "当前阶段ID"
+        type: "string"
+      "--format":
+        description: "输出格式"
+        values: ["json", "text"]
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["下一阶段建议"]
+    timeout: 5
+    critical: false
+
+  "flow validate":
+    description: "验证工作流文件一致性"
+    subcommands:
+      "--id":
+        description: "工作流ID"
+        type: "string"
+      "--fix":
+        description: "自动修复问题"
+        type: "flag"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["验证结果"]
+    timeout: 5
+    critical: true
+
+  "flow visualize":
+    description: "可视化工作流结构和进度"
+    subcommands:
+      "--id":
+        description: "工作流ID"
+        type: "string"
+        required: true
+      "--format":
+        description: "输出格式"
+        values: ["mermaid", "dot"]
+      "--output":
+        description: "输出文件路径"
+        type: "string"
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["可视化结果"]
+    timeout: 10
+    critical: false
+
+# 命令组特定配置
+group_config:
+  max_concurrent_flows: 5       # 最大并发工作流数
+  default_timeout: 3600        # 默认工作流超时时间（秒）
+  auto_cleanup: true          # 是否自动清理完成的工作流
+  keep_history: true          # 是否保留历史记录
+
+# 工作流验证配置
+validation:
+  check_dependencies: true    # 检查工作流依赖
+  check_resources: true      # 检查资源可用性
+  validate_params: true      # 验证参数
+  check_permissions: true    # 检查权限

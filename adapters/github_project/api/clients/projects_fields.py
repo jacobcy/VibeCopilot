@@ -7,17 +7,18 @@ GitHub项目字段管理模块.
 提供与GitHub Projects字段相关的API交互功能。
 """
 
+import logging
 from typing import Any, Dict, List, Optional
 
-from ..github_client import GitHubClient
+import requests
+
+from .github_client import GitHubClientBase
 
 
-class GitHubProjectFieldsClient(GitHubClient):
+class GitHubProjectFieldsClient(GitHubClientBase):
     """GitHub项目字段客户端."""
 
-    def get_project_fields(
-        self, owner: str, repo: str, project_number: int
-    ) -> List[Dict[str, Any]]:
+    def get_project_fields(self, owner: str, repo: str, project_number: int) -> List[Dict[str, Any]]:
         """获取项目字段.
 
         Args:
@@ -59,13 +60,7 @@ class GitHubProjectFieldsClient(GitHubClient):
 
         try:
             response = self.graphql(query, variables)
-            fields = (
-                response.get("data", {})
-                .get("repository", {})
-                .get("projectV2", {})
-                .get("fields", {})
-                .get("nodes", [])
-            )
+            fields = response.get("data", {}).get("repository", {}).get("projectV2", {}).get("fields", {}).get("nodes", [])
             return fields
         except Exception as e:
             print(f"获取项目字段失败: {e}")

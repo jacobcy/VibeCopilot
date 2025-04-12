@@ -11,10 +11,10 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from ...github_client import GitHubClient
+from ..github_client import GitHubClientBase
 
 
-class GitHubIssueMilestonesClient(GitHubClient):
+class GitHubIssueMilestonesClient(GitHubClientBase):
     """GitHub Issues里程碑客户端."""
 
     def __init__(self, token: Optional[str] = None, base_url: str = "https://api.github.com"):
@@ -32,7 +32,7 @@ class GitHubIssueMilestonesClient(GitHubClient):
         owner: str,
         repo: str,
         title: str,
-        state: str = "open",
+        state: Optional[str] = None,
         description: Optional[str] = None,
         due_on: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
@@ -42,26 +42,24 @@ class GitHubIssueMilestonesClient(GitHubClient):
             owner: 仓库所有者
             repo: 仓库名称
             title: 里程碑标题
-            state: 状态 ("open" or "closed")
-            description: 描述
-            due_on: 截止日期，ISO 8601格式
+            state: 里程碑状态 (open/closed)
+            description: 里程碑描述
+            due_on: 截止日期 (ISO 8601格式)
 
         Returns:
             Optional[Dict[str, Any]]: 创建的里程碑
         """
         endpoint = f"repos/{owner}/{repo}/milestones"
-        data: Dict[str, Any] = {"title": title, "state": state}
+        data = {"title": title}
 
+        if state:
+            data["state"] = state
         if description:
             data["description"] = description
         if due_on:
             data["due_on"] = due_on
 
-        try:
-            return self.post(endpoint, json=data)
-        except requests.HTTPError as e:
-            self.logger.error(f"创建里程碑失败: {e}")
-            return None
+        return self.post(endpoint, payload=data)
 
     def get_milestones(
         self,
@@ -103,9 +101,7 @@ class GitHubIssueMilestonesClient(GitHubClient):
             self.logger.error(f"获取里程碑失败: {e}")
             return []
 
-    def get_milestone(
-        self, owner: str, repo: str, milestone_number: int
-    ) -> Optional[Dict[str, Any]]:
+    def get_milestone(self, owner: str, repo: str, milestone_number: int) -> Optional[Dict[str, Any]]:
         """获取特定里程碑.
 
         Args:

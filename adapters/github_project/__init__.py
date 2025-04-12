@@ -3,6 +3,6 @@
 提供与GitHub交互的各种工具和功能模块。
 """
 
-from .api import GitHubClient, GitHubIssuesClient, GitHubProjectsClient
+from .api import GitHubClientBase, GitHubIssuesClient, GitHubProjectsClient
 
-__all__ = ["GitHubClient", "GitHubIssuesClient", "GitHubProjectsClient"]
+__all__ = ["GitHubClientBase", "GitHubIssuesClient", "GitHubProjectsClient"]

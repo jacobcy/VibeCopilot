@@ -10,7 +10,10 @@ from src.db.repositories.flow_session_repository import FlowSessionRepository
 from src.db.repositories.roadmap_repository import EpicRepository, MilestoneRepository, RoadmapRepository, StoryRepository
 from src.db.repositories.rule_repository import RuleExampleRepository, RuleItemRepository, RuleRepository
 from src.db.repositories.stage_instance_repository import StageInstanceRepository
+from src.db.repositories.stage_repository import StageRepository
+from src.db.repositories.system_config_repository import SystemConfigRepository
 from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
+from src.db.repositories.transition_repository import TransitionRepository
 from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 from src.db.repositories.workflow_repository import WorkflowExecutionRepository, WorkflowRepository, WorkflowStepRepository
 
@@ -38,6 +41,8 @@ __all__ = [
     "RuleRepository",
     "RuleItemRepository",
     "RuleExampleRepository",
+    # 系统配置仓库
+    "SystemConfigRepository",
     # 工作流仓库
     "WorkflowRepository",
     "WorkflowExecutionRepository",
@@ -46,4 +51,6 @@ __all__ = [
     "WorkflowDefinitionRepository",
     "FlowSessionRepository",
     "StageInstanceRepository",
+    "StageRepository",
+    "TransitionRepository",
 ]

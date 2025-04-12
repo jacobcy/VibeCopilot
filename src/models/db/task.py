@@ -37,6 +37,7 @@ class Task(Base):
     # 关系
     story = relationship("Story", back_populates="tasks")
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")
+    flow_sessions = relationship("FlowSession", back_populates="task")
 
     def __init__(self, **kwargs):
         """初始化Task，确保ID字段不为空，并设置默认值"""

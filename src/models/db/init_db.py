@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from src.core.config import get_config  # 更新导入
 from src.models.db import docs_engine  # Assuming docs models exist here
+from src.models.db import log  # 导入日志模型
 from src.models.db import template  # Assuming template models exist here
 from src.models.db import flow_session, roadmap, task
 
@@ -62,11 +63,18 @@ def init_db(force_recreate=False):
     Returns:
         bool: 初始化是否成功
     """
+    # import traceback
     from src.db.connection_manager import ensure_tables_exist, get_engine
+
+    # 获取调用栈信息，用于跟踪调用来源
+    # caller_info = "".join(traceback.format_stack()[:-1])
+    # logger.info(f"数据库初始化被调用 (force_recreate={force_recreate})")
+    # logger.info(f"调用栈信息: \n{caller_info}")
 
     try:
         # 使用连接管理器确保表存在
         ensure_tables_exist(force_recreate)
+        # logger.info("数据库表初始化完成")
 
         # 返回引擎以兼容旧代码
         return get_engine()

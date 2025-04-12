@@ -82,7 +82,7 @@ class RuleGenerator:
                         variables[var.name] = var.default_value
         else:
             # 从文件系统获取模板
-            template_dirs = [Path("templates/rule"), Path.home() / ".vibecopilot/templates/rule"]  # 项目规则模板目录  # 用户规则模板目录
+            template_dirs = [Path("templates/rule"), Path.home() / "data/temp/templates/rule"]  # 项目规则模板目录  # 用户规则模板目录
 
             template_file = None
             for template_dir in template_dirs:

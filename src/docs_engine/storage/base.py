@@ -9,11 +9,7 @@ from typing import Tuple
 from sqlalchemy.orm import Session
 
 from src.db import get_session_factory
-from src.db.repositories.docs_engine_repository import (
-    BlockRepository,
-    DocumentRepository,
-    LinkRepository,
-)
+from src.db.repositories.docs_engine_repository import BlockRepository, DocumentRepository, LinkRepository
 
 
 class StorageError(Exception):
@@ -37,14 +33,12 @@ class BaseStorageEngine:
         if session_factory is None:
             from src.db import get_engine
 
-            engine = get_engine()
-            session_factory = get_session_factory(engine)
+            get_engine()  # 确保数据库引擎已初始化
+            session_factory = get_session_factory()
 
         self.session_factory = session_factory
 
-    def _get_repositories(
-        self, session: Session
-    ) -> Tuple[DocumentRepository, BlockRepository, LinkRepository]:
+    def _get_repositories(self, session: Session) -> Tuple[DocumentRepository, BlockRepository, LinkRepository]:
         """获取仓库实例
 
         Args:

@@ -65,7 +65,7 @@ class RoadmapManager:
         """检查整个路线图状态"""
         # 获取所有数据
         milestones = self.service.get_milestones(roadmap_id)
-        tasks = self.service.list_tasks(roadmap_id)
+        tasks = self.service.get_tasks(roadmap_id)
 
         # 计算任务统计信息
         task_status = {"todo": 0, "in_progress": 0, "completed": 0}
@@ -101,9 +101,7 @@ class RoadmapManager:
             "task_status": task_status,
         }
 
-    def _check_milestone(
-        self, roadmap_id: str, milestone_id: Optional[str], update: bool
-    ) -> Dict[str, Any]:
+    def _check_milestone(self, roadmap_id: str, milestone_id: Optional[str], update: bool) -> Dict[str, Any]:
         """检查特定里程碑状态"""
         if not milestone_id:
             raise ValueError("检查里程碑需要指定id参数")
@@ -120,9 +118,8 @@ class RoadmapManager:
             raise ValueError(f"未找到里程碑: {milestone_id}")
 
         # 获取里程碑任务
-        tasks = [
-            t for t in self.service.list_tasks(roadmap_id) if t.get("milestone") == milestone_id
-        ]
+        tasks = self.service.get_tasks(roadmap_id)
+        milestone_tasks = [t for t in self.service.get_tasks(roadmap_id) if t.get("milestone") == milestone_id]
 
         # 计算任务状态
         task_status = {"todo": 0, "in_progress": 0, "completed": 0}

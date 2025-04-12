@@ -7,23 +7,12 @@ from typing import Optional
 
 import click
 
-from src.flow_session.cli.utils import (
-    echo_error,
-    echo_info,
-    echo_success,
-    format_progress,
-    format_time,
-    get_db_session,
-    get_error_code,
-    output_json,
-)
-from src.flow_session.session_manager import FlowSessionManager
-from src.flow_session.stage_manager import StageInstanceManager
+from src.flow_session.cli.utils import echo_error, echo_info, echo_success, format_progress, format_time, get_db_session, get_error_code, output_json
+from src.flow_session.session.manager import FlowSessionManager
+from src.flow_session.stage.manager import StageInstanceManager
 
 
-def handle_show_session(
-    session_id: str, format: str = "text", verbose: bool = False, agent_mode: bool = False
-):
+def handle_show_session(session_id: str, format: str = "text", verbose: bool = False, agent_mode: bool = False):
     """处理显示会话详情的逻辑
 
     Args:
@@ -63,12 +52,8 @@ def handle_show_session(
                 "name": flow_session.name,
                 "workflow_id": flow_session.workflow_id,
                 "status": flow_session.status,
-                "created_at": flow_session.created_at.isoformat()
-                if flow_session.created_at
-                else None,
-                "updated_at": flow_session.updated_at.isoformat()
-                if flow_session.updated_at
-                else None,
+                "created_at": flow_session.created_at.isoformat() if flow_session.created_at else None,
+                "updated_at": flow_session.updated_at.isoformat() if flow_session.updated_at else None,
                 "current_stage_id": flow_session.current_stage_id,
                 "progress": progress_info,
             }
@@ -126,9 +111,7 @@ def handle_show_session(
                 if "completed_items" in current_stage:
                     stage_manager = StageInstanceManager(session)
                     stage_instances = manager.get_session_stages(session_id)
-                    current_instance = next(
-                        (s for s in stage_instances if s.stage_id == current_stage["id"]), None
-                    )
+                    current_instance = next((s for s in stage_instances if s.stage_id == current_stage["id"]), None)
 
                     if current_instance:
                         instance_progress = stage_manager.get_instance_progress(current_instance.id)
@@ -140,9 +123,7 @@ def handle_show_session(
                             echo_info(f"- 名称: {current_stage['name']}")
                             started_at = format_time(current_instance.started_at)
                             echo_info(f"- 开始时间: {started_at}")
-                            echo_info(
-                                f"- 已完成项: {completed}/{total} ({format_progress(completed, total)})"
-                            )
+                            echo_info(f"- 已完成项: {completed}/{total} ({format_progress(completed, total)})")
 
                             # 列出所有项目及其状态
                             for item in items:
@@ -155,9 +136,10 @@ def handle_show_session(
 
             # 显示可执行的操作
             echo_info("\n操作:")
-            echo_info(f"- 继续此会话: vc flow session resume {session_id}")
-            echo_info(f"- 暂停此会话: vc flow session pause {session_id}")
-            echo_info(f"- 终止此会话: vc flow session abort {session_id}")
+            echo_info(f"- 查看会话上下文: vc flow context --session {session_id}")
+            echo_info(f"- 获取下一步建议: vc flow next --session {session_id}")
+            echo_info(f"- 设为当前会话: vc flow session switch {session_id}")
+            echo_info(f"- 继续执行该会话: vc flow create --session {session_id} [stage_id]")
 
             return result_data
 

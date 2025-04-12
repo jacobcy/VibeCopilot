@@ -1,0 +1,24 @@
+metadata:
+  title: 示例路线图
+  description: 测试导入功能的示例路线图
+  version: 1.0
+
+milestones:
+  - title: 里程碑1
+    description: 第一个里程碑
+    status: planned
+
+  - title: 里程碑2
+    description: 第二个里程碑
+    status: in_progress
+
+tasks:
+  - title: 任务1
+    description: 第一个任务
+    status: todo
+    priority: medium
+
+  - title: 任务2
+    description: 第二个任务
+    status: in_progress
+    priority: high

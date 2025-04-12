@@ -8,6 +8,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from jsonschema import ValidationError, validate
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,6 +77,26 @@ class BaseValidator(ABC):
         """
         self.config = config or {}
         self.logger = logging.getLogger(self.__class__.__name__)
+
+    def validate_schema(self, data: Dict[str, Any], schema: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        """
+        使用JSON Schema验证数据结构
+
+        Args:
+            data: 要验证的数据
+            schema: JSON Schema定义
+
+        Returns:
+            Tuple[bool, List[str]]: (是否验证通过, 错误信息列表)
+        """
+        try:
+            validate(instance=data, schema=schema)
+            return True, []
+        except ValidationError as e:
+            return False, [str(e)]
+        except Exception as e:
+            self.logger.error(f"Schema验证失败: {str(e)}")
+            return False, [f"Schema验证失败: {str(e)}"]
 
     @abstractmethod
     def validate(self, data: Any) -> ValidationResult:

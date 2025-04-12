@@ -1,10 +1,13 @@
 """
-路线图模块
+路线图管理模块
 
-提供路线图管理的核心功能，包括路线图数据的存储、检索、同步和操作。
+提供路线图的管理和操作功能。
 """
 
-from src.roadmap.core import RoadmapManager, RoadmapStatus, RoadmapUpdater
-from src.roadmap.service import RoadmapService
+# 从SQLAlchemy模型导入
+from src.models.db import Milestone, Roadmap, Story, Task
 
-__all__ = ["RoadmapService", "RoadmapManager", "RoadmapStatus", "RoadmapUpdater"]
+from .service import RoadmapService
+from .service.roadmap_status import RoadmapStatus
+
+__all__ = ["Roadmap", "Milestone", "Story", "Task", "RoadmapService", "RoadmapStatus"]

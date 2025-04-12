@@ -7,19 +7,30 @@
 """
 
 import json
+import logging
 import os
 from typing import Any, Dict, Optional, Union
 
+logger = logging.getLogger(__name__)
 
-def ensure_directory_exists(directory_path: str) -> None:
+
+def ensure_directory_exists(directory_path: str) -> bool:
     """
     确保目录存在，如果不存在则创建它
 
     Args:
         directory_path: 目录路径
+
+    Returns:
+        bool: 如果目录存在或创建成功则返回True，否则返回False
     """
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path, exist_ok=True)
+    try:
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path, exist_ok=True)
+        return True
+    except Exception as e:
+        logger.error(f"创建目录失败 {directory_path}: {str(e)}")
+        return False
 
 
 def file_exists(file_path: str) -> bool:
@@ -53,7 +64,7 @@ def read_json_file(file_path: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-def write_json_file(file_path: str, data: Dict[str, Any], indent: int = 2) -> None:
+def write_json_file(file_path: str, data: Dict[str, Any], indent: int = 2) -> bool:
     """
     将数据写入JSON文件
 
@@ -61,9 +72,17 @@ def write_json_file(file_path: str, data: Dict[str, Any], indent: int = 2) -> No
         file_path: 要写入的文件路径
         data: 要写入的数据
         indent: JSON缩进级别
+
+    Returns:
+        bool: 如果写入成功返回True，否则返回False
     """
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=indent, ensure_ascii=False)
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=indent, ensure_ascii=False)
+        return True
+    except Exception as e:
+        logger.error(f"写入JSON文件失败 {file_path}: {str(e)}")
+        return False
 
 
 def read_text_file(file_path: str) -> str:

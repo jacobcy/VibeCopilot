@@ -1,124 +1,226 @@
-# Workflow 模块 (已废弃，执行的flow的方法由flow-session处理)
+# VibeCopilot 工作流系统
 
 ## 概述
 
-Workflow 模块是 VibeCopilot 项目的工作流管理系统，提供了创建、管理和执行自动化工作流的功能。该模块支持与 n8n 工作流平台集成，实现了本地工作流状态与外部自动化系统的双向同步。
+VibeCopilot 工作流系统提供了一套完整的工作流定义、管理和执行功能。系统支持从描述性文件创建工作流、通过模板指导工作流生成、使用LLM解析工作流结构，并提供丰富的命令行界面进行工作流的管理和操作。
 
-## 核心功能
+## 核心特性
 
-- **工作流管理**：创建、查看、更新和删除工作流
-- **工作流执行**：执行工作流并跟踪执行状态
-- **n8n 集成**：与 n8n 工作流平台双向集成
-- **状态报告**：通过状态提供者接口集成到 VibeCopilot 状态系统中
+- **工作流创建**：支持通过描述性文件和模板创建工作流
+- **LLM解析**：使用OpenAI解析描述性内容为结构化工作流
+- **工作流验证**：确保工作流定义的完整性和一致性
+- **工作流管理**：提供全面的CRUD操作
+- **短ID标识**：使用8字符的短UUID作为工作流标识
+- **可视化支持**：支持以Mermaid格式导出工作流图表
+- **阶段执行**：支持执行工作流的特定阶段
+- **上下文管理**：提供阶段执行的上下文信息
+- **会话管理**：支持工作流执行会话
+- **任务集成**：工作流会话与任务系统紧密集成，每个会话专注于一个具体任务
 
-## 模块结构
+## 目录结构
 
 ```
-workflow/
-├── __init__.py
-├── workflow_manager.py       # 命令行工具入口
-├── workflow_operations.py    # 操作函数汇总
-├── workflow_utils.py         # 工具函数
-└── operations/               # 操作实现
-    ├── crud_operations.py    # 创建、更新、删除操作
-    ├── list_operations.py    # 列表和查看操作
-    └── execution_operations.py # 执行和同步操作
+src/workflow/
+├── __init__.py                   # 模块入口点和导出定义
+├── README.md                     # 本文档
+├── workflow_operations.py        # 工作流基本操作 (CRUD)
+├── workflow_template.py          # 工作流模板相关功能
+├── workflow_advanced_operations.py # 高级工作流操作
+├── analytics/                    # 工作流分析模块
+│   └── workflow_analytics.py     # 工作流统计分析功能
+├── search/                       # 工作流搜索模块
+│   └── workflow_search.py        # 工作流搜索和模糊匹配功能
+├── execution/                    # 工作流执行模块
+│   └── workflow_execution.py     # 工作流执行引擎
+├── flow_cmd/                     # 工作流命令行功能
+│   ├── workflow_creator.py       # 工作流创建器
+│   └── helpers.py                # 命令行辅助函数
+└── interpreter/                  # 工作流解释器
+    └── flow_converter.py         # 工作流转换器
 ```
 
-## 数据模型
+## 命令行接口
 
-工作流模块使用以下数据模型：
-
-- **Workflow**：工作流定义，包含基本信息和 n8n 关联信息
-- **WorkflowStep**：工作流步骤，包含步骤顺序、类型和配置
-- **WorkflowExecution**：工作流执行记录，跟踪执行状态和结果
-- **WorkflowStepExecution**：步骤执行记录，跟踪每个步骤的执行情况
-
-## 命令行使用
-
-工作流模块提供了命令行接口进行管理和操作：
+工作流系统提供了丰富的命令行接口：
 
 ```bash
 # 列出所有工作流
-python -m src.workflow.workflow_manager list
-
-# 查看工作流详情
-python -m src.workflow.workflow_manager view <workflow_id>
+vibecopilot flow list [--type TYPE] [--verbose]
 
 # 创建工作流
-python -m src.workflow.workflow_manager create "新工作流" -d "工作流描述" --active
+vibecopilot flow create --source SOURCE [--template TEMPLATE] [--name NAME] [--output OUTPUT] [--verbose]
 
-# 关联 n8n 工作流
-python -m src.workflow.workflow_manager update <workflow_id> --n8n-id <n8n_workflow_id>
+# 查看工作流
+vibecopilot flow show WORKFLOW_ID [--format {json,text,mermaid}] [--diagram] [--verbose]
 
-# 执行工作流
-python -m src.workflow.workflow_manager execute <workflow_id> -c '{"param1": "value1"}'
+# 更新工作流
+vibecopilot flow update ID [--name NAME] [--desc DESCRIPTION] [--verbose]
 
-# 同步 n8n 工作流
-python -m src.workflow.workflow_manager sync --import-workflows --update-from-n8n
+# 删除工作流
+vibecopilot flow delete WORKFLOW_ID [--force] [--verbose]
+
+# 导出工作流
+vibecopilot flow export WORKFLOW_ID [--format {json,mermaid}] [--output OUTPUT] [--verbose]
+
+# 导入工作流
+vibecopilot flow import FILE_PATH [--overwrite] [--verbose]
+
+# 可视化工作流
+vibecopilot flow visualize ID [--session] [--format {mermaid,text}] [--output OUTPUT] [--verbose]
+
+# 运行工作流阶段
+vibecopilot flow run STAGE [--workflow-id WORKFLOW_ID] [--name NAME] [--completed COMPLETED] [--session SESSION] [--task TASK_ID] [--verbose]
+
+# 获取工作流阶段上下文
+vibecopilot flow context WORKFLOW_ID STAGE_ID [--session SESSION] [--completed COMPLETED] [--format {json,text}] [--verbose]
+
+# 获取下一阶段建议
+vibecopilot flow next SESSION_ID [--current CURRENT] [--format {json,text}] [--verbose]
+
+# 管理工作流会话
+vibecopilot flow session list [--verbose]
+vibecopilot flow session create --workflow WORKFLOW_ID [--name NAME] [--task TASK_ID]
+vibecopilot flow session show SESSION_ID
+vibecopilot flow session close SESSION_ID
 ```
 
-## 与 n8n 集成
+## 实体关系与集成
 
-### n8n 关联
+VibeCopilot工作流系统与路线图系统紧密集成，通过清晰的实体关系模型连接工作流、任务和故事：
 
-工作流可以关联到 n8n 工作流，通过以下方式：
+### Story → Task → Session 关系模型
 
-1. 创建工作流时指定 n8n ID：`create "工作流名称" --n8n-id <n8n_workflow_id>`
-2. 更新工作流添加 n8n ID：`update <workflow_id> --n8n-id <n8n_workflow_id>`
-3. 从 n8n 导入工作流：`sync --import-workflows`
+- **一对多关系**：一个故事(Story)可以包含多个任务(Task)，一个任务可以关联多个会话(Session)
+- **专注原则**：每个会话专注于一个特定任务，明确工作目标
+- **数据引用**：Session引用Task (`Session.task_id`)，Task引用Story (`Task.story_id`)
 
-### 执行流程
+### 关系应用场景
 
-当执行关联了 n8n 的工作流时：
+- **工作流跟踪**：一个任务可能需要多次不同类型的工作流才能完成
+- **进度可视化**：通过查看任务关联的所有会话，了解具体工作进度
+- **数据追溯**：从会话可以追溯到相关任务和故事，形成完整工作链条
 
-1. 创建本地执行记录
-2. 通过 n8n 适配器提交执行请求到 n8n
-3. n8n 执行工作流并返回执行 ID
-4. 可选择等待执行完成或异步执行
-5. 执行完成后同步状态和结果
+### 集成命令示例
 
-## 状态集成
+```bash
+# 创建关联到特定任务的会话
+vibecopilot flow session create --workflow dev_workflow --task task_123
 
-工作流模块通过 `WorkflowStatusProvider` 实现了 `IStatusProvider` 接口，集成到 VibeCopilot 状态系统：
+# 查看特定任务的所有相关会话
+vibecopilot task show task_123 --sessions
+```
 
-- 提供工作流状态查询
-- 支持工作流执行状态更新
-- 允许外部系统订阅工作流状态变更
+## 工作流数据结构
 
-## 开发指南
+工作流定义的核心数据结构：
 
-### 添加新的工作流类型
+```json
+{
+  "id": "workflow1",                   // 工作流唯一ID (8字符)
+  "name": "样例工作流",                 // 工作流名称
+  "description": "这是一个样例工作流",   // 工作流描述
+  "version": "1.0.0",                  // 工作流版本
+  "stages": [                          // 工作流阶段列表
+    {
+      "id": "stage1",                  // 阶段唯一ID
+      "name": "第一阶段",               // 阶段名称
+      "description": "这是第一个阶段",   // 阶段描述
+      "order": 1,                      // 阶段顺序
+      "checklist": [                   // 阶段检查项
+        "检查项1",
+        "检查项2"
+      ],
+      "deliverables": [                // 阶段交付物
+        "交付物1",
+        "交付物2"
+      ]
+    }
+  ],
+  "transitions": [                     // 阶段转换列表
+    {
+      "from": "stage1",                // 源阶段ID
+      "to": "stage2",                  // 目标阶段ID
+      "condition": "完成第一阶段"        // 转换条件
+    }
+  ],
+  "metadata": {                        // 元数据
+    "created_at": "2025-04-10T07:17:08.734722",
+    "updated_at": "2025-04-10T07:17:08.734722"
+  }
+}
+```
 
-1. 在 `operations/crud_operations.py` 中扩展 `create_workflow` 函数，支持新的工作流类型
-2. 在 `models/db/workflow.py` 中更新 `WorkflowStep` 模型，增加新的步骤类型
-3. 在 `operations/execution_operations.py` 中实现新类型工作流的执行逻辑
+## 工作流模板
 
-### 扩展 n8n 集成
+系统支持通过模板创建工作流。默认模板路径为 `templates/flow/default_flow.json`。模板定义了工作流的基本结构和字段要求，用于指导LLM解析过程。
 
-1. 修改 `adapters/n8n.py` 添加新的 API 方法
-2. 在 `operations/execution_operations.py` 中更新 `sync_n8n` 函数
+## 验证机制
 
-### 添加本地执行引擎
+`WorkflowValidator` 负责验证工作流定义的完整性，包括：
 
-目前工作流主要通过 n8n 执行，如需开发本地执行引擎：
+- 必要字段验证 (id, name, description, stages, transitions)
+- 阶段ID唯一性验证
+- 转换引用有效性验证
+- 工作流完整性验证（确保每个阶段都有入口和出口）
+- 循环依赖检测
 
-1. 创建 `workflow/engine` 目录实现本地执行引擎
-2. 在 `operations/execution_operations.py` 中添加本地执行逻辑
-3. 实现工作流步骤执行器
+## 未来开发方向
 
-## 最佳实践
+1. **工作流模板管理**：完善模板管理功能，支持创建、更新和删除模板
+2. **工作流版本控制**：实现工作流版本管理，支持回滚和比较
+3. **工作流执行记录**：增强执行历史记录和统计功能
+4. **工作流权限控制**：添加用户权限管理，控制工作流访问和操作权限
+5. **工作流触发器**：支持基于事件或条件自动触发工作流
+6. **工作流导入/导出增强**：支持更多格式和转换选项
+7. **工作流图表编辑器**：提供可视化编辑器创建和修改工作流
+8. **API接口**：提供REST API接口供其他系统集成
+9. **工作流状态监控**：实时监控工作流执行状态和进度
+10. **任务集成增强**：深化与任务系统的集成，支持基于任务优先级和依赖关系的工作流推荐
 
-1. **工作流命名**：使用简洁明了的名称，表达工作流的用途
-2. **工作流描述**：详细说明工作流的功能、输入和预期输出
-3. **n8n 集成**：复杂的工作流应优先使用 n8n 实现，利用其可视化编辑器
-4. **状态监控**：使用 `view` 命令定期检查执行状态
-5. **错误处理**：工作流设计时应考虑错误处理和重试机制
+## 使用示例
 
-## 未来计划
+### 创建工作流
 
-- 实现本地工作流执行引擎
-- 增强工作流步骤类型，支持更多自动化场景
-- 添加工作流模板系统
-- 支持工作流版本控制
-- 开发工作流可视化编辑器
+```bash
+# 从文本文件创建工作流
+vibecopilot flow create --source descriptions/workflow_desc.txt --name "测试工作流"
+
+# 使用自定义模板创建工作流
+vibecopilot flow create --source descriptions/workflow_desc.txt --template templates/flow/custom_template.json
+```
+
+### 管理工作流
+
+```bash
+# 列出所有工作流
+vibecopilot flow list
+
+# 查看工作流详情
+vibecopilot flow show workflow1
+
+# 删除工作流
+vibecopilot flow delete workflow1 --force
+```
+
+### 运行工作流
+
+```bash
+# 运行工作流的特定阶段
+vibecopilot flow run stage1 --workflow-id workflow1
+
+# 获取阶段上下文
+vibecopilot flow context workflow1 stage1
+```
+
+### 与任务集成
+
+```bash
+# 创建关联到特定任务的会话
+vibecopilot flow session create --workflow dev_workflow --task task_123
+
+# 在任务上下文中运行工作流
+vibecopilot flow run stage1 --task task_123
+
+# 查看特定任务的所有相关会话
+vibecopilot task show task_123 --sessions
+```

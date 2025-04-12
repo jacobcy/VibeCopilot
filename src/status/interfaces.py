@@ -32,7 +32,7 @@ class IStatusProvider(ABC):
             entity_id: 可选，实体ID。不提供则获取整个领域的状态概览。
 
         Returns:
-            Dict[str, Any]: 状态信息
+            Dict[str, Any]: 状态信息，应包含"domain"字段
         """
         pass
 
@@ -46,7 +46,7 @@ class IStatusProvider(ABC):
             **kwargs: 附加参数
 
         Returns:
-            Dict[str, Any]: 更新结果
+            Dict[str, Any]: 更新结果，应包含"updated"字段表示是否成功
         """
         pass
 
@@ -70,9 +70,7 @@ class IStatusSubscriber(ABC):
     """
 
     @abstractmethod
-    def on_status_changed(
-        self, domain: str, entity_id: str, old_status: str, new_status: str, data: Dict[str, Any]
-    ) -> None:
+    def on_status_changed(self, domain: str, entity_id: str, old_status: str, new_status: str, data: Dict[str, Any]) -> None:
         """状态变更回调
 
         Args:

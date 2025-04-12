@@ -16,6 +16,36 @@ class HealthCalculator:
     提供计算状态健康度的功能。
     """
 
+    def __init__(self):
+        """初始化健康度计算器"""
+        self._component_health = {}
+
+    def update_component_health(self, component: str, status: Dict[str, Any]):
+        """更新组件健康状态
+
+        Args:
+            component: 组件名称
+            status: 状态信息，包含health_level和message
+        """
+        self._component_health[component] = status
+
+    def get_health_status(self) -> Dict[str, Any]:
+        """获取系统健康状态
+
+        Returns:
+            Dict[str, Any]: 包含整体健康状态和各组件状态的字典
+        """
+        # 计算整体健康度
+        overall_health = self.calculate_overall_health(self._component_health)
+        health_level = self.get_health_level(overall_health)
+
+        return {
+            "overall_health": overall_health,
+            "health_level": health_level,
+            "components": self._component_health,
+            "timestamp": logging.Formatter().converter(),
+        }
+
     @staticmethod
     def calculate_health(status_data: Dict[str, Any]) -> int:
         """计算健康度分数

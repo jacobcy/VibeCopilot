@@ -1,0 +1,170 @@
+# 规则命令组配置
+
+commands:
+  "rule list":
+    description: "列出所有规则"
+    subcommands:
+      "--type":
+        description: "按类型筛选规则"
+        values: ["core", "dev", "tech", "workflow"]
+      "--format":
+        description: "输出格式"
+        values: ["table", "json", "yaml"]
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+    expected_output: ["规则列表", "规则类型", "规则名称"]
+    timeout: 5
+    critical: true
+
+  "rule show":
+    description: "显示规则详情"
+    arguments:
+      - name: "rule_name"
+        description: "规则名称"
+        required: true
+    subcommands:
+      "--format":
+        description: "输出格式"
+        values: ["markdown", "json", "yaml"]
+      "--raw":
+        description: "显示原始内容"
+        type: "flag"
+    expected_output: ["规则详情", "规则内容"]
+    timeout: 5
+    critical: true
+
+  "rule create":
+    description: "创建新规则"
+    arguments:
+      - name: "name"
+        description: "规则名称"
+        required: true
+      - name: "type"
+        description: "规则类型"
+        required: true
+    subcommands:
+      "--template":
+        description: "使用模板创建"
+        values: ["core", "dev", "tech"]
+      "--description":
+        description: "规则描述"
+        type: "string"
+    expected_output: ["规则创建成功"]
+    timeout: 8
+    critical: true
+
+  "rule edit":
+    description: "编辑规则"
+    arguments:
+      - name: "rule_name"
+        description: "规则名称"
+        required: true
+    subcommands:
+      "--editor":
+        description: "指定编辑器"
+        values: ["vim", "nano", "vscode"]
+      "--no-verify":
+        description: "跳过验证"
+        type: "flag"
+    expected_output: ["规则更新成功"]
+    timeout: 10
+    critical: true
+
+  "rule delete":
+    description: "删除规则"
+    arguments:
+      - name: "rule_name"
+        description: "规则名称"
+        required: true
+    subcommands:
+      "--force":
+        description: "强制删除"
+        type: "flag"
+      "--backup":
+        description: "删除前备份"
+        type: "flag"
+    expected_output: ["规则删除成功"]
+    timeout: 5
+    critical: true
+
+  "rule validate":
+    description: "验证规则"
+    arguments:
+      - name: "rule_name"
+        description: "规则名称"
+        required: false
+    subcommands:
+      "--all":
+        description: "验证所有规则"
+        type: "flag"
+      "--fix":
+        description: "自动修复问题"
+        type: "flag"
+    expected_output: ["规则验证结果"]
+    timeout: 15
+    critical: true
+
+  "rule export":
+    description: "导出规则"
+    arguments:
+      - name: "rule_name"
+        description: "规则名称"
+        required: false
+    subcommands:
+      "--format":
+        description: "导出格式"
+        values: ["markdown", "json", "yaml", "html"]
+      "--output":
+        description: "输出路径"
+        type: "string"
+    expected_output: ["规则导出成功"]
+    timeout: 10
+    critical: false
+
+  "rule import":
+    description: "导入规则"
+    arguments:
+      - name: "file_path"
+        description: "规则文件路径"
+        required: true
+    subcommands:
+      "--overwrite":
+        description: "覆盖已存在的规则"
+        type: "flag"
+      "--dry-run":
+        description: "模拟导入"
+        type: "flag"
+    expected_output: ["规则导入成功"]
+    timeout: 10
+    critical: false
+
+# 命令组特定配置
+group_config:
+  allow_custom_rules: true      # 是否允许自定义规则
+  max_rule_size: 1048576       # 规则文件最大大小（字节）
+  auto_format: true            # 是否自动格式化规则文件
+  backup_enabled: true         # 是否启用规则备份
+  validate_on_save: true       # 保存时是否验证规则
+
+# 规则模板配置
+templates:
+  core_rule:
+    path: "templates/rules/core.md"
+    description: "核心规则模板"
+
+  dev_rule:
+    path: "templates/rules/dev.md"
+    description: "开发规则模板"
+
+  tech_rule:
+    path: "templates/rules/tech.md"
+    description: "技术规则模板"
+
+# 规则验证配置
+validation:
+  check_format: true           # 检查规则格式
+  check_references: true       # 检查规则引用
+  check_dependencies: true     # 检查规则依赖
+  spell_check: true           # 拼写检查
+  lint_markdown: true         # Markdown语法检查

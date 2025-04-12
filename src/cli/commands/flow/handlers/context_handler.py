@@ -68,12 +68,13 @@ def handle_context_subcommand(
     session_id = args.get("session")
     # completed_items = args.get("completed") # Possibly deprecated / fetched from instance
     format_type = args.get("format", "text")
-    # verbose = args.get("verbose", False) # Use logger instead
+    verbose = args.get("verbose", False)  # 是否显示详细信息
 
     command_meta = {"command": "flow context", "args": args}
     result = {"status": "error", "code": 1, "message": "", "data": None, "meta": command_meta}
 
-    logger.info(f"获取上下文: workflow={workflow_id}, stage={stage_id}, session={session_id}")
+    if verbose:
+        logger.info(f"获取上下文: workflow={workflow_id}, stage={stage_id}, session={session_id}")
 
     if not workflow_id or not stage_id:
         result["message"] = "必须提供 workflow_id 和 stage_id"
@@ -84,7 +85,8 @@ def handle_context_subcommand(
         # Return False, "获取阶段实例上下文需要提供 --session ID。", None
         # We might allow fetching definition context if no session provided?
         # For now, require session ID for task integration.
-        logger.warning("获取任务相关上下文需要提供 --session ID。仅显示定义信息（如果找到）。")
+        if verbose:
+            logger.warning("获取任务相关上下文需要提供 --session ID。仅显示定义信息（如果找到）。")
         # TODO: Implement fetching definition context here if desired
         result["message"] = "获取任务相关上下文需要 --session ID (功能待定)"
         result["code"] = 400  # Or treat as partial success?
@@ -119,19 +121,105 @@ def handle_context_subcommand(
                 if hasattr(stage_repo, "find_by_session_and_stage_id"):
                     stage_instance = stage_repo.find_by_session_and_stage_id(session_id, stage_id)
                 else:
-                    logger.warning("StageInstanceRepository does not have find_by_session_and_stage_id method yet.")
+                    if verbose:
+                        logger.warning("StageInstanceRepository does not have find_by_session_and_stage_id method yet.")
                     # Fallback: maybe get latest for session?
                     # instances = stage_repo.get_by_session_id(session_id) # Assuming this exists
                     # if instances: stage_instance = instances[-1] # Simplistic fallback
 
             except Exception as find_e:
-                logger.error(f"查找 StageInstance 时出错: {find_e}", exc_info=True)
+                if verbose:
+                    logger.error(f"查找 StageInstance 时出错: {find_e}", exc_info=True)
                 # Continue without instance data or return error?
                 # Returning error for now
                 return result
 
             if not stage_instance:
-                # Attempt to provide context based on definition if instance not found? Risky.
+                # 当工作流被创建但阶段尚未被"执行"时，仍然可以提供阶段的定义信息
+                # 注意：我们是工作流解释器，不是执行器。这里不需要实际"执行"阶段，
+                # 只需展示阶段定义和上下文信息，帮助用户理解应该做什么。
+                if verbose:
+                    logger.warning(f"未找到阶段实例记录，将提供阶段定义信息。")
+
+                # 尝试从工作流定义中获取阶段信息
+                try:
+                    from src.workflow.workflow_operations import get_workflow
+
+                    workflow_def = get_workflow(workflow_id)
+                    stage_info = None
+
+                    if workflow_def and "stages" in workflow_def:
+                        stages = workflow_def["stages"]
+                        # 查找匹配的阶段
+                        if isinstance(stages, list):
+                            stage_info = next((s for s in stages if s.get("id") == stage_id), None)
+                        elif isinstance(stages, dict) and stage_id in stages:
+                            stage_info = stages[stage_id]
+
+                    # 成功找到阶段定义信息
+                    result["status"] = "success"
+                    result["code"] = 200
+
+                    message = f"工作流阶段解释 (基于定义):\n"
+                    message += f"  Workflow ID: {workflow_id}\n"
+                    message += f"  Session ID: {session_id}\n"
+                    message += f"  Stage ID: {stage_id}\n\n"
+
+                    if stage_info:
+                        message += f"阶段名称: {stage_info.get('name', 'N/A')}\n"
+                        message += f"阶段描述: {stage_info.get('description', 'N/A')}\n\n"
+
+                        # 展示阶段检查清单(如果有)
+                        if "checklist" in stage_info and stage_info["checklist"]:
+                            message += "阶段检查清单:\n"
+                            for item in stage_info["checklist"]:
+                                item_name = item if isinstance(item, str) else item.get("name", "未命名项")
+                                message += f"  [ ] {item_name}\n"
+
+                        # 展示交付物定义(如果有)
+                        if "deliverables" in stage_info and stage_info["deliverables"]:
+                            message += "\n预期交付物:\n"
+                            for item in stage_info["deliverables"]:
+                                item_name = item if isinstance(item, str) else item.get("name", "未命名项")
+                                message += f"  - {item_name}\n"
+                    else:
+                        message += f"注意: 在工作流 '{workflow_id}' 中找不到ID为 '{stage_id}' 的阶段定义。\n"
+                        message += f"请检查阶段ID是否正确。\n"
+
+                    message += f"\n提示: 这是阶段的定义信息，不代表任何状态。"
+                    message += f"\n\n### 建议操作\n"
+                    if stage_info:
+                        stage_status = stage_info.get("status", "not_started")
+                        if stage_status == "not_started":
+                            message += f"\n- 此阶段尚未开始。"
+                            message += f"\n      使用 'vc flow create {stage_id}' 开始处理此阶段。"
+                        elif stage_status == "in_progress":
+                            message += f"\n- 此阶段正在进行中。"
+                        elif stage_status == "completed":
+                            message += f"\n- 此阶段已完成。"
+
+                    result["message"] = message
+                    return result
+
+                except Exception as def_e:
+                    if verbose:
+                        logger.error(f"获取阶段定义信息失败: {def_e}", exc_info=True)
+
+                # 如果无法获取阶段定义，提供基本信息
+                result["status"] = "success"  # 设置为部分成功
+                result["code"] = 200
+
+                message = f"工作流阶段解释 (基本信息):\n"
+                message += f"  Workflow ID: {workflow_id}\n"
+                message += f"  Session ID: {session_id}\n"
+                message += f"  Stage ID: {stage_id}\n\n"
+                message += f"注意: 未找到此阶段的具体定义或实例记录。\n"
+                message += f"可能原因:\n"
+                message += f"  - 阶段ID可能不正确\n"
+                message += f"  - 工作流定义可能不完整\n\n"
+                message += f"建议: 使用 'vc flow show {workflow_id}' 查看完整工作流定义。"
+
+                result["message"] = message
                 return result
 
             context["stage_instance_data"] = stage_instance.to_dict()  # Store instance details
@@ -155,17 +243,22 @@ def handle_context_subcommand(
 
                 if relevant_statuses:
                     try:
-                        logger.debug(f"查询与 Story {roadmap_item_id} 关联且状态为 {relevant_statuses} 的任务")
+                        if verbose:
+                            logger.debug(f"查询与 Story {roadmap_item_id} 关联且状态为 {relevant_statuses} 的任务")
                         relevant_db_tasks = task_repo.search_tasks(roadmap_item_id=roadmap_item_id, status=relevant_statuses)
                         context["relevant_tasks"] = [{"id": task.id, "title": task.title, "status": task.status} for task in relevant_db_tasks]
-                        logger.info(f"找到 {len(context['relevant_tasks'])} 个相关任务")
+                        if verbose:
+                            logger.info(f"找到 {len(context['relevant_tasks'])} 个相关任务")
                     except Exception as task_e:
-                        logger.error(f"查询关联任务时出错: {task_e}", exc_info=True)
+                        if verbose:
+                            logger.error(f"查询关联任务时出错: {task_e}", exc_info=True)
                         context["relevant_tasks_error"] = str(task_e)
                 else:
-                    logger.info(f"阶段 '{stage_id}' 没有定义相关的任务状态，不查询任务。")
+                    if verbose:
+                        logger.info(f"阶段 '{stage_id}' 没有定义相关的任务状态，不查询任务。")
             else:
-                logger.info(f"阶段实例 {stage_instance.id} 未关联到 Roadmap Item，不查询任务。")
+                if verbose:
+                    logger.info(f"阶段实例 {stage_instance.id} 未关联到 Roadmap Item，不查询任务。")
             # --- End Task Integration ---
 
         # --- Formatting Logic ---
@@ -208,10 +301,14 @@ def handle_context_subcommand(
             result["data"] = context
             return result
         else:
+            result["status"] = "success"
+            result["code"] = 0
+            result["message"] = message
             return result
 
     except Exception as e:
-        logger.exception("获取工作流上下文时出错")
+        if verbose:
+            logger.exception("获取工作流上下文时出错")
         # Return False, f"获取工作流上下文时出错: {str(e)}", context # Return partial context on error?
         result["message"] = f"获取工作流上下文时出错: {str(e)}"
         result["code"] = 500

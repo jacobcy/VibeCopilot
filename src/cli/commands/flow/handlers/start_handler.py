@@ -69,14 +69,14 @@ def handle_start_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
 
         # 构建run命令的参数
         run_args = {
-            "workflow_id": workflow_type,  # Pass definition ID
-            "stage": stage_id,  # Target the first stage
-            "name": name or f"{workflow_type}_session_{roadmap_item_id or 'new'}",  # Generate a name if not provided
-            "session": None,  # Explicitly None to indicate starting a new session
-            "completed": [],  # Start with no completed items
-            "context_data": context_data,  # Pass any initial context
-            "roadmap_item_id": roadmap_item_id,  # Pass roadmap link
-            "_agent_mode": args.get("_agent_mode", False),  # Preserve agent mode flag
+            "workflow": workflow_type,  # 使用工作流类型作为workflow参数
+            "stage": stage_id,  # 使用第一个阶段
+            "name": name or f"{workflow_type}_session_{roadmap_item_id or 'new'}",  # 生成名称（如果未提供）
+            "session": None,  # 显式设置为None表示创建新会话
+            "checklist": [],  # 无已完成项（新会话）
+            "context_data": context_data,  # 传递任何初始上下文
+            "roadmap_item_id": roadmap_item_id,  # 传递路线图链接
+            "_agent_mode": args.get("_agent_mode", False),  # 保留agent模式标志
         }
 
         # 调用run命令处理器

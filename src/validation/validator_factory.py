@@ -9,58 +9,63 @@ import os
 from typing import Any, Dict, Optional, Type
 
 from src.validation.core.base_validator import BaseValidator
+from src.validation.core.roadmap_validator import RoadmapCoreValidator
 from src.validation.core.rule_validator import RuleValidator
 from src.validation.core.template_validator import TemplateValidator
 from src.validation.core.yaml_validator import YamlValidator
+from src.validation.roadmap_validation import RoadmapValidator
 
 logger = logging.getLogger(__name__)
 
 
 class ValidatorFactory:
-    """验证器工厂，负责创建各种类型的验证器"""
+    """验证器工厂类，用于创建各种类型的验证器"""
 
-    # 预定义的验证器映射
-    _validators = {
+    # 验证器类型映射
+    _validators: Dict[str, Type[BaseValidator]] = {
+        "yaml": YamlValidator,
         "rule": RuleValidator,
         "template": TemplateValidator,
-        "yaml": YamlValidator,
+        "roadmap": RoadmapCoreValidator,
     }
 
     @classmethod
-    def get_validator(cls, validator_type: str, schema_path: Optional[str] = None, config: Optional[Dict[str, Any]] = None) -> BaseValidator:
+    def get_validator(cls, validator_type: str) -> BaseValidator:
         """
         获取指定类型的验证器
 
         Args:
-            validator_type: 验证器类型
-            schema_path: 模式文件路径
-            config: 配置参数
+            validator_type: 验证器类型，可以是 "yaml", "rule", "template", "roadmap" 等
 
         Returns:
-            验证器实例
+            BaseValidator: 验证器实例
         """
-        validator_class = cls._validators.get(validator_type.lower())
+        if validator_type not in cls._validators:
+            raise ValueError(f"不支持的验证器类型: {validator_type}。支持的类型: {list(cls._validators.keys())}")
 
-        if not validator_class:
-            logger.warning(f"未找到类型为 {validator_type} 的验证器，使用默认YAML验证器")
-            validator_class = YamlValidator
-
-        return validator_class(schema_path, config)
+        # 创建并返回验证器实例
+        return cls._validators[validator_type]()
 
     @classmethod
     def register_validator(cls, validator_type: str, validator_class: Type[BaseValidator]) -> None:
         """
-        注册新的验证器类型
+        注册一个新的验证器类型
 
         Args:
             validator_type: 验证器类型名称
             validator_class: 验证器类
         """
-        if not issubclass(validator_class, BaseValidator):
-            raise TypeError(f"验证器类必须继承自BaseValidator")
+        cls._validators[validator_type] = validator_class
 
-        cls._validators[validator_type.lower()] = validator_class
-        logger.info(f"已注册验证器类型: {validator_type}")
+    @classmethod
+    def get_supported_types(cls) -> list:
+        """
+        获取所有支持的验证器类型
+
+        Returns:
+            list: 支持的验证器类型列表
+        """
+        return list(cls._validators.keys())
 
     @classmethod
     def get_validator_for_file(cls, file_path: str, config: Optional[Dict[str, Any]] = None) -> BaseValidator:
@@ -87,22 +92,28 @@ class ValidatorFactory:
 
                 if isinstance(data, dict):
                     # 根据内容判断类型
-                    if data.get("type") == "rule" or "rule" in file_path.lower():
-                        return cls.get_validator("rule", config=config)
+                    if "epics" in data or "milestones" in data:
+                        logger.info(f"文件 {file_path} 识别为路线图文件")
+                        return cls.get_validator("roadmap")
+                    elif data.get("type") == "rule" or "rule" in file_path.lower():
+                        logger.info(f"文件 {file_path} 识别为规则文件")
+                        return cls.get_validator("rule")
                     elif data.get("type") == "template" or "template" in file_path.lower():
-                        return cls.get_validator("template", config=config)
-            except Exception:
-                pass
+                        logger.info(f"文件 {file_path} 识别为模板文件")
+                        return cls.get_validator("template")
+            except Exception as e:
+                logger.warning(f"尝试解析文件 {file_path} 时出错: {str(e)}")
 
             # 默认返回YAML验证器
-            return cls.get_validator("yaml", config=config)
+            return cls.get_validator("yaml")
         elif ext in [".json"]:
             # 可以添加JSON验证器
-            return cls.get_validator("yaml", config=config)  # 暂时使用YAML验证器
+            return cls.get_validator("yaml")  # 暂时使用YAML验证器
         elif ext in [".md", ".mdc"]:
             # 对于Markdown文件，判断是否是规则
             if "rule" in file_path.lower():
-                return cls.get_validator("rule", config=config)
+                return cls.get_validator("rule")
 
         # 默认返回基本验证器
-        return YamlValidator(config=config)
+        logger.info(f"文件 {file_path} 没有匹配特定验证器，使用默认YAML验证器")
+        return cls.get_validator("yaml")

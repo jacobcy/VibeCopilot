@@ -6,153 +6,43 @@
 
 import json
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
+import click
+import yaml
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.commands.db.base import BaseDatabaseCommand
+from src.cli.decorators import pass_service
+
+from .base_handler import ClickBaseHandler
+from .exceptions import DatabaseError, ValidationError
+from .validators import validate_db_name
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
-class QueryHandler(BaseDatabaseCommand):
-    """数据库查询处理器"""
+class QueryBaseHandler(ClickBaseHandler):
+    """查询命令基础处理器"""
+
+    VALID_TYPES = {"epic", "story", "task", "label", "template"}
+    VALID_FORMATS = {"text", "json", "yaml"}
 
     def __init__(self):
-        """初始化处理器"""
         super().__init__()
-        self.console = Console()
 
-    def handle(self, args: Dict) -> int:
-        """处理查询命令
-
-        Args:
-            args: 命令参数
-
-        Returns:
-            执行结果代码
-        """
-        entity_type = args.get("type")
-        entity_id = args.get("id")
-        query = args.get("query")
-        verbose = args.get("verbose", False)
-        output_format = args.get("format", "text")
-
-        if verbose:
-            if entity_id:
-                self.console.print(f"查询 {entity_type} (ID: {entity_id})")
-            elif query:
-                self.console.print(f"搜索 {entity_type}，查询: {query}")
-            else:
-                self.console.print(f"查询所有 {entity_type}")
-
-        try:
-            # 单个实体查询
-            if entity_id:
-                return self._handle_single_query(entity_type, entity_id, output_format)
-
-            # 带条件的查询
-            if query:
-                return self._handle_search_query(entity_type, query, output_format)
-
-            # 列表查询
-            return self._handle_list_query(entity_type, output_format)
-
-        except Exception as e:
-            logger.error(f"查询 {entity_type} 失败: {e}")
-            self.console.print(f"[red]查询 {entity_type} 失败: {e}[/red]")
-            return 1
-
-    def _handle_single_query(self, entity_type: str, entity_id: str, output_format: str) -> int:
-        """处理单个实体查询
-
-        Args:
-            entity_type: 实体类型
-            entity_id: 实体ID
-            output_format: 输出格式
-
-        Returns:
-            执行结果代码
-        """
-        entity = self._get_entity(entity_type, entity_id)
-
-        if not entity:
-            self.console.print(f"[yellow]未找到 {entity_type} 类型，ID为 {entity_id} 的条目[/yellow]")
-            return 1
+    def _format_and_display_entities(self, entities: List[Dict], entity_type: str, output_format: str) -> int:
+        """格式化并显示实体列表"""
+        if not entities:
+            console.print(f"[yellow]未找到 {entity_type} 类型的条目[/yellow]")
+            return 0
 
         if output_format == "json":
-            # JSON输出
-            print(json.dumps(entity, indent=2, ensure_ascii=False))
-        else:
-            # 表格输出
-            self.console.print(f"[bold]{entity_type} (ID: {entity_id})[/bold]")
-
-            table = Table(show_header=False, box=None)
-            table.add_column("字段", style="cyan")
-            table.add_column("值")
-
-            for key, value in entity.items():
-                if key != "id":  # ID已在标题显示
-                    if isinstance(value, dict) or isinstance(value, list):
-                        value = json.dumps(value, ensure_ascii=False)
-                    table.add_row(key, str(value))
-
-            self.console.print(table)
-
-        return 0
-
-    def _handle_search_query(self, entity_type: str, query: str, output_format: str) -> int:
-        """处理搜索查询
-
-        Args:
-            entity_type: 实体类型
-            query: 查询字符串
-            output_format: 输出格式
-
-        Returns:
-            执行结果代码
-        """
-        entities = self._search_entities(entity_type, query)
-
-        return self._format_and_display_entities(entities, entity_type, output_format)
-
-    def _handle_list_query(self, entity_type: str, output_format: str) -> int:
-        """处理列表查询
-
-        Args:
-            entity_type: 实体类型
-            output_format: 输出格式
-
-        Returns:
-            执行结果代码
-        """
-        entities = self._get_entities(entity_type)
-
-        return self._format_and_display_entities(entities, entity_type, output_format)
-
-    def _format_and_display_entities(
-        self, entities: List[Dict], entity_type: str, output_format: str
-    ) -> int:
-        """格式化并显示实体列表
-
-        Args:
-            entities: 实体列表
-            entity_type: 实体类型
-            output_format: 输出格式
-
-        Returns:
-            执行结果代码
-        """
-        if output_format == "json":
-            # JSON输出
             print(json.dumps(entities, indent=2, ensure_ascii=False))
+        elif output_format == "yaml":
+            print(yaml.dump(entities, allow_unicode=True, sort_keys=False))
         else:
-            # 表格输出
-            if not entities:
-                self.console.print(f"[yellow]未找到 {entity_type} 类型的条目[/yellow]")
-                return 0
-
             table = Table(title=f"{entity_type} 列表")
 
             # 添加表头
@@ -165,68 +55,239 @@ class QueryHandler(BaseDatabaseCommand):
                 row = [str(entity.get(col, "")) for col in columns]
                 table.add_row(*row)
 
-            self.console.print(table)
+            console.print(table)
 
         return 0
 
-    def _get_entity(self, entity_type: str, entity_id: str) -> Dict:
-        """获取单个实体
+    def _format_and_display_entity(self, entity: Dict, entity_type: str, entity_id: str, output_format: str) -> int:
+        """格式化并显示单个实体"""
+        if not entity:
+            console.print(f"[yellow]未找到 {entity_type} 类型，ID为 {entity_id} 的条目[/yellow]")
+            return 1
 
-        Args:
-            entity_type: 实体类型
-            entity_id: 实体ID
-
-        Returns:
-            实体数据
-        """
-        # 使用数据库服务查询
-        if self.db_service:
-            try:
-                return self.db_service.get_entity(entity_type, entity_id)
-            except Exception as e:
-                logger.error(f"查询数据库失败: {e}")
-                raise
+        if output_format == "json":
+            print(json.dumps(entity, indent=2, ensure_ascii=False))
+        elif output_format == "yaml":
+            print(yaml.dump(entity, allow_unicode=True, sort_keys=False))
         else:
-            logger.error("数据库服务未初始化")
-            raise RuntimeError("数据库服务未初始化")
+            console.print(f"[bold]{entity_type} (ID: {entity_id})[/bold]")
 
-    def _get_entities(self, entity_type: str) -> List[Dict]:
-        """获取实体列表
+            table = Table(show_header=False, box=None)
+            table.add_column("字段", style="cyan")
+            table.add_column("值")
 
-        Args:
-            entity_type: 实体类型
+            for key, value in entity.items():
+                if key != "id":  # ID已在标题显示
+                    if isinstance(value, (dict, list)):
+                        value = json.dumps(value, ensure_ascii=False)
+                    table.add_row(key, str(value))
 
-        Returns:
-            实体列表
-        """
-        # 使用数据库服务查询
-        if self.db_service:
-            try:
-                return self.db_service.get_entities(entity_type)
-            except Exception as e:
-                logger.error(f"查询数据库失败: {e}")
-                raise
-        else:
-            logger.error("数据库服务未初始化")
-            raise RuntimeError("数据库服务未初始化")
+            console.print(table)
 
-    def _search_entities(self, entity_type: str, query: str) -> List[Dict]:
-        """搜索实体
+        return 0
 
-        Args:
-            entity_type: 实体类型
-            query: 查询字符串
 
-        Returns:
-            实体列表
-        """
-        # 使用数据库服务查询
-        if self.db_service:
-            try:
-                return self.db_service.search_entities(entity_type, query)
-            except Exception as e:
-                logger.error(f"查询数据库失败: {e}")
-                raise
-        else:
-            logger.error("数据库服务未初始化")
-            raise RuntimeError("数据库服务未初始化")
+class GetEntityHandler(QueryBaseHandler):
+    """获取单个实体处理器"""
+
+    def validate(self, **kwargs: Dict[str, Any]) -> bool:
+        """验证获取实体参数"""
+        entity_type = kwargs.get("entity_type")
+        entity_id = kwargs.get("entity_id")
+        output_format = kwargs.get("format", "text")
+
+        if not entity_type:
+            raise ValidationError("实体类型不能为空")
+
+        if not entity_id:
+            raise ValidationError("实体ID不能为空")
+
+        if entity_type not in self.VALID_TYPES:
+            raise ValidationError(f"不支持的实体类型: {entity_type}")
+
+        if output_format not in self.VALID_FORMATS:
+            raise ValidationError(f"不支持的输出格式: {output_format}")
+
+        return True
+
+    def handle(self, **kwargs: Dict[str, Any]) -> int:
+        """处理获取实体命令"""
+        entity_type = kwargs.get("entity_type")
+        entity_id = kwargs.get("entity_id")
+        output_format = kwargs.get("format", "text")
+        verbose = kwargs.get("verbose", False)
+        service = kwargs.get("service")
+
+        if verbose:
+            console.print(f"查询 {entity_type} (ID: {entity_id})")
+
+        if not service:
+            raise DatabaseError("数据库服务未初始化")
+
+        try:
+            entity = service.get_entity(entity_type, entity_id)
+            return self._format_and_display_entity(entity, entity_type, entity_id, output_format)
+        except Exception as e:
+            raise DatabaseError(f"查询 {entity_type} 失败: {str(e)}")
+
+
+class SearchEntitiesHandler(QueryBaseHandler):
+    """搜索实体处理器"""
+
+    def validate(self, **kwargs: Dict[str, Any]) -> bool:
+        """验证搜索实体参数"""
+        entity_type = kwargs.get("entity_type")
+        query_string = kwargs.get("query_string")
+        output_format = kwargs.get("format", "text")
+
+        if not entity_type:
+            raise ValidationError("实体类型不能为空")
+
+        if not query_string:
+            raise ValidationError("搜索条件不能为空")
+
+        if entity_type not in self.VALID_TYPES:
+            raise ValidationError(f"不支持的实体类型: {entity_type}")
+
+        if output_format not in self.VALID_FORMATS:
+            raise ValidationError(f"不支持的输出格式: {output_format}")
+
+        return True
+
+    def handle(self, **kwargs: Dict[str, Any]) -> int:
+        """处理搜索实体命令"""
+        entity_type = kwargs.get("entity_type")
+        query_string = kwargs.get("query_string")
+        output_format = kwargs.get("format", "text")
+        verbose = kwargs.get("verbose", False)
+        service = kwargs.get("service")
+
+        if verbose:
+            console.print(f"搜索 {entity_type}，查询: {query_string}")
+
+        if not service:
+            raise DatabaseError("数据库服务未初始化")
+
+        try:
+            entities = service.search_entities(entity_type, query_string)
+            return self._format_and_display_entities(entities, entity_type, output_format)
+        except Exception as e:
+            raise DatabaseError(f"搜索 {entity_type} 失败: {str(e)}")
+
+
+class ListEntitiesHandler(QueryBaseHandler):
+    """列出所有实体处理器"""
+
+    def validate(self, **kwargs: Dict[str, Any]) -> bool:
+        """验证列出实体参数"""
+        entity_type = kwargs.get("entity_type")
+        output_format = kwargs.get("format", "text")
+
+        if not entity_type:
+            raise ValidationError("实体类型不能为空")
+
+        if entity_type not in self.VALID_TYPES:
+            raise ValidationError(f"不支持的实体类型: {entity_type}")
+
+        if output_format not in self.VALID_FORMATS:
+            raise ValidationError(f"不支持的输出格式: {output_format}")
+
+        return True
+
+    def handle(self, **kwargs: Dict[str, Any]) -> int:
+        """处理列出实体命令"""
+        entity_type = kwargs.get("entity_type")
+        output_format = kwargs.get("format", "text")
+        verbose = kwargs.get("verbose", False)
+        service = kwargs.get("service")
+
+        if verbose:
+            console.print(f"查询所有 {entity_type}")
+
+        if not service:
+            raise DatabaseError("数据库服务未初始化")
+
+        try:
+            entities = service.get_entities(entity_type)
+            return self._format_and_display_entities(entities, entity_type, output_format)
+        except Exception as e:
+            raise DatabaseError(f"查询 {entity_type} 失败: {str(e)}")
+
+
+@click.group(name="query", help="数据库查询命令组")
+def query():
+    """数据库查询命令组"""
+    pass
+
+
+@query.command(name="get", help="查询单个实体")
+@click.argument("entity_type")
+@click.argument("entity_id")
+@click.option("--format", "-f", type=click.Choice(["text", "json", "yaml"]), default="text", help="输出格式")
+@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
+@pass_service(service_type="db")
+def get_entity(service, entity_type: str, entity_id: str, format: str, verbose: bool):
+    """
+    查询单个实体
+
+    Args:
+        service: 数据库服务实例
+        entity_type: 实体类型
+        entity_id: 实体ID
+        format: 输出格式
+        verbose: 是否显示详细信息
+    """
+    handler = GetEntityHandler()
+    try:
+        result = handler.execute(service=service, entity_type=entity_type, entity_id=entity_id, format=format, verbose=verbose)
+        return result
+    except Exception:
+        return 1
+
+
+@query.command(name="search", help="搜索实体")
+@click.argument("entity_type")
+@click.argument("query_string")
+@click.option("--format", "-f", type=click.Choice(["text", "json", "yaml"]), default="text", help="输出格式")
+@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
+@pass_service(service_type="db")
+def search_entities(service, entity_type: str, query_string: str, format: str, verbose: bool):
+    """
+    搜索实体
+
+    Args:
+        service: 数据库服务实例
+        entity_type: 实体类型
+        query_string: 搜索条件
+        format: 输出格式
+        verbose: 是否显示详细信息
+    """
+    handler = SearchEntitiesHandler()
+    try:
+        result = handler.execute(service=service, entity_type=entity_type, query_string=query_string, format=format, verbose=verbose)
+        return result
+    except Exception:
+        return 1
+
+
+@query.command(name="list", help="列出所有实体")
+@click.argument("entity_type")
+@click.option("--format", "-f", type=click.Choice(["text", "json", "yaml"]), default="text", help="输出格式")
+@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
+@pass_service(service_type="db")
+def list_entities(service, entity_type: str, format: str, verbose: bool):
+    """
+    列出所有实体
+
+    Args:
+        service: 数据库服务实例
+        entity_type: 实体类型
+        format: 输出格式
+        verbose: 是否显示详细信息
+    """
+    handler = ListEntitiesHandler()
+    try:
+        result = handler.execute(service=service, entity_type=entity_type, format=format, verbose=verbose)
+        return result
+    except Exception:
+        return 1

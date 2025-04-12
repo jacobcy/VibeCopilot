@@ -3,7 +3,7 @@
 """
 工作流执行操作
 
-提供工作流执行相关的功能，包括执行历史获取、执行启动等。
+提供工作流执行相关的功能，包括执行历史获取、保存等。
 """
 
 import datetime
@@ -15,53 +15,8 @@ from typing import Any, Dict, List, Optional
 
 from src.core.config import get_config
 from src.utils.file_utils import ensure_directory_exists, read_json_file, write_json_file
-from src.workflow.workflow_operations import get_workflow, get_workflow_by_id
 
 logger = logging.getLogger(__name__)
-
-
-def execute_workflow(workflow_id: str, task_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """
-    Execute a workflow or a specific task in a workflow.
-
-    Args:
-        workflow_id: The ID of the workflow to execute
-        task_id: Optional ID of a specific task to execute
-        context: Optional context data for the execution
-
-    Returns:
-        Dict containing execution results with keys:
-        - execution_id: Unique ID for this execution
-        - workflow_id: ID of the executed workflow
-        - start_time: Timestamp when execution started
-        - end_time: Timestamp when execution completed
-        - status: "success" or "failure"
-        - messages: List of execution messages
-        - task_results: Dictionary of task execution results
-    """
-    # 创建执行记录
-    execution_id = str(uuid.uuid4())
-    execution_data = {
-        "execution_id": execution_id,
-        "workflow_id": workflow_id,
-        "task_id": task_id,
-        "start_time": datetime.datetime.now().isoformat(),
-        "status": "in_progress",
-        "messages": [],
-        "task_results": {},
-    }
-
-    # 记录日志
-    logger.info(f"开始执行工作流 ID:{workflow_id}, 执行ID:{execution_id}")
-    logger.info(f"工作流执行数据: {execution_data}")
-
-    # 这里实际执行工作流的代码已经移动到flow_session模块
-    # 此函数现在只负责创建执行记录，实际执行逻辑由其他组件处理
-
-    # 保存执行记录
-    save_execution(execution_data)
-
-    return execution_data
 
 
 def save_execution(execution_data: Dict[str, Any]) -> bool:
@@ -79,10 +34,29 @@ def save_execution(execution_data: Dict[str, Any]) -> bool:
 
     logger.info(f"保存工作流执行数据: 执行ID:{execution_id}, 工作流ID:{workflow_id}")
 
-    # 实际持久化逻辑将根据项目需求实现
-    # 目前先用日志记录
+    try:
+        # 获取存储目录
+        config = get_config()
+        data_dir = config.get("paths.data_dir", "data")
+        if not os.path.isabs(data_dir):
+            # 如果是相对路径，转换为绝对路径
+            data_dir = os.path.abspath(data_dir)
 
-    return True
+        executions_dir = os.path.join(data_dir, "workflow_executions")
+        ensure_directory_exists(executions_dir)
+
+        # 生成文件名
+        filename = f"{execution_id}.json"
+        file_path = os.path.join(executions_dir, filename)
+
+        # 保存数据到文件
+        write_json_file(file_path, execution_data)
+
+        logger.info(f"已保存执行数据到: {file_path}")
+        return True
+    except Exception as e:
+        logger.error(f"保存执行数据失败: {str(e)}")
+        return False
 
 
 def get_workflow_executions(workflow_id: str) -> List[Dict[str, Any]]:

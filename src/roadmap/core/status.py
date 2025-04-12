@@ -51,9 +51,7 @@ class RoadmapStatus:
             logger.error(f"不支持的元素类型: {element_type}")
             return {"error": f"不支持的元素类型: {element_type}", "updated": False}
 
-    def _update_milestone(
-        self, milestone_id: str, status: Optional[str], roadmap_id: str
-    ) -> Dict[str, Any]:
+    def _update_milestone(self, milestone_id: str, status: Optional[str], roadmap_id: str) -> Dict[str, Any]:
         """更新里程碑状态"""
         # 获取里程碑
         milestones = self.service.get_milestones(roadmap_id)
@@ -111,7 +109,7 @@ class RoadmapStatus:
     def _update_task(self, task_id: str, status: Optional[str], roadmap_id: str) -> Dict[str, Any]:
         """更新任务状态"""
         # 获取任务
-        tasks = self.service.list_tasks(roadmap_id)
+        tasks = self.service.get_tasks(roadmap_id)
         task = None
         for t in tasks:
             if t.get("id") == task_id:

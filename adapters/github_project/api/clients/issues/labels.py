@@ -11,10 +11,10 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from ...github_client import GitHubClient
+from ..github_client import GitHubClientBase
 
 
-class GitHubIssueLabelsClient(GitHubClient):
+class GitHubIssueLabelsClient(GitHubClientBase):
     """GitHub Issues标签客户端."""
 
     def __init__(self, token: Optional[str] = None, base_url: str = "https://api.github.com"):
@@ -27,9 +27,7 @@ class GitHubIssueLabelsClient(GitHubClient):
         super().__init__(token, base_url)
         self.logger = logging.getLogger(__name__)
 
-    def add_labels(
-        self, owner: str, repo: str, issue_number: int, labels: List[str]
-    ) -> List[Dict[str, Any]]:
+    def add_labels(self, owner: str, repo: str, issue_number: int, labels: List[str]) -> List[Dict[str, Any]]:
         """添加标签到问题.
 
         Args:
@@ -51,9 +49,7 @@ class GitHubIssueLabelsClient(GitHubClient):
             self.logger.error(f"添加标签失败: {e}")
             return []
 
-    def remove_label(
-        self, owner: str, repo: str, issue_number: int, label: str
-    ) -> List[Dict[str, Any]]:
+    def remove_label(self, owner: str, repo: str, issue_number: int, label: str) -> List[Dict[str, Any]]:
         """从问题中移除标签.
 
         Args:
@@ -106,9 +102,7 @@ class GitHubIssueLabelsClient(GitHubClient):
             self.logger.error(f"创建标签失败: {e}")
             return None
 
-    def get_labels(
-        self, owner: str, repo: str, per_page: int = 100, page: int = 1
-    ) -> List[Dict[str, Any]]:
+    def get_labels(self, owner: str, repo: str, per_page: int = 100, page: int = 1) -> List[Dict[str, Any]]:
         """获取仓库的所有标签.
 
         Args:

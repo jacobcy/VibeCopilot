@@ -2,13 +2,15 @@
 # -*- coding: utf-8 -*-
 
 """
-GitHub项目API客户端包.
+GitHub API客户端子模块包.
 
-此包包含与GitHub API交互的各种客户端实现，包括基础客户端、项目客户端和Issues客户端。
-每个客户端都专注于特定API领域的功能。
+提供具体功能的API客户端类。
 """
 
+# 导出基础客户端
 from .github_client import GitHubClientBase
+
+# 导出功能客户端
 from .issues_client import GitHubIssuesClient
 from .projects_client import GitHubProjectsClient
 from .projects_fields import GitHubProjectFieldsClient

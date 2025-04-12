@@ -32,16 +32,14 @@ def init_project(project_path: Optional[str] = None) -> bool:
     logger.info(f"初始化项目: {path}")
 
     # 创建项目目录结构
-    os.makedirs(os.path.join(path, ".vibecopilot"), exist_ok=True)
+    os.makedirs(os.path.join(path, "data/temp"), exist_ok=True)
     os.makedirs(os.path.join(path, "docs"), exist_ok=True)
 
     # 初始化状态管理器（会自动创建初始状态文件）
     state_manager = StateManager(path)
 
     # 为首个阶段的首个任务设置状态为进行中
-    state_manager.set_task_status(
-        ProjectPhase.SETUP.value, "development_tools", TaskStatus.IN_PROGRESS
-    )
+    state_manager.set_task_status(ProjectPhase.SETUP.value, "development_tools", TaskStatus.IN_PROGRESS)
 
     logger.info(f"项目初始化完成: {path}")
     logger.info("提示: 请运行 'vibecopilot status' 查看项目状态")
@@ -59,7 +57,7 @@ def show_status(project_path: Optional[str] = None) -> None:
     path = project_path or os.getcwd()
 
     # 检查项目是否已初始化
-    if not os.path.exists(os.path.join(path, ".vibecopilot")):
+    if not os.path.exists(os.path.join(path, "data/temp")):
         logger.error(f"项目未初始化: {path}")
         logger.info("提示: 请运行 'vibecopilot init' 初始化项目")
         return
@@ -79,11 +77,7 @@ def show_status(project_path: Optional[str] = None) -> None:
     print("\n阶段状态:")
     for phase_name, phase_data in report["phases"].items():
         status_symbol = (
-            "🟢"
-            if phase_data["status"] == TaskStatus.COMPLETED.value
-            else "🔄"
-            if phase_data["status"] == TaskStatus.IN_PROGRESS.value
-            else "⚪"
+            "🟢" if phase_data["status"] == TaskStatus.COMPLETED.value else "🔄" if phase_data["status"] == TaskStatus.IN_PROGRESS.value else "⚪"
         )
         print(
             f"{status_symbol} {phase_name.capitalize()}: {phase_data['progress']}% "
@@ -113,17 +107,9 @@ def show_status(project_path: Optional[str] = None) -> None:
     # 显示文档状态
     print("\n文档状态:")
     for doc_type, doc_data in report["documents"].items():
-        status_text = {"not_created": "未创建", "in_progress": "进行中", "created": "已创建"}.get(
-            doc_data["status"], doc_data["status"]
-        )
+        status_text = {"not_created": "未创建", "in_progress": "进行中", "created": "已创建"}.get(doc_data["status"], doc_data["status"])
 
-        status_symbol = (
-            "📄"
-            if doc_data["status"] == "created"
-            else "🔄"
-            if doc_data["status"] == "in_progress"
-            else "❓"
-        )
+        status_symbol = "📄" if doc_data["status"] == "created" else "🔄" if doc_data["status"] == "in_progress" else "❓"
 
         print(f"  {status_symbol} {doc_type}: {status_text}")
 

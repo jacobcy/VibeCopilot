@@ -11,10 +11,10 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from ...github_client import GitHubClient
+from ..github_client import GitHubClientBase
 
 
-class GitHubIssueCommentsClient(GitHubClient):
+class GitHubIssueCommentsClient(GitHubClientBase):
     """GitHub Issues评论客户端."""
 
     def __init__(self, token: Optional[str] = None, base_url: str = "https://api.github.com"):
@@ -27,9 +27,7 @@ class GitHubIssueCommentsClient(GitHubClient):
         super().__init__(token, base_url)
         self.logger = logging.getLogger(__name__)
 
-    def add_comment(
-        self, owner: str, repo: str, issue_number: int, body: str
-    ) -> Optional[Dict[str, Any]]:
+    def add_comment(self, owner: str, repo: str, issue_number: int, body: str) -> Optional[Dict[str, Any]]:
         """添加评论到问题.
 
         Args:
@@ -50,9 +48,7 @@ class GitHubIssueCommentsClient(GitHubClient):
             self.logger.error(f"添加评论失败: {e}")
             return None
 
-    def get_comments(
-        self, owner: str, repo: str, issue_number: int, per_page: int = 100, page: int = 1
-    ) -> List[Dict[str, Any]]:
+    def get_comments(self, owner: str, repo: str, issue_number: int, per_page: int = 100, page: int = 1) -> List[Dict[str, Any]]:
         """获取问题的评论列表.
 
         Args:
@@ -79,9 +75,7 @@ class GitHubIssueCommentsClient(GitHubClient):
             self.logger.error(f"获取评论失败: {e}")
             return []
 
-    def update_comment(
-        self, owner: str, repo: str, comment_id: int, body: str
-    ) -> Optional[Dict[str, Any]]:
+    def update_comment(self, owner: str, repo: str, comment_id: int, body: str) -> Optional[Dict[str, Any]]:
         """更新评论.
 
         Args:

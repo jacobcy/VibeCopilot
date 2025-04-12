@@ -1,0 +1,71 @@
+# 帮助命令组配置
+
+commands:
+  # 帮助基础命令
+  "help":
+    description: "显示帮助信息"
+    subcommands:
+      "command":
+        description: "要查看帮助的命令名称"
+        type: "string"
+        required: false
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+      "--format":
+        description: "输出格式"
+        values: ["text", "json", "markdown"]
+        default: "text"
+    expected_output: ["帮助信息"]
+    timeout: 5
+    critical: true
+
+  "help show":
+    description: "显示特定命令的帮助信息"
+    subcommands:
+      "command":
+        description: "要查看帮助的命令名称"
+        type: "string"
+        required: true
+      "--verbose":
+        description: "显示详细信息"
+        type: "flag"
+      "--format":
+        description: "输出格式"
+        values: ["text", "json", "markdown"]
+        default: "text"
+    expected_output: ["命令帮助信息"]
+    timeout: 5
+    critical: true
+
+# 命令组特定配置
+group_config:
+  cache_help: true           # 是否缓存帮助信息
+  cache_duration: 3600       # 缓存有效期（秒）
+  default_format: "text"     # 默认输出格式
+  show_examples: true        # 是否显示示例
+  show_related: true        # 是否显示相关命令
+
+# 帮助内容配置
+content_config:
+  show_command_type: true    # 显示命令类型（规则命令/程序命令）
+  show_subcommands: true     # 显示子命令
+  show_options: true         # 显示选项
+  show_examples: true        # 显示示例
+  show_tips: true           # 显示提示信息
+  show_related: true        # 显示相关命令
+
+# 格式化配置
+format_config:
+  use_rich: true            # 使用rich库进行格式化
+  use_color: true           # 使用颜色
+  use_emoji: true          # 使用表情符号
+  use_tables: true         # 使用表格
+  use_panels: true         # 使用面板
+
+# 验证配置
+validation:
+  check_commands: true      # 检查命令是否存在
+  validate_examples: true   # 验证示例的正确性
+  check_links: true        # 检查相关链接
+  verify_format: true      # 验证输出格式

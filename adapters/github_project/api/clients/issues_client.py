@@ -10,14 +10,14 @@ GitHub Issues API客户端模块.
 import logging
 from typing import Any, Dict, List, Optional
 
-from .github_client import GitHubClient
+from .github_client import GitHubClientBase
 from .issues.comments import GitHubIssueCommentsClient
 from .issues.core import GitHubIssuesCoreClient
 from .issues.labels import GitHubIssueLabelsClient
 from .issues.milestones import GitHubIssueMilestonesClient
 
 
-class GitHubIssuesClient(GitHubClient):
+class GitHubIssuesClient(GitHubClientBase):
     """GitHub Issues API客户端.
 
     集成多个专门的Issues子客户端，提供完整的Issues管理功能。
@@ -83,26 +83,18 @@ class GitHubIssuesClient(GitHubClient):
         labels: Optional[List[str]] = None,
     ) -> Optional[Dict[str, Any]]:
         """更新问题."""
-        return self._core.update_issue(
-            owner, repo, issue_number, title, body, state, assignees, milestone, labels
-        )
+        return self._core.update_issue(owner, repo, issue_number, title, body, state, assignees, milestone, labels)
 
     # 评论方法 (从Comments子客户端)
-    def add_comment(
-        self, owner: str, repo: str, issue_number: int, body: str
-    ) -> Optional[Dict[str, Any]]:
+    def add_comment(self, owner: str, repo: str, issue_number: int, body: str) -> Optional[Dict[str, Any]]:
         """添加评论到问题."""
         return self._comments.add_comment(owner, repo, issue_number, body)
 
-    def get_comments(
-        self, owner: str, repo: str, issue_number: int, per_page: int = 100, page: int = 1
-    ) -> List[Dict[str, Any]]:
+    def get_comments(self, owner: str, repo: str, issue_number: int, per_page: int = 100, page: int = 1) -> List[Dict[str, Any]]:
         """获取问题的评论列表."""
         return self._comments.get_comments(owner, repo, issue_number, per_page, page)
 
-    def update_comment(
-        self, owner: str, repo: str, comment_id: int, body: str
-    ) -> Optional[Dict[str, Any]]:
+    def update_comment(self, owner: str, repo: str, comment_id: int, body: str) -> Optional[Dict[str, Any]]:
         """更新评论."""
         return self._comments.update_comment(owner, repo, comment_id, body)
 
@@ -111,15 +103,11 @@ class GitHubIssuesClient(GitHubClient):
         return self._comments.delete_comment(owner, repo, comment_id)
 
     # 标签方法 (从Labels子客户端)
-    def add_labels(
-        self, owner: str, repo: str, issue_number: int, labels: List[str]
-    ) -> List[Dict[str, Any]]:
+    def add_labels(self, owner: str, repo: str, issue_number: int, labels: List[str]) -> List[Dict[str, Any]]:
         """添加标签到问题."""
         return self._labels.add_labels(owner, repo, issue_number, labels)
 
-    def remove_label(
-        self, owner: str, repo: str, issue_number: int, label: str
-    ) -> List[Dict[str, Any]]:
+    def remove_label(self, owner: str, repo: str, issue_number: int, label: str) -> List[Dict[str, Any]]:
         """从问题中移除标签."""
         return self._labels.remove_label(owner, repo, issue_number, label)
 
@@ -134,9 +122,7 @@ class GitHubIssuesClient(GitHubClient):
         """创建标签."""
         return self._labels.create_label(owner, repo, name, color, description)
 
-    def get_labels(
-        self, owner: str, repo: str, per_page: int = 100, page: int = 1
-    ) -> List[Dict[str, Any]]:
+    def get_labels(self, owner: str, repo: str, per_page: int = 100, page: int = 1) -> List[Dict[str, Any]]:
         """获取仓库的所有标签."""
         return self._labels.get_labels(owner, repo, per_page, page)
 
@@ -186,9 +172,7 @@ class GitHubIssuesClient(GitHubClient):
         """获取里程碑列表."""
         return self._milestones.get_milestones(owner, repo, state, sort, direction, per_page, page)
 
-    def get_milestone(
-        self, owner: str, repo: str, milestone_number: int
-    ) -> Optional[Dict[str, Any]]:
+    def get_milestone(self, owner: str, repo: str, milestone_number: int) -> Optional[Dict[str, Any]]:
         """获取特定里程碑."""
         return self._milestones.get_milestone(owner, repo, milestone_number)
 
@@ -203,9 +187,7 @@ class GitHubIssuesClient(GitHubClient):
         due_on: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """更新里程碑."""
-        return self._milestones.update_milestone(
-            owner, repo, milestone_number, title, state, description, due_on
-        )
+        return self._milestones.update_milestone(owner, repo, milestone_number, title, state, description, due_on)
 
     def delete_milestone(self, owner: str, repo: str, milestone_number: int) -> bool:
         """删除里程碑."""

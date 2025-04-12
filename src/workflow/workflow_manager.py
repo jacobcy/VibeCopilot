@@ -96,32 +96,30 @@ def main() -> None:
 
 
 def execute_workflow_handler(args):
-    """使用flow_session处理工作流执行的处理函数"""
-    workflow_id = args.id
-    stage = args.stage or "main"  # 默认执行main阶段
-    context_str = args.context or "{}"
-
-    import json
-
+    """处理flow execute命令"""
     try:
-        context = json.loads(context_str)
-    except json.JSONDecodeError:
-        logger.error(f"无效的上下文JSON格式: {context_str}")
-        return
+        if not args.workflow_id and not args.session_id:
+            return (StatusCode.ERROR, "请指定工作流ID或会话ID")
 
-    logger.info(f"准备执行工作流 {workflow_id} 的 {stage} 阶段")
+        # 创建服务
+        verbose = args.verbose if hasattr(args, "verbose") else False
+        flow_service = FlowService(verbose=verbose)
 
-    # 调用新的工作流执行函数
-    success, message, result = run_workflow_stage(
-        workflow_name=workflow_id, stage_name=stage, completed_items=[], instance_name=f"cli_run_{workflow_id}_{stage}"
-    )
+        # 如果指定了会话ID，则恢复会话
+        if args.session_id:
+            return flow_service.resume_workflow_execution(session_id=args.session_id, stage_id=args.stage_id, auto_advance=args.auto_advance)
 
-    if success:
-        logger.info(message)
-        if result:
-            logger.info(f"执行结果: {json.dumps(result, ensure_ascii=False, indent=2)}")
-    else:
-        logger.error(f"执行失败: {message}")
+        # 如果指定了工作流ID，则创建新会话
+        if args.workflow_id:
+            return flow_service.execute_workflow(
+                workflow_id=args.workflow_id, session_name=args.session_name, stage_id=args.stage_id, auto_advance=args.auto_advance
+            )
+
+    except Exception as e:
+        logger.error(f"执行工作流错误: {str(e)}")
+        if hasattr(args, "verbose") and args.verbose:
+            logger.exception(e)
+        return (StatusCode.ERROR, f"执行工作流错误: {str(e)}")
 
 
 if __name__ == "__main__":

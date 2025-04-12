@@ -6,14 +6,17 @@
 
 from src.flow_session.session.manager import FlowSessionManager
 from src.flow_session.session.operations import (
-    abort_session,
+    close_session,
     complete_session,
     create_session,
     delete_session,
     get_session,
+    get_session_progress,
+    get_session_stages,
     list_sessions,
     pause_session,
     resume_session,
+    set_current_stage,
     update_session,
 )
 
@@ -27,5 +30,8 @@ __all__ = [
     "pause_session",
     "resume_session",
     "complete_session",
-    "abort_session",
+    "close_session",
+    "get_session_stages",
+    "get_session_progress",
+    "set_current_stage",
 ]

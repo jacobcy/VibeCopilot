@@ -68,7 +68,6 @@ pnpm-lock.yaml
 
 # Obsidian
 .obsidian/
-backups/
 
 # Private individual user cursor rules
 .cursor/rules/_*.mdc
@@ -79,6 +78,8 @@ backups/
 # App specific
 external/
 .vibecopilot/
+backup/
+data/
 
 # Database and cache files
 *.db

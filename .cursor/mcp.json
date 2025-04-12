@@ -5,37 +5,79 @@
         "args": [
           "-y",
           "@modelcontextprotocol/server-filesystem",
-          "~/Public/VibeCopilot"
-        ]
+          "/Users/jacobcy/Public/VibeCopilot"
+        ],
+        "env": {},
+        "capabilities": {
+          "filesystem": true
+        }
       },
       "sequential-thinking": {
         "command": "npx",
         "args": [
           "-y",
           "@modelcontextprotocol/server-sequential-thinking"
-        ]
+        ],
+        "env": {},
+        "capabilities": {
+          "tools": true
+        }
       },
       "time": {
         "command": "uvx",
         "args": [
           "mcp-server-time",
           "--local-timezone",
-          "Asia/Shanghai"]
+          "Asia/Shanghai"
+        ],
+        "env": {},
+        "capabilities": {
+          "tools": true
+        }
       },
       "basic-memory": {
         "command": "uvx",
         "args": [
           "basic-memory",
           "mcp"
-        ]
+        ],
+        "env": {},
+        "capabilities": {
+          "tools": true,
+          "resources": true
+        }
       },
       "git": {
         "command": "uvx",
         "args": [
           "mcp-server-git",
           "--repository",
-          "~/Public/VibeCopilot"
-        ]
+          "/Users/jacobcy/Public/VibeCopilot"
+        ],
+        "env": {},
+        "capabilities": {
+          "tools": true
+        }
+      },
+      "vibe-copilot": {
+        "command": "python",
+        "env": {
+          "PYTHONPATH": "/Users/jacobcy/Public/VibeCopilot"
+        },
+        "args": [
+          "/Users/jacobcy/Public/VibeCopilot/src/cursor/server.py",
+          "--workspace",
+          "/Users/jacobcy/Public/VibeCopilot"
+        ],
+        "capabilities": {
+          "tools": true,
+          "prompts": true,
+          "resources": true,
+          "logging": true,
+          "completion": true
+        }
       }
-    }
+    },
+    "version": "1.0.0",
+    "transport": "stdio"
   }
