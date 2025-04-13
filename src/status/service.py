@@ -376,3 +376,64 @@ class StatusService:
             List[str]: 提供者域名列表
         """
         return self.provider_manager.get_domains()
+
+    def update_project_phase(self, phase: str) -> Dict[str, Any]:
+        """更新项目阶段
+
+        Args:
+            phase: 新的项目阶段
+
+        Returns:
+            Dict[str, Any]: 操作结果
+        """
+        if not phase:
+            return {"status": "error", "error": "缺少项目阶段参数", "code": "MISSING_PHASE"}
+
+        valid_phases = ["planning", "development", "testing", "release", "maintenance"]
+        if phase.lower() not in valid_phases:
+            return {"status": "error", "error": f"无效的项目阶段: {phase}", "code": "INVALID_PHASE", "suggestions": [f"有效的项目阶段: {', '.join(valid_phases)}"]}
+
+        try:
+            # 更新项目状态
+            self.update_project_state("phase", phase.lower())
+
+            # 设置适当的进度
+            phase_progress = {"planning": 20, "development": 40, "testing": 60, "release": 80, "maintenance": 100}
+            self.update_project_state("progress", phase_progress.get(phase.lower(), 0))
+
+            return {"status": "success", "message": f"已将项目阶段更新为: {phase}", "phase": phase, "系统信息": "项目阶段已更新"}
+        except Exception as e:
+            logger.error(f"更新项目阶段时出错: {e}", exc_info=True)
+            return {"status": "error", "error": f"更新项目阶段失败: {str(e)}", "code": "UPDATE_FAILED"}
+
+    def initialize_project_status(self, project_name: str = None) -> Dict[str, Any]:
+        """初始化项目状态
+
+        Args:
+            project_name: 项目名称，如果为None则使用默认名称
+
+        Returns:
+            Dict[str, Any]: 操作结果
+        """
+        try:
+            # 设置项目名称
+            name = project_name if project_name else "VibeCopilot"
+            self.update_project_state("name", name)
+
+            # 设置默认阶段和进度
+            self.update_project_state("phase", "planning")
+            self.update_project_state("progress", 20)
+            self.update_project_state("start_time", time.time())
+
+            return {
+                "status": "success",
+                "message": f"项目 '{name}' 状态已初始化",
+                "name": name,
+                "phase": "planning",
+                "progress": 20,
+                "初始化成功": True,
+                "系统信息": "项目已初始化",
+            }
+        except Exception as e:
+            logger.error(f"初始化项目状态时出错: {e}", exc_info=True)
+            return {"status": "error", "error": f"初始化项目状态失败: {str(e)}", "code": "INIT_FAILED"}

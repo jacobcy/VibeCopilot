@@ -13,103 +13,107 @@ from rich.panel import Panel
 from src.db import get_session_factory
 from src.db.repositories.task_repository import TaskCommentRepository, TaskRepository
 
-from .base_command import BaseCommand
-
 logger = logging.getLogger(__name__)
 console = Console()
 
 
-class CommentTaskCommand(BaseCommand):
-    """添加任务评论命令
+@click.command(name="comment", help="添加任务评论")
+@click.argument("task_id")
+@click.option("--comment", "-c", required=True, help="要添加的评论")
+@click.option("--author", "-a", help="评论作者")
+def comment_task(task_id: str, comment: str, author: Optional[str] = None) -> int:
+    """为指定的任务添加评论。
 
-    为指定的任务添加评论。评论支持Markdown格式，可以包含富文本内容。
+    评论支持Markdown格式，可以包含富文本内容。
     评论将按时间顺序保存，并可以通过task show命令查看。
 
     参数:
         task_id: 要评论的任务ID
-        content: 评论内容 (必需，支持Markdown格式)
+        comment: 评论内容 (必需，支持Markdown格式)
         author: 评论者名称 (可选，默认为当前用户或系统)
-
-    示例:
-        vibecopilot task comment abc123 -c "修复了问题" -a "开发者"
-        vibecopilot task comment def456 --content "# 更新进度\n- 完成功能A\n- 测试通过"
     """
+    try:
+        # 调用核心逻辑
+        result = execute_comment_task(task_id=task_id, content=comment, author=author)
 
-    def __init__(self):
-        super().__init__("comment", "为指定的任务添加评论")
+        # 处理执行结果
+        if result["status"] == "success":
+            console.print(f"[bold green]成功:[/bold green] {result['message']}")
+            if result.get("data"):
+                # 显示评论预览
+                comment_data = result["data"]
+                comment_panel = Panel(
+                    Markdown(comment_data.get("content", "")),
+                    title=f"评论者: {comment_data.get('author', '匿名')} @ {comment_data.get('created_at', '')}",
+                    border_style="cyan",
+                    title_align="left",
+                )
+                console.print(comment_panel)
+            return 0
+        else:
+            console.print(f"[bold red]错误:[/bold red] {result['message']}")
+            return 1
 
-    def execute(
-        self,
-        task_id: str,
-        content: str,
-        author: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """执行添加任务评论的逻辑"""
-        logger.info(f"执行添加评论命令: task_id={task_id}, author={author}")
+    except Exception as e:
+        logger.error(f"添加评论时出错: {e}", exc_info=True)
+        console.print(f"[bold red]错误:[/bold red] {e}")
+        return 1
 
-        results = {
-            "status": "success",
-            "code": 0,
-            "message": "",
-            "data": None,
-            "meta": {
-                "command": "task comment",
-                "args": {"task_id": task_id, "author": author},
-            },
-        }
 
-        if not content or content.isspace():
-            results["status"] = "error"
-            results["code"] = 400
-            results["message"] = "评论内容不能为空。"
-            if not self.is_agent_mode(locals()):
-                console.print("[bold red]错误:[/bold red] 评论内容不能为空。")
-            return results
+def execute_comment_task(
+    task_id: str,
+    content: str,
+    author: Optional[str] = None,
+) -> Dict[str, Any]:
+    """执行添加任务评论的核心逻辑"""
+    logger.info(f"执行添加评论命令: task_id={task_id}, author={author}")
 
-        try:
-            session_factory = get_session_factory()
-            with session_factory() as session:
-                task_repo = TaskRepository(session)
-                comment_repo = TaskCommentRepository(session)
+    results = {
+        "status": "success",
+        "code": 0,
+        "message": "",
+        "data": None,
+        "meta": {
+            "command": "task comment",
+            "args": {"task_id": task_id, "author": author},
+        },
+    }
 
-                # 检查任务是否存在
-                task = task_repo.get_by_id(task_id)
-                if not task:
-                    results["status"] = "error"
-                    results["code"] = 404
-                    results["message"] = f"添加评论失败：未找到 Task ID: {task_id}"
-                    if not self.is_agent_mode(locals()):
-                        console.print(f"[bold red]错误:[/bold red] 未找到 Task ID: {task_id}")
-                    return results
-
-                # 添加评论
-                new_comment = comment_repo.add_comment(task_id=task_id, content=content, author=author)
-                session.commit()
-
-                comment_dict = new_comment.to_dict()
-                results["data"] = comment_dict
-                results["message"] = f"成功为任务 {task_id} 添加评论 (ID: {new_comment.id})"
-
-                # 控制台输出 (非 Agent 模式)
-                if not self.is_agent_mode(locals()):
-                    console.print(f"[bold green]成功:[/bold green] 已为任务 {task_id} 添加评论。")
-                    comment_panel = Panel(
-                        Markdown(new_comment.content),
-                        title=f"评论者: {new_comment.author or '匿名'} @ {new_comment.created_at.strftime('%Y-%m-%d %H:%M')}",
-                        border_style="cyan",
-                        title_align="left",
-                    )
-                    console.print(comment_panel)
-
-        except Exception as e:
-            logger.error(f"添加评论时出错: {e}", exc_info=True)
-            results["status"] = "error"
-            results["code"] = 500
-            results["message"] = f"添加评论时出错: {e}"
-            console.print(f"[bold red]错误:[/bold red] {e}")
-
+    if not content or content.isspace():
+        results["status"] = "error"
+        results["code"] = 400
+        results["message"] = "评论内容不能为空。"
+        console.print("[bold red]错误:[/bold red] 评论内容不能为空。")
         return results
 
-    def is_agent_mode(self, args: Dict[str, Any]) -> bool:
-        """检查是否处于 Agent 模式"""
-        return False
+    try:
+        session_factory = get_session_factory()
+        with session_factory() as session:
+            task_repo = TaskRepository(session)
+            comment_repo = TaskCommentRepository(session)
+
+            # 检查任务是否存在
+            task = task_repo.get_by_id(task_id)
+            if not task:
+                results["status"] = "error"
+                results["code"] = 404
+                results["message"] = f"添加评论失败：未找到 Task ID: {task_id}"
+                console.print(f"[bold red]错误:[/bold red] 未找到 Task ID: {task_id}")
+                return results
+
+            # 添加评论
+            new_comment = comment_repo.add_comment(task_id=task_id, content=content, author=author)
+            session.commit()
+
+            comment_dict = new_comment.to_dict()
+            results["data"] = comment_dict
+            results["message"] = f"成功为任务 {task_id} 添加评论 (ID: {new_comment.id})"
+
+    except Exception as e:
+        logger.error(f"添加评论时出错: {e}", exc_info=True)
+        results["status"] = "error"
+        results["code"] = 500
+        results["message"] = f"添加评论时出错: {e}"
+        console.print(f"[bold red]错误:[/bold red] {e}")
+
+    return results

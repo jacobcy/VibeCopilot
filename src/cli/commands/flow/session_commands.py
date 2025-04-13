@@ -4,9 +4,8 @@
 提供工作流会话相关命令的实现，包括列表、查看、切换、暂停、恢复等功能。
 """
 
-import argparse
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import click
 from rich.console import Console
@@ -57,10 +56,9 @@ def list_sessions(service: FlowService, verbose: bool, format: str, status: Opti
         if verbose:
             console.print("正在获取会话列表...")
 
-        # 调用处理函数
-        success, message, data = handle_session_command(
-            argparse.Namespace(subcommand="list", verbose=verbose, format=format, status=status, workflow=workflow)
-        )
+        # 使用命令参数直接传递，不再创建argparse.Namespace对象
+        params = {"subcommand": "list", "verbose": verbose, "format": format, "status": status, "workflow": workflow}
+        success, message, data = handle_session_command(params)
 
         if success:
             if verbose:
@@ -96,8 +94,9 @@ def switch_session(service: FlowService, id_or_name: Optional[str], verbose: boo
         if verbose:
             console.print(f"切换到会话: {id_or_name}")
 
-        # 调用处理函数
-        success, message, data = handle_session_command(argparse.Namespace(subcommand="switch", id_or_name=id_or_name, verbose=verbose))
+        # 使用命令参数直接传递
+        params = {"subcommand": "switch", "id_or_name": id_or_name, "verbose": verbose}
+        success, message, data = handle_session_command(params)
 
         if success:
             session_info = data.get("session", {})
@@ -138,8 +137,9 @@ def show_session(service: FlowService, id_or_name: Optional[str], verbose: bool,
         if verbose:
             console.print(f"获取会话详情: {id_or_name}")
 
-        # 调用处理函数
-        success, message, data = handle_session_command(argparse.Namespace(subcommand="show", id_or_name=id_or_name, verbose=verbose, format=format))
+        # 使用命令参数直接传递
+        params = {"subcommand": "show", "id_or_name": id_or_name, "verbose": verbose, "format": format}
+        success, message, data = handle_session_command(params)
 
         if success:
             if verbose:
@@ -159,7 +159,7 @@ def show_session(service: FlowService, id_or_name: Optional[str], verbose: bool,
 @click.option("--task", "-t", required=False, help="Task ID to associate with the session")
 @click.option("--verbose", "-v", is_flag=True, help="Show verbose output")
 @pass_service(service_type="flow")
-def create_session(service: FlowService, workflow: str, name: str, task: str, verbose: bool) -> None:
+def create_session(service: FlowService, workflow: str, name: Optional[str], task: Optional[str], verbose: bool) -> None:
     """创建工作流会话
 
     创建新的工作流会话并将其设置为当前活动会话。
@@ -176,10 +176,9 @@ def create_session(service: FlowService, workflow: str, name: str, task: str, ve
             if task:
                 console.print(f"关联到任务: {task}")
 
-        # 调用处理函数
-        success, message, data = handle_session_command(
-            argparse.Namespace(subcommand="create", workflow_id=workflow, name=name, task_id=task, verbose=verbose)
-        )
+        # 使用命令参数直接传递
+        params = {"subcommand": "create", "workflow_id": workflow, "name": name, "task_id": task, "verbose": verbose}
+        success, message, data = handle_session_command(params)
 
         if success:
             session_info = data.get("session", {})
@@ -228,10 +227,9 @@ def close_session(service: FlowService, id_or_name: Optional[str], reason: Optio
         if verbose:
             console.print(f"结束会话: {id_or_name}")
 
-        # 调用处理函数
-        success, message, data = handle_session_command(
-            argparse.Namespace(subcommand="close", id_or_name=id_or_name, reason=reason, force=force, verbose=verbose)
-        )
+        # 使用命令参数直接传递
+        params = {"subcommand": "close", "id_or_name": id_or_name, "reason": reason, "force": force, "verbose": verbose}
+        success, message, data = handle_session_command(params)
 
         if success:
             session_info = data.get("session", {})
@@ -276,8 +274,9 @@ def delete_session(service: FlowService, id_or_name: Optional[str], force: bool,
         if verbose:
             console.print(f"删除会话: {id_or_name}")
 
-        # 调用处理函数
-        success, message, data = handle_session_command(argparse.Namespace(subcommand="delete", id_or_name=id_or_name, force=force, verbose=verbose))
+        # 使用命令参数直接传递
+        params = {"subcommand": "delete", "id_or_name": id_or_name, "force": force, "verbose": verbose}
+        success, message, data = handle_session_command(params)
 
         if success:
             console.print(f"[green]已永久删除会话: {id_or_name}[/green]")
@@ -315,10 +314,9 @@ def update_session(service: FlowService, id_or_name: Optional[str], name: Option
             console.print("[yellow]请指定至少一个要更新的属性 (例如: --name 或 --status)[/yellow]")
             return
 
-        # 调用处理函数
-        success, message, data = handle_session_command(
-            argparse.Namespace(subcommand="update", id_or_name=id_or_name, name=name, status=status, verbose=verbose)
-        )
+        # 使用命令参数直接传递
+        params = {"subcommand": "update", "id_or_name": id_or_name, "name": name, "status": status, "verbose": verbose}
+        success, message, data = handle_session_command(params)
 
         if success:
             session_info = data.get("session", {})

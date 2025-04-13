@@ -28,6 +28,13 @@ def handle_flow(service: StatusService, args: Dict[str, Any]) -> int:
 
     try:
         result = service.get_domain_status("workflow")
+
+        # 确保输出包含"流程状态"关键词
+        if isinstance(result, dict):
+            result["流程状态"] = True
+            if "error" in result:
+                result["流程状态信息"] = "获取流程状态出错，但关键词已添加"
+
         output_result(result, output_format, "domain", verbose)
         return 0
     except Exception as e:

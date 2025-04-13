@@ -6,19 +6,15 @@
 提供命令行工具的主入口，处理命令行参数并调用对应的命令处理器。
 """
 
-# 配置日志
 import logging
 import os
 import sys
-from typing import Dict, Type
 
 import click
 from rich.console import Console
 
-from src.cli.command import Command
 from src.cli.commands.db.db_click import db as db_click_group
 from src.cli.commands.flow.flow_main import flow as flow_click_group
-from src.cli.commands.help.help_click import help as help_command
 from src.cli.commands.memory.memory_click import memory as memory_click_group
 from src.cli.commands.roadmap.roadmap_click import roadmap as roadmap_click_group
 from src.cli.commands.rule.rule_click import rule as rule_click_group
@@ -39,29 +35,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 console = Console()
 
-# 命令映射
-COMMANDS: Dict[str, Type[Command]] = {
-    "status": status_command,
-    "db": db_click_group,
-    "help": help_command,
-    "task": task_click_group,
-}
-
-# 命令分组
-COMMAND_GROUPS = {"基础命令": ["status", "help"], "开发工具": ["rule", "flow", "task"], "数据管理": ["db", "memory"], "项目管理": ["roadmap", "template"]}
-
-
-def create_cli_command(command_class: Type[Command]):
-    """为命令类创建Click命令"""
-
-    @click.command(help=command_class.__doc__ or "暂无帮助信息")
-    @click.argument("args", nargs=-1)
-    @friendly_error_handling
-    def command_func(args):
-        cmd = command_class()
-        return cmd.execute(list(args))
-
-    return command_func
+# 命令分组（用于帮助显示）
+COMMAND_GROUPS = {"基础命令": ["status"], "开发工具": ["rule", "flow", "template"], "数据管理": ["db", "memory"], "项目管理": ["roadmap", "task"]}
 
 
 def print_version(ctx, param, value):
@@ -77,23 +52,24 @@ def print_version(ctx, param, value):
 def get_cli_app():
     """获取CLI应用实例"""
 
-    @click.group(help="VibeCopilot CLI工具")
+    @click.group(help="VibeCopilot CLI工具", context_settings={"help_option_names": ["-h", "--help"]})
     @click.option("--version", is_flag=True, callback=print_version, expose_value=False, is_eager=True, help="显示版本信息")
     def cli():
+        """VibeCopilot 命令行工具
+
+        使用 --help 选项查看可用命令和选项
+        """
         pass
 
-    # 注册命令
-    for cmd_name, cmd_class in COMMANDS.items():
-        cli.add_command(create_cli_command(cmd_class), cmd_name)
-
-    # 添加Click命令组
-    cli.add_command(rule_click_group, name="rule")
-    cli.add_command(roadmap_click_group, name="roadmap")
-    cli.add_command(db_click_group, name="db")
-    cli.add_command(flow_click_group, name="flow")
-    cli.add_command(memory_click_group, name="memory")
-    cli.add_command(template_command, name="template")
-    cli.add_command(task_click_group, name="task")
+    # 使用 Click 方式注册所有命令
+    cli.add_command(status_command)
+    cli.add_command(rule_click_group)
+    cli.add_command(roadmap_click_group)
+    cli.add_command(db_click_group)
+    cli.add_command(flow_click_group)
+    cli.add_command(memory_click_group)
+    cli.add_command(template_command)
+    cli.add_command(task_click_group)
 
     return cli
 
@@ -106,9 +82,9 @@ def print_error_message(command: str):
     for group, commands in COMMAND_GROUPS.items():
         console.print(f"\n[bold]{group}[/bold]")
         for cmd in commands:
-            if cmd in COMMANDS:
-                cmd_class = COMMANDS[cmd]
-                console.print(f"  {cmd:<10} {cmd_class.__doc__ or '暂无描述'}")
+            console.print(f"  {cmd}")
+
+    console.print("\n使用 [bold]vibecopilot --help[/bold] 查看详细帮助信息")
 
 
 def main():
@@ -117,21 +93,25 @@ def main():
         # 预准备数据库
         ensure_tables_exist(force_recreate=False)
 
+        # 执行CLI命令
         cli = get_cli_app()
-        cli(standalone_mode=False)
+        cli()
+        return 0  # 成功执行返回 0
     except click.exceptions.NoSuchOption as e:
         console.print(f"\n[bold red]错误:[/bold red] 无效的选项: {e.option_name}")
         console.print(f"使用 [bold]vibecopilot {e.ctx.command.name} --help[/bold] 查看有效的选项")
+        return 1
     except click.exceptions.UsageError as e:
         if "No such command" in str(e):
             command = str(e).split('"')[1]
             print_error_message(command)
         else:
             console.print(f"\n[bold red]错误:[/bold red] {str(e)}")
+        return 1
     except Exception as e:
         logger.exception("命令执行出错")
         console.print(f"\n[bold red]错误:[/bold red] {str(e)}")
-    sys.exit(1)
+        return 1
 
 
 if __name__ == "__main__":

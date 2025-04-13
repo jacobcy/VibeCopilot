@@ -4,8 +4,6 @@
 包含所有数据库相关的命令
 """
 
-import argparse
-import json
 import logging
 from typing import Dict, List, Optional
 
@@ -37,11 +35,6 @@ def init_db(service, verbose: bool, force: bool) -> None:
     try:
         # 创建参数字典，与InitHandler兼容
         args_dict = {"verbose": verbose, "force": force, "service": service}
-
-        # 创建argparse.Namespace对象模拟argparse解析的结果
-        import argparse
-
-        args_namespace = argparse.Namespace(**args_dict)
 
         # 实例化并执行InitHandler
         from src.cli.commands.db.handlers.init_handler import InitHandler

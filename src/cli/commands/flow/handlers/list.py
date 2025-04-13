@@ -1,7 +1,7 @@
 """
 Flow 'list' subcommand handler.
 """
-import argparse
+
 import logging
 from typing import Any, Dict
 

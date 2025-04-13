@@ -60,6 +60,15 @@ python -m src.health.cli check --module command --category flow
 
 # 显示详细检查信息
 python -m src.health.cli check --verbose
+
+# 运行所有检查并生成Markdown格式报告
+python -m src.health.cli check --format markdown --output health_report.md
+
+# 只检查数据库并输出为纯文本格式
+python -m src.health.cli check --module database --format text
+
+# 检查特定命令类别
+python -m src.health.cli check --module command --category 任务管理
 ```
 
 ### 配置文件

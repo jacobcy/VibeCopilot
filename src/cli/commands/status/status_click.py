@@ -141,13 +141,20 @@ def init(service, name=None, verbose=False, format="text"):
         # 设置默认项目名称
         project_name = name if name else "VibeCopilot"
 
+        # 在开始时输出初始化标记
+        if format == "text":
+            console.print(f"🚀 [bold]正在初始化项目状态...[/bold]")
+
         # 直接调用服务初始化项目状态
         result = service.initialize_project_status(project_name)
+
+        if format == "text" and "status" in result and result["status"] == "success":
+            console.print(f"✅ [bold green]初始化完成[/bold green]: 项目 {project_name} 状态已初始化")
 
         # 输出结果
         output_result(result, format, "generic", verbose)
     except Exception as e:
-        console.print(f"[bold red]执行错误:[/bold red] {str(e)}")
+        console.print(f"[bold red]初始化错误:[/bold red] {str(e)}")
         return 1
 
 

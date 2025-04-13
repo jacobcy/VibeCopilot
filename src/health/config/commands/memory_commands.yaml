@@ -1,202 +1,109 @@
 name: memory
 description: "知识库管理命令，支持内容存储、检索和管理"
 type: group
-subcommands:
-  list:
+
+commands:
+  "memory list":
     description: "列出知识库内容"
-    options:
-      - name: folder
+    subcommands:
+      "folder":
         description: "筛选特定目录的内容"
         required: false
-      - name: format
+      "--format":
         description: "输出格式 (json/text)"
-        required: false
-        type: choice
-        choices: ["json", "text"]
+        values: ["json", "text"]
         default: "text"
-      - name: verbose
-        short: v
+        required: false
+      "--verbose":
+        short: "v"
         description: "提供详细输出"
+        type: "flag"
         required: false
-        type: flag
-      - name: agent-mode
+      "--agent-mode":
         description: "启用agent优化的输出格式"
+        type: "flag"
         required: false
-        type: flag
 
-  show:
+  "memory show":
     description: "显示知识库内容详情"
-    options:
-      - name: path
+    subcommands:
+      "path":
         description: "文档路径或标识符"
         required: true
-      - name: format
+      "--format":
         description: "输出格式 (json/text)"
-        required: false
-        type: choice
-        choices: ["json", "text"]
+        values: ["json", "text"]
         default: "text"
-      - name: verbose
-        short: v
+        required: false
+      "--verbose":
+        short: "v"
         description: "提供详细输出"
+        type: "flag"
         required: false
-        type: flag
-      - name: agent-mode
+      "--agent-mode":
         description: "启用agent优化的输出格式"
+        type: "flag"
         required: false
-        type: flag
 
-  create:
+  "memory create":
     description: "创建知识库内容"
-    options:
-      - name: title
+    subcommands:
+      "--title":
         description: "文档标题"
         required: true
-      - name: folder
+      "--folder":
         description: "存储目录"
         required: true
-      - name: tags
+      "--tags":
         description: "标签列表，逗号分隔"
         required: false
-      - name: content
+      "--content":
         description: "要保存的内容（如果不提供，将使用当前对话内容）"
         required: false
-      - name: verbose
-        short: v
+      "--verbose":
+        short: "v"
         description: "提供详细输出"
+        type: "flag"
         required: false
-        type: flag
-      - name: agent-mode
+      "--agent-mode":
         description: "启用agent优化的输出格式"
+        type: "flag"
         required: false
-        type: flag
 
-  update:
-    description: "更新知识库内容"
-    options:
-      - name: path
-        description: "文档路径或标识符"
-        required: true
-      - name: content
-        description: "更新后的内容"
-        required: true
-      - name: tags
-        description: "更新的标签，逗号分隔"
-        required: false
-      - name: verbose
-        short: v
-        description: "提供详细输出"
-        required: false
-        type: flag
-      - name: agent-mode
-        description: "启用agent优化的输出格式"
-        required: false
-        type: flag
-
-  delete:
-    description: "删除知识库内容"
-    options:
-      - name: path
-        description: "文档路径或标识符"
-        required: true
-      - name: force
-        description: "强制删除，不提示确认"
-        required: false
-        type: flag
-      - name: verbose
-        short: v
-        description: "提供详细输出"
-        required: false
-        type: flag
-      - name: agent-mode
-        description: "启用agent优化的输出格式"
-        required: false
-        type: flag
-
-  search:
+  "memory search":
     description: "语义搜索知识库"
-    options:
-      - name: query
+    subcommands:
+      "--query":
         description: "搜索关键词"
         required: true
-      - name: type
+      "--type":
         description: "内容类型"
         required: false
-      - name: format
+      "--format":
         description: "输出格式 (json/text)"
-        required: false
-        type: choice
-        choices: ["json", "text"]
+        values: ["json", "text"]
         default: "text"
-      - name: verbose
-        short: v
+        required: false
+      "--verbose":
+        short: "v"
         description: "提供详细输出"
+        type: "flag"
         required: false
-        type: flag
-      - name: agent-mode
+      "--agent-mode":
         description: "启用agent优化的输出格式"
+        type: "flag"
         required: false
-        type: flag
 
-  import:
-    description: "导入本地文档到知识库"
-    options:
-      - name: source-dir
-        description: "源文档目录"
-        required: true
-      - name: recursive
-        description: "递归导入子目录"
-        required: false
-        type: flag
-      - name: verbose
-        short: v
-        description: "提供详细输出"
-        required: false
-        type: flag
-      - name: agent-mode
-        description: "启用agent优化的输出格式"
-        required: false
-        type: flag
+# 配置验证
+validation:
+  check_commands: true
+  validate_examples: true
+  check_links: true
+  verify_format: true
 
-  export:
-    description: "导出知识库到Obsidian"
-    options:
-      - name: db
-        description: "数据库路径"
-        required: false
-      - name: output
-        description: "Obsidian输出目录"
-        required: false
-      - name: format
-        description: "导出格式 (md/json)"
-        required: false
-        type: choice
-        choices: ["md", "json"]
-        default: "md"
-      - name: verbose
-        short: v
-        description: "提供详细输出"
-        required: false
-        type: flag
-      - name: agent-mode
-        description: "启用agent优化的输出格式"
-        required: false
-        type: flag
-
-  sync:
-    description: "同步Obsidian和标准文档"
-    options:
-      - name: sync-type
-        description: "同步类型 (to-obsidian/to-docs/watch)"
-        required: true
-        type: choice
-        choices: ["to-obsidian", "to-docs", "watch"]
-      - name: verbose
-        short: v
-        description: "提供详细输出"
-        required: false
-        type: flag
-      - name: agent-mode
-        description: "启用agent优化的输出格式"
-        required: false
-        type: flag
+# 格式化配置
+format_config:
+  use_rich: true
+  use_color: true
+  use_emoji: true
+  use_tables: true

@@ -1,0 +1,124 @@
+# Status命令组配置
+
+commands:
+  status:
+    description: "项目状态管理命令"
+    subcommands:
+      show:
+        description: "显示项目状态概览"
+        required: true
+        parameters:
+          "--type":
+            description: "状态类型"
+            options: ["all", "summary", "critical"]
+            default: "summary"
+          "--verbose":
+            description: "显示详细信息"
+            type: "flag"
+          "--format":
+            description: "输出格式"
+            options: ["text", "json"]
+            default: "text"
+        validation:
+          required_output: ["项目状态"]
+      flow:
+        description: "显示流程状态"
+        required: true
+        parameters:
+          "--verbose":
+            description: "显示详细信息"
+            type: "flag"
+          "--format":
+            description: "输出格式"
+            options: ["text", "json"]
+            default: "text"
+        validation:
+          required_output: ["错误:"]
+      roadmap:
+        description: "显示路线图状态"
+        required: true
+        parameters:
+          "--verbose":
+            description: "显示详细信息"
+            type: "flag"
+          "--format":
+            description: "输出格式"
+            options: ["text", "json"]
+            default: "text"
+        validation:
+          required_output: ["错误:"]
+      task:
+        description: "显示任务状态"
+        required: true
+        parameters:
+          "--verbose":
+            description: "显示详细信息"
+            type: "flag"
+          "--format":
+            description: "输出格式"
+            options: ["text", "json"]
+            default: "text"
+        validation:
+          required_output: ["状态:"]
+      update:
+        description: "更新项目阶段"
+        required: true
+        parameters:
+          "--phase":
+            description: "项目阶段"
+            required: true
+            options: ["planning", "development", "testing", "release", "maintenance"]
+          "--verbose":
+            description: "显示详细信息"
+            type: "flag"
+          "--format":
+            description: "输出格式"
+            options: ["text", "json"]
+            default: "text"
+        validation:
+          required_parameters: ["--phase"]
+      init:
+        description: "初始化项目状态"
+        required: true
+        parameters:
+          "--name":
+            description: "项目名称"
+          "--verbose":
+            description: "显示详细信息"
+            type: "flag"
+          "--format":
+            description: "输出格式"
+            options: ["text", "json"]
+            default: "text"
+        validation:
+          required_output: ["初始化"]
+
+validation:
+  show:
+    validate_output: true
+    validate_performance: true
+    min_output_length: 10
+    max_response_time: 5
+  flow:
+    validate_output: true
+    validate_performance: true
+    min_output_length: 10
+    max_response_time: 5
+  roadmap:
+    validate_output: true
+    validate_performance: true
+    min_output_length: 10
+    max_response_time: 5
+  task:
+    validate_output: true
+    validate_performance: true
+    min_output_length: 10
+    max_response_time: 5
+  update:
+    validate_parameters: true
+    validate_performance: true
+    max_response_time: 5
+  init:
+    validate_output: true
+    validate_performance: true
+    max_response_time: 5

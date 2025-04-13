@@ -2,12 +2,8 @@
 
 commands:
   "roadmap sync":
-    description: "从GitHub同步路线图数据"
+    description: "从GitHub同步路线图数据 (用法: roadmap sync [OPTIONS] REPOSITORY)"
     subcommands:
-      "--repository":
-        description: "GitHub仓库名称"
-        type: "string"
-        required: true
       "--theme":
         description: "GitHub项目主题标签"
         type: "string"
@@ -79,16 +75,8 @@ commands:
     critical: true
 
   "roadmap create":
-    description: "创建新的路线图元素"
+    description: "创建新的路线图元素 (用法: roadmap create [OPTIONS] {milestone|epic|story} TITLE)"
     subcommands:
-      "type":
-        description: "元素类型"
-        values: ["milestone", "epic", "story"]
-        required: true
-      "title":
-        description: "元素标题"
-        type: "string"
-        required: true
       "--epic":
         description: "所属史诗ID (用于story)"
         type: "string"
@@ -109,20 +97,8 @@ commands:
     critical: true
 
   "roadmap update":
-    description: "更新路线图元素状态"
+    description: "更新路线图元素状态 (用法: roadmap update [OPTIONS] {milestone|story|task} ID STATUS)"
     subcommands:
-      "type":
-        description: "元素类型"
-        values: ["milestone", "story", "task"]
-        required: true
-      "id":
-        description: "元素ID"
-        type: "string"
-        required: true
-      "status":
-        description: "新状态"
-        type: "string"
-        required: true
       "--sync":
         description: "同步到GitHub"
         type: "flag"
@@ -280,16 +256,8 @@ commands:
     critical: true
 
   "roadmap delete":
-    description: "删除路线图或元素"
+    description: "删除路线图或元素 (用法: roadmap delete [OPTIONS] {roadmap|milestone|task} ID)"
     subcommands:
-      "type":
-        description: "删除类型"
-        values: ["roadmap", "milestone", "task"]
-        required: true
-      "id":
-        description: "要删除的ID"
-        type: "string"
-        required: true
       "--force":
         description: "强制删除，不请求确认"
         type: "flag"

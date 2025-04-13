@@ -7,7 +7,7 @@
 """
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 from rich.console import Console
 from rich.table import Table
@@ -21,18 +21,32 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+def handle_session_command(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     处理session子命令，直接调用flow_session的CLI函数
 
     Args:
-        args: 命令行参数
+        args: 命令行参数，可以是字典或argparse.Namespace对象
 
     Returns:
         包含状态、消息和数据的元组
     """
+    # 将字典转换为类似Namespace的对象以支持getattr
+    if isinstance(args, dict):
+
+        class DictWrapper:
+            def __init__(self, data):
+                self.__data = data
+
+            def __getattr__(self, name):
+                return self.__data.get(name)
+
+        args_obj = DictWrapper(args)
+    else:
+        args_obj = args
+
     # 检查是否没有提供action子命令
-    if not hasattr(args, "subcommand") and not hasattr(args, "action"):
+    if not hasattr(args_obj, "subcommand") and not hasattr(args_obj, "action"):
         # 创建一个更友好的错误提示
         console.print("\n[bold red]错误:[/bold red] 请指定一个会话操作\n")
 
@@ -56,7 +70,7 @@ def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any
         return False, "请指定一个会话操作", None
 
     # 获取action
-    action = getattr(args, "subcommand", None) or getattr(args, "action", None)
+    action = getattr(args_obj, "subcommand", None) or getattr(args_obj, "action", None)
 
     try:
         # 获取数据库会话
@@ -66,24 +80,24 @@ def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any
         try:
             # 根据操作调用相应的函数
             if action == "list":
-                status = getattr(args, "status", None)
-                workflow = getattr(args, "workflow", None)
-                format_type = getattr(args, "format", "yaml")  # 默认格式改为yaml
-                verbose = getattr(args, "verbose", False)
-                agent_mode = getattr(args, "agent_mode", False)
+                status = getattr(args_obj, "status", None)
+                workflow = getattr(args_obj, "workflow", None)
+                format_type = getattr(args_obj, "format", "yaml")  # 默认格式改为yaml
+                verbose = getattr(args_obj, "verbose", False)
+                agent_mode = getattr(args_obj, "agent_mode", False)
 
                 # 直接执行list_sessions，其会自行处理输出
                 result = handle_list_sessions(status, workflow, format_type, verbose, agent_mode)
                 return True, "", result  # 空消息，表示已输出
 
             elif action == "show":
-                id_or_name = getattr(args, "id_or_name", None)
+                id_or_name = getattr(args_obj, "id_or_name", None)
                 if not id_or_name:
                     return False, "❌ show操作需要会话ID或名称参数", None
 
-                format_type = getattr(args, "format", "yaml")  # 默认格式改为yaml
-                verbose = getattr(args, "verbose", False)
-                agent_mode = getattr(args, "agent_mode", False)
+                format_type = getattr(args_obj, "format", "yaml")  # 默认格式改为yaml
+                verbose = getattr(args_obj, "verbose", False)
+                agent_mode = getattr(args_obj, "agent_mode", False)
 
                 # 转换id_or_name到session_id
                 flow_session_manager = FlowSessionManager(db_session)
@@ -96,12 +110,12 @@ def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any
                 return True, "", result  # 空消息，表示已输出
 
             elif action == "switch":
-                id_or_name = getattr(args, "id_or_name", None)
+                id_or_name = getattr(args_obj, "id_or_name", None)
                 if not id_or_name:
                     return False, "❌ switch操作需要会话ID或名称参数", None
 
-                verbose = getattr(args, "verbose", False)
-                agent_mode = getattr(args, "agent_mode", False)
+                verbose = getattr(args_obj, "verbose", False)
+                agent_mode = getattr(args_obj, "agent_mode", False)
 
                 # 直接在这里处理switch操作
                 flow_session_manager = FlowSessionManager(db_session)
@@ -116,14 +130,14 @@ def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any
                     return False, f"❌ 切换会话失败: {str(e)}", None
 
             elif action == "update":
-                id_or_name = getattr(args, "id_or_name", None)
+                id_or_name = getattr(args_obj, "id_or_name", None)
                 if not id_or_name:
                     return False, "❌ update操作需要会话ID或名称参数", None
 
-                name = getattr(args, "name", None)
-                status = getattr(args, "status", None)
-                verbose = getattr(args, "verbose", False)
-                agent_mode = getattr(args, "agent_mode", False)
+                name = getattr(args_obj, "name", None)
+                status = getattr(args_obj, "status", None)
+                verbose = getattr(args_obj, "verbose", False)
+                agent_mode = getattr(args_obj, "agent_mode", False)
 
                 # 处理更新操作
                 flow_session_manager = FlowSessionManager(db_session)
@@ -149,14 +163,14 @@ def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any
                     return False, f"❌ 更新会话失败: {str(e)}", None
 
             elif action == "close":
-                id_or_name = getattr(args, "id_or_name", None)
+                id_or_name = getattr(args_obj, "id_or_name", None)
                 if not id_or_name:
                     return False, "❌ close操作需要会话ID或名称参数", None
 
-                reason = getattr(args, "reason", None)
-                force = getattr(args, "force", False)
-                verbose = getattr(args, "verbose", False)
-                agent_mode = getattr(args, "agent_mode", False)
+                reason = getattr(args_obj, "reason", None)
+                force = getattr(args_obj, "force", False)
+                verbose = getattr(args_obj, "verbose", False)
+                agent_mode = getattr(args_obj, "agent_mode", False)
 
                 # 处理结束会话操作
                 flow_session_manager = FlowSessionManager(db_session)
@@ -171,13 +185,13 @@ def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any
                     return False, f"❌ 结束会话失败: {str(e)}", None
 
             elif action == "delete":
-                id_or_name = getattr(args, "id_or_name", None)
+                id_or_name = getattr(args_obj, "id_or_name", None)
                 if not id_or_name:
                     return False, "❌ delete操作需要会话ID或名称参数", None
 
-                force = getattr(args, "force", False)
-                verbose = getattr(args, "verbose", False)
-                agent_mode = getattr(args, "agent_mode", False)
+                force = getattr(args_obj, "force", False)
+                verbose = getattr(args_obj, "verbose", False)
+                agent_mode = getattr(args_obj, "agent_mode", False)
 
                 # 直接执行删除操作
                 flow_session_manager = FlowSessionManager(db_session)
@@ -195,14 +209,14 @@ def handle_session_command(args: Any) -> Tuple[bool, str, Optional[Dict[str, Any
                     return False, f"❌ 删除会话失败: {str(e)}", None
 
             elif action == "create":
-                workflow_id = getattr(args, "workflow_id", None)
+                workflow_id = getattr(args_obj, "workflow_id", None)
                 if not workflow_id:
                     return False, "❌ create操作需要工作流ID参数", None
 
-                name = getattr(args, "name", None)
-                task_id = getattr(args, "task_id", None)
-                verbose = getattr(args, "verbose", False)
-                agent_mode = getattr(args, "agent_mode", False)
+                name = getattr(args_obj, "name", None)
+                task_id = getattr(args_obj, "task_id", None)
+                verbose = getattr(args_obj, "verbose", False)
+                agent_mode = getattr(args_obj, "agent_mode", False)
 
                 # 处理创建会话操作
                 flow_session_manager = FlowSessionManager(db_session)

@@ -47,3 +47,7 @@ command_groups:
     description: "流程管理命令"
     config_file: "flow_commands.yaml"
     critical: true
+  - name: "status"
+    description: "状态管理命令"
+    config_file: "status_commands.yaml"
+    critical: true

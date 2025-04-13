@@ -58,7 +58,7 @@ docs = [
 [project.scripts]
 vibecopilot = "src.cli.main:main"
 vibe-copilot-mcp = "src.cursor.server:main"
-health-check = "src.health.cli.main:main"
+health = "src.health.cli:main"
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]

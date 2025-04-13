@@ -27,7 +27,7 @@ def handle_init(service: StatusService, args: Dict[str, Any]) -> int:
     output_format = args.get("format", "text")
 
     try:
-        result = service.initialize_project(project_name)
+        result = service.initialize_project_status(project_name)
 
         # 检查是否存在错误
         if "error" in result:
@@ -50,6 +50,7 @@ def handle_init(service: StatusService, args: Dict[str, Any]) -> int:
                 print("  - 检查是否已经初始化过项目")
                 return 1
 
+        print(f"✅ 初始化成功: 项目 '{result.get('name', 'VibeCopilot')}' 已初始化")
         output_result(result, output_format, "system", True)
         return 0
     except Exception as e:

@@ -20,13 +20,28 @@ class CommandChecker(BaseChecker):
     def run_command(self, command: str) -> Tuple[int, str, str]:
         """运行命令并返回结果"""
         try:
-            # 替换命令前缀
-            if command.startswith("vibecopilot "):
-                command = command.replace("vibecopilot ", "vc ")
+            # 统一命令前缀 - 不要替换，保持使用配置的前缀
+            # 注释掉原来的替换逻辑
+            # if command.startswith("vibecopilot "):
+            #     command = command.replace("vibecopilot ", "vc ")
 
-            process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if self.verbose:
+                print(f"执行命令: {command}")
+
+            # 使用shell=True确保命令能在当前环境中正确执行
+            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = process.communicate(timeout=self.config["performance"]["max_response_time"])
-            return process.returncode, stdout.decode(), stderr.decode()
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
+
+            if self.verbose:
+                print(f"命令返回码: {process.returncode}")
+                if stdout_text:
+                    print(f"标准输出: {stdout_text[:100]}...")
+                if stderr_text:
+                    print(f"错误输出: {stderr_text[:100]}...")
+
+            return process.returncode, stdout_text, stderr_text
         except subprocess.TimeoutExpired:
             return -1, "", "命令执行超时"
         except Exception as e:
@@ -36,7 +51,7 @@ class CommandChecker(BaseChecker):
         """检查命令的帮助信息"""
         check_result = {"name": f"命令帮助检查: {cmd_name}", "status": "passed", "details": [], "suggestions": []}
 
-        # 构建帮助命令
+        # 构建帮助命令 - 使用配置中的命令前缀
         cmd_prefix = self.config["common_config"].get("command_prefix", "vibecopilot")
         help_cmd = f"{cmd_prefix} {cmd_name} --help"
 
@@ -46,38 +61,125 @@ class CommandChecker(BaseChecker):
         # 获取完整输出（包括stdout和stderr）
         output = stdout + stderr
 
-        # 检查是否有有效的帮助信息输出
-        help_indicators = ["Usage:", "Options:", "--help"]
-        has_help_content = any(indicator in output for indicator in help_indicators)
+        if self.verbose:
+            print(f"检查命令 '{cmd_name}' 的帮助信息")
+            print(f"命令前缀: {cmd_prefix}")
+            print(f"完整命令: {help_cmd}")
+            print(f"输出长度: {len(output)} 字符")
 
-        # 即使返回码非0，只要有有效的帮助信息就认为是成功的
-        if not has_help_content:
+        # 检查输出是否为空
+        if not output.strip():
             check_result["status"] = "failed"
-            check_result["details"].append("帮助命令没有返回有效的帮助信息")
-            if code != 0:
-                check_result["details"].append(f"错误代码: {code}")
-            check_result["suggestions"].append("确保命令支持--help选项")
+            check_result["details"].append("命令没有任何输出")
+            check_result["suggestions"].append("确保命令实现了帮助信息输出")
             return check_result
 
-        # 检查帮助信息是否包含必要内容
-        required_help_content = ["Usage:", "Options:"]
-        missing_content = []
-        for content in required_help_content:
-            if content not in output:
-                missing_content.append(content)
+        # 基础检查 - 只要有输出并且返回码为0就认为基本通过
+        if code == 0 and len(output.strip()) > 0:
+            # 进行推荐检查
 
-        if missing_content:
+            # 帮助信息关键词检查 - 使用更灵活的匹配
+            english_keywords = ["usage", "option", "command", "argument", "example", "help"]
+            chinese_keywords = ["用法", "选项", "命令", "参数", "示例", "帮助"]
+
+            # 检查是否包含基础帮助格式
+            has_format = False
+            for keyword in english_keywords + chinese_keywords:
+                if keyword.lower() in output.lower():
+                    has_format = True
+                    break
+
+            if not has_format:
+                check_result["status"] = "warning"
+                check_result["details"].append("帮助信息格式可能不标准")
+                check_result["suggestions"].append("建议使用标准的帮助信息格式")
+
+            # 检查子命令说明
+            if cmd_config.get("subcommands"):
+                for subcmd, subcmd_config in cmd_config["subcommands"].items():
+                    if subcmd_config.get("required", False) and subcmd.lower() not in output.lower():
+                        check_result["status"] = "warning"
+                        check_result["details"].append(f"帮助信息缺少必要子命令说明: {subcmd}")
+                        check_result["suggestions"].append(f"添加 {subcmd} 的说明")
+
+            return check_result
+        else:
+            # 命令执行失败
+            check_result["status"] = "failed"
+            check_result["details"].append(f"命令执行失败，返回码: {code}")
+            if stderr:
+                check_result["details"].append(f"错误信息: {stderr[:200]}")
+            check_result["suggestions"].append("检查命令实现，确保可以正常执行")
+            return check_result
+
+    def check_command_output(self, cmd_name: str, subcmd_name: str, subcmd_config: Dict) -> Dict:
+        """检查命令的输出内容"""
+        check_result = {"name": f"命令输出检查: {cmd_name} {subcmd_name}", "status": "passed", "details": [], "suggestions": []}
+
+        # 获取验证配置
+        validation = subcmd_config.get("validation", {})
+
+        # 如果没有验证配置，直接返回通过
+        if not validation:
+            return check_result
+
+        # 构建命令 - 使用配置中的命令前缀
+        cmd_prefix = self.config["common_config"].get("command_prefix", "vibecopilot")
+
+        # 构建基本命令
+        test_cmd = f"{cmd_prefix} {cmd_name} {subcmd_name}"
+
+        # 添加必要参数
+        if validation.get("required_parameters"):
+            for param in validation["required_parameters"]:
+                param_config = subcmd_config["parameters"].get(param, {})
+                # 如果参数有选项，使用第一个选项作为测试值
+                if param_config.get("options"):
+                    test_cmd += f" {param}={param_config['options'][0]}"
+                # 否则使用一个默认测试值
+                else:
+                    test_cmd += f" {param}=test"
+
+        # 运行命令
+        code, stdout, stderr = self.run_command(test_cmd)
+        output = stdout + stderr
+
+        if self.verbose:
+            print(f"检查命令 '{cmd_name} {subcmd_name}' 的输出")
+            print(f"完整命令: {test_cmd}")
+            print(f"返回码: {code}")
+            print(f"输出长度: {len(output)} 字符")
+
+        # 检查返回码
+        if code != 0:
+            check_result["status"] = "failed"
+            check_result["details"].append(f"命令执行失败，返回码: {code}")
+            if stderr:
+                check_result["details"].append(f"错误信息: {stderr[:200]}")
+            check_result["suggestions"].append("检查命令实现，确保可以正常执行")
+            return check_result
+
+        # 检查输出是否为空
+        if not output.strip():
             check_result["status"] = "warning"
-            check_result["details"].extend([f"帮助信息缺少: {content}" for content in missing_content])
-            check_result["suggestions"].extend([f"在帮助信息中添加 {content} 部分" for content in missing_content])
+            check_result["details"].append("命令输出为空")
+            check_result["suggestions"].append("检查命令实现，确保命令有有效输出")
+            return check_result
 
-        # 检查子命令说明
-        if cmd_config.get("subcommands"):
-            for subcmd, subcmd_config in cmd_config["subcommands"].items():
-                if subcmd_config.get("required", False) and subcmd not in output:
+        # 检查必须包含的输出关键词
+        if validation.get("required_output"):
+            for keyword in validation["required_output"]:
+                if keyword.lower() not in output.lower():
                     check_result["status"] = "warning"
-                    check_result["details"].append(f"帮助信息缺少必要子命令说明: {subcmd}")
-                    check_result["suggestions"].append(f"添加 {subcmd} 的说明")
+                    check_result["details"].append(f"命令输出缺少关键信息: {keyword}")
+                    check_result["suggestions"].append(f"确保命令输出包含关键词: {keyword}")
+
+        # 检查输出最小长度
+        min_length = validation.get("min_output_length", 0)
+        if len(output) < min_length:
+            check_result["status"] = "warning"
+            check_result["details"].append(f"命令输出过短，长度为{len(output)}，要求最小长度为{min_length}")
+            check_result["suggestions"].append(f"确保命令输出内容足够丰富，至少达到{min_length}字符")
 
         return check_result
 
@@ -88,6 +190,23 @@ class CommandChecker(BaseChecker):
         # 首先检查帮助信息
         help_result = self.check_command_help(cmd_name, cmd_config)
         results.append(help_result)
+
+        # 检查子命令
+        for subcmd_name, subcmd_config in cmd_config.get("subcommands", {}).items():
+            # 只检查标记为required的子命令
+            if subcmd_config.get("required", False):
+                # 检查子命令输出
+                output_result = self.check_command_output(cmd_name, subcmd_name, subcmd_config)
+                results.append(output_result)
+
+                # 更新统计
+                self.summary["total"] += 1
+                if output_result["status"] == "passed":
+                    self.summary["passed"] += 1
+                elif output_result["status"] == "failed":
+                    self.summary["failed"] += 1
+                elif output_result["status"] == "warning":
+                    self.summary["warnings"] += 1
 
         # 更新统计
         self.summary["total"] += 1

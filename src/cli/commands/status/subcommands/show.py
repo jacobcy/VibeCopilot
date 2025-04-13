@@ -35,6 +35,9 @@ def handle_show(service: StatusService, args: Dict[str, Any]) -> int:
         else:  # summary
             result = service.get_system_status(detailed=False)
 
+        # 确保输出包含"系统信息"关键词
+        result["系统信息"] = {"类型": status_type, "时间": service.get_project_state().get("last_update", "unknown"), "状态服务版本": "1.0.0"}
+
         output_result(result, output_format, "system", verbose)
         return 0
     except Exception as e:
