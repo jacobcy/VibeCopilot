@@ -7,6 +7,5 @@
 from adapters.status_sync.services.execution_sync import ExecutionSync
 from adapters.status_sync.services.n8n_sync import N8nSync
 from adapters.status_sync.services.status_subscriber import StatusSyncSubscriber
-from adapters.status_sync.services.workflow_sync import WorkflowSync
 
-__all__ = ["WorkflowSync", "ExecutionSync", "N8nSync", "StatusSyncSubscriber"]
+__all__ = ["ExecutionSync", "N8nSync", "StatusSyncSubscriber"]

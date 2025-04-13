@@ -21,7 +21,7 @@ class Stage(Base):
     __tablename__ = "stages"
 
     id = Column(String, primary_key=True)
-    workflow_id = Column(String, ForeignKey("workflows.id", ondelete="CASCADE"))
+    workflow_id = Column(String, ForeignKey("workflow_definitions.id", ondelete="CASCADE"))
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     order_index = Column(Integer, nullable=False)
@@ -36,7 +36,7 @@ class Stage(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 关系
-    workflow = relationship("Workflow", back_populates="stages")
+    workflow_definition = relationship("WorkflowDefinition", back_populates="stages")
     instances = relationship("StageInstance", back_populates="stage")
     from_transitions = relationship("Transition", foreign_keys="[Transition.from_stage]", back_populates="from_stage_rel")
     to_transitions = relationship("Transition", foreign_keys="[Transition.to_stage]", back_populates="to_stage_rel")

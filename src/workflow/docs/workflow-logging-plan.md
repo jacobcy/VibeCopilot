@@ -123,7 +123,7 @@ class WorkflowExecutionLog:
     def __init__(self, execution_id, workflow_id, status, start_time=None,
                  end_time=None, context=None, messages=None):
         self.execution_id = execution_id
-        self.workflow_id = workflow_id
+        self.workflow_id = workflow_id  # 工作流定义ID，引用WorkflowDefinition
         self.status = status
         self.start_time = start_time or datetime.now().isoformat()
         self.end_time = end_time
@@ -152,7 +152,7 @@ class WorkflowOperationLog:
                  timestamp=None, user=None, data=None):
         self.operation_id = operation_id
         self.operation_type = operation_type  # CREATE, UPDATE, DELETE, etc.
-        self.workflow_id = workflow_id
+        self.workflow_id = workflow_id  # 工作流定义ID，引用WorkflowDefinition
         self.timestamp = timestamp or datetime.now().isoformat()
         self.user = user
         self.data = data or {}
@@ -183,7 +183,7 @@ class WorkflowExecutionLogModel(Base):
     __tablename__ = "workflow_execution_logs"
 
     execution_id = Column(String, primary_key=True)
-    workflow_id = Column(String, index=True)
+    workflow_id = Column(String, ForeignKey("workflow_definitions.id"), index=True)
     status = Column(String)
     start_time = Column(DateTime)
     end_time = Column(DateTime, nullable=True)

@@ -53,7 +53,7 @@ graph TD
 **数据存储**:
 
 - 工作流定义存储在 `data/workflows/` 目录下的JSON文件中
-- 长期计划迁移到数据库存储
+- 已迁移到数据库存储，使用WorkflowDefinition模型
 
 ### 2. Flow_Session 模块 (`src/flow_session`)
 
@@ -118,8 +118,8 @@ sequenceDiagram
     participant F as flow_session模块
     participant S as status模块
 
-    U->>W: 创建工作流定义
-    W-->>U: 返回工作流ID
+    U->>W: 创建工作流定义(WorkflowDefinition)
+    W-->>U: 返回工作流定义ID
 
     U->>F: 创建工作流会话
     F->>W: 获取工作流定义
@@ -183,10 +183,10 @@ classDiagram
 
 ### 1. 工作流定义数据流
 
-工作流定义的数据主要由 `workflow` 模块管理，包括：
+工作流定义的数据主要由 `workflow` 模块管理，使用WorkflowDefinition模型，包括：
 
-- 创建和更新流向: CLI/API → FlowService → workflow模块 → 存储
-- 读取流向: CLI/API → FlowService → workflow模块 → 存储 → 工作流数据
+- 创建和更新流向: CLI/API → FlowService → workflow模块 → 数据库(workflow_definitions表)
+- 读取流向: CLI/API → FlowService → workflow模块 → 数据库 → 工作流定义数据
 
 ### 2. 会话状态数据流
 
@@ -247,6 +247,26 @@ classDiagram
 
 ## 最近更新
 
+### 2025-04-13 数据库模型关系调整
+
+遵循职责分离原则，我们对数据库模型进行了重要调整：
+
+1. **统一工作流模型**:
+   - 清理了Workflow模型，统一使用WorkflowDefinition模型
+   - 修复了Stage和Transition模型中外键引用错误问题
+   - 确保所有引用指向workflow_definitions表而非废弃的workflows表
+
+2. **关系重定义**:
+   - 将Stage和Transition的`workflow`关系重命名为`workflow_definition`
+   - 在WorkflowDefinition模型中添加了与Stage和Transition的双向关系
+   - 解决了关系命名与JSON字段冲突的问题
+
+3. **导入引用更新**:
+   - 修复了对已不存在模型的导入引用
+   - 移除了对历史遗留模型的导出
+
+这些数据库调整确保了模型关系的一致性，为进一步开发奠定了坚实基础。
+
 ### 2023-10-25 工作流模块重构
 
 遵循职责分离原则，我们对工作流系统进行了重要重构：
@@ -271,5 +291,3 @@ classDiagram
 ## 参考资料
 
 - [工作流系统开发计划](./dev-plan.md)
-- [工作流系统重构方案](./workflow-refactoring-plan.md)
-- [执行计划](./execution-plan.md)

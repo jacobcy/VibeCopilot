@@ -70,31 +70,25 @@ class StatusSyncSubscriber(IStatusSubscriber):
             context: 上下文信息
         """
         try:
-            # 导入WorkflowSync服务
+            # 导入所需服务
             from adapters.n8n.adapter import N8nAdapter
-            from adapters.status_sync.services.workflow_sync import WorkflowSync
+            from adapters.status_sync.services.execution_sync import ExecutionSync
+            from adapters.status_sync.services.n8n_sync import N8nSync
             from src.core.config import settings
 
             # 初始化N8n适配器
             n8n_adapter = None
             if settings.n8n.enabled:
-                n8n_adapter = N8nAdapter(
-                    base_url=settings.n8n.api_url, api_key=settings.n8n.api_key
-                )
+                n8n_adapter = N8nAdapter(base_url=settings.n8n.api_url, api_key=settings.n8n.api_key)
 
-            # 同步工作流状态
-            workflow_sync = WorkflowSync(self.db_session, n8n_adapter)
-            success = workflow_sync.sync_workflow_status(workflow_id)
+            # 使用ExecutionSync占位实现 - 暂时记录日志
+            logger.warning(f"工作流状态同步待实现: {workflow_id} -> {status} (将在status模块重构)")
 
-            if success:
-                logger.info(f"工作流状态同步成功: {workflow_id} -> {status}")
-            else:
-                logger.warning(f"工作流状态同步失败: {workflow_id}")
+            # 仅记录同步结果
+            logger.info(f"工作流状态同步：{workflow_id} -> {status} (临时占位)")
 
             # 同步系统变量
             if n8n_adapter and status == "active":
-                from adapters.status_sync.services.n8n_sync import N8nSync
-
                 n8n_sync = N8nSync(self.db_session, n8n_adapter)
                 n8n_sync.sync_variable(
                     "SYSTEM_STATUS_UPDATE",

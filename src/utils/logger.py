@@ -10,13 +10,13 @@ from datetime import datetime
 from typing import Optional
 
 
-def setup_logger(name: str, level: int = logging.INFO, log_file: Optional[str] = None, format_str: Optional[str] = None) -> logging.Logger:
+def setup_logger(name: str, level: Optional[int] = None, log_file: Optional[str] = None, format_str: Optional[str] = None) -> logging.Logger:
     """
     设置并返回一个配置好的日志记录器
 
     Args:
         name: 日志记录器名称
-        level: 日志级别
+        level: 日志级别（可选，如果不指定则使用root logger的级别）
         log_file: 日志文件路径（可选）
         format_str: 日志格式字符串（可选）
 
@@ -25,7 +25,10 @@ def setup_logger(name: str, level: int = logging.INFO, log_file: Optional[str] =
     """
     # 创建日志记录器
     logger = logging.getLogger(name)
-    logger.setLevel(level)
+
+    # 只有在明确指定了level时才设置日志级别
+    if level is not None:
+        logger.setLevel(level)
 
     # 如果已经有处理器，不重复添加
     if logger.handlers:
@@ -59,6 +62,8 @@ def get_logger(name: str) -> logging.Logger:
     """
     获取一个已配置的日志记录器，如果不存在则创建新的
 
+    此函数不会修改日志级别，而是使用root logger的级别
+
     Args:
         name: 日志记录器名称
 
@@ -77,7 +82,7 @@ def get_logger(name: str) -> logging.Logger:
         date_str = datetime.now().strftime("%Y%m%d")
         log_file = os.path.join(log_dir, f"{date_str}.log")
 
-        # 设置日志记录器
-        logger = setup_logger(name=name, level=logging.INFO, log_file=log_file)
+        # 设置日志记录器，但不指定level，使用root logger的级别
+        logger = setup_logger(name=name, log_file=log_file)
 
     return logger

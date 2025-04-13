@@ -1,0 +1,86 @@
+# 状态模块健康检查配置
+
+# API查询配置
+api:
+  # 查询超时(秒)
+  timeout: 5
+  # 失败重试次数
+  retry_count: 2
+  # 重试间隔(秒)
+  retry_interval: 1
+
+# 健康度评估配置
+health_evaluation:
+  # 最低整体健康度
+  min_overall_health: 65
+  # 关键领域列表及最低健康度
+  critical_domains:
+    - domain: "task"
+      min_health: 70
+    - domain: "workflow"
+      min_health: 70
+
+# 结果发布配置
+result_publishing:
+  # 是否发布检查结果
+  enabled: true
+  # 发布重试次数
+  retry_count: 1
+
+# 提供者健康检查配置
+providers:
+  # 必需的状态提供者列表
+  required_providers:
+    - domain: "task"
+      min_health: 70
+    - domain: "workflow"
+      min_health: 70
+    - domain: "roadmap"
+      min_health: 60
+
+  # 健康度计算配置
+  health_calculation:
+    warning_threshold: 70
+    critical_threshold: 50
+    active_items_warning: 10
+    active_items_critical: 20
+
+# 状态管理器检查配置
+providers_manager:
+  # 最小提供者数量
+  min_providers: 2
+
+  # 最小有效提供者比例
+  min_valid_ratio: 0.8
+
+# 健康度验证配置
+health_validation:
+  # 最低系统整体健康度
+  min_system_health: 65
+
+  # 组件健康度最低要求
+  min_component_health: 50
+
+  # 是否检查所有组件
+  check_all_components: true
+
+# 提供者API检查配置
+api_validation:
+  # 是否验证所有提供者接口
+  validate_all_methods: true
+
+  # 需要验证的接口方法
+  methods_to_check:
+    - "get_status"
+    - "list_entities"
+
+# 执行配置
+execution:
+  # 超时时间(秒)
+  timeout: 30
+
+  # 是否严格模式(严格模式下，任一提供者失败则整体检查失败)
+  strict_mode: false
+
+  # 是否记录检查日志
+  log_checks: true

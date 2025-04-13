@@ -14,8 +14,8 @@ from rich.console import Console
 
 from src.db import get_session_factory
 from src.db.repositories.roadmap_repository import RoadmapRepository
+from src.db.repositories.stage_repository import StageRepository
 from src.db.repositories.task_repository import TaskRepository
-from src.db.repositories.workflow_repository import WorkflowRepository
 from src.models.db.roadmap import Roadmap
 from src.models.db.stage import Stage
 
@@ -214,8 +214,8 @@ def execute_update_task(
 
             # 验证工作流阶段存在
             if workflow_id:
-                workflow_repo = WorkflowRepository(session)
-                workflow_stage = workflow_repo.get_stage_by_id(workflow_id)
+                stage_repo = StageRepository(session)
+                workflow_stage = stage_repo.get_by_id(workflow_id)
                 if not workflow_stage:
                     results["status"] = "error"
                     results["code"] = 404

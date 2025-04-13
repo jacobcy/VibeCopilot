@@ -1,0 +1,54 @@
+# 已启用模块检查配置
+# 文件路径: src/health/config/enabled_modules_config.yaml
+# 用于检查系统中已启用的模块是否符合要求
+
+# 检查性能配置
+performance:
+  max_response_time: 30  # 最大响应时间（秒）
+
+# 要检查的模块列表
+required_modules:
+  - name: "command"     # 命令模块
+    required: true      # 标记为必须的模块
+    description: "命令管理模块，提供命令解析和执行功能"
+
+  - name: "database"    # 数据库模块
+    required: true
+    description: "数据库管理模块，提供持久化存储功能"
+
+  - name: "system"      # 系统模块
+    required: true
+    description: "系统管理模块，提供系统级功能"
+
+  - name: "status"      # 状态模块
+    required: true
+    description: "状态管理模块，提供系统状态监控和报告功能"
+
+  - name: "task"        # 任务模块
+    required: false     # 可选模块
+    description: "任务管理模块，提供任务调度和跟踪功能"
+
+  - name: "workflow"    # 工作流模块
+    required: false
+    description: "工作流管理模块，提供工作流定义和执行功能"
+
+  - name: "memory"      # 内存模块
+    required: false
+    description: "知识库管理模块，提供知识存储和检索功能"
+
+  - name: "rule"        # 规则模块
+    required: false
+    description: "规则管理模块，提供规则定义和执行功能"
+
+# 当前系统中已启用的模块（示例数据，实际应该从系统状态获取）
+enabled_modules:
+  - "command"
+  - "database"
+  - "system"
+  - "status"
+  - "task"
+
+# 结果发布配置
+result_publishing:
+  enabled: true    # 是否发布检查结果
+  retry_count: 1   # 发布重试次数

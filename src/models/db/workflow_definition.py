@@ -25,13 +25,15 @@ class WorkflowDefinition(Base):
     type = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     roadmap_id = Column(String, nullable=True)  # 关联的路线图ID
-    stages = Column(JSON, nullable=False)  # 可用阶段列表，JSON格式
+    stages_data = Column(JSON, nullable=False)  # 可用阶段列表，JSON格式
     source_rule = Column(String, nullable=True)  # 来源规则文件
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 关系
     sessions = relationship("FlowSession", back_populates="workflow_definition", cascade="all, delete-orphan")
+    stages = relationship("Stage", back_populates="workflow_definition", cascade="all, delete-orphan")
+    transitions = relationship("Transition", back_populates="workflow_definition", cascade="all, delete-orphan")
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -41,7 +43,7 @@ class WorkflowDefinition(Base):
             "type": self.type,
             "description": self.description,
             "roadmap_id": self.roadmap_id,
-            "stages": self.stages,
+            "stages": self.stages_data,
             "source_rule": self.source_rule,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -56,6 +58,6 @@ class WorkflowDefinition(Base):
             type=data.get("type"),
             description=data.get("description", ""),
             roadmap_id=data.get("roadmap_id"),
-            stages=data.get("stages", []),
+            stages_data=data.get("stages", []),
             source_rule=data.get("source_rule"),
         )

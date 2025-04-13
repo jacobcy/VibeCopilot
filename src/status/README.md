@@ -4,6 +4,29 @@
 
 Status 模块是 VibeCopilot 的核心状态管理中心，负责统一管理和同步系统中各个领域的状态信息。它采用发布-订阅模式，将状态提供者和状态订阅者解耦，为整个系统提供一致的状态视图。
 
+## 数据模型依赖
+
+Status 模块依赖以下核心数据模型：
+
+1. **WorkflowDefinition**: 工作流定义模型（`src/models/db/workflow_definition.py`）
+2. **Stage**: 工作流阶段模型（`src/models/db/stage.py`）
+3. **Transition**: 工作流转换模型（`src/models/db/transition.py`）
+4. **Task**: 任务模型（`src/models/db/task.py`）
+5. **FlowSession**: 工作流会话模型（`src/models/db/flow_session.py`）
+
+各提供者与模型间的关系：
+
+- **WorkflowStatusProvider**: 使用WorkflowDefinition和FlowSession模型
+- **TaskStatusProvider**: 使用Task模型
+- **RoadmapProvider**: 使用路线图相关模型
+
+## 最近更新
+
+- ✅ 已将所有旧WorkflowRepository引用替换为WorkflowDefinitionRepository
+- ✅ TaskProvider升级为完整的类实现，同时保持向后兼容
+- ✅ ExecutionSync从临时占位实现升级为正式实现
+- ✅ 确保所有Provider适配新的数据模型关系
+
 ## 架构设计
 
 ```mermaid
@@ -291,3 +314,37 @@ subscription_id = status_service.subscribe("health", on_health_changed)
 3. **状态可视化**: 实现状态监控面板，直观展示系统状态
 4. **扩展订阅者**: 实现更多特定功能的订阅者（如通知、自动化操作等）
 5. **缓存机制**: 为频繁访问的状态添加缓存，提高性能
+
+## 与Health模块集成
+
+Status模块现已与Health模块集成，提供了系统健康状态检查功能。集成主要通过以下方式实现：
+
+1. **状态检查器**: 在Health模块中添加了`StatusChecker`，该检查器可以检查Status模块中各状态提供者的健康状态。
+
+2. **健康度计算集成**: 利用Status模块中的`HealthCalculator`计算系统整体健康度，并生成标准化的健康报告。
+
+3. **命令行支持**: 通过Health模块的CLI接口，可以使用`--module status`参数专门检查Status模块状态。
+
+### 使用示例
+
+```bash
+# 检查状态模块健康
+python -m src.health.cli check --module status
+
+# 检查状态模块并生成详细报告
+python -m src.health.cli check --module status --verbose --format markdown --output status_report.md
+
+# 包含状态模块的全面系统检查
+python -m src.health.cli check --module all
+```
+
+### 配置说明
+
+状态模块健康检查配置位于`src/health/config/status_check_config.yaml`，主要配置项包括：
+
+- 必需的状态提供者列表及其最低健康度要求
+- 健康度计算的警告和严重阈值
+- 状态管理器的最低提供者数量要求
+- 系统整体健康度的最低要求
+- API验证配置
+- 检查执行配置

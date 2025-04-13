@@ -20,7 +20,7 @@ class Transition(Base):
     __tablename__ = "transitions"
 
     id = Column(String, primary_key=True)
-    workflow_id = Column(String, ForeignKey("workflows.id", ondelete="CASCADE"))
+    workflow_id = Column(String, ForeignKey("workflow_definitions.id", ondelete="CASCADE"))
     from_stage = Column(String, ForeignKey("stages.id", ondelete="CASCADE"))
     to_stage = Column(String, ForeignKey("stages.id", ondelete="CASCADE"))
     condition = Column(Text, nullable=True)  # 转换条件
@@ -29,7 +29,7 @@ class Transition(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 关系
-    workflow = relationship("Workflow", back_populates="transitions")
+    workflow_definition = relationship("WorkflowDefinition", back_populates="transitions")
     from_stage_rel = relationship("Stage", foreign_keys=[from_stage], back_populates="from_transitions")
     to_stage_rel = relationship("Stage", foreign_keys=[to_stage], back_populates="to_transitions")
 

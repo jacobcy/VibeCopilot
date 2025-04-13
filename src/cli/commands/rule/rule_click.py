@@ -27,7 +27,7 @@ console = Console()
 rule_manager = RuleManager()  # Assuming default init works for now
 
 
-@click.group(help="规则管理命令 (Click 版本)")
+@click.group(help="规则管理命令 ")
 def rule():
     """规则管理命令组"""
     pass

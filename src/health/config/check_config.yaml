@@ -1,30 +1,99 @@
-# VibeCopilot 健康检查配置
+# VibeCopilot健康检查配置
 
-# 检查器配置
-checkers:
-  database:
+# 当前启用的检查模块
+enabled_modules:
+  - system
+  - command
+  - database
+  - enabled_modules
+  - status  # 使用模拟实现进行检查
+# 以下为未实现的检查器，暂时在配置中注释掉
+#  - general
+#  - global
+#  - report
+#  - notifications
+#  - documentation
+
+# 系统配置
+system:
+  timeout: 20  # 系统检查超时时间(秒)
+  # 必需组件
+  required_components:
+    - name: "python"
+      min_version: "3.9.0"
+    - name: "pip"
+      min_version: "20.0.0"
+  # 必需目录
+  required_directories:
+    - path: "src"
+    - path: "config"
+  # 必需文件
+  required_files:
+    - path: "README.md"
+    - path: "requirements.txt"
+  # 配置文件
+  config_file: "config.yaml"
+
+# 命令配置
+command:
+  timeout: 30  # 命令执行超时时间(秒)
+  # 必需命令列表
+  required_commands:
+    - name: "rule list"
+      type: "rule"
+      expected_output: ["规则列表"]
+      category: "规则管理"
+
+    - name: "status show"
+      type: "rule"
+      expected_output: ["状态"]
+      category: "状态管理"
+
+    - name: "vibecopilot --help"
+      type: "command"
+      expected_output: ["usage"]
+      category: "基础命令"
+
+# 数据库配置
+database:
+  timeout: 10  # 数据库操作超时时间(秒)
+  # 必需表列表
+  required_tables:
+    - name: "rules"
+      min_records: 1
+    - name: "tasks"
+      min_records: 0
+
+# 状态模块配置
+status:
+  # API查询配置
+  api:
+    timeout: 5
+    retry_count: 2
+    retry_interval: 1
+  # 健康度评估配置
+  health_evaluation:
+    min_overall_health: 65
+    critical_domains:
+      - domain: "task"
+        min_health: 70
+      - domain: "workflow"
+        min_health: 70
+  # 结果发布配置
+  result_publishing:
     enabled: true
-    critical: true
-    config_file: "database_check_config.yaml"
-  command:
-    enabled: true
-    critical: true
-    config_file: "command_check_config.yaml"
-  documentation:
-    enabled: true
-    critical: false
-    config_file: "documentation_check_config.yaml"
-  dependency:
-    enabled: true
-    critical: true
-    config_file: "dependency_check_config.yaml"
+    retry_count: 1
+
+# 通用配置
+general:
+  timeout: 30
+  verbose: false
 
 # 全局配置
 global:
   workspace_root: "/Users/jacobcy/Public/VibeCopilot"
   report_dir: "reports/health_checks"
   log_level: "INFO"
-  timeout: 30  # 全局超时时间（秒）
 
 # 报告配置
 report:
@@ -42,3 +111,14 @@ notifications:
     - type: "file"
       enabled: true
       path: "logs/health_check.log"
+
+# 文档检查配置
+documentation:
+  # 必需README文件
+  required_readmes:
+    - "src/db/README.md"
+    - "src/status/README.md"
+    - "src/health/README.md"
+  # API文档检查
+  api_docs:
+    required: false

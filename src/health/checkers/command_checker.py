@@ -4,18 +4,45 @@
 import os
 import subprocess
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .base_checker import BaseChecker, CheckResult
 
 
 class CommandChecker(BaseChecker):
-    def __init__(self, main_config: Dict, command_configs: Dict, category: Optional[str] = None, verbose: bool = False):
-        super().__init__(main_config)
-        self.command_configs = command_configs
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        command_configs: Union[Dict[str, Any], List[Dict[str, Any]], None] = None,
+        category: Optional[str] = None,
+        verbose: bool = False,
+    ):
+        super().__init__(config)
         self.category = category
         self.verbose = verbose
         self.summary = {"total": 0, "passed": 0, "failed": 0, "warnings": 0}
+
+        # 兼容性处理：确保config字段存在
+        if not hasattr(self, "config"):
+            self.config = config
+
+        # 兼容性处理：添加默认配置
+        if "performance" not in self.config:
+            self.config["performance"] = {"max_response_time": 30}
+
+        if "common_config" not in self.config:
+            self.config["common_config"] = {"command_prefix": "vibecopilot"}
+
+        # 兼容性处理：解析command_configs
+        if isinstance(command_configs, dict) and "command_groups" in config:
+            # 旧版调用方式，command_configs是字典
+            self.command_configs = command_configs
+        elif isinstance(command_configs, list):
+            # 新版调用方式，command_configs是列表
+            self.command_configs = command_configs
+        else:
+            # 从config获取
+            self.command_configs = config.get("required_commands", [])
 
     def run_command(self, command: str) -> Tuple[int, str, str]:
         """运行命令并返回结果"""
@@ -235,63 +262,91 @@ class CommandChecker(BaseChecker):
         try:
             command_results = {}  # 存储每个命令组的检查结果
 
-            # 获取所有可用的命令组名称
-            available_groups = [group["name"] for group in self.config["command_groups"]]
+            # 兼容处理：根据数据结构选择不同的检查路径
+            if isinstance(self.command_configs, dict):
+                # 旧版调用方式 - 使用字典格式的command_configs
+                # 获取所有可用的命令组名称
+                available_groups = [group["name"] for group in self.config.get("command_groups", [])]
 
-            # 检查指定的category是否有效
-            if self.category is not None and self.category not in available_groups:
-                return CheckResult(
-                    status="failed",
-                    details=[f"错误: 无效的命令组类别 '{self.category}'"],
-                    suggestions=[f"有效的命令组类别有: {', '.join(available_groups)}"],
-                    metrics={"total": 0, "passed": 0, "failed": 0, "warnings": 0},
-                    command_results={},
-                )
+                # 检查指定的category是否有效
+                if self.category is not None and self.category not in available_groups:
+                    return CheckResult(
+                        status="failed",
+                        details=[f"错误: 无效的命令组类别 '{self.category}'"],
+                        suggestions=[f"有效的命令组类别有: {', '.join(available_groups)}"],
+                        metrics={"total": 0, "passed": 0, "failed": 0, "warnings": 0},
+                        command_results={},
+                    )
 
-            # 确定要检查的命令组
-            groups_to_check = []
-            for group in self.config["command_groups"]:
-                if self.category is None or group["name"] == self.category:
-                    groups_to_check.append(group)
+                # 确定要检查的命令组
+                groups_to_check = []
+                for group in self.config.get("command_groups", []):
+                    if self.category is None or group["name"] == self.category:
+                        groups_to_check.append(group)
 
-            # 检查每个命令组
-            for group in groups_to_check:
-                group_name = group["name"]
-                if group_name in self.command_configs:
-                    group_config = self.command_configs[group_name]
-                    group_result = {"status": "passed", "commands": {}, "errors": [], "warnings": []}
+                # 检查每个命令组
+                for group in groups_to_check:
+                    group_name = group["name"]
+                    if group_name in self.command_configs:
+                        group_config = self.command_configs[group_name]
+                        group_result = {"status": "passed", "commands": {}, "errors": [], "warnings": []}
 
-                    try:
-                        # 检查每个命令
-                        for cmd_name, cmd_config in group_config.get("commands", {}).items():
-                            cmd_results = self.check_command(cmd_name, cmd_config)
-                            cmd_status = "passed"
-                            cmd_errors = []
-                            cmd_warnings = []
+                        try:
+                            # 检查每个命令
+                            for cmd_name, cmd_config in group_config.get("commands", {}).items():
+                                cmd_results = self.check_command(cmd_name, cmd_config)
+                                cmd_status = "passed"
+                                cmd_errors = []
+                                cmd_warnings = []
 
-                            for result in cmd_results:
-                                if result["status"] == "failed":
-                                    cmd_status = "failed"
-                                    cmd_errors.extend(result["details"])
-                                elif result["status"] == "warning" and cmd_status != "failed":
-                                    cmd_status = "warning"
-                                    cmd_warnings.extend(result["details"])
+                                for result in cmd_results:
+                                    if result["status"] == "failed":
+                                        cmd_status = "failed"
+                                        cmd_errors.extend(result["details"])
+                                    elif result["status"] == "warning" and cmd_status != "failed":
+                                        cmd_status = "warning"
+                                        cmd_warnings.extend(result["details"])
 
-                            group_result["commands"][cmd_name] = {"status": cmd_status, "errors": cmd_errors, "warnings": cmd_warnings}
+                                group_result["commands"][cmd_name] = {"status": cmd_status, "errors": cmd_errors, "warnings": cmd_warnings}
 
-                            # 更新组状态
-                            if cmd_status == "failed":
-                                group_result["status"] = "failed"
-                                group_result["errors"].extend(cmd_errors)
-                            elif cmd_status == "warning" and group_result["status"] != "failed":
-                                group_result["status"] = "warning"
-                                group_result["warnings"].extend(cmd_warnings)
+                                # 更新组状态
+                                if cmd_status == "failed":
+                                    group_result["status"] = "failed"
+                                    group_result["errors"].extend(cmd_errors)
+                                elif cmd_status == "warning" and group_result["status"] != "failed":
+                                    group_result["status"] = "warning"
+                                    group_result["warnings"].extend(cmd_warnings)
 
-                    except Exception as e:
-                        group_result["status"] = "failed"
-                        group_result["errors"].append(f"命令组 {group_name} 检查失败: {str(e)}")
+                        except Exception as e:
+                            group_result["status"] = "failed"
+                            group_result["errors"].append(f"命令组 {group_name} 检查失败: {str(e)}")
 
-                    command_results[group_name] = group_result
+                        command_results[group_name] = group_result
+            else:
+                # 新版调用方式 - 使用列表格式的command_configs
+                # 直接检查命令列表
+                if self.category:
+                    filtered_commands = [cmd for cmd in self.command_configs if cmd.get("category") == self.category]
+                else:
+                    filtered_commands = self.command_configs
+
+                status = "passed"
+                for cmd_config in filtered_commands:
+                    cmd_name = cmd_config.get("name")
+                    if not cmd_name:
+                        continue
+
+                    # 简化的命令检查，仅验证命令是否可执行
+                    cmd_type = cmd_config.get("type", "command")  # 命令类型：rule或command
+                    expected_output = cmd_config.get("expected_output", [])
+
+                    result = self._check_simple_command(cmd_name, cmd_type, expected_output)
+                    command_results[cmd_name] = result
+
+                    if result.get("status") == "failed":
+                        status = "failed"
+
+                self.summary["total"] = len(filtered_commands)
 
             # 根据检查结果确定状态
             if self.summary["failed"] > 0:
@@ -301,13 +356,92 @@ class CommandChecker(BaseChecker):
             else:
                 status = "passed"
 
-            return CheckResult(
+            # 构建适用于展示的格式化结果
+            details = []
+            suggestions = []
+
+            # 更新汇总信息
+            if status != "passed":
+                failed_commands = []
+                for group_name, group_result in command_results.items():
+                    if isinstance(group_result, dict) and group_result.get("status") != "passed":
+                        failed_commands.append(group_name)
+
+                if failed_commands:
+                    details.append(f"以下命令组检查失败: {', '.join(failed_commands)}")
+                    suggestions.append("检查命令组配置和实现")
+
+            # 设置检查结果
+            metrics = {"total": self.summary["total"], "passed": self.summary["passed"], "failed": self.summary["failed"]}
+            result = CheckResult(
                 status=status,
-                details=[f"命令组 {group_name}: {result['status'].upper()}" for group_name, result in command_results.items()],
-                suggestions=["检查失败的命令组和命令的具体错误信息"] if status != "passed" else [],
-                metrics=self.summary,
+                details=details if details else [f"命令组检查: {status.upper()}"],
+                suggestions=suggestions if suggestions else [],
+                metrics=metrics,
                 command_results=command_results,  # 添加命令检查的详细结果
             )
 
+            # 发布结果
+            if hasattr(self, "_publish_result"):
+                self._publish_result("command", result)
+
+            return result
+
         except Exception as e:
-            return CheckResult(status="failed", details=[f"检查过程出错: {str(e)}"], suggestions=["检查命令检查器配置和实现"], metrics=self.summary, command_results={})
+            if self.verbose:
+                import traceback
+
+                error_msg = f"检查过程出错: {str(e)}\n{traceback.format_exc()}"
+            else:
+                error_msg = f"检查过程出错: {str(e)}"
+
+            return CheckResult(status="failed", details=[error_msg], suggestions=["检查命令检查器配置和实现"], metrics=self.summary, command_results={})
+
+    def _check_simple_command(self, cmd_name: str, cmd_type: str, expected_output: List[str]) -> Dict:
+        """简化的命令检查，适用于没有完整配置的情况"""
+        result = {"name": cmd_name, "status": "passed", "details": [], "errors": [], "warnings": []}
+
+        try:
+            # 构建命令
+            cmd = cmd_name
+            if cmd_type == "rule":
+                # 规则命令不需要前缀
+                pass
+            else:
+                # 命令类型，添加前缀
+                cmd_prefix = self.config.get("common_config", {}).get("command_prefix", "vibecopilot")
+                cmd = f"{cmd_prefix} {cmd}"
+
+            # 运行命令
+            code, stdout, stderr = self.run_command(cmd)
+            output = stdout + stderr
+
+            # 检查返回码
+            if code != 0:
+                result["status"] = "failed"
+                result["errors"].append(f"命令执行失败，返回码: {code}")
+                if stderr:
+                    result["errors"].append(f"错误信息: {stderr[:200]}")
+                return result
+
+            # 检查期望输出
+            if expected_output:
+                for expected in expected_output:
+                    if expected.lower() not in output.lower():
+                        result["status"] = "failed"
+                        result["errors"].append(f"输出缺少期望内容: {expected}")
+
+            # 更新统计
+            self.summary["total"] += 1
+            if result["status"] == "passed":
+                self.summary["passed"] += 1
+            else:
+                self.summary["failed"] += 1
+
+            return result
+        except Exception as e:
+            result["status"] = "failed"
+            result["errors"].append(f"命令检查异常: {str(e)}")
+            self.summary["total"] += 1
+            self.summary["failed"] += 1
+            return result

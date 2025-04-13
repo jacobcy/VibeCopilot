@@ -20,7 +20,9 @@ from .system_config import SystemConfig
 from .task import Task, TaskComment
 from .template import Template, TemplateVariable
 from .transition import Transition
-from .workflow import Workflow, WorkflowExecution, WorkflowStep, WorkflowStepExecution
+
+# 移除旧的workflow模型导入
+# from .workflow import Workflow, WorkflowExecution, WorkflowStep, WorkflowStepExecution
 from .workflow_definition import WorkflowDefinition
 
 # 导出所有模型
@@ -36,10 +38,11 @@ __all__ = [
     "TaskComment",
     "Template",
     "TemplateVariable",
-    "Workflow",
-    "WorkflowStep",
-    "WorkflowExecution",
-    "WorkflowStepExecution",
+    # 移除旧的workflow模型导出
+    # "Workflow",
+    # "WorkflowStep",
+    # "WorkflowExecution",
+    # "WorkflowStepExecution",
     "FlowSession",
     "WorkflowDefinition",
     "StageInstance",

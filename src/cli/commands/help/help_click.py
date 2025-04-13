@@ -9,20 +9,12 @@ import logging
 from typing import Dict, Optional
 
 import click
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 
 from src.cli.commands.help.help_provider import HelpProvider
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-# 创建Rich控制台实例
-console = Console()
 
 # 命令帮助信息
 COMMAND_HELP: Dict[str, Dict] = {
@@ -124,162 +116,126 @@ COMMAND_HELP: Dict[str, Dict] = {
     },
 }
 
+# 命令分组信息
+COMMAND_GROUPS = {
+    "基础命令": {"help": {"description": "显示帮助信息", "example": "/help [命令]"}, "status": {"description": "项目状态管理命令", "example": "/status show"}},
+    "开发工具": {
+        "rule": {"description": "规则管理命令", "example": "/rule list"},
+        "flow": {"description": "工作流管理命令", "example": "//flow run dev:story"},
+        "template": {"description": "模板管理命令", "example": "/template list"},
+    },
+    "数据管理": {"db": {"description": "数据库管理命令", "example": "//db init"}, "memory": {"description": "知识库管理命令", "example": "/memory search"}},
+    "项目管理": {"roadmap": {"description": "路线图管理命令", "example": "/roadmap show"}, "task": {"description": "任务管理命令", "example": "//task create"}},
+}
 
-@click.group(help="显示帮助信息")
-def help():
+
+def format_help_text():
+    """
+    生成通用帮助文本
+    """
+    help_text = [
+        "用法: vc [OPTIONS] COMMAND [ARGS]...",
+        "",
+        "VibeCopilot命令行工具",
+        "",
+        "命令组:",
+    ]
+
+    # 添加命令组信息
+    for group_name, commands in COMMAND_GROUPS.items():
+        help_text.append(f"\n  {group_name}:")
+        for cmd_name, cmd_info in commands.items():
+            # 对齐处理：命令名占12个字符宽度
+            help_text.append(f"    {cmd_name:<12} {cmd_info['description']}")
+
+    help_text.extend(
+        [
+            "",
+            "通用选项:",
+            "  -h, --help     显示帮助信息",
+            "  -v, --verbose  显示详细信息",
+            "  --version      显示版本信息",
+            "",
+            "命令类型:",
+            "  /command       规则命令 - 由AI直接处理的简单交互命令",
+            "  //command      程序命令 - 转换为CLI执行的复杂持久化命令",
+            "",
+            "使用示例:",
+            "  vc --help              显示此帮助信息",
+            "  vc COMMAND --help      显示具体命令的帮助",
+            "  vc help show COMMAND   显示命令的详细帮助",
+        ]
+    )
+
+    return "\n".join(help_text)
+
+
+def format_command_help(command: str, help_info: dict, verbose: bool = False):
+    """
+    生成特定命令的帮助文本
+    """
+    help_text = [f"用法: vc {command} [OPTIONS] [ARGS]...", "", help_info.get("description", "未提供描述"), "", "子命令:"]
+
+    if "subcommands" in help_info:
+        for subcmd, subcmd_info in help_info["subcommands"].items():
+            if isinstance(subcmd_info, dict):
+                for nested_cmd, nested_desc in subcmd_info.items():
+                    # 对齐处理：子命令名占20个字符宽度
+                    help_text.append(f"  {subcmd} {nested_cmd:<20} {nested_desc}")
+            else:
+                # 对齐处理：命令名占20个字符宽度
+                help_text.append(f"  {subcmd:<20} {subcmd_info}")
+
+    help_text.extend(
+        [
+            "",
+            "选项:",
+            "  -h, --help            显示此帮助信息",
+            "  -v, --verbose         显示详细信息",
+        ]
+    )
+
+    if verbose:
+        help_text.extend(["  --format=<json|text>  指定输出格式", "", "详细说明:", "  - 此命令支持详细模式，使用 --verbose 查看更多信息", "  - 支持JSON输出格式，使用 --format=json 指定"])
+
+    help_text.extend(["", "示例:", f"  {help_info.get('example', '未提供示例')}"])
+
+    return "\n".join(help_text)
+
+
+@click.group(help="显示帮助信息", invoke_without_command=True)
+@click.pass_context
+def help(ctx):
     """VibeCopilot帮助命令组"""
-    pass
+    if ctx.invoked_subcommand is None:
+        click.echo(format_help_text())
 
 
 @help.command(name="show")
 @click.argument("command", required=False)
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
 def show_help(command: Optional[str] = None, verbose: bool = False):
-    """
-    显示命令帮助信息
-
-    Args:
-        command: 要查看帮助的具体命令
-        verbose: 是否显示详细信息
-    """
+    """显示命令帮助信息"""
     try:
         help_provider = HelpProvider()
 
         if command:
-            # 显示特定命令的帮助信息
             command_help = COMMAND_HELP.get(command) or help_provider.get_command_help(command)
             if command_help:
-                _display_command_help(command, command_help, verbose)
+                click.echo(format_command_help(command, command_help, verbose))
             else:
-                console.print(f"[red]错误: 未找到命令 '{command}' 的帮助信息[/red]")
+                click.echo(f"错误: 未找到命令 '{command}' 的帮助信息")
         else:
-            # 显示通用帮助信息
-            _display_general_help(help_provider, verbose)
+            click.echo(format_help_text())
 
     except Exception as e:
         logger.error(f"显示帮助信息时发生错误: {str(e)}")
-        console.print(f"[red]错误: {str(e)}[/red]")
+        click.echo(f"错误: {str(e)}")
         if verbose:
             import traceback
 
-            console.print("[yellow]详细错误信息:[/yellow]")
-            console.print(traceback.format_exc())
-
-
-def _display_general_help(help_provider: HelpProvider, verbose: bool = False):
-    """显示通用帮助信息"""
-    # 创建标题面板
-    title_panel = Panel("[bold cyan]VibeCopilot[/bold cyan] [white]命令行工具[/white]", subtitle="输入命令获取帮助")
-    console.print(title_panel)
-
-    # 显示命令类型说明
-    console.print("\n[bold]命令类型说明:[/bold]")
-    types_table = Table(show_header=False, box=None, padding=(0, 2))
-    types_table.add_column("Type", style="cyan")
-    types_table.add_column("Description")
-    types_table.add_row("/command", "规则命令 - 由AI直接处理的简单交互命令")
-    types_table.add_row("//command", "程序命令 - 转换为CLI执行的复杂持久化命令")
-    console.print(types_table)
-
-    # 创建命令表格
-    console.print("\n[bold]可用命令:[/bold]")
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("命令", style="cyan")
-    table.add_column("描述")
-    table.add_column("示例", style="green")
-
-    # 添加所有命令
-    for cmd_name, cmd_info in COMMAND_HELP.items():
-        table.add_row(cmd_name, cmd_info["description"], cmd_info["example"])
-
-    console.print(table)
-
-    # 显示基本用法
-    console.print("\n[bold]基本用法:[/bold]")
-    usage_md = """
-```bash
-# 查看命令帮助
-/help [命令]
-//help [命令] --verbose
-
-# 规则命令示例
-/rule list
-/task create "新任务"
-/memory search "架构设计"
-
-# 程序命令示例
-//flow run dev:story
-//roadmap create --name="2023计划"
-//db init
-```
-"""
-    console.print(Markdown(usage_md))
-
-    if verbose:
-        # 显示通用选项
-        console.print("\n[bold]通用选项:[/bold]")
-        options_table = Table(show_header=False, box=None, padding=(0, 2))
-        options_table.add_column("Option", style="yellow")
-        options_table.add_column("Description")
-        options_table.add_row("--verbose", "显示详细信息")
-        options_table.add_row("--format=<json|text>", "指定输出格式")
-        console.print(options_table)
-
-        # 显示提示信息
-        console.print("\n[bold]提示:[/bold]")
-        tips_md = """
-- 使用 `/help <命令>` 获取特定命令的详细帮助
-- 使用 `--verbose` 参数获取更多信息
-- 规则命令(/)用于简单交互，程序命令(//)用于复杂操作
-- 所有命令支持 `--help` 参数显示帮助
-"""
-        console.print(Markdown(tips_md))
-
-
-def _display_command_help(command: str, help_info: dict, verbose: bool = False):
-    """显示特定命令的帮助信息"""
-    # 创建命令标题
-    title = Text()
-    title.append(f"命令: ", style="bold blue")
-    title.append(command, style="bold cyan")
-
-    console.print("\n" + str(title))
-
-    # 显示基本信息
-    if "description" in help_info:
-        console.print(f"\n[bold]描述:[/bold]\n{help_info['description']}")
-
-    # 显示子命令
-    if "subcommands" in help_info:
-        console.print("\n[bold]子命令:[/bold]")
-        subtable = Table(show_header=True, header_style="bold magenta")
-        subtable.add_column("子命令", style="cyan")
-        subtable.add_column("描述")
-
-        for subcmd, subcmd_info in help_info["subcommands"].items():
-            if isinstance(subcmd_info, dict):
-                # 处理嵌套子命令
-                for nested_cmd, nested_desc in subcmd_info.items():
-                    subtable.add_row(f"{subcmd} {nested_cmd}", nested_desc)
-            else:
-                subtable.add_row(subcmd, subcmd_info)
-
-        console.print(subtable)
-
-    # 显示示例
-    if "example" in help_info:
-        console.print("\n[bold]示例:[/bold]")
-        console.print(f"  {help_info['example']}")
-
-    if verbose:
-        # 显示详细选项
-        console.print("\n[bold]通用选项:[/bold]")
-        options_table = Table(show_header=False, box=None, padding=(0, 2))
-        options_table.add_column("Option", style="yellow")
-        options_table.add_column("Description")
-        options_table.add_row("--verbose", "显示详细信息")
-        options_table.add_row("--format=<json|text>", "指定输出格式")
-        console.print(options_table)
+            click.echo("详细错误信息:")
+            click.echo(traceback.format_exc())
 
 
 if __name__ == "__main__":

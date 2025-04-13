@@ -6,12 +6,11 @@
 
 ### 工作流系统核心概念
 
-1. **工作流（Workflow）**：一个完整的流程定义，包含多个阶段和转换
+1. **工作流定义（WorkflowDefinition）**：一个完整的流程定义，包含多个阶段和转换
 2. **阶段（Stage）**：工作流中的一个步骤，包含任务和交付物
 3. **转换（Transition）**：阶段之间的连接，定义从一个阶段到另一个阶段的条件
-4. **工作流定义（WorkflowDefinition）**：可重用的工作流模板
-5. **会话（FlowSession）**：工作流的运行实例
-6. **阶段实例（StageInstance）**：工作流会话中的阶段运行实例
+4. **会话（FlowSession）**：工作流的运行实例
+5. **阶段实例（StageInstance）**：工作流会话中的阶段运行实例
 
 ## 命令行使用
 
@@ -106,23 +105,29 @@ vc flow context update --session "产品A需求分析" --key "product_name" --va
 #### 1.1 创建工作流
 
 ```python
-from src.models.db import Workflow, Stage, Transition
-from src.db.repositories import WorkflowRepository, StageRepository, TransitionRepository
+from src.models.db import Stage, Transition, WorkflowDefinition
+from src.db.repositories import StageRepository, TransitionRepository, WorkflowDefinitionRepository
 from sqlalchemy.orm import Session
+from datetime import datetime
+import uuid
 
-def create_workflow(session: Session, name: str, description: str) -> Workflow:
-    # 创建工作流
-    workflow_repo = WorkflowRepository(session)
+def create_workflow(session: Session, name: str, description: str) -> WorkflowDefinition:
+    # 创建工作流定义
+    workflow_repo = WorkflowDefinitionRepository(session)
     workflow_data = {
+        "id": f"wfd_{uuid.uuid4().hex[:8]}",
         "name": name,
         "description": description,
-        "is_active": True
+        "type": "custom",
+        "stages_data": [],  # 初始为空，后续添加阶段定义
+        "source_rule": None
     }
     workflow = workflow_repo.create(workflow_data)
 
     # 创建阶段
     stage_repo = StageRepository(session)
     stage1 = stage_repo.create({
+        "id": f"stage_{uuid.uuid4().hex[:8]}",
         "workflow_id": workflow.id,
         "name": "第一阶段",
         "description": "开始阶段",
@@ -132,6 +137,7 @@ def create_workflow(session: Session, name: str, description: str) -> Workflow:
     })
 
     stage2 = stage_repo.create({
+        "id": f"stage_{uuid.uuid4().hex[:8]}",
         "workflow_id": workflow.id,
         "name": "第二阶段",
         "description": "中间阶段",
@@ -141,6 +147,7 @@ def create_workflow(session: Session, name: str, description: str) -> Workflow:
     })
 
     stage3 = stage_repo.create({
+        "id": f"stage_{uuid.uuid4().hex[:8]}",
         "workflow_id": workflow.id,
         "name": "第三阶段",
         "description": "结束阶段",
@@ -152,6 +159,7 @@ def create_workflow(session: Session, name: str, description: str) -> Workflow:
     # 创建转换
     transition_repo = TransitionRepository(session)
     transition_repo.create({
+        "id": f"trans_{uuid.uuid4().hex[:8]}",
         "workflow_id": workflow.id,
         "from_stage": stage1.id,
         "to_stage": stage2.id,
@@ -160,6 +168,7 @@ def create_workflow(session: Session, name: str, description: str) -> Workflow:
     })
 
     transition_repo.create({
+        "id": f"trans_{uuid.uuid4().hex[:8]}",
         "workflow_id": workflow.id,
         "from_stage": stage2.id,
         "to_stage": stage3.id,
@@ -174,12 +183,15 @@ def create_workflow(session: Session, name: str, description: str) -> Workflow:
 
 ```python
 from src.models.db import FlowSession, StageInstance, WorkflowDefinition
-from src.db.repositories import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository
+from src.db.repositories import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository, StageRepository
+from datetime import datetime
+import uuid
 
 def execute_workflow(session: Session, workflow_id: str, session_name: str) -> FlowSession:
     # 创建工作流会话
     session_repo = FlowSessionRepository(session)
     flow_session = session_repo.create({
+        "id": f"session_{uuid.uuid4().hex[:8]}",
         "workflow_id": workflow_id,
         "name": session_name,
         "status": "ACTIVE",
@@ -198,6 +210,7 @@ def execute_workflow(session: Session, workflow_id: str, session_name: str) -> F
     # 创建第一个阶段实例
     stage_instance_repo = StageInstanceRepository(session)
     stage_instance = stage_instance_repo.create({
+        "id": f"si_{uuid.uuid4().hex[:8]}",
         "session_id": flow_session.id,
         "stage_id": first_stage.id,
         "name": first_stage.name,
@@ -209,7 +222,8 @@ def execute_workflow(session: Session, workflow_id: str, session_name: str) -> F
     })
 
     # 更新会话当前阶段
-    session_repo.update_current_stage(flow_session.id, first_stage.id)
+    flow_session.current_stage_id = first_stage.id
+    session.commit()
 
     return flow_session
 ```

@@ -19,88 +19,28 @@
 - **Rich**：用于命令行界面美化和交互
 - **Click/Argparse**：命令行参数解析
 - **SQLite**：轻量级数据库存储
+- **SQLAlchemy**：ORM框架
 - **JSON Schema**：用于工作流验证
 
-### 文件存储
+### 数据存储
 
-目前工作流系统使用文件系统存储：
+工作流系统使用SQLite数据库进行数据存储，主要表结构如下：
 
-- 工作流定义：`data/workflows/` 目录下的JSON文件
-- 工作流模板：`templates/flow/` 目录下的JSON文件
-- 工作流执行记录：`data/workflow_executions/` 目录下的JSON文件
+1. **workflow_definitions**：存储工作流定义
+2. **stages**：存储工作流阶段
+3. **transitions**：存储阶段间转换
+4. **flow_sessions**：存储工作流执行会话
+5. **stage_instances**：存储阶段执行实例
 
-### 未来数据库设计
+各表之间的关系已在[数据结构说明](./data-structure.md)文档中详细描述。
 
-计划迁移到SQLite数据库，主要表结构：
+### 文件系统与数据库协同
 
-1. **Workflows表**：存储工作流元数据
-   ```sql
-   CREATE TABLE workflows (
-     id TEXT PRIMARY KEY,
-     name TEXT NOT NULL,
-     description TEXT,
-     version TEXT,
-     created_at TIMESTAMP,
-     updated_at TIMESTAMP,
-     definition JSON  -- 完整的工作流定义JSON
-   );
-   ```
+为了兼容历史数据和提高迁移灵活性，系统支持以下功能：
 
-2. **Stages表**：存储工作流阶段
-   ```sql
-   CREATE TABLE stages (
-     id TEXT PRIMARY KEY,
-     workflow_id TEXT,
-     name TEXT NOT NULL,
-     description TEXT,
-     order_index INTEGER,
-     checklist JSON,
-     deliverables JSON,
-     FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
-   );
-   ```
-
-3. **Transitions表**：存储阶段间转换
-   ```sql
-   CREATE TABLE transitions (
-     id TEXT PRIMARY KEY,
-     workflow_id TEXT,
-     from_stage TEXT,
-     to_stage TEXT,
-     condition TEXT,
-     FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
-     FOREIGN KEY (from_stage) REFERENCES stages(id) ON DELETE CASCADE,
-     FOREIGN KEY (to_stage) REFERENCES stages(id) ON DELETE CASCADE
-   );
-   ```
-
-4. **Sessions表**：存储工作流执行会话
-   ```sql
-   CREATE TABLE sessions (
-     id TEXT PRIMARY KEY,
-     workflow_id TEXT,
-     name TEXT,
-     status TEXT,
-     created_at TIMESTAMP,
-     updated_at TIMESTAMP,
-     FOREIGN KEY (workflow_id) REFERENCES workflows(id)
-   );
-   ```
-
-5. **StageInstances表**：存储阶段执行实例
-   ```sql
-   CREATE TABLE stage_instances (
-     id TEXT PRIMARY KEY,
-     session_id TEXT,
-     stage_id TEXT,
-     status TEXT,
-     started_at TIMESTAMP,
-     completed_at TIMESTAMP,
-     checklist_status JSON,
-     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-     FOREIGN KEY (stage_id) REFERENCES stages(id)
-   );
-   ```
+1. **兼容性读取**：可以从文件系统读取历史工作流定义
+2. **数据迁移工具**：提供从文件系统到数据库的迁移工具
+3. **导出功能**：支持将数据库中的工作流定义导出为文件
 
 ## 开发注意事项
 
@@ -110,21 +50,9 @@
    - 使用8字符的UUID前缀作为ID
    - 确保ID在进行序列化和反序列化时保持不变
 
-2. **ID兼容性**：
-   - 支持长UUID向短ID的迁移
-   - 在查找工作流时优先使用精确匹配，然后是模糊匹配
-
-### 文件与数据库同步
-
-为了平滑迁移至数据库系统：
-
-1. **双写阶段**：
-   - 实现数据库写入的同时保留文件写入
-   - 添加兼容性检查，确保文件和数据库数据一致
-
-2. **迁移工具**：
-   - 提供从文件到数据库的迁移工具
-   - 支持数据验证和校验功能
+2. **ID一致性**：
+   - 对象ID格式遵循`{对象类型}_{uuid前8位}`的规则
+   - 例如：`wfd_123abc45`、`stage_67def890`
 
 ### 代码结构规范
 
@@ -168,7 +96,7 @@
 
 1. **基于描述的创建流程**：
    ```
-   描述性文件 → OpenAI解析 → 工作流结构 → 验证 → 保存
+   描述性文件 → OpenAI解析 → 工作流定义结构 → 验证 → 保存
    ```
 
 2. **模板使用逻辑**：
@@ -217,18 +145,20 @@
 
 ## 性能考虑
 
-1. **内存使用**：
-   - 避免在内存中加载所有工作流
-   - 使用懒加载和分页技术
+1. **数据库优化**：
+   - 使用适当的索引加速查询
+   - 使用事务确保数据一致性
+   - 考虑缓存热点数据
 
 2. **AI服务调用**：
    - 实现缓存机制减少API调用
    - 添加重试逻辑处理间歇性失败
    - 在本地批处理请求
 
-3. **文件I/O优化**：
-   - 批量读写以减少文件系统操作
-   - 考虑使用内存缓存
+3. **并发处理**：
+   - 使用锁机制避免竞态条件
+   - 支持会话的并发执行
+   - 考虑使用异步处理长时间运行的任务
 
 ## 测试策略
 
@@ -245,21 +175,37 @@
    - 错误处理测试
    - 并发操作测试
 
-## 下一步计划
+## 开发路线图
 
-### 近期任务
+### 已完成任务 ✅
 
-1. **数据库集成**：将文件存储迁移到SQLite数据库
-2. **工作流模板管理**：完善模板CRUD操作
-3. **API层实现**：提供REST API接口
-4. **工作流版本控制**：支持工作流版本管理和比较
+1. **数据库集成**：工作流系统已成功迁移到SQLite数据库
+   - 实现了数据模型定义
+   - 完成了ORM映射
+   - 解决了模型关系问题
+
+2. **模型关系调整**：
+   - 统一使用WorkflowDefinition模型
+   - 修正Stage和Transition的外键引用
+   - 完善关系定义
+
+### 当前进行中任务 🔄
+
+1. **工作流模板管理**：完善模板CRUD操作
+2. **日志系统改进**：实现专门的工作流日志模块
+3. **测试覆盖率提升**：增加单元测试和集成测试
+
+### 近期计划
+
+1. **API层实现**：提供REST API接口
+2. **工作流版本控制**：支持工作流版本管理和比较
+3. **导入/导出功能**：完善工作流定义的导入导出
 
 ### 中期目标
 
 1. **权限系统**：实现基于角色的访问控制
 2. **工作流编辑器**：提供Web界面进行可视化编辑
 3. **工作流统计**：提供执行统计和分析功能
-4. **工作流导出/导入**：支持与其他系统交换工作流定义
 
 ### 长期愿景
 

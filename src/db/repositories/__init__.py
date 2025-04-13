@@ -15,7 +15,6 @@ from src.db.repositories.system_config_repository import SystemConfigRepository
 from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
 from src.db.repositories.transition_repository import TransitionRepository
 from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
-from src.db.repositories.workflow_repository import WorkflowExecutionRepository, WorkflowRepository, WorkflowStepRepository
 
 from .task_repository import TaskCommentRepository, TaskRepository
 
@@ -43,10 +42,6 @@ __all__ = [
     "RuleExampleRepository",
     # 系统配置仓库
     "SystemConfigRepository",
-    # 工作流仓库
-    "WorkflowRepository",
-    "WorkflowExecutionRepository",
-    "WorkflowStepRepository",
     # 工作流会话仓库
     "WorkflowDefinitionRepository",
     "FlowSessionRepository",
