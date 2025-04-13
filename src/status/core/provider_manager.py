@@ -101,7 +101,9 @@ class ProviderManager:
             provider: 状态提供者或提供者函数
         """
         if domain in self._providers:
-            logger.warning(f"重复注册状态提供者: {domain}")
+            logger.warning(f"重复注册状态提供者: {domain}，这可能导致不一致的行为")
+            # 返回而不覆盖现有提供者，避免重复注册问题
+            return
 
         if isinstance(provider, IStatusProvider):
             self._providers[domain] = provider
@@ -124,6 +126,17 @@ class ProviderManager:
             logger.info(f"已注销状态提供者: {domain}")
             return True
         return False
+
+    def has_provider(self, domain: str) -> bool:
+        """检查是否存在指定领域的提供者
+
+        Args:
+            domain: 领域名称
+
+        Returns:
+            bool: 是否存在提供者
+        """
+        return domain in self._providers
 
     def get_status(self, domain: str) -> Optional[Any]:
         """获取指定领域的状态

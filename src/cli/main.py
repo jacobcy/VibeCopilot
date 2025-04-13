@@ -46,6 +46,93 @@ COMMAND_MODULES = {
 PRELOADED_COMMANDS = {"help": help_command}
 
 
+class LazyLoadingGroup(click.Group):
+    """
+    延迟加载命令组类
+
+    在显示帮助信息时预加载子命令，保持延迟加载的性能优势
+    同时解决帮助信息不一致的问题
+    """
+
+    def __init__(self, name, module_path, help=None, **attrs):
+        self.module_path = module_path
+        self._loaded_command = None
+        self._loaded = False
+        super().__init__(name=name, callback=None, help=help, **attrs)
+
+    def _load_command(self):
+        """
+        加载实际的命令实现
+        """
+        if not self._loaded:
+            try:
+                module_name, attribute = self.module_path.split(":")
+                module = import_module(module_name)
+                self._loaded_command = getattr(module, attribute)
+                self._loaded = True
+            except Exception as e:
+                logger.error(f"加载命令模块失败 {self.module_path}: {e}")
+                raise click.ClickException(f"加载命令失败: {str(e)}")
+        return self._loaded_command
+
+    def get_command(self, ctx, cmd_name):
+        """
+        获取子命令，预加载实际命令以显示完整的子命令
+        """
+        try:
+            # 尝试加载实际命令并获取其子命令
+            cmd = self._load_command()
+            return cmd.get_command(ctx, cmd_name)
+        except Exception as e:
+            # 如果加载失败，回退到基本子命令
+            logger.warning(f"获取命令 {self.name} 的子命令 {cmd_name} 失败: {e}")
+            return super().get_command(ctx, cmd_name)
+
+    def list_commands(self, ctx):
+        """
+        列出所有子命令，预加载实际命令以显示完整的子命令列表
+        """
+        try:
+            # 尝试加载实际命令并获取其子命令列表
+            cmd = self._load_command()
+            return cmd.list_commands(ctx)
+        except Exception as e:
+            # 如果加载失败，回退到基本子命令列表
+            logger.warning(f"获取命令 {self.name} 的子命令列表失败: {e}")
+            return super().list_commands(ctx)
+
+    def invoke(self, ctx):
+        """
+        调用命令，预加载实际命令并调用其回调函数
+        """
+        if ctx.protected_args:
+            # 如果有子命令，则正常调用
+            return super().invoke(ctx)
+        else:
+            # 如果没有子命令，则加载实际命令并调用其回调函数
+            try:
+                cmd = self._load_command()
+                if cmd.callback is not None:
+                    return cmd.callback(**ctx.params)
+            except Exception as e:
+                logger.error(f"调用命令 {self.name} 失败: {e}")
+            # 如果加载失败或没有回调函数，则正常调用
+            return super().invoke(ctx)
+
+    def get_help(self, ctx):
+        """
+        获取帮助信息，预加载实际命令以显示完整的帮助
+        """
+        try:
+            # 尝试加载实际命令并获取其帮助信息
+            cmd = self._load_command()
+            return cmd.get_help(ctx)
+        except Exception as e:
+            # 如果加载失败，回退到基本帮助信息
+            logger.warning(f"获取命令 {self.name} 的帮助信息失败: {e}")
+            return super().get_help(ctx)
+
+
 def load_command(module_path: str) -> click.Command:
     """
     延迟加载命令模块
@@ -146,8 +233,7 @@ def get_cli_app():
         # 设置日志级别
         set_log_level(verbose)
 
-        # 初始化状态模块（在日志配置后执行）
-        initialize_status_module()
+        # 注意：状态模块初始化已移至main函数，避免影响命令执行
 
         # 如果没有子命令，显示帮助信息
         if ctx.invoked_subcommand is None:
@@ -169,15 +255,9 @@ def get_cli_app():
                 cmd_description = group[cmd_name]["description"]
                 break
 
-        # 创建命令加载器
-        def make_loader(mp=module_path):
-            def loader():
-                return load_command(mp)
+        # 创建延迟加载的命令组
+        cmd = LazyLoadingGroup(cmd_name, module_path, help=cmd_description or f"加载并执行 {cmd_name} 命令")
 
-            return loader
-
-        # 创建延迟加载的命令
-        cmd = click.Command(cmd_name, callback=make_loader(module_path), help=cmd_description or f"加载并执行 {cmd_name} 命令")
         cli.add_command(cmd)
 
     return cli
@@ -199,13 +279,25 @@ def print_error_message(command: str):
 def main():
     """CLI主入口"""
     try:
+        # 设置日志级别
+        logging.getLogger().setLevel(logging.WARNING)
+
         # 预准备数据库
         from src.db.connection_manager import ensure_tables_exist
 
         ensure_tables_exist(force_recreate=False)
 
-        # 执行CLI命令
+        # 获取CLI应用
         cli = get_cli_app()
+
+        # 在执行命令前尝试初始化状态模块，但不允许其影响命令执行
+        try:
+            # 在这里初始化状态模块，如果失败也不影响命令执行
+            initialize_status_module()
+        except Exception as e:
+            logger.error(f"状态模块初始化失败，但将继续执行命令: {e}")
+
+        # 执行CLI命令
         cli()
         return 0  # 成功执行返回 0
     except click.exceptions.NoSuchOption as e:

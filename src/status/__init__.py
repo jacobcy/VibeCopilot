@@ -26,7 +26,6 @@ def initialize():
     if status_service is None:
         status_service = StatusService.get_instance()
 
-    from src.status.providers.health_provider import HealthProvider
     from src.status.subscribers.health_check_subscriber import HealthCheckSubscriber
 
     # 获取状态服务单例
@@ -39,13 +38,16 @@ def initialize():
     except Exception as e:
         logger.error(f"注册健康检查订阅者失败: {e}")
 
-    # 注册健康状态提供者
-    try:
-        health_provider = HealthProvider()
-        service.register_provider("health", health_provider)
-        logger.info("健康状态提供者注册成功")
-    except Exception as e:
-        logger.error(f"注册健康状态提供者失败: {e}")
+    # 检查是否已经注册了健康状态提供者
+    if not service.provider_manager.has_provider("health"):
+        try:
+            from src.status.providers.health_provider import HealthProvider
+
+            health_provider = HealthProvider()
+            service.register_provider("health", health_provider)
+            logger.info("健康状态提供者注册成功")
+        except Exception as e:
+            logger.error(f"注册健康状态提供者失败: {e}")
 
     logger.info("状态模块初始化完成。")
 

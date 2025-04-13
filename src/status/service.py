@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 # 定义模拟类，避免导入错误
-class MockRoadmapStatusProvider:
+class MockRoadmapStatusProvider(IStatusProvider):
     """路线图状态提供者模拟实现"""
 
     def __init__(self, roadmap_service=None):
@@ -79,16 +79,18 @@ class StatusService:
 
         包括系统健康状态和项目状态
         """
-        # 预先初始化数据库，避免每个provider重复初始化
+        # 尝试获取数据库会话，但不强制依赖
+        session = None
         try:
-            from src.db import get_session_factory, init_db
+            from src.db import get_session_factory
 
             # 直接使用已初始化的会话，减少数据库操作
-            # 不调用init_db()，因为这在主程序启动时已经完成
-            session = get_session_factory()()
+            session_factory = get_session_factory()
+            if session_factory is not None:
+                session = session_factory()
         except Exception as e:
-            logger.error(f"获取数据库会话失败: {e}")
-            session = None
+            logger.warning(f"获取数据库会话失败: {e}")
+            # 将错误降级为警告，不影响状态模块初始化
 
         # 注册健康状态提供者
         self.register_provider("health", self.health_calculator.get_health_status)
@@ -101,28 +103,11 @@ class StatusService:
 
         # 注册路线图状态提供者
         try:
-            # 临时禁用路线图状态提供者，避免影响其他模块的健康检查
-            logger.warning("路线图状态提供者已临时禁用，等待接口问题修复")
-            """
-            if session:
-                roadmap_service = RoadmapService()  # 移除session参数
-                try:
-                    # 尝试导入真实的RoadmapStatusProvider
-                    from src.status.providers.roadmap_provider import RoadmapStatusProvider
-                    roadmap_provider = RoadmapStatusProvider(roadmap_service)
-                except ImportError:
-                    # 使用模拟实现
-                    logger.warning("无法导入RoadmapStatusProvider，使用模拟实现")
-                    roadmap_provider = MockRoadmapStatusProvider(roadmap_service)
-                except Exception as e:
-                    logger.error(f"初始化RoadmapStatusProvider失败: {e}")
-                    roadmap_provider = MockRoadmapStatusProvider(roadmap_service)
-
-                self.register_provider("roadmap", roadmap_provider)
-                logger.info("路线图状态提供者注册成功")
-            else:
-                raise Exception("数据库会话不可用")
-            """
+            # 使用模拟提供者替代临时禁用的真实提供者
+            logger.info("路线图状态提供者已临时禁用，使用模拟提供者")
+            roadmap_provider = MockRoadmapStatusProvider()
+            self.register_provider("roadmap", roadmap_provider)
+            logger.info("模拟路线图状态提供者注册成功")
         except ImportError as e:
             logger.error(f"注册路线图状态提供者失败 (导入错误): {e}")
             self.register_provider(
