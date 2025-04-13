@@ -37,7 +37,7 @@ src/log/
 ### 基本使用
 
 ```python
-from src.log import log_workflow_start, log_workflow_complete
+from src.logger import log_workflow_start, log_workflow_complete
 
 # 记录工作流开始
 log_workflow_start(
@@ -57,7 +57,7 @@ log_workflow_complete(
 ### 记录操作和任务
 
 ```python
-from src.log import log_operation_start, log_operation_complete, log_task_result
+from src.logger import log_operation_start, log_operation_complete, log_task_result
 
 # 记录操作开始
 log_operation_start(
@@ -89,7 +89,7 @@ log_operation_complete(
 ### 记录性能指标
 
 ```python
-from src.log import log_performance_metric
+from src.logger import log_performance_metric
 
 # 记录性能指标
 log_performance_metric(
@@ -104,7 +104,7 @@ log_performance_metric(
 ### 记录错误
 
 ```python
-from src.log import log_error
+from src.logger import log_error
 import traceback
 
 try:
@@ -125,7 +125,7 @@ except Exception as e:
 ### 记录审计信息
 
 ```python
-from src.log import log_audit
+from src.logger import log_audit
 
 # 记录审计信息
 log_audit(
@@ -141,7 +141,7 @@ log_audit(
 ### 查询日志
 
 ```python
-from src.log import get_workflow_logs, get_workflow_operations, get_operation_tasks
+from src.logger import get_workflow_logs, get_workflow_operations, get_operation_tasks
 
 # 获取最近的工作流日志
 recent_workflows = get_workflow_logs(limit=10)

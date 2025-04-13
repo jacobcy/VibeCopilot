@@ -9,22 +9,26 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
 from src.db import FlowSessionRepository, WorkflowDefinitionRepository
+from src.flow_session.status.status import SessionStatus
 from src.models.db import FlowSession
 
 # 会话状态到状态系统状态的映射
 SESSION_STATUS_MAPPING = {
-    "ACTIVE": "IN_PROGRESS",
-    "PAUSED": "ON_HOLD",
-    "COMPLETED": "COMPLETED",
-    "ABORTED": "CANCELED",
+    SessionStatus.PENDING.value: "PENDING",
+    SessionStatus.ACTIVE.value: "IN_PROGRESS",
+    SessionStatus.PAUSED.value: "ON_HOLD",
+    SessionStatus.COMPLETED.value: "COMPLETED",
+    SessionStatus.FAILED.value: "FAILED",
 }
 
 # 状态系统状态到会话状态的映射
 STATUS_SESSION_MAPPING = {
-    "IN_PROGRESS": "ACTIVE",
-    "ON_HOLD": "PAUSED",
-    "COMPLETED": "COMPLETED",
-    "CANCELED": "ABORTED",
+    "PENDING": SessionStatus.PENDING.value,
+    "IN_PROGRESS": SessionStatus.ACTIVE.value,
+    "ON_HOLD": SessionStatus.PAUSED.value,
+    "COMPLETED": SessionStatus.COMPLETED.value,
+    "FAILED": SessionStatus.FAILED.value,
+    "CANCELED": SessionStatus.FAILED.value,  # 将CANCELED映射到FAILED状态
 }
 
 

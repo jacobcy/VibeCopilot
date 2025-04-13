@@ -6,12 +6,13 @@
 
 import argparse
 import json
+import logging
 import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from adapters.docs_engine import (
+from src.docs_engine.converters.docs_converter import (
     convert_document_links,
     create_document_from_template,
     extract_document_blocks,
@@ -23,10 +24,16 @@ from src.docs_engine.engine import create_document_engine
 
 def main():
     """命令行工具入口函数"""
+    # 初始化日志
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logger = logging.getLogger(__name__)
+
+    # 创建命令行解析器
     parser = argparse.ArgumentParser(description="文档引擎命令行工具")
 
     # 基本参数
     parser.add_argument("--base-dir", "-d", help="项目根目录", default=os.getcwd())
+    parser.add_argument("--debug", action="store_true", help="显示调试信息")
 
     # 子命令
     subparsers = parser.add_subparsers(dest="command", help="命令")
@@ -64,6 +71,11 @@ def main():
     # 解析参数
     args = parser.parse_args()
 
+    # 如果指定了debug模式，调整日志级别
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("已启用调试模式")
+
     # 如果没有指定命令，显示帮助
     if not args.command:
         parser.print_help()
@@ -71,6 +83,8 @@ def main():
 
     try:
         # 根据命令执行操作
+        logger.info(f"执行命令: {args.command}")
+
         if args.command == "parse":
             # 解析文档
             doc_data = parse_document_file(args.file)
@@ -135,9 +149,7 @@ def main():
                 variables["description"] = args.description
 
             # 创建文档
-            success = create_document_from_template(
-                template=args.template, output_path=args.output, variables=variables
-            )
+            success = create_document_from_template(template=args.template, output_path=args.output, variables=variables)
 
             if success:
                 print(f"文档已成功创建: {args.output}")
@@ -145,11 +157,32 @@ def main():
                 print(f"文档创建失败")
                 return 1
 
+    except ModuleNotFoundError as e:
+        print(f"错误: 缺少必要的模块 - {str(e)}")
+        print("请确保已安装所有依赖项，可以运行: pip install -e .")
+        return 1
+    except ImportError as e:
+        print(f"错误: 导入模块失败 - {str(e)}")
+        print("可能是模块路径错误或模块不存在")
+        return 1
+    except FileNotFoundError as e:
+        print(f"错误: 文件未找到 - {str(e)}")
+        return 1
+    except PermissionError as e:
+        print(f"错误: 权限不足 - {str(e)}")
+        return 1
     except Exception as e:
         print(f"错误: {str(e)}")
-        import traceback
+        logger = logging.getLogger(__name__)
+        logger.exception("执行命令时发生未处理的异常")
 
-        traceback.print_exc()
+        # 在调试模式下打印堆栈跟踪
+        if "--debug" in sys.argv:
+            import traceback
+
+            traceback.print_exc()
+        else:
+            print("使用 --debug 参数可以查看详细错误信息")
         return 1
 
     return 0

@@ -30,7 +30,7 @@ def db():
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @click.option("--force", is_flag=True, help="强制重新初始化数据库")
 @pass_service(service_type="db")
-def init_db(service, verbose: bool, force: bool) -> None:
+def init_db(service, verbose: bool, force: bool) -> int:
     """初始化数据库"""
     try:
         # 创建参数字典，与InitHandler兼容
@@ -40,9 +40,10 @@ def init_db(service, verbose: bool, force: bool) -> None:
         from src.cli.commands.db.handlers.init_handler import InitHandler
 
         init_handler = InitHandler()
-        return init_handler.handle(args_dict)
+        return init_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="list", help="列出数据库内容")
@@ -50,12 +51,12 @@ def init_db(service, verbose: bool, force: bool) -> None:
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
 @pass_service(service_type="db")
-def list_db(service, type: str, verbose: bool, format: str) -> None:
+def list_db(service, type: str, verbose: bool, format: str) -> int:
     """列出数据库内容"""
     try:
         if service is None:
             console.print("[red]错误: 数据库服务未成功创建[/red]")
-            return
+            return 1
 
         logger.debug(f"Click命令收到数据库服务 (ID: {id(service)})")
 
@@ -63,11 +64,14 @@ def list_db(service, type: str, verbose: bool, format: str) -> None:
         from src.cli.commands.db.handlers.list_handler import ListHandler
 
         list_handler = ListHandler()
-        list_handler.db_service = service
-        return list_handler.handle({"type": type, "verbose": verbose, "format": format})
+        # 创建参数字典
+        args_dict = {"type": type, "verbose": verbose, "format": format, "service": service}
+        # 使用 ** 解包字典为关键字参数
+        return list_handler.handle(**args_dict)
     except Exception as e:
         logger.error(f"列出数据库内容失败: {e}", exc_info=True)
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="show", help="显示数据库条目")
@@ -75,7 +79,7 @@ def list_db(service, type: str, verbose: bool, format: str) -> None:
 @click.option("--id", required=True, help="实体ID")
 @click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
 @pass_service(service_type="db")
-def show_db(service, type: str, id: str, format: str) -> None:
+def show_db(service, type: str, id: str, format: str) -> int:
     """显示数据库条目"""
     try:
         # 创建参数字典，与ShowHandler兼容
@@ -85,9 +89,10 @@ def show_db(service, type: str, id: str, format: str) -> None:
         from src.cli.commands.db.handlers.show_handler import ShowHandler
 
         show_handler = ShowHandler()
-        return show_handler.handle(args_dict)
+        return show_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="query", help="查询数据库")
@@ -97,7 +102,7 @@ def show_db(service, type: str, id: str, format: str) -> None:
 @click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @pass_service(service_type="db")
-def query_db(service, type: str, id: Optional[str] = None, query: Optional[str] = None, format: str = "table", verbose: bool = False) -> None:
+def query_db(service, type: str, id: Optional[str] = None, query: Optional[str] = None, format: str = "table", verbose: bool = False) -> int:
     """查询数据库"""
     try:
         # 创建参数字典，与QueryHandler兼容
@@ -107,9 +112,10 @@ def query_db(service, type: str, id: Optional[str] = None, query: Optional[str] 
         from src.cli.commands.db.handlers.query_handler import QueryHandler
 
         query_handler = QueryHandler()
-        return query_handler.handle(args_dict)
+        return query_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="create", help="创建数据库条目")
@@ -117,7 +123,7 @@ def query_db(service, type: str, id: Optional[str] = None, query: Optional[str] 
 @click.option("--data", required=True, help="JSON格式的数据")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @pass_service(service_type="db")
-def create_db(service, type: str, data: str, verbose: bool = False) -> None:
+def create_db(service, type: str, data: str, verbose: bool = False) -> int:
     """创建数据库条目"""
     try:
         # 创建参数字典，与CreateHandler兼容
@@ -127,9 +133,10 @@ def create_db(service, type: str, data: str, verbose: bool = False) -> None:
         from src.cli.commands.db.handlers.create_handler import CreateHandler
 
         create_handler = CreateHandler()
-        return create_handler.handle(args_dict)
+        return create_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="update", help="更新数据库条目")
@@ -138,7 +145,7 @@ def create_db(service, type: str, data: str, verbose: bool = False) -> None:
 @click.option("--data", required=True, help="JSON格式的数据")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @pass_service(service_type="db")
-def update_db(service, type: str, id: str, data: str, verbose: bool = False) -> None:
+def update_db(service, type: str, id: str, data: str, verbose: bool = False) -> int:
     """更新数据库条目"""
     try:
         # 创建参数字典，与UpdateHandler兼容
@@ -148,9 +155,10 @@ def update_db(service, type: str, id: str, data: str, verbose: bool = False) -> 
         from src.cli.commands.db.handlers.update_handler import UpdateHandler
 
         update_handler = UpdateHandler()
-        return update_handler.handle(args_dict)
+        return update_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="delete", help="删除数据库条目")
@@ -159,7 +167,7 @@ def update_db(service, type: str, id: str, data: str, verbose: bool = False) -> 
 @click.option("--force", is_flag=True, help="强制删除，不提示确认")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @pass_service(service_type="db")
-def delete_db(service, type: str, id: str, force: bool = False, verbose: bool = False) -> None:
+def delete_db(service, type: str, id: str, force: bool = False, verbose: bool = False) -> int:
     """删除数据库条目"""
     try:
         # 创建参数字典，与DeleteHandler兼容
@@ -169,16 +177,17 @@ def delete_db(service, type: str, id: str, force: bool = False, verbose: bool = 
         from src.cli.commands.db.handlers.delete_handler import DeleteHandler
 
         delete_handler = DeleteHandler()
-        return delete_handler.handle(args_dict)
+        return delete_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="backup", help="备份数据库")
 @click.option("--output", help="备份文件路径")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @pass_service(service_type="db")
-def backup_db(service, output: Optional[str] = None, verbose: bool = False) -> None:
+def backup_db(service, output: Optional[str] = None, verbose: bool = False) -> int:
     """备份数据库"""
     try:
         # 创建参数字典，与BackupHandler兼容
@@ -188,9 +197,10 @@ def backup_db(service, output: Optional[str] = None, verbose: bool = False) -> N
         from src.cli.commands.db.handlers.backup_handler import BackupHandler
 
         backup_handler = BackupHandler()
-        return backup_handler.handle(args_dict)
+        return backup_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="restore", help="恢复数据库")
@@ -198,7 +208,7 @@ def backup_db(service, output: Optional[str] = None, verbose: bool = False) -> N
 @click.option("--force", is_flag=True, help="强制恢复，不提示确认")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @pass_service(service_type="db")
-def restore_db(service, backup_file: str, force: bool = False, verbose: bool = False) -> None:
+def restore_db(service, backup_file: str, force: bool = False, verbose: bool = False) -> int:
     """从备份文件恢复数据库"""
     try:
         # 创建参数字典，与RestoreHandler兼容
@@ -208,9 +218,10 @@ def restore_db(service, backup_file: str, force: bool = False, verbose: bool = F
         from src.cli.commands.db.handlers.restore_handler import RestoreHandler
 
         restore_handler = RestoreHandler()
-        return restore_handler.handle(args_dict)
+        return restore_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 @db.command(name="clean", help="清理数据库")

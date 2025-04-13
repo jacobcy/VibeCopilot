@@ -58,30 +58,35 @@ commands:
 
   "task create":
     description: "创建一个新的任务"
-    subcommands:
-      "--title":
+    arguments:
+      - name: "title"
         description: "任务标题"
-        short: "-t"
         required: true
-      "--desc":
+    subcommands:
+      "--description":
         description: "任务描述"
         short: "-d"
-      "--assignee":
-        description: "负责人"
-        short: "-a"
-      "--label":
-        description: "标签"
-        short: "-l"
-        multiple: true
+      "--priority":
+        description: "任务优先级"
+        short: "-p"
+        values: ["low", "medium", "high"]
+        default: "medium"
       "--status":
-        description: "初始状态"
+        description: "任务状态"
         short: "-s"
-      "--link-roadmap":
-        description: "关联到 Roadmap Item"
-      "--link-workflow-stage":
-        description: "关联到 Workflow Stage Instance ID"
+        values: ["todo", "in_progress", "done"]
+        default: "todo"
+      "--link-story":
+        description: "关联到Story"
       "--link-github":
-        description: "关联到 GitHub Issue"
+        description: "关联到GitHub Issue (格式: owner/repo#number)"
+      "--flow":
+        description: "要关联的工作流ID，将自动创建工作流会话"
+        short: "-f"
+      "--verbose":
+        description: "显示详细信息"
+        short: "-v"
+        type: "flag"
     expected_output: ["创建", "任务", "成功"]
     timeout: 8
     critical: true
@@ -96,9 +101,12 @@ commands:
       "--title":
         description: "新的任务标题"
         short: "-t"
-      "--desc":
+      "--description":
         description: "新的任务描述"
         short: "-d"
+      "--status":
+        description: "新的状态"
+        short: "-s"
       "--assignee":
         description: "新的负责人"
         short: "-a"
@@ -112,9 +120,15 @@ commands:
       "--remove-label":
         description: "移除标签"
         multiple: true
-      "--status":
-        description: "新的状态"
+      "--link-story":
+        description: "关联到Story"
         short: "-s"
+      "--link-github":
+        description: "关联到GitHub Issue (格式: owner/repo#number)"
+        short: "-g"
+      "--unlink":
+        description: "取消指定类型的关联"
+        values: ["story", "github"]
     expected_output: ["更新", "任务", "成功"]
     timeout: 8
     critical: true
@@ -149,22 +163,23 @@ commands:
     timeout: 5
     critical: true
 
-  "task link-task":
-    description: "关联任务到 Roadmap Item, Workflow Stage 或 GitHub 实体"
+  "task link":
+    description: "关联任务到工作流会话"
     arguments:
       - name: "task_id"
         description: "任务ID"
         required: true
     subcommands:
-      "--type":
-        description: "关联类型"
-        short: "-t"
-        values: ["roadmap", "workflow_stage", "github_issue", "github_pr", "github_commit"]
-        required: true
-      "--target":
-        description: "目标实体ID"
-        required: true
-    expected_output: ["关联", "任务", "成功"]
+      "--flow":
+        description: "工作流类型，将创建新的工作流会话"
+        short: "-f"
+      "--session":
+        description: "直接关联到已存在的工作流会话ID"
+        short: "-s"
+      "--unlink-session":
+        description: "取消与指定会话ID的关联"
+        short: "-u"
+    expected_output: ["关联", "工作流", "成功"]
     timeout: 5
     critical: true
 

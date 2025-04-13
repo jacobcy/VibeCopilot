@@ -7,9 +7,9 @@
 使用组件化设计，将不同职责委托给专门的服务组件。
 """
 
-import logging
 from typing import Any, Dict, List, Optional
 
+from src.core.log_init import get_logger
 from src.db import get_session_factory
 from src.flow_session.session.manager import FlowSessionManager
 from src.flow_session.stage.manager import StageInstanceManager
@@ -25,7 +25,8 @@ from src.workflow.operations import (
 )
 from src.workflow.service.components import BaseService, ExecutionService, SessionService, StageService, WorkflowDefinitionService
 
-logger = logging.getLogger(__name__)
+# 获取工作流日志记录器
+logger = get_logger("workflow.service", is_workflow=True)
 
 
 class FlowService(BaseService):
@@ -52,7 +53,7 @@ class FlowService(BaseService):
 
     # ============= 工作流定义相关方法 =============
 
-    def list_workflows(self, workflow_type: Optional[str] = None) -> Dict[str, Any]:
+    def list_workflows(self, workflow_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         获取工作流列表
 
@@ -62,6 +63,7 @@ class FlowService(BaseService):
         Returns:
             包含工作流列表的字典
         """
+        logger.debug(f"列出工作流 (类型={workflow_type})")
         return self.workflow_service.list_workflows(workflow_type)
 
     def get_workflow(self, workflow_id: str) -> Optional[Dict[str, Any]]:
@@ -74,6 +76,7 @@ class FlowService(BaseService):
         Returns:
             工作流定义字典或None
         """
+        logger.debug(f"获取工作流: {workflow_id}")
         return self.workflow_service.get_workflow(workflow_id)
 
     def get_workflow_definition(self, workflow_id: str) -> Optional[Dict[str, Any]]:
@@ -122,6 +125,7 @@ class FlowService(BaseService):
         Returns:
             创建的工作流定义
         """
+        logger.info(f"创建新工作流: {workflow_data.get('name', 'unnamed')}")
         return self.workflow_service.create_workflow(workflow_data)
 
     def update_workflow(self, workflow_id: str, workflow_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -135,6 +139,7 @@ class FlowService(BaseService):
         Returns:
             更新后的工作流定义或None
         """
+        logger.info(f"更新工作流: {workflow_id}")
         return self.workflow_service.update_workflow(workflow_id, workflow_data)
 
     def delete_workflow(self, workflow_id: str) -> bool:
@@ -147,6 +152,7 @@ class FlowService(BaseService):
         Returns:
             是否删除成功
         """
+        logger.info(f"删除工作流: {workflow_id}")
         return self.workflow_service.delete_workflow(workflow_id)
 
     def validate_workflows(self, auto_fix: bool = False) -> Dict[str, Any]:
@@ -340,21 +346,34 @@ class FlowService(BaseService):
     # ============= 工作流执行相关方法 =============
 
     def execute_workflow(
-        self, workflow_id: str, context: Optional[Dict[str, Any]] = None, task_id: Optional[str] = None, session_name: Optional[str] = None
+        self, workflow_id: str, session_name: Optional[str] = None, stage_id: Optional[str] = None, auto_advance: bool = False
     ) -> Dict[str, Any]:
         """
         执行工作流
 
-        此方法是关键的连接点，将workflow和flow_session模块连接起来。
-        不在workflow模块中实现执行逻辑，而是委托给flow_session模块。
-
         Args:
             workflow_id: 工作流ID
-            context: 可选的执行上下文数据
-            task_id: 可选的特定任务ID
-            session_name: 可选的会话名称
+            session_name: 会话名称
+            stage_id: 起始阶段ID
+            auto_advance: 是否自动推进
 
         Returns:
-            执行结果字典
+            执行结果
         """
-        return self.execution_service.execute_workflow(workflow_id, context, task_id, session_name)
+        logger.info(f"执行工作流: {workflow_id} (session={session_name}, stage={stage_id})")
+        return self.execution_service.execute_workflow(workflow_id, session_name=session_name)
+
+    def resume_workflow_execution(self, session_id: str, stage_id: Optional[str] = None, auto_advance: bool = False) -> Dict[str, Any]:
+        """
+        恢复工作流执行
+
+        Args:
+            session_id: 会话ID
+            stage_id: 阶段ID
+            auto_advance: 是否自动推进
+
+        Returns:
+            执行结果
+        """
+        logger.info(f"恢复工作流执行: session={session_id}, stage={stage_id}")
+        return self.execution_service.resume_execution(session_id, stage_id)

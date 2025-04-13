@@ -24,7 +24,7 @@ class RuleManager:
         return created_rule
 
 # 命令行工具使用方式 (src/cli/commands/rule_command.py)
-from src.core.rule_manager import RuleManager
+from src.rule_manager import RuleManager
 
 class RuleCommand(BaseCommand):
     def __init__(self):
@@ -37,7 +37,7 @@ class RuleCommand(BaseCommand):
         return {"success": True, "data": rules}
 
 # Cursor Rules 处理函数 (src/cursor/rule_functions.py)
-from src.core.rule_manager import RuleManager
+from src.rule_manager import RuleManager
 
 def handle_list_rules(args):
     """处理 /rule list 命令"""

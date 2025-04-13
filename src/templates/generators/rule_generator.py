@@ -1,7 +1,7 @@
 """
 规则生成器模块
 
-根据模板生成规则文件。
+继承自基础生成器，实现规则生成相关功能。
 """
 
 import json
@@ -12,15 +12,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from src.models.db import Rule, RuleMetadata, RuleType, Template
+from src.templates.core.template_engine import TemplateEngine
+from src.templates.template_utils import normalize_template_id
 
-from ..core.template_engine import TemplateEngine
-from ..utils.template_utils import normalize_template_id
+from .base_generator import BaseGenerator
 
 logger = logging.getLogger(__name__)
 
 
-class RuleGenerator:
-    """规则生成器类"""
+class RuleGenerator(BaseGenerator):
+    """规则生成器实现类"""
 
     def __init__(self, template_engine: TemplateEngine):
         """
@@ -29,11 +30,12 @@ class RuleGenerator:
         Args:
             template_engine: 模板引擎
         """
+        super().__init__()
         self.template_engine = template_engine
 
-    def generate_rule(self, template: Template, variables: Dict[str, Any]) -> Rule:
+    def generate(self, template: Template, variables: Dict[str, Any]) -> Rule:
         """
-        根据模板生成规则对象
+        生成规则对象
 
         Args:
             template: 模板对象
@@ -86,9 +88,9 @@ class RuleGenerator:
 
         return rule
 
-    def generate_rule_file(self, template: Template, variables: Dict[str, Any], output_path: str) -> Rule:
+    def generate_to_file(self, template: Template, variables: Dict[str, Any], output_path: str) -> Rule:
         """
-        生成规则文件
+        生成规则到文件
 
         Args:
             template: 模板对象
@@ -99,7 +101,7 @@ class RuleGenerator:
             生成的规则对象
         """
         # 生成规则对象
-        rule = self.generate_rule(template, variables)
+        rule = self.generate(template, variables)
 
         # 确保输出目录存在
         output_dir = os.path.dirname(output_path)
@@ -114,7 +116,7 @@ class RuleGenerator:
 
         return rule
 
-    def generate_rule_json(self, rule: Rule, output_path: Optional[str] = None) -> str:
+    def generate_json(self, rule: Rule, output_path: Optional[str] = None) -> str:
         """
         生成规则的JSON表示
 
@@ -128,42 +130,13 @@ class RuleGenerator:
         try:
             # 如果是SQLAlchemy模型，转换为Pydantic模型
             if hasattr(rule, "to_pydantic"):
-                try:
-                    pydantic_rule = rule.to_pydantic()
-                    rule_json = pydantic_rule.model_dump_json(exclude_none=True, indent=2)
-                except Exception:
-                    # 对于测试，直接创建一个简化的Pydantic规则模型
-                    from src.models.rule_model import Rule as PydanticRule
-                    from src.models.rule_model import RuleMetadata
-
-                    # 为测试创建一个简单的元数据对象
-                    metadata = RuleMetadata(
-                        author="测试作者",
-                        tags=[],
-                        version="1.0.0",
-                        created_at=datetime.now(),
-                        updated_at=datetime.now(),
-                        dependencies=[],
-                        usage_count=0,
-                        effectiveness=0,
-                    )
-
-                    # 为测试创建简化的规则对象
-                    pydantic_rule = PydanticRule(
-                        id=rule.id,
-                        name=rule.name,
-                        type=rule.type,
-                        description=rule.description,
-                        content=rule.content,
-                        metadata=metadata,
-                    )
-                    rule_json = pydantic_rule.model_dump_json(exclude_none=True, indent=2)
+                pydantic_rule = rule.to_pydantic()
+                rule_json = pydantic_rule.model_dump_json(exclude_none=True, indent=2)
             else:
                 # 如果已经是Pydantic模型
                 rule_json = rule.model_dump_json(exclude_none=True, indent=2)
         except Exception as e:
             # 最后的兜底方案 - 直接使用JSON库序列化
-
             rule_dict = {
                 "id": getattr(rule, "id", "unknown"),
                 "name": getattr(rule, "name", "Unknown Rule"),
@@ -187,20 +160,20 @@ class RuleGenerator:
 
         return rule_json
 
-    def batch_generate_rules(self, template_configs: List[Dict[str, Any]], base_output_dir: str) -> List[Rule]:
+    def batch_generate(self, configs: List[Dict[str, Any]], base_dir: str) -> List[Rule]:
         """
         批量生成规则
 
         Args:
-            template_configs: 模板配置列表，每项包含template、variables和output_file
-            base_output_dir: 输出目录基路径
+            configs: 配置列表，每项包含template、variables和output_file
+            base_dir: 输出目录基路径
 
         Returns:
             生成的规则对象列表
         """
         generated_rules = []
 
-        for config in template_configs:
+        for config in configs:
             template = config.get("template")
             variables = config.get("variables", {})
             output_file = config.get("output_file")
@@ -211,10 +184,10 @@ class RuleGenerator:
 
             try:
                 # 构建输出路径
-                output_path = os.path.join(base_output_dir, output_file)
+                output_path = os.path.join(base_dir, output_file)
 
                 # 生成规则文件
-                rule = self.generate_rule_file(template, variables, output_path)
+                rule = self.generate_to_file(template, variables, output_path)
                 generated_rules.append(rule)
 
             except Exception as e:

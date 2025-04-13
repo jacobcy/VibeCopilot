@@ -8,7 +8,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from src.log import log_service
+from src.logger import log_service
 
 
 def save_execution(execution_data: Dict[str, Any]) -> Dict[str, Any]:

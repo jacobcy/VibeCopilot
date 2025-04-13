@@ -237,7 +237,7 @@ class WorkflowExecutionLogModel(Base):
 ```python
 # 原接口保持不变，但实现委托给LogService
 def get_workflow_executions(workflow_id):
-    from src.log import log_service
+    from src.logger import log_service
     return log_service.get_workflow_executions(workflow_id)
 ```
 

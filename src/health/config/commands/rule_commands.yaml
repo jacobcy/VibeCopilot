@@ -1,36 +1,35 @@
 # 规则命令组配置
+# 遵循 core-rules/command-system.mdc 规范
 
 commands:
   "rule list":
-    description: "列出所有规则"
+    description: "列出所有规则或指定类型的规则"
     subcommands:
       "--type":
         description: "按类型筛选规则"
-        values: ["core", "dev", "tech", "tool"]
+        values: ["core", "dev", "tech", "tool", "role", "command", "test"]
       "--format":
         description: "输出格式"
         values: ["table", "json", "yaml"]
-      "--verbose":
-        description: "显示详细信息"
-        type: "flag"
-    expected_output: ["规则列表", "规则类型", "规则名称"]
+    expected_output: ["规则列表", "规则类型", "规则名称", "优先级", "描述"]
     timeout: 5
     critical: true
+    validation:
+      - "检查规则类型是否有效"
+      - "验证输出格式支持"
 
   "rule show":
-    description: "显示规则详情"
+    description: "显示规则详细信息"
     arguments:
       - name: "rule_name"
-        description: "规则名称"
+        description: "规则名称（格式：类型/名称，如 core-rules/config）"
         required: true
+        validation: "必须符合规则命名格式"
     subcommands:
       "--format":
         description: "输出格式"
         values: ["markdown", "json", "yaml"]
-      "--raw":
-        description: "显示原始内容"
-        type: "flag"
-    expected_output: ["规则详情", "规则内容"]
+    expected_output: ["规则详情", "规则内容", "元数据"]
     timeout: 5
     critical: true
 
@@ -38,31 +37,33 @@ commands:
     description: "创建新规则"
     arguments:
       - name: "name"
-        description: "规则名称"
+        description: "规则名称（遵循命名规范）"
         required: true
-      - name: "type"
+        validation: "必须符合规则命名格式"
+    subcommands:
+      "--type":
         description: "规则类型"
         required: true
-    subcommands:
+        values: ["core", "dev", "tech", "tool", "role", "command", "test"]
       "--description":
         description: "规则描述"
         type: "string"
       "--priority":
-        description: "规则优先级"
+        description: "规则优先级 (1-100)"
         type: "integer"
-    expected_output: ["规则创建成功", "成功"]
-    timeout: 8
-    critical: true
-
-  "rule edit":
-    description: "编辑规则"
-    arguments:
-      - name: "rule_name"
-        description: "规则名称"
-        required: true
-    expected_output: ["打开规则", "编辑"]
+        default: 50
+        validation: "必须在1-100范围内"
+      "--template":
+        description: "使用预定义模板"
+        values: ["agent", "auto", "best_practices", "command", "role", "workflow"]
+    expected_output: ["规则创建成功"]
     timeout: 10
     critical: true
+    validation:
+      - "检查规则名称格式"
+      - "验证规则类型有效性"
+      - "检查优先级范围"
+      - "验证模板存在性"
 
   "rule delete":
     description: "删除规则"
@@ -70,67 +71,126 @@ commands:
       - name: "rule_name"
         description: "规则名称"
         required: true
+        validation: "必须是存在的规则"
     subcommands:
       "--force":
-        description: "强制删除"
+        description: "强制删除（跳过确认）"
         type: "flag"
-    expected_output: ["规则删除成功", "成功"]
+    expected_output: ["规则删除成功"]
     timeout: 5
     critical: true
+    validation:
+      - "检查规则是否存在"
+      - "验证规则可删除性"
 
-  "rule enable":
-    description: "启用规则"
+  "rule import":
+    description: "从文件导入规则"
+    arguments:
+      - name: "file_path"
+        description: "规则文件路径（支持.md/.yaml/.json）"
+        required: true
+        validation: "文件必须存在且格式正确"
+    subcommands:
+      "--parser":
+        description: "解析器类型"
+        values: ["markdown", "yaml", "json"]
+      "--model":
+        description: "模型名称（用于AI增强）"
+        type: "string"
+      "--validate":
+        description: "是否验证规则"
+        type: "flag"
+        default: true
+      "--overwrite":
+        description: "是否覆盖已存在的规则"
+        type: "flag"
+        default: false
+    expected_output: ["规则导入成功"]
+    timeout: 10
+    critical: true
+    validation:
+      - "检查文件格式"
+      - "验证规则内容"
+      - "检查规则冲突"
+
+  "rule export":
+    description: "导出规则"
     arguments:
       - name: "rule_name"
         description: "规则名称"
         required: true
-    expected_output: ["启用规则", "成功"]
+        validation: "必须是存在的规则"
+    subcommands:
+      "--format":
+        description: "导出格式"
+        values: ["markdown", "yaml", "json"]
+        default: "markdown"
+      "--output":
+        description: "输出路径"
+        type: "string"
+        validation: "路径必须可写"
+    expected_output: ["规则导出成功"]
     timeout: 5
     critical: true
 
-  "rule disable":
-    description: "禁用规则"
+  "rule validate":
+    description: "验证规则"
     arguments:
       - name: "rule_name"
         description: "规则名称"
         required: true
-    expected_output: ["禁用规则", "成功"]
+        validation: "必须是存在的规则"
+    expected_output: ["规则验证结果"]
     timeout: 5
     critical: true
+    validation:
+      - "检查规则格式"
+      - "验证规则内容"
+      - "检查规则依赖"
 
-# 命令组特定配置
+# 命令组配置
 group_config:
-  allow_custom_rules: true      # 是否允许自定义规则
-  max_rule_size: 1048576       # 规则文件最大大小（字节）
-  auto_format: true            # 是否自动格式化规则文件
-  backup_enabled: true         # 是否启用规则备份
-  validate_on_save: true       # 保存时是否验证规则
+  allow_custom_rules: true      # 允许自定义规则
+  max_rule_size: 1048576       # 规则文件最大大小（1MB）
+  auto_format: true            # 自动格式化规则文件
+  backup_enabled: true         # 启用规则备份
+  validate_on_save: true       # 保存时验证规则
+  naming_convention: {         # 命名规范
+    "pattern": "^[a-z-]+/[a-z-]+$",
+    "example": "core-rules/config"
+  }
 
 # 规则模板配置
 templates:
   agent:
     path: "templates/rule/agent.md"
     description: "代理规则模板"
+    validation: "必须包含角色定义和行为规范"
 
   auto:
     path: "templates/rule/auto.md"
     description: "自动化规则模板"
+    validation: "必须包含触发条件和执行动作"
 
   best_practices:
     path: "templates/rule/best_practices.md"
     description: "最佳实践规则模板"
+    validation: "必须包含示例和反例"
 
   command:
     path: "templates/rule/command.md"
     description: "命令规则模板"
+    validation: "必须包含命令格式和参数说明"
 
   role:
     path: "templates/rule/role_rule.md"
     description: "角色规则模板"
+    validation: "必须包含角色职责和工作流程"
 
   workflow:
     path: "templates/rule/workflow.md"
     description: "工作流规则模板"
+    validation: "必须包含流程步骤和检查点"
 
 # 规则验证配置
 validation:
@@ -139,3 +199,13 @@ validation:
   check_dependencies: true     # 检查规则依赖
   spell_check: true           # 拼写检查
   lint_markdown: true         # Markdown语法检查
+  required_sections: [        # 必需的章节
+    "description",
+    "使用场景",
+    "规则内容",
+    "示例"
+  ]
+  naming_rules: {             # 命名规则
+    "max_length": 100,        # 最大长度
+    "allowed_chars": "a-z0-9-/"  # 允许的字符
+  }

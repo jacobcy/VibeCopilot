@@ -2,10 +2,10 @@
 工作流会话管理器核心类模块
 
 提供FlowSessionManager类的核心功能定义。
+注意：这是一个纯解释器，只负责解释和记录工作流程，不执行任何实际操作。
 """
 
 import json
-import logging
 import os
 import uuid
 from datetime import datetime
@@ -19,9 +19,6 @@ from src.core.exceptions import EntityNotFoundError
 from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository
 from src.models.db import FlowSession, StageInstance, WorkflowDefinition
 
-# 创建日志记录器
-logger = logging.getLogger(__name__)
-
 
 class FlowSessionManager:
     """工作流会话管理器，处理会话的CRUD操作"""
@@ -29,19 +26,40 @@ class FlowSessionManager:
     # 存储当前会话ID的文件路径
     CURRENT_SESSION_FILE = os.path.join(os.path.expanduser("~"), ".vibecopilot", "current_session.json")
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, logger=None):
         """初始化
 
         Args:
             session: SQLAlchemy会话对象
+            logger: 可选的日志记录器
         """
         self.session = session
         self.workflow_repo = WorkflowDefinitionRepository(session)
         self.session_repo = FlowSessionRepository(session)
         self.stage_repo = StageInstanceRepository(session)
+        self._logger = logger
 
         # 确保存储当前会话ID的目录存在
         os.makedirs(os.path.dirname(self.CURRENT_SESSION_FILE), exist_ok=True)
+
+    def set_logger(self, logger):
+        """设置日志记录器
+
+        Args:
+            logger: 日志记录器实例
+        """
+        self._logger = logger
+
+    def _log(self, method: str, *args, **kwargs):
+        """内部日志记录方法
+
+        Args:
+            method: 要调用的日志方法名
+            args: 位置参数
+            kwargs: 关键字参数
+        """
+        if self._logger and hasattr(self._logger, method):
+            getattr(self._logger, method)(*args, **kwargs)
 
     def create_session(
         self, workflow_id: str, session_name: Optional[str] = None, task_id: Optional[str] = None, name: Optional[str] = None
@@ -57,7 +75,6 @@ class FlowSessionManager:
         Returns:
             创建的工作流会话，如果失败则返回None
         """
-        logger.debug(f"Creating new flow session for workflow {workflow_id}")
         # 创建新会话
         session_id = str(uuid.uuid4())
         context = {}  # 初始上下文为空
@@ -75,9 +92,13 @@ class FlowSessionManager:
             # 设置为当前会话
             self._set_current_session(session_id)
 
+            # 记录日志
+            self._log("log_session_created", workflow_id, context)
+
             return new_session
         except IntegrityError as e:
             self.session.rollback()
+            self._log("log_session_error", e)
             raise e
 
     def get_session(self, id_or_name: str) -> Optional[FlowSession]:
@@ -101,7 +122,6 @@ class FlowSessionManager:
         Returns:
             会话列表
         """
-        logger.debug(f"FlowSessionManager.list_sessions() 被调用，参数: status={status}, workflow_id={workflow_id}")
         sessions = []
         if status and workflow_id:
             sessions = self.session_repo.get_by_workflow_and_status(workflow_id, status)
@@ -112,7 +132,6 @@ class FlowSessionManager:
         else:
             sessions = self.session_repo.get_all()
 
-        logger.debug(f"获取到 {len(sessions)} 个会话对象")
         return sessions
 
     def update_session(self, id_or_name: str, data: Dict[str, Any]) -> Optional[FlowSession]:
@@ -157,33 +176,31 @@ class FlowSessionManager:
 
         return self.session_repo.delete(session.id)
 
-    def close_session(self, id_or_name: str, reason: Optional[str] = None) -> Optional[FlowSession]:
-        """结束会话（替代abort_session），支持通过ID或名称操作
+    def update_session_status(self, id_or_name: str, new_status: str, reason: Optional[str] = None) -> Optional[FlowSession]:
+        """更新会话状态
 
         Args:
             id_or_name: 会话ID或名称
-            reason: 结束原因（可选）
+            new_status: 新状态
+            reason: 状态变更原因
 
         Returns:
             更新后的会话对象或None
-
-        Raises:
-            ValueError: 如果找不到指定的会话
         """
         session = self.get_session(id_or_name)
         if not session:
             raise ValueError(f"找不到会话: {id_or_name}")
 
-        # 如果提供了原因，更新会话上下文
-        if reason:
-            context = dict(session.context or {})
-            context["close_reason"] = reason
-            self.session_repo.update_context(session.id, context)
+        old_status = session.status
+        updated_session = self.session_repo.update_status(session.id, new_status)
 
-        return self.session_repo.update_status(session.id, "CLOSED")
+        if updated_session:
+            self._log("log_session_status_changed", old_status, new_status, reason)
+
+        return updated_session
 
     def update_session_context(self, id_or_name: str, context: Dict[str, Any]) -> Optional[FlowSession]:
-        """更新会话上下文，支持通过ID或名称操作
+        """更新会话上下文
 
         Args:
             id_or_name: 会话ID或名称
@@ -191,18 +208,50 @@ class FlowSessionManager:
 
         Returns:
             更新后的会话对象或None
-
-        Raises:
-            ValueError: 如果找不到指定的会话
         """
         session = self.get_session(id_or_name)
         if not session:
             raise ValueError(f"找不到会话: {id_or_name}")
 
-        return self.session_repo.update_context(session.id, context)
+        # 合并现有上下文和新上下文
+        current_context = session.context or {}
+        current_context.update(context)
+
+        updated_session = self.session_repo.update_context(session.id, current_context)
+
+        if updated_session:
+            self._log("log_session_context_updated", context)
+
+        return updated_session
+
+    def close_session(self, id_or_name: str, reason: Optional[str] = None) -> Optional[FlowSession]:
+        """关闭会话
+
+        Args:
+            id_or_name: 会话ID或名称
+            reason: 关闭原因
+
+        Returns:
+            更新后的会话对象或None
+        """
+        session = self.get_session(id_or_name)
+        if not session:
+            raise ValueError(f"找不到会话: {id_or_name}")
+
+        # 如果关闭的是当前会话，清除当前会话设置
+        current_session = self.get_current_session()
+        if current_session and current_session.id == session.id:
+            self._clear_current_session()
+
+        updated_session = self.session_repo.update_status(session.id, "CLOSED")
+
+        if updated_session:
+            self._log("log_session_closed", reason)
+
+        return updated_session
 
     def switch_session(self, id_or_name: str) -> FlowSession:
-        """切换当前活动会话
+        """切换当前会话
 
         Args:
             id_or_name: 会话ID或名称
@@ -217,27 +266,24 @@ class FlowSessionManager:
         if not session:
             raise ValueError(f"找不到会话: {id_or_name}")
 
-        # 确保会话处于活动状态
-        if session.status != "ACTIVE":
-            # 如果会话不是活动状态，将其激活
-            self.session_repo.update_status(session.id, "ACTIVE")
-
-        # 将会话设置为当前会话
+        # 设置为当前会话
         self._set_current_session(session.id)
+
+        self._log("log_session_switched", session.id)
 
         return session
 
     def get_current_session(self) -> Optional[FlowSession]:
-        """获取当前活动会话
+        """获取当前会话
 
         Returns:
-            当前会话对象或None（如果没有设置当前会话）
+            当前会话对象或None
         """
         session_id = self._get_current_session_id()
         if not session_id:
             return None
 
-        return self.session_repo.get_by_id(session_id)
+        return self.get_session(session_id)
 
     def _set_current_session(self, session_id: str) -> None:
         """设置当前会话ID
@@ -247,9 +293,9 @@ class FlowSessionManager:
         """
         try:
             with open(self.CURRENT_SESSION_FILE, "w") as f:
-                json.dump({"current_session_id": session_id}, f)
+                json.dump({"session_id": session_id}, f)
         except Exception as e:
-            print(f"[警告] 无法保存当前会话ID: {str(e)}")
+            self._log("log_error", f"设置当前会话失败: {str(e)}")
 
     def _get_current_session_id(self) -> Optional[str]:
         """获取当前会话ID
@@ -261,10 +307,9 @@ class FlowSessionManager:
             if os.path.exists(self.CURRENT_SESSION_FILE):
                 with open(self.CURRENT_SESSION_FILE, "r") as f:
                     data = json.load(f)
-                    return data.get("current_session_id")
+                    return data.get("session_id")
         except Exception as e:
-            print(f"[警告] 无法读取当前会话ID: {str(e)}")
-
+            self._log("log_error", f"获取当前会话ID失败: {str(e)}")
         return None
 
     def _clear_current_session(self) -> None:
@@ -273,19 +318,16 @@ class FlowSessionManager:
             if os.path.exists(self.CURRENT_SESSION_FILE):
                 os.remove(self.CURRENT_SESSION_FILE)
         except Exception as e:
-            print(f"[警告] 无法清除当前会话设置: {str(e)}")
+            self._log("log_error", f"清除当前会话设置失败: {str(e)}")
 
     def get_session_progress(self, id_or_name: str) -> Dict[str, Any]:
-        """获取会话的进度信息
+        """获取会话进度信息
 
         Args:
             id_or_name: 会话ID或名称
 
         Returns:
-            包含会话进度信息的字典，包括已完成阶段、当前阶段和待进行阶段
-
-        Raises:
-            ValueError: 如果找不到指定的会话
+            进度信息字典
         """
         session = self.get_session(id_or_name)
         if not session:
@@ -294,147 +336,121 @@ class FlowSessionManager:
         # 获取工作流定义
         workflow = self.workflow_repo.get_by_id(session.workflow_id)
         if not workflow:
-            # 可能是工作流已被删除
-            return {
-                "completed_stages": [],
-                "current_stage": None,
-                "pending_stages": [],
-                "total_stages": 0,
-                "completed_count": 0,
-                "progress_percentage": 0,
-            }
+            raise ValueError(f"找不到工作流定义: {session.workflow_id}")
 
-        # 获取工作流的所有阶段
-        stages = workflow.stages if hasattr(workflow, "stages") and workflow.stages else []
-        if isinstance(stages, str):
-            try:
-                # 如果stages是JSON字符串，解析它
-                stages = json.loads(stages)
-            except:
-                stages = []
+        # 获取阶段实例列表
+        stages = self.stage_repo.get_by_session_id(session.id)
 
-        # 如果stages是字典而不是列表，转换它
-        if isinstance(stages, dict):
-            stages = [{"id": k, "name": v.get("name", k)} for k, v in stages.items()]
+        # 计算进度
+        total_stages = len(workflow.stages)
+        completed_stages = len([s for s in stages if s.status == "COMPLETED"])
+        failed_stages = len([s for s in stages if s.status == "FAILED"])
+        pending_stages = total_stages - completed_stages - failed_stages
 
-        # 已完成阶段、当前阶段和待进行阶段
-        completed_stages = []
+        # 计算百分比
+        completion_percentage = (completed_stages / total_stages * 100) if total_stages > 0 else 0
+
+        # 获取当前阶段信息
         current_stage = None
-        pending_stages = []
+        if session.current_stage_id:
+            current_stage = next((s for s in stages if s.id == session.current_stage_id), None)
 
-        # 获取会话关联的阶段实例
-        stage_instances = self.get_session_stages(session.id)
-
-        # 从阶段实例构建已完成阶段列表
-        for stage_instance in stage_instances:
-            stage_info = next((s for s in stages if s.get("id") == stage_instance.stage_id), None)
-            if not stage_info:
-                continue
-
-            stage_data = {
-                "id": stage_instance.stage_id,
-                "name": stage_info.get("name", stage_instance.stage_id),
-                "started_at": stage_instance.started_at.isoformat() if stage_instance.started_at else None,
-                "completed_at": stage_instance.completed_at.isoformat() if stage_instance.completed_at else None,
-                "status": stage_instance.status,
-            }
-
-            if stage_instance.status == "COMPLETED":
-                completed_stages.append(stage_data)
-            elif stage_instance.status == "ACTIVE":
-                current_stage = stage_data
-
-        # 构建待进行阶段列表
-        if stages:
-            # 查找所有未开始的阶段
-            for stage in stages:
-                stage_id = stage.get("id")
-                if stage_id not in [s.stage_id for s in stage_instances]:
-                    pending_stages.append({"id": stage_id, "name": stage.get("name", stage_id)})
-
-        # 计算进度百分比
-        total_stages = len(stages)
-        completed_count = len(completed_stages)
-        progress_percentage = (completed_count / total_stages * 100) if total_stages > 0 else 0
-
-        return {
-            "completed_stages": completed_stages,
-            "current_stage": current_stage,
-            "pending_stages": pending_stages,
+        # 构建进度信息
+        progress = {
+            "session_id": session.id,
+            "session_name": session.name,
+            "workflow_id": workflow.id,
+            "workflow_name": workflow.name,
+            "status": session.status,
             "total_stages": total_stages,
-            "completed_count": completed_count,
-            "progress_percentage": round(progress_percentage, 2),
+            "completed_stages": completed_stages,
+            "failed_stages": failed_stages,
+            "pending_stages": pending_stages,
+            "completion_percentage": round(completion_percentage, 2),
+            "current_stage": {
+                "id": current_stage.id if current_stage else None,
+                "name": current_stage.name if current_stage else None,
+                "status": current_stage.status if current_stage else None,
+            }
+            if current_stage
+            else None,
+            "created_at": session.created_at.isoformat() if session.created_at else None,
+            "updated_at": session.updated_at.isoformat() if session.updated_at else None,
         }
 
+        return progress
+
     def get_session_stages(self, id_or_name: str) -> List[StageInstance]:
-        """获取会话关联的所有阶段实例
+        """获取会话的所有阶段实例
 
         Args:
             id_or_name: 会话ID或名称
 
         Returns:
             阶段实例列表
-
-        Raises:
-            ValueError: 如果找不到指定的会话
         """
         session = self.get_session(id_or_name)
         if not session:
             raise ValueError(f"找不到会话: {id_or_name}")
 
-        # 使用阶段实例仓库查询
         return self.stage_repo.get_by_session_id(session.id)
 
     def pause_session(self, id_or_name: str) -> Optional[FlowSession]:
-        """暂停会话，支持通过ID或名称操作
+        """暂停会话
 
         Args:
             id_or_name: 会话ID或名称
 
         Returns:
             更新后的会话对象或None
-
-        Raises:
-            ValueError: 如果找不到指定的会话
         """
         session = self.get_session(id_or_name)
         if not session:
             raise ValueError(f"找不到会话: {id_or_name}")
 
-        return self.session_repo.update_status(session.id, "PAUSED")
+        updated_session = self.session_repo.update_status(session.id, "PAUSED")
+
+        if updated_session:
+            self._log("log_session_paused", session.id)
+
+        return updated_session
 
     def resume_session(self, id_or_name: str) -> Optional[FlowSession]:
-        """恢复会话，支持通过ID或名称操作
+        """恢复会话
 
         Args:
             id_or_name: 会话ID或名称
 
         Returns:
             更新后的会话对象或None
-
-        Raises:
-            ValueError: 如果找不到指定的会话
         """
         session = self.get_session(id_or_name)
         if not session:
             raise ValueError(f"找不到会话: {id_or_name}")
 
-        return self.session_repo.update_status(session.id, "ACTIVE")
+        updated_session = self.session_repo.update_status(session.id, "ACTIVE")
+
+        if updated_session:
+            self._log("log_session_resumed", session.id)
+
+        return updated_session
 
     def complete_session(self, id_or_name: str) -> Optional[FlowSession]:
-        """完成会话，支持通过ID或名称操作
+        """完成会话
 
         Args:
             id_or_name: 会话ID或名称
 
         Returns:
             更新后的会话对象或None
-
-        Raises:
-            ValueError: 如果找不到指定的会话
         """
         session = self.get_session(id_or_name)
         if not session:
             raise ValueError(f"找不到会话: {id_or_name}")
 
-        return self.session_repo.update_status(session.id, "COMPLETED")
+        updated_session = self.session_repo.update_status(session.id, "COMPLETED")
+
+        if updated_session:
+            self._log("log_session_completed", session.id)
+
+        return updated_session

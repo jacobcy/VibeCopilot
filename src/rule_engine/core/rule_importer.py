@@ -10,11 +10,13 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from src.models.rule_model import Rule
+from src.parsing.processors.rule_processor import RuleProcessor
 from src.rule_engine.exporters.rule_exporter import export_rule_to_yaml
-from src.rule_engine.parsers.rule_parser import parse_rule_content, parse_rule_file
-from src.rule_engine.validators.rule_validator import validate_rule
 
 logger = logging.getLogger(__name__)
+
+# 创建规则处理器实例
+rule_processor = RuleProcessor()
 
 
 def import_rule_from_file(file_path: str, parser_type: Optional[str] = None, model: Optional[str] = None, validate: bool = True) -> Rule:
@@ -32,8 +34,8 @@ def import_rule_from_file(file_path: str, parser_type: Optional[str] = None, mod
     """
     logger.info(f"从文件导入规则: {file_path}")
 
-    # 解析规则文件，获取字典格式的规则数据
-    rule_dict = parse_rule_file(file_path, parser_type, model)
+    # 使用规则处理器解析文件
+    rule_dict = rule_processor.process_rule_file(file_path)
 
     # 将字典转换为Pydantic模型
     rule = Rule(**rule_dict)
@@ -60,11 +62,9 @@ def import_rule_from_file(file_path: str, parser_type: Optional[str] = None, mod
         rule_dict["description"] = rule.description
 
     # 验证规则
-    if validate:
-        validation_result = validate_rule(rule_dict)
-        if not validation_result.is_valid:
-            validation_errors = ", ".join(validation_result.messages)
-            logger.warning(f"规则验证警告: {validation_errors}")
+    if validate and not rule_dict.get("validation", {}).get("valid", False):
+        validation_errors = ", ".join(rule_dict.get("validation", {}).get("errors", []))
+        logger.warning(f"规则验证警告: {validation_errors}")
 
     return rule
 
@@ -87,8 +87,8 @@ def import_rule_from_content(
     """
     logger.info(f"从内容导入规则, 上下文: {context}")
 
-    # 解析规则内容，获取字典格式的规则数据
-    rule_dict = parse_rule_content(content, context, parser_type, model)
+    # 使用规则处理器解析内容
+    rule_dict = rule_processor.process_rule_text(content)
 
     # 将字典转换为Pydantic模型
     rule = Rule(**rule_dict)
@@ -114,11 +114,9 @@ def import_rule_from_content(
         rule_dict["description"] = rule.description
 
     # 验证规则
-    if validate:
-        validation_result = validate_rule(rule_dict)
-        if not validation_result.is_valid:
-            validation_errors = ", ".join(validation_result.messages)
-            logger.warning(f"规则验证警告: {validation_errors}")
+    if validate and not rule_dict.get("validation", {}).get("valid", False):
+        validation_errors = ", ".join(rule_dict.get("validation", {}).get("errors", []))
+        logger.warning(f"规则验证警告: {validation_errors}")
 
     return rule
 

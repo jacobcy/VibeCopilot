@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 @click.option("--assignee", "-a", help="按负责人过滤")
 @click.option("--label", "-l", multiple=True, help="按标签过滤 (目前仅简单匹配)")
 @click.option("--roadmap", "-r", help="按关联的 Story ID 过滤")
-@click.option("--independent", "-i", is_flag=True, help="仅显示独立任务 (无 Roadmap 关联)")
+@click.option("--independent", "-i", is_flag=True, help="仅显示独立任务 (无 Story 关联)")
+@click.option("--temp", "-t", type=click.Choice(["yes", "no", "all"]), default="all", help="过滤临时任务 (yes: 仅显示临时任务, no: 仅显示有 Story 关联的任务, all: 显示所有任务)")
 @click.option("--limit", type=int, help="限制返回数量")
 @click.option("--offset", type=int, help="跳过指定数量的结果")
 @click.option("--verbose", "-v", is_flag=True, help="显示更详细的信息")
@@ -30,6 +31,7 @@ def list_tasks(
     label: List[str],
     roadmap: Optional[str],
     independent: bool,
+    temp: str,
     limit: Optional[int],
     offset: Optional[int],
     verbose: bool,
@@ -48,6 +50,7 @@ def list_tasks(
             label=list(label) if label else None,
             roadmap_item_id=roadmap,
             independent=independent,
+            temp=temp,  # 添加临时任务过滤参数
             limit=limit,
             offset=offset,
             verbose=verbose,
@@ -86,6 +89,7 @@ def execute_list_tasks(
     label: Optional[List[str]] = None,
     roadmap_item_id: Optional[str] = None,
     independent: Optional[bool] = None,
+    temp: Optional[str] = "all",  # "yes", "no", "all"
     limit: Optional[int] = None,
     offset: Optional[int] = None,
     verbose: bool = False,
@@ -94,7 +98,8 @@ def execute_list_tasks(
     """执行列出任务的核心逻辑"""
     logger.info(
         f"执行任务列表命令: status={status}, assignee={assignee}, label={label}, "
-        f"roadmap_item_id={roadmap_item_id}, independent={independent}, limit={limit}, offset={offset}, verbose={verbose}"
+        f"roadmap_item_id={roadmap_item_id}, independent={independent}, temp={temp}, "
+        f"limit={limit}, offset={offset}, verbose={verbose}, format={format}"
     )
 
     results = {
@@ -105,11 +110,20 @@ def execute_list_tasks(
         "meta": {"command": "task list", "args": locals()},
     }
 
+    # 处理独立任务过滤参数
     is_independent_filter = None
     if independent is True:
         is_independent_filter = True
     elif independent is False:
         is_independent_filter = False
+
+    # 处理临时任务过滤参数
+    is_temporary_filter = None
+    if temp == "yes":
+        is_temporary_filter = True
+    elif temp == "no":
+        is_temporary_filter = False
+    # "all" 不设置过滤条件
 
     try:
         session_factory = get_session_factory()
@@ -121,6 +135,7 @@ def execute_list_tasks(
                 labels=label,
                 roadmap_item_id=roadmap_item_id,
                 is_independent=is_independent_filter,
+                is_temporary=is_temporary_filter,  # 添加临时任务过滤参数
                 limit=limit,
                 offset=offset,
             )
@@ -140,6 +155,7 @@ def execute_list_tasks(
             table.add_column("状态", style="magenta")
             table.add_column("负责人", style="green")
             if verbose:
+                table.add_column("类型", style="dim")
                 table.add_column("关联 Story", style="dim")
                 table.add_column("创建时间", style="dim")
 
@@ -151,8 +167,19 @@ def execute_list_tasks(
                     task.assignee if task.assignee else "-",
                 ]
                 if verbose:
-                    row.append(task.roadmap_item_id if task.roadmap_item_id else "-")
-                    row.append(task.created_at.strftime("%Y-%m-%d %H:%M") if task.created_at else "-")
+                    # 添加任务类型：临时任务或正式任务
+                    task_type = "临时任务" if task.story_id is None else "正式任务"
+                    row.append(task_type)
+                    # 关联Story
+                    row.append(task.story_id if task.story_id else "-")
+                    # 创建时间
+                    created_time = "-"
+                    if hasattr(task, "created_at") and task.created_at:
+                        if hasattr(task.created_at, "strftime"):
+                            created_time = task.created_at.strftime("%Y-%m-%d %H:%M")
+                        else:
+                            created_time = str(task.created_at)
+                    row.append(created_time)
                 table.add_row(*row)
 
             console.print(table)

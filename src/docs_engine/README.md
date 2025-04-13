@@ -1,66 +1,80 @@
-# VibeCopilot 动态文档系统
+# VibeCopilot 文档引擎
 
-动态文档系统是 VibeCopilot 的核心组件之一，提供了文档管理、块级内容操作和文档间链接关系处理的功能。
+文档引擎是 VibeCopilot 的核心组件之一，提供文档管理、内容解析和格式转换功能。
 
-## 系统架构
+## 快速开始
 
-文档系统采用分层架构设计：
+### 安装
 
-1. **数据层**：基于SQLAlchemy的ORM模型定义和数据访问对象
-2. **功能层**：核心API，提供文档、块和链接的操作接口
-3. **工具层**：提供Markdown导入导出、内容解析等辅助功能
-4. **应用层**：与VibeCopilot其他组件的集成接口
+确保已安装所有依赖：
 
-## 主要组件
+```bash
+pip install -e .
+```
 
-### 数据模型
+### 命令行工具
 
-- `Document`: 文档实体，包含元数据和引用信息
-- `Block`: 文档块，文档内容的最小组成单位
-- `Link`: 文档/块间的链接关系
+文档引擎提供了命令行工具 `doc`，可以执行以下操作：
 
-### 核心API
+```bash
+# 显示帮助信息
+doc --help
 
-- `DocumentEngine`: 文档管理引擎，提供文档的CRUD操作
-- `BlockManager`: 块管理器，处理文档内容的块级操作
-- `LinkManager`: 链接管理器，处理文档间的引用关系
+# 解析文档
+doc parse <文件路径> [--output 输出文件] [--pretty]
 
-### 工具类
+# 提取文档块
+doc extract <文件路径> [--output 输出文件] [--pretty]
 
-- `MarkdownImporter`: Markdown文件导入工具
-- ID生成器: 提供文档、块和链接的ID生成功能
-- Markdown解析器: 将Markdown内容解析为块结构
+# 导入文档到数据库
+doc import <文件路径>
+
+# 转换文档链接
+doc convert <文件路径> --from <源格式> --to <目标格式> [--output 输出文件]
+
+# 创建文档
+doc create --template <模板名称> --output <输出路径> [--title <标题>] [--description <描述>]
+```
+
+调试模式：
+
+```bash
+doc --debug <命令> <参数>
+```
+
+## 主要功能
+
+- **文档解析**：将文档解析为结构化数据
+- **块级管理**：支持文档内容的块级操作
+- **链接转换**：支持不同格式间的链接转换
+- **模板系统**：基于模板创建新文档
+
+## 目录结构
+
+- `api/`: 核心API接口
+- `storage/`: 存储引擎
+- `utils/`: 工具函数
+- `config/`: 配置管理
+- `templates/`: 文档模板
+- `tools/`: 辅助工具
+- `converters/`: 格式转换器
 
 ## 使用示例
 
-请参考 `examples/docs_engine_demo.py` 文件，了解动态文档系统的基本用法。
+### 解析文档
 
-## 实现特点
+```bash
+doc parse 文档.md --output 解析结果.json --pretty
+```
 
-1. **块级管理**：文档内容以块为单位管理，支持精确定位和操作
-2. **双向链接**：支持文档与文档、块与块之间的双向链接
-3. **Markdown原生支持**：与Markdown格式无缝集成
-4. **元数据管理**：支持文档元数据的提取和管理
-5. **文档图谱**：支持文档关系的图谱分析
+### 转换链接格式
 
-## 开发指南
+```bash
+doc convert 文档.md --from obsidian --to docusaurus --output 转换后.md
+```
 
-### 添加新的块类型
+### 创建新文档
 
-1. 在 `src/models/docs_engine.py` 的 `BlockType` 枚举中添加新类型
-2. 在 `src/docs_engine/utils/markdown_parser.py` 中更新解析逻辑
-3. 在 `BlockManager` 中添加对应的处理方法
-
-### 扩展链接功能
-
-1. 在 `src/models/docs_engine.py` 的 `LinkType` 枚举中添加新类型
-2. 在 `LinkManager` 中添加相应的处理方法
-3. 更新链接解析和渲染逻辑
-
-## 未来计划
-
-- [ ] 添加全文搜索支持
-- [ ] 实现版本历史管理
-- [ ] 添加协作编辑功能
-- [ ] 支持更多内容格式（如HTML、PDF）
-- [ ] 实现文档关系可视化
+```bash
+doc create --template default --output 新文档.md --title "文档标题" --description "文档描述"
+```

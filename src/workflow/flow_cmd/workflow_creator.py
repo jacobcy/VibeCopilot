@@ -18,7 +18,6 @@ from rich.console import Console
 from rich.panel import Panel
 
 from src.parsing.processors.workflow_processor import WorkflowProcessor
-from src.rule_engine.parser import parse_rule_content
 from src.utils.file_utils import read_json_file, read_text_file, write_json_file
 from src.workflow.operations import create_workflow
 

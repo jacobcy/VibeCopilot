@@ -9,7 +9,7 @@ from typing import Tuple
 from sqlalchemy.orm import Session
 
 from src.db import get_session_factory
-from src.db.repositories.docs_engine_repository import BlockRepository, DocumentRepository, LinkRepository
+from src.db.repositories.docs_engine import BlockRepository, DocumentRepository, LinkRepository
 
 
 class StorageError(Exception):

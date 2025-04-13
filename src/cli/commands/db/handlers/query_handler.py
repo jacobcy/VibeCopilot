@@ -214,6 +214,54 @@ class ListEntitiesHandler(QueryBaseHandler):
             raise DatabaseError(f"查询 {entity_type} 失败: {str(e)}")
 
 
+class QueryHandler(QueryBaseHandler):
+    """通用查询处理器，用于处理db query命令"""
+
+    def validate(self, **kwargs: Dict[str, Any]) -> bool:
+        """验证查询参数"""
+        entity_type = kwargs.get("type")
+        output_format = kwargs.get("format", "table")
+
+        if not entity_type:
+            raise ValidationError("实体类型不能为空")
+
+        if entity_type not in self.VALID_TYPES:
+            raise ValidationError(f"不支持的实体类型: {entity_type}")
+
+        return True
+
+    def handle(self, **kwargs: Dict[str, Any]) -> int:
+        """处理查询命令"""
+        entity_type = kwargs.get("type")
+        entity_id = kwargs.get("id")
+        query_string = kwargs.get("query")
+        output_format = kwargs.get("format", "table")
+        verbose = kwargs.get("verbose", False)
+        service = kwargs.get("service")
+
+        if verbose:
+            console.print(f"查询 {entity_type}")
+
+        if not service:
+            raise DatabaseError("数据库服务未初始化")
+
+        try:
+            # 如果提供了ID，查询单个实体
+            if entity_id:
+                entity = service.get_entity(entity_type, entity_id)
+                return self._format_and_display_entity(entity, entity_type, entity_id, output_format)
+            # 如果提供了查询字符串，搜索实体
+            elif query_string:
+                entities = service.search_entities(entity_type, query_string)
+                return self._format_and_display_entities(entities, entity_type, output_format)
+            # 否则列出所有实体
+            else:
+                entities = service.get_entities(entity_type)
+                return self._format_and_display_entities(entities, entity_type, output_format)
+        except Exception as e:
+            raise DatabaseError(f"查询 {entity_type} 失败: {str(e)}")
+
+
 @click.group(name="query", help="数据库查询命令组")
 def query():
     """数据库查询命令组"""

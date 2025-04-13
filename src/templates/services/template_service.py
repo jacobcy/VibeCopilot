@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from ..core.template_engine import TemplateEngine
 from ..core.template_manager import TemplateManager
+from ..generators import RuleGenerator
 from ..models.template import Template
 
 logger = logging.getLogger(__name__)
@@ -29,10 +30,9 @@ class TemplateService:
         """
         self.template_manager = template_manager
         self.template_engine = template_engine
+        self.rule_generator = RuleGenerator(template_engine)
 
-    def create_rule_from_template(
-        self, template_id: str, variables: Dict[str, Any], output_path: Optional[str] = None
-    ) -> str:
+    def create_rule_from_template(self, template_id: str, variables: Dict[str, Any], output_path: Optional[str] = None) -> str:
         """
         从模板创建规则
 
@@ -48,11 +48,14 @@ class TemplateService:
         if not template:
             raise ValueError(f"模板不存在: {template_id}")
 
-        return self.template_engine.apply_template(template, variables, output_path)
+        if output_path:
+            rule = self.rule_generator.generate_to_file(template, variables, output_path)
+        else:
+            rule = self.rule_generator.generate(template, variables)
 
-    def validate_template_variables(
-        self, template_id: str, variables: Dict[str, Any]
-    ) -> Dict[str, str]:
+        return rule.content
+
+    def validate_template_variables(self, template_id: str, variables: Dict[str, Any]) -> Dict[str, str]:
         """
         验证模板变量
 
@@ -90,9 +93,7 @@ class TemplateService:
 
         return {"template": template, "defaults": defaults}
 
-    def batch_create_rules(
-        self, templates_data: List[Dict[str, Any]], base_output_dir: str
-    ) -> Dict[str, str]:
+    def batch_create_rules(self, templates_data: List[Dict[str, Any]], base_output_dir: str) -> Dict[str, str]:
         """
         批量创建规则
 
@@ -123,9 +124,9 @@ class TemplateService:
                 # 构建输出路径
                 output_path = os.path.join(base_output_dir, output_filename)
 
-                # 应用模板
-                content = self.template_engine.apply_template(template, variables, output_path)
-                results[output_path] = content
+                # 生成规则
+                rule = self.rule_generator.generate_to_file(template, variables, output_path)
+                results[output_path] = rule.content
 
             except Exception as e:
                 logger.error(f"应用模板 {template_id} 失败: {str(e)}")

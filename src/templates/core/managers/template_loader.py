@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 
 from src.db import TemplateRepository, TemplateVariableRepository
 from src.models import Template as TemplateModel
-from src.templates.utils.template_utils import load_template_from_file, normalize_template_id
+
+from .template_utils import load_template_from_file, normalize_template_id
 
 logger = logging.getLogger(__name__)
 

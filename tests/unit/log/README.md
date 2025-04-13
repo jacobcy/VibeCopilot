@@ -12,7 +12,7 @@
 
 ```bash
 # 运行单个测试文件
-python -m src.log.tests.test_workflow_log
+python -m src.logger.tests.test_workflow_log
 
 # 使用pytest运行测试（如果已安装）
 pytest src/log/tests/

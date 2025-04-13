@@ -11,8 +11,12 @@ import argparse
 import logging
 import sys
 from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
+from src.core.log_init import get_workflow_logger
+from src.workflow.execution.executor import WorkflowExecutor
 from src.workflow.flow_cmd.workflow_runner import run_workflow_stage
+from src.workflow.models.workflow import Workflow
 from src.workflow.operations import (  # execute_workflow, # 已移除，由flow_session处理
     create_workflow,
     delete_workflow,
@@ -21,6 +25,7 @@ from src.workflow.operations import (  # execute_workflow, # 已移除，由flow
     update_workflow,
     view_workflow,
 )
+from src.workflow.service.flow_service import FlowService
 
 # 配置日志
 logging.basicConfig(
@@ -120,6 +125,114 @@ def execute_workflow_handler(args):
         if hasattr(args, "verbose") and args.verbose:
             logger.exception(e)
         return (StatusCode.ERROR, f"执行工作流错误: {str(e)}")
+
+
+class WorkflowManager:
+    """工作流管理器类"""
+
+    def __init__(self):
+        """初始化工作流管理器"""
+        self.flow_service = FlowService()
+        self.logger = get_workflow_logger("manager")
+        self._workflows: Dict[str, Workflow] = {}
+
+    def create_workflow(self, workflow_data: Dict[str, Any]) -> str:
+        """
+        创建新的工作流
+
+        Args:
+            workflow_data: 工作流配置数据
+
+        Returns:
+            str: 工作流ID
+        """
+        workflow_id = str(uuid4())
+        self.logger.info(
+            "创建新工作流", extra={"workflow_id": workflow_id, "workflow_type": workflow_data.get("type"), "workflow_name": workflow_data.get("name")}
+        )
+
+        try:
+            workflow = Workflow(workflow_id, workflow_data)
+            self._workflows[workflow_id] = workflow
+            return workflow_id
+        except Exception as e:
+            self.logger.error("创建工作流失败", extra={"workflow_id": workflow_id, "error": str(e)})
+            raise
+
+    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
+        """
+        获取工作流实例
+
+        Args:
+            workflow_id: 工作流ID
+
+        Returns:
+            Optional[Workflow]: 工作流实例或None
+        """
+        workflow = self._workflows.get(workflow_id)
+        if not workflow:
+            self.logger.warning("工作流不存在", extra={"workflow_id": workflow_id})
+        return workflow
+
+    def execute_workflow(self, workflow_id: str, session_name: Optional[str] = None, stage_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        执行工作流
+
+        Args:
+            workflow_id: 工作流ID
+            session_name: 会话名称
+            stage_id: 起始阶段ID
+
+        Returns:
+            Dict[str, Any]: 执行结果
+        """
+        workflow = self.get_workflow(workflow_id)
+        if not workflow:
+            self.logger.error("执行失败：工作流不存在", extra={"workflow_id": workflow_id})
+            raise ValueError(f"Workflow {workflow_id} not found")
+
+        self.logger.info("开始执行工作流", extra={"workflow_id": workflow_id, "session_name": session_name, "stage_id": stage_id})
+
+        try:
+            executor = WorkflowExecutor(workflow)
+            result = executor.execute(session_name=session_name, start_stage=stage_id)
+
+            self.logger.info(
+                "工作流执行完成", extra={"workflow_id": workflow_id, "status": result.get("status"), "execution_time": result.get("execution_time")}
+            )
+
+            return result
+        except Exception as e:
+            self.logger.error("工作流执行失败", extra={"workflow_id": workflow_id, "error": str(e)})
+            raise
+
+    def list_workflows(self) -> List[Dict[str, Any]]:
+        """
+        列出所有工作流
+
+        Returns:
+            List[Dict[str, Any]]: 工作流列表
+        """
+        self.logger.debug(f"列出工作流，共{len(self._workflows)}个")
+        return [{"id": wf_id, "name": wf.name, "type": wf.type, "status": wf.status} for wf_id, wf in self._workflows.items()]
+
+    def delete_workflow(self, workflow_id: str) -> bool:
+        """
+        删除工作流
+
+        Args:
+            workflow_id: 工作流ID
+
+        Returns:
+            bool: 是否删除成功
+        """
+        if workflow_id in self._workflows:
+            self.logger.info("删除工作流", extra={"workflow_id": workflow_id})
+            del self._workflows[workflow_id]
+            return True
+        else:
+            self.logger.warning("删除失败：工作流不存在", extra={"workflow_id": workflow_id})
+            return False
 
 
 if __name__ == "__main__":

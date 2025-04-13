@@ -1,152 +1,97 @@
 """
 规则管理器模块
 
-提供规则管理的核心功能，包括解析、验证、存储和导出
+提供规则的生命周期管理、数据库操作和导入导出功能
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
-from sqlalchemy.orm import Session
-
-from src.db import get_session_factory
-from src.models.rule_model import Example, Rule, RuleItem, RuleMetadata
-from src.rule_engine.core.modules.rule_db_operations import RuleDBOperations
-from src.rule_engine.core.modules.rule_importer import export_rule_to_format, import_rule_from_content, import_rule_from_file
+from src.models.rule_model import Rule
+from src.parsing.processors.rule_processor import RuleProcessor
+from src.rule_engine.core.rule_importer import import_rule_from_content, import_rule_from_file
+from src.rule_engine.exporters.rule_exporter import export_rule_to_yaml
 
 logger = logging.getLogger(__name__)
 
 
 class RuleManager:
-    """规则管理器，管理规则的全生命周期"""
+    """规则管理器类"""
 
-    def __init__(self, session: Optional[Session] = None):
+    def __init__(self, db_session=None):
         """
         初始化规则管理器
 
         Args:
-            session: 数据库会话，用于规则存储。如果为None，则自动创建新会话
+            db_session: 数据库会话对象
         """
-        self._db_available = True
+        self.db_session = db_session
+        self.rule_processor = RuleProcessor()
+        logger.info("规则管理器初始化完成")
 
-        try:
-            if session is None:
-                # 如果没有提供会话，创建一个新的会话
-                try:
-                    session_factory = get_session_factory()
-                    self.session = session_factory()
-                    self._should_close_session = True
-                except Exception as e:
-                    logger.warning(f"无法创建数据库会话: {str(e)}，规则管理器将工作在非持久化模式")
-                    self.session = None
-                    self._should_close_session = False
-                    self._db_available = False
-            else:
-                self.session = session
-                self._should_close_session = False
-
-            # 初始化数据库操作类
-            self.db_ops = RuleDBOperations(self.session) if self._db_available else None
-
-        except Exception as e:
-            logger.warning(f"初始化规则管理器时出错: {str(e)}，将使用非持久化模式")
-            self.session = None
-            self.db_ops = None
-            self._should_close_session = False
-            self._db_available = False
-
-    def __del__(self):
-        """析构函数，确保会话被关闭"""
-        if hasattr(self, "_should_close_session") and self._should_close_session and self.session:
-            try:
-                self.session.close()
-            except Exception as e:
-                logger.warning(f"关闭数据库会话时出错: {str(e)}")
-
-    def import_rule_from_file(
-        self, file_path: str, parser_type: Optional[str] = None, model: Optional[str] = None, validate: bool = True, overwrite: bool = False
-    ) -> Rule:
+    def import_rule(self, rule_path: str) -> Rule:
         """
         从文件导入规则
 
         Args:
-            file_path: 规则文件路径
-            parser_type: 解析器类型
-            model: 模型名称
-            validate: 是否验证规则
-            overwrite: 是否覆盖已存在的规则
+            rule_path: 规则文件路径
 
         Returns:
-            解析后的规则数据（Pydantic模型）
+            导入的规则对象
         """
-        # 使用导入模块导入规则
-        rule = import_rule_from_file(file_path, parser_type, model, validate)
-
-        # 如果数据库不可用，仅返回内存中的规则
-        if not self._db_available or not self.db_ops:
-            logger.info(f"数据库不可用，规则将仅在内存中使用: {rule.id}")
+        try:
+            rule = import_rule_from_file(rule_path)
+            if self.db_session:
+                self.db_session.add(rule)
+                self.db_session.commit()
             return rule
+        except Exception as e:
+            logger.error(f"导入规则失败: {e}")
+            if self.db_session:
+                self.db_session.rollback()
+            raise
 
-        # 保存规则到数据库
-        saved_rule = self.db_ops.save_rule(rule, overwrite)
-        return saved_rule if saved_rule else rule
-
-    def import_rule_from_content(
-        self,
-        content: str,
-        context: str = "",
-        parser_type: Optional[str] = None,
-        model: Optional[str] = None,
-        validate: bool = True,
-        overwrite: bool = False,
-    ) -> Rule:
+    def import_rule_content(self, content: str) -> Rule:
         """
         从内容导入规则
 
         Args:
             content: 规则内容
-            context: 上下文信息
-            parser_type: 解析器类型
-            model: 模型名称
-            validate: 是否验证规则
-            overwrite: 是否覆盖已存在的规则
 
         Returns:
-            解析后的规则数据（Pydantic模型）
+            导入的规则对象
         """
-        # 使用导入模块导入规则
-        rule = import_rule_from_content(content, context, parser_type, model, validate)
-
-        # 如果数据库不可用，仅返回内存中的规则
-        if not self._db_available or not self.db_ops:
-            logger.info(f"数据库不可用，规则将仅在内存中使用: {rule.id}")
+        try:
+            rule = import_rule_from_content(content)
+            if self.db_session:
+                self.db_session.add(rule)
+                self.db_session.commit()
             return rule
+        except Exception as e:
+            logger.error(f"导入规则内容失败: {e}")
+            if self.db_session:
+                self.db_session.rollback()
+            raise
 
-        # 保存规则到数据库
-        saved_rule = self.db_ops.save_rule(rule, overwrite)
-        return saved_rule if saved_rule else rule
-
-    def export_rule(self, rule_id: str, format_type: str = "yaml", output_path: Optional[str] = None) -> Union[str, Dict[str, Any]]:
+    def export_rule(self, rule_id: str, format: str = "yaml") -> str:
         """
         导出规则
 
         Args:
             rule_id: 规则ID
-            format_type: 导出格式类型
-            output_path: 输出路径
+            format: 导出格式，默认为yaml
 
         Returns:
-            根据format_type返回相应格式的规则数据
+            导出的规则内容
         """
-        # 获取规则
         rule = self.get_rule(rule_id)
         if not rule:
-            logger.warning(f"规则不存在: {rule_id}")
-            return {"error": f"规则不存在: {rule_id}"}
+            raise ValueError(f"规则不存在: {rule_id}")
 
-        # 使用导出模块导出规则
-        return export_rule_to_format(rule, format_type, output_path)
+        if format == "yaml":
+            return export_rule_to_yaml(rule)
+        else:
+            raise ValueError(f"不支持的导出格式: {format}")
 
     def get_rule(self, rule_id: str) -> Optional[Rule]:
         """
@@ -158,29 +103,26 @@ class RuleManager:
         Returns:
             规则对象，如果不存在则返回None
         """
-        if self._db_available and self.db_ops:
-            # 从数据库获取规则
-            return self.db_ops.get_rule(rule_id)
-        else:
-            logger.warning(f"数据库不可用，无法获取规则: {rule_id}")
-            return None
+        if self.db_session:
+            return self.db_session.query(Rule).filter(Rule.id == rule_id).first()
+        return None
 
     def list_rules(self, rule_type: Optional[str] = None) -> List[Rule]:
         """
         列出规则
 
         Args:
-            rule_type: 规则类型过滤
+            rule_type: 规则类型过滤器
 
         Returns:
             规则列表
         """
-        if self._db_available and self.db_ops:
-            # 从数据库列出规则
-            return self.db_ops.list_rules(rule_type)
-        else:
-            logger.warning("数据库不可用，无法列出规则")
-            return []
+        if self.db_session:
+            query = self.db_session.query(Rule)
+            if rule_type:
+                query = query.filter(Rule.type == rule_type)
+            return query.all()
+        return []
 
     def delete_rule(self, rule_id: str) -> bool:
         """
@@ -192,9 +134,37 @@ class RuleManager:
         Returns:
             是否删除成功
         """
-        if self._db_available and self.db_ops:
-            # 从数据库删除规则
-            return self.db_ops.delete_rule(rule_id)
-        else:
-            logger.warning(f"数据库不可用，无法删除规则: {rule_id}")
+        if not self.db_session:
+            return False
+
+        try:
+            rule = self.get_rule(rule_id)
+            if rule:
+                self.db_session.delete(rule)
+                self.db_session.commit()
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"删除规则失败: {e}")
+            self.db_session.rollback()
+            raise
+
+    def validate_rule(self, rule_content: Union[str, Dict]) -> bool:
+        """
+        验证规则
+
+        Args:
+            rule_content: 规则内容或字典
+
+        Returns:
+            是否验证通过
+        """
+        try:
+            if isinstance(rule_content, str):
+                self.rule_processor.process_rule_text(rule_content)
+            else:
+                self.rule_processor.validate_rule_dict(rule_content)
+            return True
+        except Exception as e:
+            logger.error(f"规则验证失败: {e}")
             return False

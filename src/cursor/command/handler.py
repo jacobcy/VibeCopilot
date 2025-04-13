@@ -15,7 +15,7 @@ from src.cli.commands import CLICK_COMMANDS, OLD_COMMANDS
 from src.cli.main import get_cli_app
 from src.cursor.command.formatter import enhance_result_for_agent
 from src.cursor.command.suggestions import get_command_suggestions, get_error_suggestions, get_verbose_error_info
-from src.rule_engine.core.rule_manager import RuleManager
+from src.rule_engine.rule_manager import RuleManager
 
 logger = logging.getLogger(__name__)
 console = Console()

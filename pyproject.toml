@@ -59,6 +59,7 @@ docs = [
 vibecopilot = "src.cli.main:main"
 vibe-copilot-mcp = "src.cursor.server:main"
 health = "src.health.cli:main"
+docs = "src.docs_engine.cli:main"
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]

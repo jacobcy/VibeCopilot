@@ -1,13 +1,13 @@
 """
 日志工具模块
 
-提供统一的日志配置和管理功能。
+提供统一的日志配置和管理功能，包括通用日志和工作流专用日志。
 """
 
 import logging
 import os
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 
 def setup_logger(name: str, level: Optional[int] = None, log_file: Optional[str] = None, format_str: Optional[str] = None) -> logging.Logger:
@@ -86,3 +86,53 @@ def get_logger(name: str) -> logging.Logger:
         logger = setup_logger(name=name, log_file=log_file)
 
     return logger
+
+
+class WorkflowLoggerAdapter(logging.LoggerAdapter):
+    """
+    工作流日志适配器
+
+    为工作流相关日志添加上下文信息，如workflow_id, session_id等
+    """
+
+    def process(self, msg: str, kwargs: Dict[str, Any]) -> tuple:
+        """处理日志消息，添加工作流上下文"""
+        # 获取上下文信息
+        workflow_id = self.extra.get("workflow_id", "unknown")
+        session_id = self.extra.get("session_id", "unknown")
+        stage_id = self.extra.get("stage_id", "unknown")
+
+        # 格式化消息，添加上下文
+        msg = f"[W:{workflow_id}|S:{session_id}|ST:{stage_id}] {msg}"
+        return msg, kwargs
+
+
+def setup_workflow_logger(
+    name: str, workflow_id: Optional[str] = None, session_id: Optional[str] = None, stage_id: Optional[str] = None
+) -> logging.LoggerAdapter:
+    """
+    设置工作流专用日志记录器
+
+    Args:
+        name: 日志记录器名称
+        workflow_id: 工作流ID
+        session_id: 会话ID
+        stage_id: 阶段ID
+
+    Returns:
+        logging.LoggerAdapter: 配置好的工作流日志适配器
+    """
+    # 确保工作流日志目录存在
+    log_dir = os.path.join("logs", "workflow")
+    os.makedirs(log_dir, exist_ok=True)
+
+    # 设置日志文件路径
+    log_file = os.path.join(log_dir, f"{name}.log")
+
+    # 创建基础日志记录器
+    logger = setup_logger(name=f"workflow.{name}", log_file=log_file, format_str="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    # 创建并返回适配器
+    extra = {"workflow_id": workflow_id, "session_id": session_id, "stage_id": stage_id}
+
+    return WorkflowLoggerAdapter(logger, extra)

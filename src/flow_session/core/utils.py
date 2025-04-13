@@ -14,8 +14,8 @@ from typing import Any, Dict, Optional, Union
 import click
 from sqlalchemy.orm import Session
 
-from src.core.session import Session, SessionManager
 from src.db.session import SessionLocal
+from src.flow_session.status.status import SessionStatus
 
 
 @contextmanager
@@ -199,10 +199,10 @@ def get_error_message(error_code: str) -> str:
         "FS-103": "完成阶段失败",
         "FS-104": "阶段执行失败",
         "FS-201": "工作流不存在",
-        "FS-901": "数据库操作错误",
-        "FS-902": "输入验证错误",
+        "FS-901": "数据库错误",
+        "FS-902": "数据验证错误",
         "FS-903": "操作已取消",
-        "FS-904": "权限不足",
+        "FS-904": "未授权操作",
         "FS-999": "系统错误",
     }
 
@@ -225,7 +225,7 @@ def format_output(data: Dict[str, Any], format_type: str, is_success: bool = Tru
 
 def handle_session_list():
     """列出所有会话"""
-    sessions = SessionManager.list_sessions()
+    sessions = FlowSessionManager.list_sessions()
     if not sessions:
         print("当前没有活动的会话")
         return
@@ -239,7 +239,7 @@ def handle_session_list():
 
 def handle_session_stop(session_id: str):
     """停止会话"""
-    session = SessionManager.get_session(session_id)
+    session = FlowSessionManager.get_session(session_id)
     if not session:
         print(f"会话 {session_id} 不存在")
         return
@@ -250,7 +250,7 @@ def handle_session_stop(session_id: str):
 
 def handle_session_resume(session_id: str):
     """恢复会话"""
-    session = SessionManager.get_session(session_id)
+    session = FlowSessionManager.get_session(session_id)
     if not session:
         print(f"会话 {session_id} 不存在")
         return
@@ -261,7 +261,7 @@ def handle_session_resume(session_id: str):
 
 def handle_session_status(session_id: str):
     """查看会话状态"""
-    session = SessionManager.get_session(session_id)
+    session = FlowSessionManager.get_session(session_id)
     if not session:
         print(f"会话 {session_id} 不存在")
         return

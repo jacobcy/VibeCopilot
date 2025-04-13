@@ -10,6 +10,8 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
+from src.flow_session.core.logger_factory import LoggerFactory
+from src.flow_session.core.session_utils import format_session_list
 from src.flow_session.core.utils import echo_error, echo_info, echo_success, format_time, get_db_session, get_error_code, output_json
 from src.flow_session.session.manager import FlowSessionManager
 
@@ -43,7 +45,9 @@ def handle_list_sessions(
             if verbose:
                 print("[调试] 开始获取会话列表")
 
-            manager = FlowSessionManager(session)
+            # 初始化日志工厂和管理器
+            logger_factory = LoggerFactory.get_instance()
+            manager = FlowSessionManager(session, logger=logger_factory.get_logger("default"))
             sessions = manager.list_sessions(status=status, workflow_id=workflow)
 
             if verbose:
@@ -64,60 +68,10 @@ def handle_list_sessions(
                 return result
 
             # 将会话转换为字典列表
-            session_dicts = []
             if verbose:
                 print("[调试] 开始转换会话对象到字典")
 
-            for i, s in enumerate(sessions):
-                if verbose:
-                    print(f"[调试] 处理会话 {i+1}: 类型={type(s)}")
-
-                # 安全地将会话对象转换为字典
-                try:
-                    if isinstance(s, dict):
-                        if verbose:
-                            print(f"[调试] 会话 {i+1} 已经是字典")
-                        session_dict = s
-                    else:
-                        if verbose:
-                            print(f"[调试] 会话 {i+1} 是对象，ID={getattr(s, 'id', 'unknown')}")
-
-                        # 确保对象有to_dict方法
-                        if hasattr(s, "to_dict") and callable(getattr(s, "to_dict")):
-                            if verbose:
-                                print(f"[调试] 使用to_dict方法转换会话 {i+1}")
-                            session_dict = s.to_dict()
-                        else:
-                            if verbose:
-                                print(f"[调试] 手动转换会话 {i+1}的属性")
-                            # 如果没有to_dict方法，手动创建字典
-                            session_dict = {
-                                "id": getattr(s, "id", None),
-                                "name": getattr(s, "name", None),
-                                "workflow_id": getattr(s, "workflow_id", None),
-                                "status": getattr(s, "status", None),
-                                "current_stage_id": getattr(s, "current_stage_id", None),
-                                "created_at": format_time(getattr(s, "created_at", None)),
-                                "updated_at": format_time(getattr(s, "updated_at", None)),
-                                "completed_stages": getattr(s, "completed_stages", []),
-                                "context": getattr(s, "context", {}),
-                            }
-
-                    if verbose:
-                        print(f"[调试] 会话 {i+1} 转换结果: ID={session_dict.get('id', 'unknown')}")
-
-                    # 添加详细信息如果需要
-                    if verbose and not isinstance(s, dict):
-                        # 可能的额外详细字段
-                        pass
-
-                    session_dicts.append(session_dict)
-                except Exception as conversion_error:
-                    # 记录转换错误但继续处理其他会话
-                    if verbose:
-                        print(f"[调试] 转换会话 {i+1} 时出错: {str(conversion_error)}")
-                    echo_error(f"转换会话对象时出错: {str(conversion_error)}")
-                    continue
+            session_dicts = format_session_list(sessions, verbose)
 
             # 更新结果
             if verbose:
@@ -185,15 +139,16 @@ def handle_list_sessions(
 
                         if not verbose:
                             # 简化版行
-                            row = [
+                            table.add_row(
                                 session.get("id", "-"),
                                 session.get("name", "-") or "-",
                                 session.get("workflow_id", "-"),
                                 session.get("current_stage_id", "-") or "-",
-                            ]
+                            )
                         else:
                             # verbose模式行
-                            row = [
+                            completed_stages = ", ".join(str(s) for s in session.get("completed_stages", []))
+                            table.add_row(
                                 session.get("id", "-"),
                                 session.get("name", "-") or "-",
                                 session.get("workflow_id", "-"),
@@ -201,41 +156,28 @@ def handle_list_sessions(
                                 session.get("current_stage_id", "-") or "-",
                                 session.get("created_at", "-"),
                                 session.get("updated_at", "-"),
-                                ", ".join(session.get("completed_stages", [])) if session.get("completed_stages") else "-",
-                            ]
+                                completed_stages or "-",
+                            )
 
-                        table.add_row(*row)
-
+                    # 打印表格
                     if verbose:
                         print("[调试] 打印表格")
-
-                    console.print("\n会话列表:\n")
+                    console.print("\n")
                     console.print(table)
                     console.print(f"\n找到 {len(sessions)} 个会话。\n")
-
-                    if verbose:
-                        print("[调试] 表格已打印完成")
                 elif format == "json":
                     # JSON格式输出
+                    if verbose:
+                        print("[调试] 使用JSON格式输出会话列表")
                     output_json(result)
-            elif agent_mode:
-                # Agent模式输出
-                click.echo(json.dumps(result, indent=2))
 
             return result
 
     except Exception as e:
-        error_code = get_error_code("LIST_SESSIONS_ERROR")
-        error_message = f"列出会话时发生错误: {str(e)}"
-        result["error"] = error_message
-
-        if agent_mode:
-            click.echo(json.dumps(result, indent=2))
-        elif format == "json":
-            output_json(result)
-        else:
-            echo_error(error_message)
-            echo_info("提示: 请检查数据库连接是否正常")
-            echo_success("操作完成")  # 更改消息，避免误导
-
+        if verbose:
+            print(f"[调试] 处理会话列表时出错: {str(e)}")
+        result["success"] = False
+        result["error"] = str(e)
+        result["message"] = "获取会话列表失败"
+        echo_error(f"获取会话列表失败: {str(e)}")
         return result

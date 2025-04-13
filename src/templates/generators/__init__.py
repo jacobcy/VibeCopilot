@@ -1,11 +1,12 @@
 """
-模板生成器包
+生成器模块
 
-提供不同的模板生成策略实现，包括本地基于正则表达式的生成和基于LLM的生成。
+提供各种类型的生成器实现。
 """
 
-from .base_generator import TemplateGenerator
-from .llm_generator import LLMGenerationConfig, LLMTemplateGenerator
-from .regex_generator import RegexTemplateGenerator
+from .base_generator import BaseGenerator
+from .llm_generator import LLMGenerator
+from .regex_generator import RegexGenerator
+from .rule_generator import RuleGenerator
 
-__all__ = ["TemplateGenerator", "RegexTemplateGenerator", "LLMTemplateGenerator", "LLMGenerationConfig"]
+__all__ = ["BaseGenerator", "LLMGenerator", "RegexGenerator", "RuleGenerator"]

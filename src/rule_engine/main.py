@@ -1,41 +1,59 @@
-"""
-规则引擎入口模块
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-作为规则引擎的入口，导出主要功能
+"""
+规则引擎主模块
+
+提供规则引擎的主要功能和接口
 """
 
 import logging
 from typing import Any, Dict, Optional
 
+from src.models.rule_model import Rule
+from src.parsing.processors.rule_processor import RuleProcessor
+from src.rule_engine.core.rule_importer import import_rule_from_content, import_rule_from_file
 from src.rule_engine.core.rule_manager import RuleManager
 from src.rule_engine.exporters.rule_exporter import export_rule_to_yaml
 from src.rule_engine.generators.rule_generator import RuleGenerator, generate_rule_from_template
-from src.rule_engine.parsers.rule_parser import parse_rule_content, parse_rule_file
-from src.rule_engine.validators.rule_validator import validate_rule
+from src.validation.rule_validator import validate_rule
 
 logger = logging.getLogger(__name__)
 
+# 创建规则处理器实例
+rule_processor = RuleProcessor()
+
 # 导出公共API
 __all__ = [
-    "init_rule_engine",
     "RuleManager",
+    "Rule",
+    "RuleProcessor",
+    "init_rule_engine",
+    "import_rule_from_file",
+    "import_rule_from_content",
+    "export_rule_to_yaml",
     "parse_rule_file",
     "parse_rule_content",
-    "export_rule_to_yaml",
     "validate_rule",
     "RuleGenerator",
     "generate_rule_from_template",
 ]
 
 
-def init_rule_engine() -> RuleManager:
+def init_rule_engine(db_session=None) -> "RuleManager":
     """
     初始化规则引擎
 
+    Args:
+        db_session: 可选的数据库会话
+
     Returns:
-        RuleManager: 初始化后的规则管理器实例
+        RuleManager实例
     """
-    return RuleManager()
+    from src.rule_engine.core.rule_manager import RuleManager
+
+    logger.info("初始化规则引擎")
+    return RuleManager(db_session=db_session)
 
 
 def generate_rule(template_id: str, variables: Dict[str, Any], rule_id: Optional[str] = None, use_llm: bool = False) -> Any:

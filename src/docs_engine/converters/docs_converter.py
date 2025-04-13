@@ -33,9 +33,44 @@ def parse_document_file(file_path: str, parser_type: Optional[str] = None, model
     if model:
         config["model"] = model
 
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"文件不存在: {file_path}")
+
+    # 读取文件内容
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
     # 使用新的parsing接口
     parser = create_parser(content_type="document", backend=parser_type or "openai", config=config)
-    result = parser.parse_file(file_path)
+
+    # 使用parse_text方法
+    # 注意：parse_text是异步方法，需要在异步上下文中调用
+    # 这里我们使用一个简单的同步实现
+    import asyncio
+
+    try:
+        import nest_asyncio
+
+        nest_asyncio.apply()
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(parser.parse_text(content, content_type="document"))
+    except Exception as e:
+        logger.error(f"调用解析器失败: {str(e)}")
+        result = {
+            "success": False,
+            "error": str(e),
+            "content_type": "document",
+            "content_preview": content[:100] + "..." if len(content) > 100 else content,
+        }
+
+    # 添加文件信息
+    result["_file_info"] = {
+        "path": file_path,
+        "name": os.path.basename(file_path),
+        "extension": os.path.splitext(file_path)[1],
+        "directory": os.path.dirname(file_path),
+    }
 
     logger.info(f"文档文件解析完成: {file_path}")
     return result
@@ -64,7 +99,29 @@ def parse_document_content(content: str, context: str = "", parser_type: Optiona
 
     # 使用新的parsing接口
     parser = create_parser(content_type="document", backend=parser_type or "openai", config=config)
-    result = parser.parse_content(content)
+
+    # 判断解析器类型
+    if hasattr(parser, "parse"):
+        # 如果是LLMParser，使用parse方法
+        result = parser.parse(content, content_type="document")
+    else:
+        # 如果是其他解析器，使用同步方法
+        import asyncio
+
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            loop = asyncio.get_event_loop()
+            result = loop.run_until_complete(parser.parse_text(content, content_type="document"))
+        except Exception as e:
+            logger.error(f"调用解析器失败: {str(e)}")
+            result = {
+                "success": False,
+                "error": str(e),
+                "content_type": "document",
+                "content_preview": content[:100] + "..." if len(content) > 100 else content,
+            }
 
     logger.info(f"文档内容解析完成")
     return result
@@ -101,9 +158,43 @@ def import_document_to_db(file_path: str) -> Dict[str, Any]:
     """
     logger.info(f"导入文档到数据库: {file_path}")
 
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"文件不存在: {file_path}")
+
+    # 读取文件内容
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
     # 使用新的parsing接口解析并保存
     parser = create_parser(content_type="document")
-    doc_data = parser.parse_file(file_path)
+
+    # 使用parse_text方法
+    # 注意：parse_text是异步方法，需要在异步上下文中调用
+    import asyncio
+
+    try:
+        import nest_asyncio
+
+        nest_asyncio.apply()
+        loop = asyncio.get_event_loop()
+        doc_data = loop.run_until_complete(parser.parse_text(content, content_type="document"))
+    except Exception as e:
+        logger.error(f"调用解析器失败: {str(e)}")
+        doc_data = {
+            "success": False,
+            "error": str(e),
+            "content_type": "document",
+            "content_preview": content[:100] + "..." if len(content) > 100 else content,
+        }
+
+    # 添加文件信息
+    doc_data["_file_info"] = {
+        "path": file_path,
+        "name": os.path.basename(file_path),
+        "extension": os.path.splitext(file_path)[1],
+        "directory": os.path.dirname(file_path),
+    }
 
     return {
         "success": True,
@@ -135,7 +226,7 @@ def convert_document_links(content: str, from_format: str, to_format: str) -> st
     return result
 
 
-def create_document_from_template(template: str, output_path: str, variables: Dict[str, Any] = None) -> bool:
+def create_document_from_template(template: str, output_path: str, variables: Optional[Dict[str, Any]] = None) -> bool:
     """使用模板创建文档
 
     Args:
@@ -150,7 +241,9 @@ def create_document_from_template(template: str, output_path: str, variables: Di
 
     # 使用文档引擎的模板功能
     engine = create_document_engine(os.getcwd())
-    result = engine.generate_new_document(template, output_path, variables)
+    # 确保变量字典不为 None
+    vars_dict = variables or {}
+    result = engine.generate_new_document(template, output_path, vars_dict)
 
     logger.info(f"文档创建{'成功' if result else '失败'}")
     return result

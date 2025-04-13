@@ -13,8 +13,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from src.core.logger import setup_logger
 from src.models.db.base import Base
-from src.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 

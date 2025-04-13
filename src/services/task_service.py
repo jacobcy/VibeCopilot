@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from src.db.repositories.task_repository import TaskRepository
 from src.db.service import DatabaseService
+from src.flow_session.core.session_create_handlers import handle_create_session
+from src.flow_session.session.manager import FlowSessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -277,3 +279,36 @@ class TaskService:
         except Exception as e:
             logger.error(f"关联任务 {task_id} 到 {link_type}:{target_id} 失败: {e}")
             return False
+
+    def create_task_with_flow(self, task_data: Dict[str, Any], workflow_id: str) -> Optional[Dict[str, Any]]:
+        """创建任务并自动关联工作流会话
+
+        Args:
+            task_data: 任务数据
+            workflow_id: 工作流定义ID
+
+        Returns:
+            创建的任务数据，包含关联的工作流会话信息
+        """
+        try:
+            # 1. 创建任务
+            task = self.create_task(task_data)
+            if not task:
+                raise ValueError("创建任务失败")
+
+            # 2. 创建工作流会话
+            session_result = handle_create_session(
+                workflow_id=workflow_id, name=f"Flow for {task['title']}", task_id=task["id"], verbose=False, agent_mode=True
+            )
+
+            if not session_result["success"]:
+                error_msg = session_result.get("error_message", "创建工作流会话失败")
+                raise ValueError(error_msg)
+
+            # 3. 更新任务数据，添加会话信息
+            task["flow_session"] = session_result["session"]
+
+            return task
+        except Exception as e:
+            logger.error(f"创建任务并关联工作流失败: {e}")
+            return None

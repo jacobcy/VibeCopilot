@@ -1,11 +1,5 @@
 """
-规则引擎核心模块
+规则引擎核心模块包
 
-包含规则管理器和核心功能
+包含规则管理器的子模块，按功能分类
 """
-
-from src.rule_engine.core.rule_manager import RuleManager
-
-__all__ = [
-    "RuleManager",
-]
