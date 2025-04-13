@@ -194,7 +194,7 @@ class TemplateManager:
                 # 处理Markdown或其他文本格式
                 # 尝试使用template_utils提取前置元数据
                 try:
-                    from src.templates.utils.template_utils import load_template_from_file
+                    from src.templates.core.managers.template_utils import load_template_from_file
 
                     template_data = load_template_from_file(str(file_path))
                     if not template_data.get("id"):

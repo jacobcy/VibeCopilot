@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from src.models.db import Rule, RuleMetadata, RuleType, Template
+from src.templates.core.managers.template_utils import normalize_template_id
 from src.templates.core.template_engine import TemplateEngine
-from src.templates.template_utils import normalize_template_id
 
 from .base_generator import BaseGenerator
 

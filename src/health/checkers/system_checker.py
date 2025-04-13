@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from src.utils.logger import setup_logger
+from src.core.logger import setup_logger
 
 from .base_checker import BaseChecker, CheckResult
 

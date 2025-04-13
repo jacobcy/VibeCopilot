@@ -15,7 +15,7 @@ from jinja2 import Template as JinjaTemplate
 from jinja2 import select_autoescape
 
 from ..models.template import Template, TemplateVariable
-from ..utils.template_utils import get_syntax_error_details, validate_template_syntax
+from .managers.template_utils import get_syntax_error_details, validate_template_syntax
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +42,9 @@ class TemplateEngine:
     def _setup_custom_filters(self):
         """设置自定义模板过滤器"""
         # 添加驼峰命名转换过滤器
-        self.env.filters["camel_case"] = lambda s: "".join(
-            word.capitalize() if i else word.lower() for i, word in enumerate(s.split("_"))
-        )
+        self.env.filters["camel_case"] = lambda s: "".join(word.capitalize() if i else word.lower() for i, word in enumerate(s.split("_")))
         # 添加帕斯卡命名转换过滤器
-        self.env.filters["pascal_case"] = lambda s: "".join(
-            word.capitalize() for word in s.split("_")
-        )
+        self.env.filters["pascal_case"] = lambda s: "".join(word.capitalize() for word in s.split("_"))
         # 添加kebab命名转换过滤器
         self.env.filters["kebab_case"] = lambda s: "-".join(word.lower() for word in s.split("_"))
 
@@ -95,9 +91,7 @@ class TemplateEngine:
 
         return self.render_template_string(template.content, variables_with_defaults)
 
-    def apply_template(
-        self, template: Template, variables: Dict[str, Any], output_path: Optional[str] = None
-    ) -> str:
+    def apply_template(self, template: Template, variables: Dict[str, Any], output_path: Optional[str] = None) -> str:
         """
         应用模板并可选地保存到文件
 

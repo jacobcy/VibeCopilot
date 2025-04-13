@@ -9,7 +9,7 @@ import os
 import shutil
 from typing import Any, Dict
 
-from src.log import log_service
+from src.logger import log_service
 from src.workflow.execution import get_execution_by_id, get_executions_for_workflow, save_execution
 
 

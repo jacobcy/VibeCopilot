@@ -17,7 +17,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.append(project_root)
 
 # 导入日志模块
-from src.log import (
+from src.logger import (
     get_operation_tasks,
     get_recent_errors,
     get_workflow_logs,

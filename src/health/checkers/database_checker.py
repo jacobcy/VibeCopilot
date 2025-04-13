@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import inspect, text
 
+from src.core.logger import setup_logger
 from src.db.connection_manager import get_engine, get_session
-from src.utils.logger import setup_logger
 
 from .base_checker import BaseChecker, CheckResult
 
