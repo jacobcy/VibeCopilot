@@ -235,6 +235,19 @@ class CommandChecker(BaseChecker):
         try:
             command_results = {}  # 存储每个命令组的检查结果
 
+            # 获取所有可用的命令组名称
+            available_groups = [group["name"] for group in self.config["command_groups"]]
+
+            # 检查指定的category是否有效
+            if self.category is not None and self.category not in available_groups:
+                return CheckResult(
+                    status="failed",
+                    details=[f"错误: 无效的命令组类别 '{self.category}'"],
+                    suggestions=[f"有效的命令组类别有: {', '.join(available_groups)}"],
+                    metrics={"total": 0, "passed": 0, "failed": 0, "warnings": 0},
+                    command_results={},
+                )
+
             # 确定要检查的命令组
             groups_to_check = []
             for group in self.config["command_groups"]:

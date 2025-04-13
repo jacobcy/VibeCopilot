@@ -1,0 +1,139 @@
+# 模板命令组配置
+
+commands:
+  "template list":
+    description: "列出所有模板"
+    subcommands:
+      "--type":
+        description: "模板类型筛选"
+        values: ["rule", "command", "doc", "flow", "roadmap", "general"]
+      "--verbose":
+        description: "显示详细信息"
+        short: "-v"
+        type: "flag"
+    expected_output: ["模板列表", "模板"]
+    timeout: 5
+    critical: true
+
+  "template show":
+    description: "查看模板详情"
+    arguments:
+      - name: "template_id"
+        description: "模板ID"
+        required: true
+    subcommands:
+      "--format":
+        description: "输出格式"
+        values: ["json", "text"]
+    expected_output: ["模板详情", "内容"]
+    timeout: 5
+    critical: true
+
+  "template create":
+    description: "创建新模板"
+    subcommands:
+      "--name":
+        description: "模板名称"
+        required: true
+      "--type":
+        description: "模板类型"
+        values: ["rule", "command", "doc", "flow", "roadmap", "general"]
+        required: true
+    expected_output: ["创建", "模板", "成功"]
+    timeout: 8
+    critical: true
+
+  "template update":
+    description: "更新模板"
+    arguments:
+      - name: "template_id"
+        description: "模板ID"
+        required: true
+    subcommands:
+      "--name":
+        description: "新的模板名称"
+    expected_output: ["更新", "模板", "成功"]
+    timeout: 8
+    critical: true
+
+  "template delete":
+    description: "删除模板"
+    arguments:
+      - name: "template_id"
+        description: "模板ID"
+        required: true
+    subcommands:
+      "--force":
+        description: "强制删除"
+        type: "flag"
+    expected_output: ["删除", "模板", "成功"]
+    timeout: 5
+    critical: true
+
+  "template generate":
+    description: "使用模板生成内容"
+    arguments:
+      - name: "template_id"
+        description: "模板ID"
+        required: true
+      - name: "output_file"
+        description: "输出文件路径"
+        required: true
+    subcommands:
+      "--vars":
+        description: "变量JSON字符串"
+    expected_output: ["生成", "成功"]
+    timeout: 10
+    critical: true
+
+  "template export":
+    description: "导出模板"
+    arguments:
+      - name: "template_id"
+        description: "模板ID"
+        required: true
+    subcommands:
+      "--output":
+        description: "输出文件路径"
+      "--format":
+        description: "导出格式"
+        values: ["json", "yaml", "text"]
+    expected_output: ["导出", "模板", "成功"]
+    timeout: 8
+    critical: false
+
+  "template import-template":
+    description: "导入模板"
+    arguments:
+      - name: "file_path"
+        description: "文件路径"
+        required: true
+    subcommands:
+      "--overwrite":
+        description: "覆盖已存在的模板"
+        type: "flag"
+      "--recursive":
+        description: "递归导入目录下的所有模板"
+        type: "flag"
+    expected_output: ["导入", "模板", "成功"]
+    timeout: 10
+    critical: false
+
+  "template init":
+    description: "初始化模板库"
+    subcommands:
+      "--force":
+        description: "强制初始化"
+        type: "flag"
+      "--source":
+        description: "指定源目录"
+    expected_output: ["初始化", "模板库", "成功"]
+    timeout: 15
+    critical: false
+
+# 命令组特定配置
+group_config:
+  template_types: ["rule", "command", "doc", "flow", "roadmap", "general"]  # 支持的模板类型
+  default_template_type: "general"  # 默认模板类型
+  max_template_size: 1048576  # 模板最大大小（字节）
+  template_file_extensions: [".md", ".yaml", ".json", ".txt"]  # 支持的文件扩展名

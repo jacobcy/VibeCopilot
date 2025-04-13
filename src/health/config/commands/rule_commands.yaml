@@ -6,7 +6,7 @@ commands:
     subcommands:
       "--type":
         description: "按类型筛选规则"
-        values: ["core", "dev", "tech", "workflow"]
+        values: ["core", "dev", "tech", "tool"]
       "--format":
         description: "输出格式"
         values: ["table", "json", "yaml"]
@@ -44,13 +44,13 @@ commands:
         description: "规则类型"
         required: true
     subcommands:
-      "--template":
-        description: "使用模板创建"
-        values: ["core", "dev", "tech"]
       "--description":
         description: "规则描述"
         type: "string"
-    expected_output: ["规则创建成功"]
+      "--priority":
+        description: "规则优先级"
+        type: "integer"
+    expected_output: ["规则创建成功", "成功"]
     timeout: 8
     critical: true
 
@@ -60,14 +60,7 @@ commands:
       - name: "rule_name"
         description: "规则名称"
         required: true
-    subcommands:
-      "--editor":
-        description: "指定编辑器"
-        values: ["vim", "nano", "vscode"]
-      "--no-verify":
-        description: "跳过验证"
-        type: "flag"
-    expected_output: ["规则更新成功"]
+    expected_output: ["打开规则", "编辑"]
     timeout: 10
     critical: true
 
@@ -81,63 +74,29 @@ commands:
       "--force":
         description: "强制删除"
         type: "flag"
-      "--backup":
-        description: "删除前备份"
-        type: "flag"
-    expected_output: ["规则删除成功"]
+    expected_output: ["规则删除成功", "成功"]
     timeout: 5
     critical: true
 
-  "rule validate":
-    description: "验证规则"
+  "rule enable":
+    description: "启用规则"
     arguments:
       - name: "rule_name"
         description: "规则名称"
-        required: false
-    subcommands:
-      "--all":
-        description: "验证所有规则"
-        type: "flag"
-      "--fix":
-        description: "自动修复问题"
-        type: "flag"
-    expected_output: ["规则验证结果"]
-    timeout: 15
+        required: true
+    expected_output: ["启用规则", "成功"]
+    timeout: 5
     critical: true
 
-  "rule export":
-    description: "导出规则"
+  "rule disable":
+    description: "禁用规则"
     arguments:
       - name: "rule_name"
         description: "规则名称"
-        required: false
-    subcommands:
-      "--format":
-        description: "导出格式"
-        values: ["markdown", "json", "yaml", "html"]
-      "--output":
-        description: "输出路径"
-        type: "string"
-    expected_output: ["规则导出成功"]
-    timeout: 10
-    critical: false
-
-  "rule import":
-    description: "导入规则"
-    arguments:
-      - name: "file_path"
-        description: "规则文件路径"
         required: true
-    subcommands:
-      "--overwrite":
-        description: "覆盖已存在的规则"
-        type: "flag"
-      "--dry-run":
-        description: "模拟导入"
-        type: "flag"
-    expected_output: ["规则导入成功"]
-    timeout: 10
-    critical: false
+    expected_output: ["禁用规则", "成功"]
+    timeout: 5
+    critical: true
 
 # 命令组特定配置
 group_config:
@@ -149,17 +108,29 @@ group_config:
 
 # 规则模板配置
 templates:
-  core_rule:
-    path: "templates/rules/core.md"
-    description: "核心规则模板"
+  agent:
+    path: "templates/rule/agent.md"
+    description: "代理规则模板"
 
-  dev_rule:
-    path: "templates/rules/dev.md"
-    description: "开发规则模板"
+  auto:
+    path: "templates/rule/auto.md"
+    description: "自动化规则模板"
 
-  tech_rule:
-    path: "templates/rules/tech.md"
-    description: "技术规则模板"
+  best_practices:
+    path: "templates/rule/best_practices.md"
+    description: "最佳实践规则模板"
+
+  command:
+    path: "templates/rule/command.md"
+    description: "命令规则模板"
+
+  role:
+    path: "templates/rule/role_rule.md"
+    description: "角色规则模板"
+
+  workflow:
+    path: "templates/rule/workflow.md"
+    description: "工作流规则模板"
 
 # 规则验证配置
 validation:

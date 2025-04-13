@@ -18,12 +18,19 @@ commands:
   "flow show":
     description: "查看会话或工作流定义详情"
     subcommands:
-      "--id":
+      "ID":
         description: "工作流或会话ID"
         type: "string"
+        required: false
+      "--workflow":
+        description: "查看工作流定义而非会话信息"
+        type: "flag"
       "--format":
         description: "输出格式"
-        values: ["json", "text"]
+        values: ["json", "text", "mermaid"]
+      "--diagram":
+        description: "在输出中包含Mermaid图表"
+        type: "flag"
       "--verbose":
         description: "显示详细信息"
         type: "flag"
@@ -58,12 +65,15 @@ commands:
   "flow update":
     description: "更新工作流定义"
     subcommands:
-      "--id":
+      "ID":
         description: "工作流ID"
         type: "string"
         required: true
       "--name":
         description: "新的工作流名称"
+        type: "string"
+      "--desc":
+        description: "新的工作流描述"
         type: "string"
       "--verbose":
         description: "显示详细信息"
@@ -75,7 +85,7 @@ commands:
   "flow delete":
     description: "删除工作流定义"
     subcommands:
-      "--id":
+      "WORKFLOW_ID":
         description: "工作流ID"
         type: "string"
         required: true
@@ -92,13 +102,13 @@ commands:
   "flow export":
     description: "导出工作流定义"
     subcommands:
-      "--id":
+      "WORKFLOW_ID":
         description: "工作流ID"
         type: "string"
         required: true
       "--format":
         description: "输出格式"
-        values: ["json", "yaml"]
+        values: ["json", "mermaid"]
       "--output":
         description: "输出路径"
         type: "string"
@@ -112,13 +122,13 @@ commands:
   "flow import":
     description: "导入工作流定义"
     subcommands:
-      "--file":
+      "FILE_PATH":
         description: "文件路径"
         type: "string"
         required: true
-      "--overwrite":
-        description: "覆盖已存在的定义"
-        type: "flag"
+      "--name":
+        description: "导入后使用的工作流名称"
+        type: "string"
       "--verbose":
         description: "显示详细信息"
         type: "flag"
@@ -129,12 +139,17 @@ commands:
   "flow context":
     description: "获取并解释工作流阶段上下文"
     subcommands:
-      "--stage":
+      "STAGE_ID":
         description: "阶段ID"
         type: "string"
+        required: false
       "--session":
         description: "会话ID或名称"
         type: "string"
+      "--completed":
+        description: "标记为已完成的检查项名称或ID"
+        type: "string"
+        multiple: true
       "--format":
         description: "输出格式"
         values: ["json", "text"]
@@ -183,13 +198,16 @@ commands:
   "flow visualize":
     description: "可视化工作流结构和进度"
     subcommands:
-      "--id":
-        description: "工作流ID"
+      "ID":
+        description: "工作流或会话ID"
         type: "string"
-        required: true
+        required: false
+      "--session":
+        description: "目标是会话ID而非工作流ID"
+        type: "flag"
       "--format":
         description: "输出格式"
-        values: ["mermaid", "dot"]
+        values: ["mermaid", "text"]
       "--output":
         description: "输出文件路径"
         type: "string"

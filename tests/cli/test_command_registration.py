@@ -32,7 +32,7 @@ EXPECTED_TOP_LEVEL_COMMANDS = {
 
 # 子命令映射
 EXPECTED_SUBCOMMANDS = {
-    "rule": ["list", "show", "create", "update", "delete", "validate", "export", "import"],
+    "rule": ["list", "show", "create", "delete", "disable", "edit", "enable"],
     "flow": [
         "list",
         "show",

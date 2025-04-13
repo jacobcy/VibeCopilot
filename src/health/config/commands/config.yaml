@@ -31,10 +31,6 @@ command_groups:
     description: "流程会话管理命令"
     config_file: "flow_session_commands.yaml"
     critical: true
-  - name: "help"
-    description: "帮助命令"
-    config_file: "help_commands.yaml"
-    critical: true
   - name: "rule"
     description: "规则管理命令"
     config_file: "rule_commands.yaml"
@@ -50,4 +46,8 @@ command_groups:
   - name: "status"
     description: "状态管理命令"
     config_file: "status_commands.yaml"
+    critical: true
+  - name: "template"
+    description: "模板管理命令"
+    config_file: "template_commands.yaml"
     critical: true

@@ -1,168 +1,177 @@
-name: task
-description: "任务管理命令 (类似 GitHub issue)"
-type: group
-subcommands:
-  list:
-    description: "列出和过滤任务"
-    options:
-      - name: status
-        short: s
-        description: "按状态过滤 (例如: open,in_progress)"
-        required: false
-        multiple: true
-      - name: assignee
-        short: a
+# 任务命令组配置
+
+commands:
+  "task list":
+    description: "列出项目中的任务"
+    subcommands:
+      "--status":
+        description: "按状态过滤"
+        short: "-s"
+      "--assignee":
         description: "按负责人过滤"
-        required: false
-      - name: label
-        short: l
-        description: "按标签过滤 (目前仅简单匹配)"
-        required: false
+        short: "-a"
+      "--label":
+        description: "按标签过滤"
+        short: "-l"
         multiple: true
-      - name: roadmap
-        short: r
+      "--roadmap":
         description: "按关联的 Story ID 过滤"
-        required: false
-      - name: independent
-        short: i
-        description: "仅显示独立任务 (无 Roadmap 关联)"
-        required: false
-        type: flag
-      - name: limit
+        short: "-r"
+      "--independent":
+        description: "仅显示独立任务"
+        short: "-i"
+        type: "flag"
+      "--limit":
         description: "限制返回数量"
-        required: false
-        type: integer
-      - name: offset
+        type: "integer"
+      "--offset":
         description: "跳过指定数量的结果"
-        required: false
-        type: integer
-      - name: verbose
-        short: v
+        type: "integer"
+      "--verbose":
         description: "显示更详细的信息"
-        required: false
-        type: flag
+        short: "-v"
+        type: "flag"
+      "--format":
+        description: "输出格式"
+        values: ["yaml", "json"]
+    expected_output: ["列出项目中的任务", "任务列表"]
+    timeout: 5
+    critical: true
 
-  show:
+  "task show":
     description: "显示任务详情"
-    args:
-      - name: task_id
-        description: "要显示的任务ID"
+    arguments:
+      - name: "task_id"
+        description: "任务ID"
         required: true
-    options:
-      - name: verbose
-        short: v
-        description: "显示更详细的信息，包括评论"
-        required: false
-        type: flag
+    subcommands:
+      "--verbose":
+        description: "显示更详细的信息"
+        short: "-v"
+        type: "flag"
+      "--format":
+        description: "输出格式"
+        values: ["yaml", "json"]
+    expected_output: ["任务详情", "标题", "状态"]
+    timeout: 5
+    critical: true
 
-  create:
-    description: "创建新任务"
-    options:
-      - name: title
-        short: t
+  "task create":
+    description: "创建一个新的任务"
+    subcommands:
+      "--title":
         description: "任务标题"
+        short: "-t"
         required: true
-      - name: desc
-        short: d
+      "--desc":
         description: "任务描述"
-        required: false
-      - name: assignee
-        short: a
+        short: "-d"
+      "--assignee":
         description: "负责人"
-        required: false
-      - name: label
-        short: l
-        description: "标签 (可多次使用)"
-        required: false
+        short: "-a"
+      "--label":
+        description: "标签"
+        short: "-l"
         multiple: true
-      - name: status
-        short: s
-        description: "初始状态 (默认: open)"
-        required: false
-      - name: link-roadmap
-        description: "关联到 Story ID"
-        required: false
-      - name: link-workflow-stage
+      "--status":
+        description: "初始状态"
+        short: "-s"
+      "--link-roadmap":
+        description: "关联到 Roadmap Item"
+      "--link-workflow-stage":
         description: "关联到 Workflow Stage Instance ID"
-        required: false
-      - name: link-github
-        description: "关联到 GitHub Issue (格式: owner/repo#number)"
-        required: false
+      "--link-github":
+        description: "关联到 GitHub Issue"
+    expected_output: ["创建", "任务", "成功"]
+    timeout: 8
+    critical: true
 
-  update:
-    description: "更新任务信息"
-    args:
-      - name: task_id
-        description: "要更新的任务ID"
+  "task update":
+    description: "更新现有任务的信息"
+    arguments:
+      - name: "task_id"
+        description: "任务ID"
         required: true
-    options:
-      - name: title
-        short: t
+    subcommands:
+      "--title":
         description: "新的任务标题"
-        required: false
-      - name: desc
-        short: d
+        short: "-t"
+      "--desc":
         description: "新的任务描述"
-        required: false
-      - name: assignee
-        short: a
-        description: "新的负责人 ('-' 表示清空)"
-        required: false
-      - name: label
-        short: l
-        description: "设置新的标签列表 (覆盖旧列表)"
-        required: false
+        short: "-d"
+      "--assignee":
+        description: "新的负责人"
+        short: "-a"
+      "--label":
+        description: "设置新的标签列表"
+        short: "-l"
         multiple: true
-      - name: add-label
+      "--add-label":
         description: "添加标签"
-        required: false
         multiple: true
-      - name: remove-label
+      "--remove-label":
         description: "移除标签"
-        required: false
         multiple: true
-      - name: status
-        short: s
+      "--status":
         description: "新的状态"
-        required: false
+        short: "-s"
+    expected_output: ["更新", "任务", "成功"]
+    timeout: 8
+    critical: true
 
-  delete:
-    description: "删除任务"
-    args:
-      - name: task_id
-        description: "要删除的任务ID"
+  "task delete":
+    description: "删除指定的任务"
+    arguments:
+      - name: "task_id"
+        description: "任务ID"
         required: true
-    options:
-      - name: force
-        short: f
-        description: "跳过确认直接删除"
-        required: false
-        type: flag
+    subcommands:
+      "--force":
+        description: "强制删除"
+        short: "-f"
+        type: "flag"
+    expected_output: ["删除", "任务", "成功"]
+    timeout: 5
+    critical: true
 
-  comment:
+  "task comment":
     description: "添加任务评论"
-    args:
-      - name: task_id
-        description: "要评论的任务ID"
+    arguments:
+      - name: "task_id"
+        description: "任务ID"
         required: true
-    options:
-      - name: comment
-        short: c
-        description: "要添加的评论"
+    subcommands:
+      "--comment":
+        description: "评论内容"
+        short: "-c"
         required: true
+    expected_output: ["评论", "添加", "成功"]
+    timeout: 5
+    critical: true
 
-  link:
-    description: "关联任务到其他实体"
-    args:
-      - name: task_id
-        description: "要关联的任务ID"
+  "task link-task":
+    description: "关联任务到 Roadmap Item, Workflow Stage 或 GitHub 实体"
+    arguments:
+      - name: "task_id"
+        description: "任务ID"
         required: true
-    options:
-      - name: type
-        short: t
-        description: "关联类型 (roadmap/workflow_stage/github_issue/github_pr/github_commit)"
+    subcommands:
+      "--type":
+        description: "关联类型"
+        short: "-t"
+        values: ["roadmap", "workflow_stage", "github_issue", "github_pr", "github_commit"]
         required: true
-      - name: target
-        short: id
-        description: "目标实体的标识符 ('-' 表示取消关联)"
+      "--target":
+        description: "目标实体ID"
         required: true
+    expected_output: ["关联", "任务", "成功"]
+    timeout: 5
+    critical: true
+
+# 命令组特定配置
+group_config:
+  default_status: "open"        # 默认任务状态
+  allow_multiple_assignees: false  # 是否允许多个负责人
+  max_description_length: 2000  # 描述最大长度
+  allow_task_dependencies: true # 是否允许任务依赖
+  enable_task_templates: true   # 是否启用任务模板

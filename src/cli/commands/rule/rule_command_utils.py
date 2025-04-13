@@ -84,20 +84,29 @@ def show_help() -> Dict[str, Any]:
 用法:
   rule list [--type=<rule_type>] [--verbose]
   rule show <id> [--format=<json|text>]
-  rule create <template_type> <name> [--vars=<json>]
+  rule create <template_type> <n> [--vars=<json>]
   rule update <id> [--vars=<json>]
   rule delete <id> [--force]
-  rule validate <id> [--all]
-  rule export <id> [--output=<path>] [--format=<format>]
-  rule import <file_path> [--overwrite]
+  rule enable <id>
+  rule disable <id>
+  rule edit <id>
+
+参数说明:
+  template_type: 规则模板类型，可选值：
+    - agent: 代理规则
+    - auto: 自动化规则
+    - best_practices: 最佳实践规则
+    - command: 命令规则
+    - role: 角色规则
+    - workflow: 工作流规则
 
 示例:
-  rule create core-rule my-rule --vars='{"description":"这是一个测试规则"}'
-  rule list --type=core-rule
+  rule create command my-rule --vars='{"description":"这是一个命令规则"}'
+  rule list --type=command
   rule show my-rule
   rule delete my-rule --force
-  rule validate --all
-  rule export my-rule --output=./my-rule.md
-  rule import ./my-rule.md --overwrite
+  rule enable my-rule
+  rule disable my-rule
+  rule edit my-rule
 """
     return {"success": True, "message": help_text}
