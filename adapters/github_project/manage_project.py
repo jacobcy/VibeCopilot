@@ -73,7 +73,7 @@ class GitHubManager:
         """创建新任务"""
         cmd = f'/github --action=story --type=task --title="{title}" --milestone={milestone} --priority={priority}'
         if description:
-            cmd += f' --description="{description}"'
+            cmd += f' --desc="{description}"'
         return self.execute_command(cmd)
 
     def sync_data(self, direction="from-github"):

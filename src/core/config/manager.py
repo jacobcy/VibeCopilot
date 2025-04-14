@@ -167,6 +167,24 @@ class ConfigManager:
         self.config = self._load_config()
         self._validate_paths()
 
+    def refresh_config(self):
+        """从环境变量刷新配置
+
+        这个方法会重新加载所有配置，包括从环境变量、配置文件和默认值
+        """
+        try:
+            # 清除已解析的配置缓存
+            self.config = {}
+            # 重新加载所有配置
+            self.config = self._load_config()
+            # 验证路径
+            self._validate_paths()
+            logger.info("配置已成功刷新")
+            return True
+        except Exception as e:
+            logger.error(f"刷新配置失败: {e}")
+            return False
+
     def get_environment(self) -> ConfigEnvironment:
         """获取当前环境"""
         env_str = self.get("app.environment", ConfigEnvironment.DEVELOPMENT.value)
@@ -195,3 +213,12 @@ def get_config() -> ConfigManager:
     if _config_manager is None:
         _config_manager = ConfigManager()
     return _config_manager
+
+
+def refresh_config():
+    """刷新全局配置
+
+    这是一个便捷函数，用于刷新全局配置管理器的配置
+    """
+    config_manager = get_config()
+    return config_manager.refresh_config()

@@ -14,7 +14,7 @@ VibeCopilot工作流系统目前存在模型定义混乱和重复的问题，具
 
 - src/models/workflow.py ✅
 - src/models/db/workflow.py ✅
-- src/db/repositories/workflow_repository.py ✅
+- src/db/repositories/workflow_definition_repository.py ✅
 - src/db/models/task_comment.py ✅
 - src/db/repositories/task_comment_repository.py ✅
 
@@ -23,7 +23,7 @@ VibeCopilot工作流系统目前存在模型定义混乱和重复的问题，具
 ### 2024-07-05：完成基本迁移
 
 1. **更新了src/cli/commands/task/core/update.py**
-   - 将workflow_repository引用替换为stage_repository
+   - 将workflow_definition_repository引用替换为stage_repository
    - 添加了代码注释说明处理方向
 
 2. **删除了adapters/status_sync/services/workflow_sync.py**
@@ -110,7 +110,7 @@ VibeCopilot工作流系统目前存在模型定义混乱和重复的问题，具
    - 分析：检查与WorkflowDefinition的区别，确认是否有独特字段或方法
    - 处理建议：如功能已被WorkflowDefinition完全覆盖，直接删除；否则合并独特功能到WorkflowDefinition
 
-3. **src/db/repositories/workflow_repository.py**：
+3. **src/db/repositories/workflow_definition_repository.py**：
    - 分析：检查其提供的方法是否在WorkflowDefinitionRepository中有对应实现
    - 处理建议：对有价值的独特方法进行迁移，其余直接删除
 

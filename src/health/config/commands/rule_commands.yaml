@@ -45,7 +45,7 @@ commands:
         description: "规则类型"
         required: true
         values: ["core", "dev", "tech", "tool", "role", "command", "test"]
-      "--description":
+      "--desc":
         description: "规则描述"
         type: "string"
       "--priority":

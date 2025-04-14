@@ -20,16 +20,16 @@
 
 ```bash
 # 创建新工作流
-vc flow create --name "需求分析流程" --description "从用户需求到PRD文档的流程"
+vc flow create --name "需求分析流程" --desc "从用户需求到PRD文档的流程"
 ```
 
 #### 1.2 添加阶段
 
 ```bash
 # 添加工作流阶段
-vc flow stage add --workflow "需求分析流程" --name "收集需求" --description "收集用户需求" --order 1
-vc flow stage add --workflow "需求分析流程" --name "分析需求" --description "分析用户需求" --order 2
-vc flow stage add --workflow "需求分析流程" --name "编写PRD" --description "编写PRD文档" --order 3
+vc flow stage add --workflow "需求分析流程" --name "收集需求" --desc "收集用户需求" --order 1
+vc flow stage add --workflow "需求分析流程" --name "分析需求" --desc "分析用户需求" --order 2
+vc flow stage add --workflow "需求分析流程" --name "编写PRD" --desc "编写PRD文档" --order 3
 ```
 
 #### 1.3 添加转换

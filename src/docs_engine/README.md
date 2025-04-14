@@ -33,7 +33,7 @@ doc import <文件路径>
 doc convert <文件路径> --from <源格式> --to <目标格式> [--output 输出文件]
 
 # 创建文档
-doc create --template <模板名称> --output <输出路径> [--title <标题>] [--description <描述>]
+doc create --template <模板名称> --output <输出路径> [--title <标题>] [--desc <描述>]
 ```
 
 调试模式：
@@ -76,5 +76,5 @@ doc convert 文档.md --from obsidian --to docusaurus --output 转换后.md
 ### 创建新文档
 
 ```bash
-doc create --template default --output 新文档.md --title "文档标题" --description "文档描述"
+doc create --template default --output 新文档.md --title "文档标题" --desc "文档描述"
 ```

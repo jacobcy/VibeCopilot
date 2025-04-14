@@ -127,12 +127,7 @@ class TaskRepository(Repository[Task]):
         if offset:
             query = query.offset(offset)
 
-        # 添加调试日志
-        print(f"Task查询SQL: {query}")
         results = query.all()
-        print(f"查询到 {len(results)} 个任务")
-        for task in results:
-            print(f"Task: {task.id}, {task.title}, story_id={task.story_id}")
         return results
 
     def link_to_roadmap(self, task_id: str, roadmap_item_id: Optional[str]) -> Optional[Task]:

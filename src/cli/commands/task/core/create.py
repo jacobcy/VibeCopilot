@@ -145,9 +145,15 @@ def execute_create_task(
 
             # 如果指定了工作流类型，创建并关联工作流会话
             if flow:
-                session = task_service.link_to_flow_session(new_task.id, flow_type=flow)
-                if not session:
-                    logger.warning(f"创建工作流会话失败: {flow}")
+                try:
+                    session = task_service.link_to_flow_session(new_task.id, flow_type=flow)
+                    if session:
+                        console.print(f"[bold green]成功:[/bold green] 已关联到工作流会话 '{session.get('name')}' (ID: {session.get('id')})")
+                except ValueError as ve:
+                    logger.warning(f"关联工作流失败: {ve}")
+                    console.print(f"[bold yellow]警告:[/bold yellow] 创建任务成功，但关联工作流失败: {ve}")
+                    # 不影响任务创建本身，只是记录警告
+                    results["message"] += f"，但关联工作流失败: {ve}"
 
             # 设置为当前任务
             task_service.set_current_task(new_task.id)

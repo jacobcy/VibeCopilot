@@ -80,11 +80,14 @@ class TaskSessionService:
 
         Args:
             task_id: 任务ID
-            flow_type: 工作流类型，用于创建新会话
+            flow_type: 工作流ID或名称，用于创建新会话
             session_id: 现有会话ID，用于关联到已有会话
 
         Returns:
             关联的会话信息，失败返回None
+
+        Raises:
+            ValueError: 当找不到指定的工作流或会话时
         """
         try:
             # 获取数据库会话
@@ -98,12 +101,29 @@ class TaskSessionService:
                 session_manager = FlowSessionManager(db_session)
 
                 if flow_type:
+                    # 使用工作流搜索工具查找工作流
+                    from src.workflow.utils.workflow_search import get_workflow_fuzzy
+
+                    workflow = get_workflow_fuzzy(flow_type)
+                    if not workflow:
+                        error_msg = f"找不到工作流 '{flow_type}'，请确认ID或名称是否正确"
+                        logger.error(error_msg)
+                        raise ValueError(error_msg)
+
+                    workflow_id = workflow["id"]
+                    workflow_name = workflow.get("name", "未命名工作流")
+                    logger.info(f"已找到工作流: {workflow_name} (ID: {workflow_id})")
+
                     # 创建新会话
-                    workflow_id = f"{flow_type}_workflow"  # 简化处理，实际应从配置或数据库获取
-                    new_session = session_manager.create_session(
-                        workflow_id=workflow_id, name=f"{flow_type}流程-{task_id[:8]}", task_id=task_id, flow_type=flow_type
-                    )
-                    session = new_session
+                    try:
+                        new_session = session_manager.create_session(
+                            workflow_id=workflow_id, name=f"{workflow_name}-{task_id[:8]}", task_id=task_id, flow_type=workflow.get("type")
+                        )
+                        session = new_session
+                    except ValueError as e:
+                        error_msg = f"创建工作流会话失败: {str(e)}"
+                        logger.error(error_msg)
+                        raise ValueError(error_msg)
                 elif session_id:
                     # 关联到已有会话
                     session = session_manager.get_session(session_id)
@@ -112,6 +132,10 @@ class TaskSessionService:
                         session_manager.update_session(session.id, {"task_id": task_id})
                         # 设置为当前会话
                         session_manager.switch_session(session.id)
+                    else:
+                        error_msg = f"找不到会话 '{session_id}'，请确认会话ID是否正确"
+                        logger.error(error_msg)
+                        raise ValueError(error_msg)
 
                 if session:
                     # 更新任务的当前会话
@@ -119,10 +143,17 @@ class TaskSessionService:
                     # 设置当前任务
                     self.set_current_task(task_id)
                     return session.to_dict()
-            return None
+                else:
+                    error_msg = "未能创建或关联工作流会话"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+        except ValueError as e:
+            # 传递验证错误
+            raise e
         except Exception as e:
-            logger.error(f"关联任务到工作流会话失败: {e}")
-            return None
+            error_msg = f"关联任务到工作流会话失败: {e}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
     def create_task_with_flow(self, task_service, task_data: Dict[str, Any], workflow_id: str) -> Optional[Dict[str, Any]]:
         """创建任务并自动关联工作流会话
@@ -130,32 +161,44 @@ class TaskSessionService:
         Args:
             task_service: 任务服务实例
             task_data: 任务数据
-            workflow_id: 工作流定义ID
+            workflow_id: 工作流定义ID或名称
 
         Returns:
             创建的任务数据，包含关联的工作流会话信息
+
+        Raises:
+            ValueError: 当任务创建或工作流关联失败时
         """
         try:
             # 1. 创建任务
-            task = task_service.create_task(task_data["title"], task_data.get("story_id"), task_data.get("github_issue"))
+            task = task_service.create_task(task_data)
             if not task:
                 raise ValueError("创建任务失败")
 
-            # 2. 创建工作流会话
+            # 2. 使用工作流搜索工具查找工作流
+            from src.workflow.utils.workflow_search import get_workflow_fuzzy
+
+            workflow = get_workflow_fuzzy(workflow_id)
+            if not workflow:
+                raise ValueError(f"找不到工作流 '{workflow_id}'，请确认ID或名称是否正确")
+
+            real_workflow_id = workflow["id"]
+
+            # 3. 创建工作流会话
             from src.flow_session.core.session_create import handle_create_session
 
             session_result = handle_create_session(
-                workflow_id=workflow_id, name=f"Flow for {task['title']}", task_id=task["id"], verbose=False, agent_mode=True
+                workflow_id=real_workflow_id, name=f"Flow for {task['title']}", task_id=task["id"], verbose=False, agent_mode=True
             )
 
             if not session_result["success"]:
                 error_msg = session_result.get("error_message", "创建工作流会话失败")
                 raise ValueError(error_msg)
 
-            # 3. 更新任务数据，添加会话信息
+            # 4. 更新任务数据，添加会话信息
             task["flow_session"] = session_result["session"]
 
-            # 4. 通过状态服务更新状态
+            # 5. 通过状态服务更新状态
             # 更新任务状态
             self._status_service.update_status(
                 domain="task", entity_id=task["id"], status=task.get("status", "created"), current_session_id=session_result["session"]["id"]
@@ -176,9 +219,13 @@ class TaskSessionService:
             )
 
             return task
+        except ValueError as e:
+            # 传递验证错误
+            raise e
         except Exception as e:
-            logger.error(f"创建任务并关联工作流失败: {e}")
-            return None
+            error_msg = f"创建任务并关联工作流失败: {e}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
     def get_task_sessions(self, task_id: str) -> List[Dict[str, Any]]:
         """获取任务关联的所有工作流会话

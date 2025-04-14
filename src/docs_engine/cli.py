@@ -66,7 +66,7 @@ def main():
     create_parser.add_argument("--template", "-t", help="模板名称", default="default")
     create_parser.add_argument("--output", "-o", help="输出文件路径", required=True)
     create_parser.add_argument("--title", help="文档标题")
-    create_parser.add_argument("--description", help="文档描述")
+    create_parser.add_argument("--desc", help="文档描述")
 
     # 解析参数
     args = parser.parse_args()

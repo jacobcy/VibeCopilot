@@ -63,7 +63,7 @@ commands:
         description: "任务标题"
         required: true
     subcommands:
-      "--description":
+      "--desc":
         description: "任务描述"
         short: "-d"
       "--priority":
@@ -102,7 +102,7 @@ commands:
       "--title":
         description: "新的任务标题"
         short: "-t"
-      "--description":
+      "--desc":
         description: "新的任务描述"
         short: "-d"
       "--status":

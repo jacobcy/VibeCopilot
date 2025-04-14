@@ -21,7 +21,7 @@ alwaysApply: false
 
 ## 命令格式规范
 
-基本语法: `/plan --type=<类型> --title=<标题> [--parent=<父项目ID>] [--status=<状态>] [--priority=<优先级>] [--depends=<依赖项目ID>] [--assignee=<负责人>] [--description=<描述>] [--github]`
+基本语法: `/plan --type=<类型> --title=<标题> [--parent=<父项目ID>] [--status=<状态>] [--priority=<优先级>] [--depends=<依赖项目ID>] [--assignee=<负责人>] [--desc=<描述>] [--github]`
 
 参数说明:
 - `--type`: 必选，项目类型(milestone/story/task)
@@ -31,7 +31,7 @@ alwaysApply: false
 - `--priority`: 可选，优先级(P0/P1/P2/P3)
 - `--depends`: 可选，依赖项目ID(多个用逗号分隔)
 - `--assignee`: 可选，负责人
-- `--description`: 可选，项目描述
+- `--desc`: 可选，项目描述
 - `--github`: 可选，是否同步到GitHub
 
 ## 命令输出格式规范
@@ -191,10 +191,10 @@ graph TD
 ### 创建里程碑
 
 ```
-用户: "/plan --type=milestone --title='高级功能开发' --description='实现VibeCopilot的高级功能模块，包括智能代码生成和深度集成能力'"
+用户: "/plan --type=milestone --title='高级功能开发' --desc='实现VibeCopilot的高级功能模块，包括智能代码生成和深度集成能力'"
 
 系统响应:
-✅ 执行命令: /plan --type=milestone --title="高级功能开发" --description="实现VibeCopilot的高级功能模块，包括智能代码生成和深度集成能力"
+✅ 执行命令: /plan --type=milestone --title="高级功能开发" --desc="实现VibeCopilot的高级功能模块，包括智能代码生成和深度集成能力"
 
 ✅ 里程碑创建成功!
 
@@ -213,10 +213,10 @@ GitHub项目已同步: 新的里程碑已添加到项目看板
 ### 创建故事
 
 ```
-用户: "/plan --type=story --title='智能代码生成模块' --parent=M3 --depends=S2 --priority=P1 --description='实现代码自动生成功能，支持根据注释生成代码和根据需求创建组件' --github"
+用户: "/plan --type=story --title='智能代码生成模块' --parent=M3 --depends=S2 --priority=P1 --desc='实现代码自动生成功能，支持根据注释生成代码和根据需求创建组件' --github"
 
 系统响应:
-✅ 执行命令: /plan --type=story --title="智能代码生成模块" --parent=M3 --depends=S2 --priority=P1 --description="实现代码自动生成功能，支持根据注释生成代码和根据需求创建组件" --github
+✅ 执行命令: /plan --type=story --title="智能代码生成模块" --parent=M3 --depends=S2 --priority=P1 --desc="实现代码自动生成功能，支持根据注释生成代码和根据需求创建组件" --github
 
 ✅ 故事创建成功!
 
@@ -237,10 +237,10 @@ GitHub Issue已创建: #25
 ### 创建任务
 
 ```
-用户: "/plan --type=task --title='代码生成核心算法' --parent=S3.1 --priority=P0 --assignee=张三 --description='实现基于大型语言模型的代码生成核心算法'"
+用户: "/plan --type=task --title='代码生成核心算法' --parent=S3.1 --priority=P0 --assignee=张三 --desc='实现基于大型语言模型的代码生成核心算法'"
 
 系统响应:
-✅ 执行命令: /plan --type=task --title="代码生成核心算法" --parent=S3.1 --priority=P0 --assignee=张三 --description="实现基于大型语言模型的代码生成核心算法"
+✅ 执行命令: /plan --type=task --title="代码生成核心算法" --parent=S3.1 --priority=P0 --assignee=张三 --desc="实现基于大型语言模型的代码生成核心算法"
 
 ✅ 任务创建成功!
 

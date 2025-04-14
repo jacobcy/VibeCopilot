@@ -133,7 +133,7 @@ def show(rule_name: str, output_format: str):
     help="规则类型",
     type=click.Choice(["core", "dev", "tech", "tool"], case_sensitive=False),
 )
-@click.option("-d", "--description", help="规则描述", default=None)
+@click.option("-d", "--desc", help="规则描述", default=None)
 @click.option(
     "-p",
     "--priority",

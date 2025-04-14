@@ -80,7 +80,7 @@ commands:
       "--epic":
         description: "所属史诗ID (用于story)"
         type: "string"
-      "--description":
+      "--desc":
         description: "详细描述"
         type: "string"
       "--assignee":
@@ -128,7 +128,7 @@ commands:
       "--milestone":
         description: "所属里程碑ID"
         type: "string"
-      "--description":
+      "--desc":
         description: "故事描述"
         type: "string"
       "--priority":

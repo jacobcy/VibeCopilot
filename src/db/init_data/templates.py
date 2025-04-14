@@ -4,6 +4,7 @@
 提供模板表的初始数据
 """
 
+import json
 import logging
 from datetime import datetime
 
@@ -38,16 +39,18 @@ export const {{ComponentName}}: React.FC<{{ComponentName}}Props> = (props) => {
   );
 };
 """,
-            "category": "frontend",
-            "language": "typescript",
-            "status": "active",
+            "type": "frontend",
+            "example": "// 使用示例\n<MyComponent prop1={value1} />",
+            "author": "system",
+            "version": "1.0.0",
+            "tags": json.dumps(["react", "component", "typescript"]),
         }
     ]
 
     success_count = 0
     for template in templates:
         try:
-            repo.create(**template)
+            repo.create(data=template)
             success_count += 1
         except Exception as e:
             logger.error(f"创建模板失败: {template['name']}", exc_info=True)

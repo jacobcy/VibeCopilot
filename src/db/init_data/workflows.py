@@ -1,12 +1,15 @@
 """
 工作流初始数据模块
 
-提供工作流相关表的初始数据
+提供工作流表的初始数据
 """
 
+import json
 import logging
+import uuid
 from datetime import datetime
 
+from src.core.config import refresh_config
 from src.db import get_session
 from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 
@@ -15,60 +18,53 @@ logger = logging.getLogger(__name__)
 
 def init_workflows():
     """初始化工作流数据"""
+    # 刷新配置
+    refresh_config()
+
     session = get_session()
     repo = WorkflowDefinitionRepository(session)
 
     # 添加一些示例工作流
     workflows = [
         {
-            "name": "需求开发流程",
-            "description": "从需求分析到功能上线的标准流程",
-            "content": """
-stages:
-  - name: 需求分析
-    description: 分析和确认需求
-    actions:
-      - 创建需求文档
-      - 确认需求范围
-      - 评估工作量
-
-  - name: 设计
-    description: 系统设计和技术方案
-    actions:
-      - 架构设计
-      - 接口设计
-      - 数据模型设计
-
-  - name: 开发
-    description: 功能实现
-    actions:
-      - 编写代码
-      - 单元测试
-      - 代码审查
-
-  - name: 测试
-    description: 功能测试和验证
-    actions:
-      - 集成测试
-      - 功能测试
-      - 性能测试
-
-  - name: 发布
-    description: 功能上线
-    actions:
-      - 准备发布计划
-      - 执行发布
-      - 监控系统
-""",
-            "category": "development",
-            "status": "active",
-        }
+            "id": f"wfd_{uuid.uuid4().hex[:8]}",
+            "name": "代码审查流程",
+            "description": "标准代码审查工作流程",
+            "type": "code_review",
+            "stages_data": json.dumps(
+                [
+                    {"name": "静态代码分析", "description": "使用工具进行代码静态分析", "order_index": 1, "checklist": {"tool": "pylint", "threshold": 8.0}},
+                    {"name": "单元测试检查", "description": "运行单元测试并检查覆盖率", "order_index": 2, "checklist": {"min_coverage": 70}},
+                    {
+                        "name": "人工代码审查",
+                        "description": "至少一名高级开发人员进行代码审查",
+                        "order_index": 3,
+                        "checklist": {"min_reviewers": 1, "role": "senior_developer"},
+                    },
+                ]
+            ),
+            "source_rule": "code_review_workflow",
+        },
+        {
+            "id": f"wfd_{uuid.uuid4().hex[:8]}",
+            "name": "发布流程",
+            "description": "标准发布工作流程",
+            "type": "release",
+            "stages_data": json.dumps(
+                [
+                    {"name": "版本号更新", "description": "更新项目版本号", "order_index": 1, "checklist": {"version_file": "pyproject.toml"}},
+                    {"name": "生成变更日志", "description": "生成本次发布的变更日志", "order_index": 2, "checklist": {"template": "changelog.md.j2"}},
+                    {"name": "打包发布", "description": "构建并上传发布包", "order_index": 3, "checklist": {"registry": "pypi"}},
+                ]
+            ),
+            "source_rule": "release_workflow",
+        },
     ]
 
     success_count = 0
     for workflow in workflows:
         try:
-            repo.create(**workflow)
+            repo.create(data=workflow)
             success_count += 1
         except Exception as e:
             logger.error(f"创建工作流失败: {workflow['name']}", exc_info=True)

@@ -22,7 +22,7 @@ def is_agent_mode() -> bool:
 
 @click.command(name="link", help="关联任务到工作流会话")
 @click.argument("task_id", type=str, required=False)
-@click.option("-f", "--flow", type=str, help="工作流类型(dev, review, deploy)")
+@click.option("-f", "--flow", type=str, help="工作流ID或名称")
 @click.option("-s", "--session", type=str, help="会话ID")
 def link_task(task_id: Optional[str] = None, flow: Optional[str] = None, session: Optional[str] = None):
     """关联任务到工作流会话命令
@@ -31,7 +31,7 @@ def link_task(task_id: Optional[str] = None, flow: Optional[str] = None, session
 
     示例:
         vibecopilot task link abc123 --flow dev   # 创建开发工作流会话并关联
-        vibecopilot task link --flow review       # 使用当前任务创建审核工作流会话
+        vibecopilot task link --flow 测试工作流   # 使用当前任务创建测试工作流会话
         vibecopilot task link --session sess_id   # 关联当前任务到指定会话
     """
     try:
@@ -47,6 +47,7 @@ def link_task(task_id: Optional[str] = None, flow: Optional[str] = None, session
                 session_info = result["session"]
                 console.print(f"会话ID: {session_info.get('id')}")
                 console.print(f"会话名称: {session_info.get('name')}")
+                console.print(f"工作流: {session_info.get('workflow_id')}")
                 console.print(f"工作流类型: {session_info.get('flow_type')}")
         else:
             console.print(f"[bold red]错误:[/bold red] {result['message']}")
@@ -67,21 +68,21 @@ def execute_link_flow_task(task_id: Optional[str] = None, flow: Optional[str] = 
         if not task_id:
             current_task = task_service.get_current_task()
             if not current_task:
-                raise ValueError("没有指定任务ID且没有当前任务")
+                return {"status": "error", "message": "没有指定任务ID且没有当前任务"}
             task_id = current_task["id"]
 
         # 验证参数
         if not flow and not session:
-            raise ValueError("必须指定工作流类型(--flow)或会话ID(--session)")
+            return {"status": "error", "message": "必须指定工作流(--flow)或会话ID(--session)"}
         if flow and session:
-            raise ValueError("不能同时指定工作流类型和会话ID")
+            return {"status": "error", "message": "不能同时指定工作流和会话ID"}
 
         # 关联到工作流会话
-        result = task_service.link_to_flow_session(task_id, flow_type=flow, session_id=session)
-        if not result:
-            raise ValueError("关联工作流会话失败")
-
-        return {"status": "success", "message": "任务关联成功", "session": result}
+        try:
+            result = task_service.link_to_flow_session(task_id, flow_type=flow, session_id=session)
+            return {"status": "success", "message": "任务关联成功", "session": result}
+        except ValueError as e:
+            return {"status": "error", "message": str(e)}
 
     except Exception as e:
         logger.error(f"关联任务失败: {e}")

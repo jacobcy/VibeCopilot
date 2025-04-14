@@ -43,7 +43,7 @@ class WorkflowDefinition(Base):
             "type": self.type,
             "description": self.description,
             "roadmap_id": self.roadmap_id,
-            "stages": self.stages_data,
+            "stages_data": self.stages_data,
             "source_rule": self.source_rule,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -58,6 +58,6 @@ class WorkflowDefinition(Base):
             type=data.get("type"),
             description=data.get("description", ""),
             roadmap_id=data.get("roadmap_id"),
-            stages_data=data.get("stages", []),
+            stages_data=data.get("stages_data", []),
             source_rule=data.get("source_rule"),
         )

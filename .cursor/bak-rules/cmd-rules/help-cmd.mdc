@@ -167,7 +167,7 @@ alwaysApply: false
   Story命令用于创建和管理用户故事。
 
   要创建新故事，使用以下命令:
-  /story create 名称 --description="描述"
+  /story create 名称 --desc="描述"
 
   要查看故事，使用:
   /story view ID

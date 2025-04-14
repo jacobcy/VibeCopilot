@@ -186,13 +186,13 @@ vibecopilot roadmap sync --id <路线图ID> --source github:<仓库名>
 
 ```bash
 # 创建新路线图
-vibecopilot roadmap create <路线图名称> --description <描述>
+vibecopilot roadmap create <路线图名称> --desc <描述>
 
 # 创建里程碑
-vibecopilot roadmap create milestone <里程碑名称> --description <描述> --roadmap <路线图ID>
+vibecopilot roadmap create milestone <里程碑名称> --desc <描述> --roadmap <路线图ID>
 
 # 创建任务
-vibecopilot roadmap create task <任务名称> --description <描述> --milestone <里程碑ID> --roadmap <路线图ID>
+vibecopilot roadmap create task <任务名称> --desc <描述> --milestone <里程碑ID> --roadmap <路线图ID>
 
 # 设置额外属性
 vibecopilot roadmap create task <任务名称> --priority P0 --status todo --assignee <用户>
@@ -202,7 +202,7 @@ vibecopilot roadmap create task <任务名称> --priority P0 --status todo --ass
 
 - 第一个参数: 创建的对象类型（省略表示创建路线图，或milestone/task）
 - 第二个参数: 名称
-- `--description` (可选): 描述
+- `--desc` (可选): 描述
 - `--roadmap` (可选，创建元素时必填): 路线图ID
 - `--milestone` (任务必填): 里程碑ID
 - `--priority` (可选): 优先级（P0, P1, P2, P3）
@@ -214,7 +214,7 @@ vibecopilot roadmap create task <任务名称> --priority P0 --status todo --ass
 
 ```bash
 # 更新路线图
-vibecopilot roadmap update <路线图ID> --title <新标题> --description <新描述>
+vibecopilot roadmap update <路线图ID> --title <新标题> --desc <新描述>
 
 # 更新里程碑
 vibecopilot roadmap update milestone <里程碑ID> --title <新标题> --status <新状态>
@@ -231,7 +231,7 @@ vibecopilot roadmap update milestone <里程碑ID> --progress <进度百分比>
 - 第一个参数: 更新的对象类型（省略表示更新路线图，或milestone/task）
 - 第二个参数: 对象ID
 - `--title` (可选): 新标题
-- `--description` (可选): 新描述
+- `--desc` (可选): 新描述
 - `--status` (可选): 新状态
 - `--priority` (可选): 新优先级
 - `--progress` (可选): 新进度（0-100）

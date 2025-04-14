@@ -100,7 +100,7 @@ related_items: [command-system]
 /roadmap show v2 --view=timeline
 
 # 更新路线图信息
-//roadmap update v2 --description="包含支付功能的版本"
+//roadmap update v2 --desc="包含支付功能的版本"
 
 # 同步外部任务系统数据
 //roadmap sync --source=github
@@ -163,7 +163,7 @@ commands:
   roadmap create:
     subcommands:
       --epic: {}
-      --description: {}
+      --desc: {}
       --assignee: {}
       --labels: {}
       --priority:
@@ -182,7 +182,7 @@ commands:
       story_id: {}
       --title: {}
       --milestone: {}
-      --description: {}
+      --desc: {}
       --priority:
         values:
         - P0

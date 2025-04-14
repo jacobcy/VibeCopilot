@@ -29,7 +29,7 @@ alwaysApply: false
 
 ## 命令格式规范
 
-基本语法: `/rule [操作] [规则名称] [--type=规则类型] [--description=描述]`
+基本语法: `/rule [操作] [规则名称] [--type=规则类型] [--desc=描述]`
 
 操作类型:
 - `list`: 列出所有规则或特定类型的规则
@@ -42,7 +42,7 @@ alwaysApply: false
 参数说明:
 - `规则名称`: 规则的名称，如"typescript-best-practices"
 - `--type`: 规则类型，如"dev"、"core"、"flow"等
-- `--description`: 规则描述，创建或修改规则时使用
+- `--desc`: 规则描述，创建或修改规则时使用
 
 ## 命令输出格式规范
 
@@ -202,10 +202,10 @@ alwaysApply: false
 ### 创建新规则
 
 ```
-用户: "/rule create typescript-best-practices --type=tech --description='TypeScript最佳实践指南'"
+用户: "/rule create typescript-best-practices --type=tech --desc='TypeScript最佳实践指南'"
 
 系统响应:
-✅ 执行命令: /rule create typescript-best-practices --type=tech --description='TypeScript最佳实践指南'
+✅ 执行命令: /rule create typescript-best-practices --type=tech --desc='TypeScript最佳实践指南'
 
 🆕 已创建新规则!
 

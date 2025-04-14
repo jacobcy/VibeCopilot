@@ -28,53 +28,29 @@ class MemoryItemRepository(Repository[MemoryItem]):
     def create(
         self,
         title: str,
-        summary: str,
+        content: str,
         content_type: str,
-        category: str,
-        storage_type: str,
-        storage_location: str,
-        tags: Optional[List[str]] = None,
-        entity_refs: Optional[List[str]] = None,
-        observation_refs: Optional[List[str]] = None,
-        relation_refs: Optional[List[str]] = None,
+        tags: Optional[str] = None,
         source: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        embedding_vector: Optional[str] = None,
     ) -> MemoryItem:
-        """创建新的记忆项索引
+        """创建新的记忆项
 
         Args:
             title: 标题
-            summary: 内容摘要
+            content: 内容
             content_type: 内容类型
-            category: 分类
-            storage_type: 存储类型('local'或'basic_memory')
-            storage_location: 存储位置
-            tags: 标签列表
-            entity_refs: 关联的实体ID列表
-            observation_refs: 关联的观察ID列表
-            relation_refs: 关联的关系ID列表
+            tags: 标签（逗号分隔）
             source: 来源
-            metadata: 额外元数据
-            embedding_vector: 向量表示
 
         Returns:
             MemoryItem: 创建的记忆项
         """
         data = {
             "title": title,
-            "summary": summary,
+            "content": content,
             "content_type": content_type,
-            "category": category,
-            "storage_type": storage_type,
-            "storage_location": storage_location,
-            "tags": ",".join(tags) if tags else None,
-            "entity_refs": entity_refs,
-            "observation_refs": observation_refs,
-            "relation_refs": relation_refs,
+            "tags": tags,
             "source": source,
-            "metadata": metadata,
-            "embedding_vector": embedding_vector,
         }
         return super().create(data)
 
@@ -89,7 +65,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
         """
         return (
             self.session.query(MemoryItem)
-            .filter(or_(MemoryItem.title.ilike(f"%{query}%"), MemoryItem.summary.ilike(f"%{query}%"), MemoryItem.tags.ilike(f"%{query}%")))
+            .filter(or_(MemoryItem.title.ilike(f"%{query}%"), MemoryItem.content.ilike(f"%{query}%"), MemoryItem.tags.ilike(f"%{query}%")))
             .all()
         )
 

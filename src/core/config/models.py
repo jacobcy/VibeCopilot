@@ -59,10 +59,23 @@ class ConfigValue(Generic[T]):
         self.env_key = env_key
         self.validator = validator
 
+    def _clean_env_value(self, value: str) -> str:
+        """清理环境变量值，移除注释和多余空格"""
+        # 移除注释
+        if "#" in value:
+            value = value.split("#")[0]
+        # 移除首尾空格
+        return value.strip()
+
     def get_value(self) -> T:
         """获取配置值，优先使用环境变量"""
         if self.env_key and self.env_key in os.environ:
-            value = os.environ[self.env_key]
+            value = self._clean_env_value(os.environ[self.env_key])
+
+            # 如果清理后的值为空，使用默认值
+            if not value:
+                return self.default
+
             # 根据默认值类型进行转换
             try:
                 if isinstance(self.default, bool):
@@ -72,7 +85,7 @@ class ConfigValue(Generic[T]):
                 elif isinstance(self.default, float):
                     value = float(value)
                 elif isinstance(self.default, list):
-                    value = value.split(",")
+                    value = [v.strip() for v in value.split(",") if v.strip()]
             except (ValueError, TypeError) as e:
                 logger.warning(f"环境变量 {self.env_key} 值转换失败: {e}")
                 return self.default

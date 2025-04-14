@@ -69,7 +69,7 @@ def parse_github_url(url: str) -> Tuple[str, int]:
 @click.command(name="update", help="更新现有任务的信息")
 @click.argument("task_id")
 @click.option("--title", "-t", help="任务标题")
-@click.option("--description", "-d", help="任务描述")
+@click.option("--desc", "-d", help="任务描述")
 @click.option("--status", "-s", help="任务状态")
 @click.option("--assignee", "-a", help="任务负责人")
 @click.option("--labels", "-l", multiple=True, help="任务标签 (可设置多个)")

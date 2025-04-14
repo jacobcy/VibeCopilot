@@ -65,9 +65,10 @@ def handle_list_sessions(
                 result["success"] = True
                 result["message"] = "当前没有工作流会话"
 
-                if format == "text" and not agent_mode:
+                # 确保在任何格式下都显示适当的提示
+                if not agent_mode:
                     console = Console()
-                    console.print("\n当前没有工作流会话。\n")
+                    console.print("\n[yellow]当前没有工作流会话。[/yellow]\n")
                     console.print("您可以使用 [cyan]vibecopilot flow session create <工作流ID>[/cyan] 创建新会话。\n")
                 return result
 

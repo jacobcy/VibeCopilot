@@ -4,24 +4,33 @@
 提供规则表的初始数据
 """
 
+import json
 import logging
+import uuid
 from datetime import datetime
 
+from src.core.config import refresh_config
 from src.db import get_session
 from src.db.repositories.rule_repository import RuleRepository
+from src.models.base import RuleType
 
 logger = logging.getLogger(__name__)
 
 
 def init_rules():
     """初始化规则数据"""
+    # 刷新配置
+    refresh_config()
+
     session = get_session()
     repo = RuleRepository(session)
 
     # 添加一些示例规则
     rules = [
         {
+            "id": f"rule_{uuid.uuid4().hex[:8]}",
             "name": "命名规范",
+            "type": RuleType.RULE.value,
             "description": "项目命名规范",
             "content": """
 # 命名规范
@@ -41,16 +50,21 @@ def init_rules():
 - 类型使用PascalCase
 - 枚举使用PascalCase
 """,
-            "category": "core",
-            "priority": "P0",
-            "status": "active",
+            "globs": json.dumps(["*.ts", "*.tsx", "*.py"]),
+            "always_apply": True,
+            "author": "system",
+            "version": "1.0.0",
+            "tags": json.dumps(["naming", "convention", "core"]),
+            "dependencies": json.dumps([]),
+            "usage_count": 0,
+            "effectiveness": 80,
         }
     ]
 
     success_count = 0
     for rule in rules:
         try:
-            repo.create(**rule)
+            repo.create(data=rule)
             success_count += 1
         except Exception as e:
             logger.error(f"创建规则失败: {rule['name']}", exc_info=True)

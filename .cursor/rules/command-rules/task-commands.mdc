@@ -171,7 +171,7 @@ commands:
         - json
   task create:
     subcommands:
-      --description: {}
+      --desc: {}
       --priority:
         values:
         - low
@@ -193,7 +193,7 @@ commands:
   task update:
     subcommands:
       --title: {}
-      --description: {}
+      --desc: {}
       --status: {}
       --assignee: {}
       --label: {}

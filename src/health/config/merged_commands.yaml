@@ -87,7 +87,7 @@ commands:
   roadmap create:
     subcommands:
       --epic: {}
-      --description: {}
+      --desc: {}
       --assignee: {}
       --labels: {}
       --priority:
@@ -106,7 +106,7 @@ commands:
       story_id: {}
       --title: {}
       --milestone: {}
-      --description: {}
+      --desc: {}
       --priority:
         values:
         - P0
@@ -270,7 +270,7 @@ commands:
         - role
         - command
         - test
-      --description: {}
+      --desc: {}
       --priority: {}
       --template:
         values:
@@ -325,7 +325,7 @@ commands:
         - json
   task create:
     subcommands:
-      --description: {}
+      --desc: {}
       --priority:
         values:
         - low
@@ -347,7 +347,7 @@ commands:
   task update:
     subcommands:
       --title: {}
-      --description: {}
+      --desc: {}
       --status: {}
       --assignee: {}
       --label: {}

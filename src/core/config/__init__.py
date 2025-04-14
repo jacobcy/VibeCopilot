@@ -5,7 +5,7 @@
 这个子包将原来的config.py拆分为多个模块，实现了更好的模块化和代码组织。
 """
 
-from src.core.config.manager import ConfigManager, get_config
+from src.core.config.manager import ConfigManager, get_config, refresh_config
 from src.core.config.models import ConfigEnvironment, ConfigError, ConfigPathError, ConfigValidationError, ConfigValue
 from src.core.config.workflow import get_template_path, get_workflows_directory, list_templates
 
@@ -13,6 +13,7 @@ __all__ = [
     # 配置管理器
     "ConfigManager",
     "get_config",
+    "refresh_config",
     # 配置模型
     "ConfigEnvironment",
     "ConfigError",

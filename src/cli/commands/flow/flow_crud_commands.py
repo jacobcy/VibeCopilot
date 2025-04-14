@@ -61,7 +61,7 @@ def create(source: str, template: str, name: Optional[str], output: Optional[str
 @click.command(name="update", help="更新工作流定义")
 @click.argument("id")
 @click.option("--name", help="新的工作流名称")
-@click.option("--desc", "--description", help="新的工作流描述")
+@click.option("--desc", "--desc", help="新的工作流描述")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
 def update(id: str, name: Optional[str], description: Optional[str], verbose: bool) -> None:
     """

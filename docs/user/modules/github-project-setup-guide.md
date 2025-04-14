@@ -65,7 +65,7 @@ python -m src.github.projects.main create \
   --owner <用户名> \
   --repo <仓库名> \
   --title "我的第一个项目" \
-  --description "这是项目描述"
+  --desc "这是项目描述"
 ```
 
 ## 📝 初始化项目内容

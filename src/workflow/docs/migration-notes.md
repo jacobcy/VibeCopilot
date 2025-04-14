@@ -4,7 +4,7 @@
 
 #### 1. 已删除但存在引用的文件
 
-1. **src/db/repositories/workflow_repository.py**
+1. **src/db/repositories/workflow_definition_repository.py**
    - 引用场景：
      - src/cli/commands/task/core/update.py（更新任务时校验工作流阶段）
      - adapters/status_sync/services/workflow_sync.py（同步工作流到n8n系统）
@@ -29,7 +29,7 @@
 
 ### 二、价值评估
 
-1. **workflow_repository.py** - 需要保留但重构
+1. **workflow_definition_repository.py** - 需要保留但重构
    - 价值：提供了工作流阶段验证和n8n同步功能
    - 建议：重构为使用workflow_definition_repository和stage_repository
 
@@ -43,11 +43,11 @@
 
 ### 三、具体更新方案
 
-#### 方案1：处理 workflow_repository.py 引用
+#### 方案1：处理 workflow_definition_repository.py 引用
 
-1. **分析workflow_repository的核心功能**
+1. **分析workflow_definition_repository的核心功能**
    ```python
-   # 创建workflow_repository替代函数
+   # 创建workflow_definition_repository替代函数
    def get_stage_by_id(session, stage_id):
        stage_repo = StageRepository(session)
        return stage_repo.get_by_id(stage_id)
@@ -56,7 +56,7 @@
 2. **更新task/core/update.py**
    ```python
    # 替换：
-   # from src.db.repositories.workflow_repository import WorkflowRepository
+   # from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
    from src.db.repositories.stage_repository import StageRepository
 
    # 替换：
@@ -69,7 +69,7 @@
 3. **更新adapters/status_sync/services/workflow_sync.py**
    ```python
    # 替换：
-   # from src.db.repositories.workflow_repository import WorkflowRepository
+   # from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
    from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 
    # 对应替换所有WorkflowRepository使用为WorkflowDefinitionRepository
@@ -131,7 +131,7 @@
 ### 2023-XX-XX：初始分析
 
 1. 确认了需要处理的关键文件：
-   - src/db/repositories/workflow_repository.py
+   - src/db/repositories/workflow_definition_repository.py
    - src/db/models/task_comment.py
    - src/models/workflow.py
    - src/models/db/workflow.py
@@ -147,7 +147,7 @@
 #### 2024-07-05：实施迁移
 
 1. 更新了src/cli/commands/task/core/update.py
-   - 将workflow_repository引用替换为stage_repository
+   - 将workflow_definition_repository引用替换为stage_repository
    - 更新了代码注释，说明未来处理方向
 
 2. 删除了adapters/status_sync/services/workflow_sync.py
@@ -163,7 +163,7 @@
    - 加入警告日志，提示这是临时实现
 
 5. 确认以下文件已不存在或不再被引用：
-   - src/db/repositories/workflow_repository.py
+   - src/db/repositories/workflow_definition_repository.py
    - src/models/workflow.py
    - src/models/db/workflow.py
    - src/db/repositories/task_comment_repository.py

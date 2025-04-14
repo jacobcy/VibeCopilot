@@ -1,6 +1,6 @@
 @task.command(name="create")
 @click.argument("title", required=True)
-@click.option("--description", "-d", help="任务描述")
+@click.option("--desc", "-d", help="任务描述")
 @click.option("--priority", "-p", type=click.Choice(["low", "medium", "high"]), default="medium", help="任务优先级")
 @click.option("--status", "-s", type=click.Choice(["todo", "in_progress", "done"]), default="todo", help="任务状态")
 @click.option("--flow", "-f", help="要关联的工作流ID，将自动创建工作流会话")

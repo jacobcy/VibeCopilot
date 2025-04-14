@@ -82,12 +82,12 @@ title                  # 元素标题
 # 选项
 --milestone=<id>      # 所属里程碑ID (用于story和task)
 --priority=<level>    # 优先级 (P0-P3)
---description=<text>  # 详细描述
+--desc=<text>  # 详细描述
 --assignee=<user>     # 指派给用户
 --labels=<labels>     # 标签列表，用逗号分隔
 
 # 示例
-roadmap create milestone "发布1.0版本" --description="第一个正式版本发布"
+roadmap create milestone "发布1.0版本" --desc="第一个正式版本发布"
 roadmap create story "用户登录功能" --milestone=M1 --labels="功能,核心"
 roadmap create task "设计用户界面" --milestone=M1 --priority=P1 --assignee=@dev1
 roadmap create task "优化性能" --milestone=M2 --labels="优化,性能" --priority=P2

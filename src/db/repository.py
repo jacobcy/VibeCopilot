@@ -43,66 +43,30 @@ class Repository(Generic[T]):
             logger.debug(f"尝试创建实体对象: {self.model_class.__name__}")
             logger.debug(f"输入数据: {data}")
 
-            # 打印重要信息到控制台
+            # 仅保留模型类名和数据概要的日志
             print(f"Repository.create - 模型类: {self.model_class.__name__}")
-            print(f"Repository.create - 数据: {data}")
 
-            if "title" in data:
-                print(f"Repository.create - title字段值: '{data['title']}'")
-            else:
-                print(f"Repository.create - 数据中不存在title字段")
+            # 简化输出数据，避免过长日志
+            data_summary = {k: v for k, v in data.items() if isinstance(v, (str, int, float, bool, type(None)))}
+            print(f"Repository.create - 数据摘要: {data_summary}")
 
+            # 创建实例逻辑
             if hasattr(self.model_class, "from_dict"):
                 # 使用from_dict方法创建实例
-                logger.debug(f"使用from_dict方法创建实例")
+                logger.debug("使用from_dict方法创建实例")
                 print(f"Repository.create - 使用from_dict方法创建实例")
                 instance = self.model_class.from_dict(data)
             else:
                 # 使用关键字参数拆包创建实例
-                # 防止字典内部有多余的键或特殊字符的键导致初始化失败
-                # 改为直接使用全部数据，而不是尝试提取参数
-                # SQLAlchemy模型通常会忽略未定义列的额外参数
                 model_attrs = data.copy()
-
-                # 如果非常需要过滤参数，使用这个代码块
-                """
-                model_attrs = {}
-                # 获取模型类的__init__所需的参数
-                if hasattr(self.model_class, "__init__"):
-                    import inspect
-
-                    init_params = inspect.signature(self.model_class.__init__).parameters
-                    allowed_params = set(init_params.keys()) - {"self"}
-
-                    # 仅保留模型初始化所需的参数
-                    for key, value in data.items():
-                        if key in allowed_params:
-                            model_attrs[key] = value
-                            logger.debug(f"找到参数 {key}: {value}")
-                            print(f"Repository.create - 参数设置 {key}: {value}")
-                        else:
-                            logger.debug(f"忽略不需要的参数 {key}: {value}")
-                            print(f"Repository.create - 忽略参数 {key}: {value}")
-                else:
-                    # 如果无法获取参数信息，直接使用全部数据
-                    model_attrs = data
-                """
-
                 logger.debug(f"模型创建参数: {model_attrs}")
-                print(f"Repository.create - 最终模型参数: {model_attrs}")
-                if "title" in model_attrs:
-                    print(f"Repository.create - 最终title字段值: '{model_attrs['title']}'")
-                else:
-                    print(f"Repository.create - 最终参数中不存在title字段")
-
                 instance = self.model_class(**model_attrs)
 
-            logger.debug(f"创建的实例: {instance.__dict__}")
-            print(f"Repository.create - 创建实例: {instance.__dict__}")
-            if hasattr(instance, "title"):
-                print(f"Repository.create - 实例title属性: '{instance.title}'")
-            else:
-                print(f"Repository.create - 实例没有title属性")
+            # 简化实例信息输出
+            instance_attrs = {
+                k: v for k, v in vars(instance).items() if not k.startswith("_") and not isinstance(v, (dict, list)) and k != "_sa_instance_state"
+            }
+            print(f"Repository.create - 实例属性: {instance_attrs}")
 
             self.session.add(instance)
             self.session.commit()
