@@ -72,182 +72,202 @@ def handle_session_command(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
     # 获取action
     action = getattr(args_obj, "subcommand", None) or getattr(args_obj, "action", None)
 
+    # 声明数据库会话变量
+    db_session = None
+
     try:
         # 获取数据库会话
         engine = init_db()
         db_session = SQLAlchemySession(engine)
 
-        try:
-            # 根据操作调用相应的函数
-            if action == "list":
-                status = getattr(args_obj, "status", None)
-                workflow = getattr(args_obj, "workflow", None)
-                format_type = getattr(args_obj, "format", "yaml")  # 默认格式改为yaml
-                verbose = getattr(args_obj, "verbose", False)
-                agent_mode = getattr(args_obj, "agent_mode", False)
+        # 创建会话管理器 - 这是唯一应该直接操作数据库的对象
+        flow_session_manager = FlowSessionManager(db_session)
 
-                # 直接执行list_sessions，其会自行处理输出
-                result = handle_list_sessions(status, workflow, format_type, verbose, agent_mode)
-                return True, "", result  # 空消息，表示已输出
+        # 根据操作调用相应的函数
+        if action == "list":
+            status = getattr(args_obj, "status", None)
+            # 优先使用flow参数，如果没有再尝试使用workflow参数
+            flow = getattr(args_obj, "flow", None)
+            workflow = getattr(args_obj, "workflow", None)
+            workflow_id = flow or workflow  # 使用flow参数，如果不存在则使用workflow参数
+            format_type = getattr(args_obj, "format", "yaml")  # 默认格式改为yaml
+            verbose = getattr(args_obj, "verbose", False)
+            agent_mode = getattr(args_obj, "agent_mode", False)
 
-            elif action == "show":
-                id_or_name = getattr(args_obj, "id_or_name", None)
-                if not id_or_name:
-                    return False, "❌ show操作需要会话ID或名称参数", None
+            # 直接执行list_sessions，其会自行处理输出
+            # 注意: 这里将workflow_id参数传递给handle_list_sessions函数
+            result = handle_list_sessions(status=status, workflow_id=workflow_id, format=format_type, verbose=verbose, agent_mode=agent_mode)
+            return True, "", result  # 空消息，表示已输出
 
-                format_type = getattr(args_obj, "format", "yaml")  # 默认格式改为yaml
-                verbose = getattr(args_obj, "verbose", False)
-                agent_mode = getattr(args_obj, "agent_mode", False)
+        elif action == "show":
+            id_or_name = getattr(args_obj, "id_or_name", None)
+            if not id_or_name:
+                return False, "❌ show操作需要会话ID或名称参数", None
 
-                # 转换id_or_name到session_id
-                flow_session_manager = FlowSessionManager(db_session)
-                session = flow_session_manager.get_session(id_or_name)
-                if not session:
-                    return False, f"❌ 找不到ID或名称为 '{id_or_name}' 的会话", None
-                session_id = session.id
+            format_type = getattr(args_obj, "format", "yaml")  # 默认格式改为yaml
+            verbose = getattr(args_obj, "verbose", False)
+            agent_mode = getattr(args_obj, "agent_mode", False)
 
-                result = handle_show_session(session_id, format_type, verbose, agent_mode)
-                return True, "", result  # 空消息，表示已输出
+            # 转换id_or_name到session_id
+            session = flow_session_manager.get_session(id_or_name)
+            if not session:
+                return False, f"❌ 找不到ID或名称为 '{id_or_name}' 的会话", None
+            session_id = session.id
 
-            elif action == "switch":
-                id_or_name = getattr(args_obj, "id_or_name", None)
-                if not id_or_name:
-                    return False, "❌ switch操作需要会话ID或名称参数", None
+            result = handle_show_session(session_id, format_type, verbose, agent_mode)
+            return True, "", result  # 空消息，表示已输出
 
-                verbose = getattr(args_obj, "verbose", False)
-                agent_mode = getattr(args_obj, "agent_mode", False)
+        elif action == "switch":
+            id_or_name = getattr(args_obj, "id_or_name", None)
+            if not id_or_name:
+                return False, "❌ switch操作需要会话ID或名称参数", None
 
-                # 直接在这里处理switch操作
-                flow_session_manager = FlowSessionManager(db_session)
-                try:
-                    session = flow_session_manager.switch_session(id_or_name)
-                    db_session.commit()
-                    return True, "", {"session": session.to_dict()}
-                except ValueError as e:
-                    return False, f"❌ {str(e)}", None
-                except Exception as e:
-                    logger.exception(f"切换会话失败: {str(e)}")
-                    return False, f"❌ 切换会话失败: {str(e)}", None
+            verbose = getattr(args_obj, "verbose", False)
 
-            elif action == "update":
-                id_or_name = getattr(args_obj, "id_or_name", None)
-                if not id_or_name:
-                    return False, "❌ update操作需要会话ID或名称参数", None
+            # 使用会话管理器处理切换操作
+            try:
+                # 调用FlowSessionManager的switch_session方法
+                session = flow_session_manager.switch_session(id_or_name)
+                db_session.commit()
+                return True, "", {"session": session.to_dict()}
+            except ValueError as e:
+                db_session.rollback()
+                return False, f"❌ {str(e)}", None
+            except Exception as e:
+                db_session.rollback()
+                logger.exception(f"切换会话失败: {str(e)}")
+                return False, f"❌ 切换会话失败: {str(e)}", None
 
-                name = getattr(args_obj, "name", None)
-                status = getattr(args_obj, "status", None)
-                verbose = getattr(args_obj, "verbose", False)
-                agent_mode = getattr(args_obj, "agent_mode", False)
+        elif action == "update":
+            id_or_name = getattr(args_obj, "id_or_name", None)
+            if not id_or_name:
+                return False, "❌ update操作需要会话ID或名称参数", None
 
-                # 处理更新操作
-                flow_session_manager = FlowSessionManager(db_session)
-                try:
-                    data = {}
-                    if name:
-                        data["name"] = name
+            name = getattr(args_obj, "name", None)
+            status = getattr(args_obj, "status", None)
+            verbose = getattr(args_obj, "verbose", False)
 
-                    if status:
-                        data["status"] = status
+            # 处理更新操作
+            try:
+                data = {}
+                if name:
+                    data["name"] = name
 
-                    # 至少需要一个要更新的属性
-                    if not data:
-                        return False, "❌ 请指定至少一个要更新的属性 (例如: --name 或 --status)", None
+                if status:
+                    data["status"] = status
 
-                    session = flow_session_manager.update_session(id_or_name, data)
-                    db_session.commit()
-                    return True, f"会话 {id_or_name} 已更新", {"session": session.to_dict()}
-                except ValueError as e:
-                    return False, f"❌ {str(e)}", None
-                except Exception as e:
-                    logger.exception(f"更新会话失败: {str(e)}")
-                    return False, f"❌ 更新会话失败: {str(e)}", None
+                # 至少需要一个要更新的属性
+                if not data:
+                    return False, "❌ 请指定至少一个要更新的属性 (例如: --name 或 --status)", None
 
-            elif action == "close":
-                id_or_name = getattr(args_obj, "id_or_name", None)
-                if not id_or_name:
-                    return False, "❌ close操作需要会话ID或名称参数", None
+                session = flow_session_manager.update_session(id_or_name, data)
+                db_session.commit()
+                return True, f"会话 {id_or_name} 已更新", {"session": session.to_dict()}
+            except ValueError as e:
+                db_session.rollback()
+                return False, f"❌ {str(e)}", None
+            except Exception as e:
+                db_session.rollback()
+                logger.exception(f"更新会话失败: {str(e)}")
+                return False, f"❌ 更新会话失败: {str(e)}", None
 
-                reason = getattr(args_obj, "reason", None)
-                force = getattr(args_obj, "force", False)
-                verbose = getattr(args_obj, "verbose", False)
-                agent_mode = getattr(args_obj, "agent_mode", False)
+        elif action == "close":
+            id_or_name = getattr(args_obj, "id_or_name", None)
+            if not id_or_name:
+                return False, "❌ close操作需要会话ID或名称参数", None
 
-                # 处理结束会话操作
-                flow_session_manager = FlowSessionManager(db_session)
-                try:
-                    closed_session = flow_session_manager.close_session(id_or_name, reason)
-                    db_session.commit()
-                    return True, "", {"session": closed_session.to_dict()}
-                except ValueError as e:
-                    return False, f"❌ {str(e)}", None
-                except Exception as e:
-                    logger.exception(f"结束会话失败: {str(e)}")
-                    return False, f"❌ 结束会话失败: {str(e)}", None
+            reason = getattr(args_obj, "reason", None)
+            force = getattr(args_obj, "force", False)
+            verbose = getattr(args_obj, "verbose", False)
 
-            elif action == "delete":
-                id_or_name = getattr(args_obj, "id_or_name", None)
-                if not id_or_name:
-                    return False, "❌ delete操作需要会话ID或名称参数", None
+            # 处理结束会话操作
+            try:
+                closed_session = flow_session_manager.close_session(id_or_name, reason)
+                db_session.commit()
+                return True, "", {"session": closed_session.to_dict()}
+            except ValueError as e:
+                db_session.rollback()
+                return False, f"❌ {str(e)}", None
+            except Exception as e:
+                db_session.rollback()
+                logger.exception(f"结束会话失败: {str(e)}")
+                return False, f"❌ 结束会话失败: {str(e)}", None
 
-                force = getattr(args_obj, "force", False)
-                verbose = getattr(args_obj, "verbose", False)
-                agent_mode = getattr(args_obj, "agent_mode", False)
+        elif action == "delete":
+            id_or_name = getattr(args_obj, "id_or_name", None)
+            if not id_or_name:
+                return False, "❌ delete操作需要会话ID或名称参数", None
 
-                # 直接执行删除操作
-                flow_session_manager = FlowSessionManager(db_session)
-                try:
-                    success = flow_session_manager.delete_session(id_or_name)
-                    db_session.commit()
-                    if success:
-                        return True, "", None
-                    else:
-                        return False, f"❌ 删除会话 {id_or_name} 失败", None
-                except ValueError as e:
-                    return False, f"❌ {str(e)}", None
-                except Exception as e:
-                    logger.exception(f"删除会话失败: {str(e)}")
-                    return False, f"❌ 删除会话失败: {str(e)}", None
+            force = getattr(args_obj, "force", False)
+            verbose = getattr(args_obj, "verbose", False)
 
-            elif action == "create":
-                workflow_id = getattr(args_obj, "workflow_id", None)
-                if not workflow_id:
-                    return False, "❌ create操作需要工作流ID参数", None
+            # 直接执行删除操作
+            try:
+                success = flow_session_manager.delete_session(id_or_name)
+                db_session.commit()
+                if success:
+                    return True, "", None
+                else:
+                    return False, f"❌ 删除会话 {id_or_name} 失败", None
+            except ValueError as e:
+                db_session.rollback()
+                return False, f"❌ {str(e)}", None
+            except Exception as e:
+                db_session.rollback()
+                logger.exception(f"删除会话失败: {str(e)}")
+                return False, f"❌ 删除会话失败: {str(e)}", None
 
-                name = getattr(args_obj, "name", None)
-                task_id = getattr(args_obj, "task_id", None)
-                verbose = getattr(args_obj, "verbose", False)
-                agent_mode = getattr(args_obj, "agent_mode", False)
+        elif action == "create":
+            workflow_id = getattr(args_obj, "workflow_id", None)
+            if not workflow_id:
+                return False, "❌ create操作需要工作流ID参数", None
 
-                # 处理创建会话操作
-                flow_session_manager = FlowSessionManager(db_session)
-                try:
-                    # 创建会话，支持任务ID参数
-                    session = flow_session_manager.create_session(workflow_id=workflow_id, name=name, task_id=task_id)
-                    db_session.commit()
-                    return True, "", {"session": session.to_dict()}
-                except ValueError as e:
-                    return False, f"❌ {str(e)}", None
-                except Exception as e:
-                    logger.exception(f"创建会话失败: {str(e)}")
-                    return False, f"❌ 创建会话失败: {str(e)}", None
+            name = getattr(args_obj, "name", None)
+            task_id = getattr(args_obj, "task_id", None)
+            verbose = getattr(args_obj, "verbose", False)
 
-            else:
-                return False, f"❌ 未知的会话操作: {action}", None
+            # 处理创建会话操作
+            try:
+                # 创建会话，支持任务ID参数
+                session = flow_session_manager.create_session(workflow_id=workflow_id, name=name, task_id=task_id)
+                db_session.commit()
+                return True, "", {"session": session.to_dict()}
+            except ValueError as e:
+                db_session.rollback()
+                return False, f"❌ {str(e)}", None
+            except Exception as e:
+                db_session.rollback()
+                logger.exception(f"创建会话失败: {str(e)}")
+                return False, f"❌ 创建会话失败: {str(e)}", None
 
-        finally:
-            # 无论如何都要关闭会话
-            db_session.close()
+        else:
+            return False, f"❌ 未知的会话操作: {action}", None
 
     except Exception as e:
+        # 如果异常发生在操作中，尝试回滚
+        if db_session is not None:
+            try:
+                db_session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"回滚数据库会话失败: {rollback_error}")
+
         logger.exception(f"执行会话命令失败: {str(e)}")
 
         # 如果是list操作，即使出错也不抛出错误，而是提示没有会话
         if action == "list":
             console.print("\n当前没有工作流会话。\n")
-            console.print("您可以使用 [cyan]vibecopilot flow run --flow <工作流ID>[/cyan] 创建新会话。\n")
-            return True, "", {"sessions": []}
+            return True, "", None
 
-        return False, f"❌ 会话命令执行失败: {str(e)}", None
+        return False, f"❌ 执行会话命令出错: {str(e)}", None
+
+    finally:
+        # 无论是否异常，确保数据库会话被关闭
+        if db_session is not None:
+            try:
+                db_session.close()
+                logger.debug("数据库会话已关闭")
+            except Exception as close_error:
+                logger.error(f"关闭数据库会话失败: {close_error}")
 
 
 def _create_session(db_session, args, ctx):
@@ -270,11 +290,11 @@ def _create_session(db_session, args, ctx):
         return False
 
 
-def handle_create_session(db_session, workflow: str, name: str = None, task: str = None, verbose: bool = False):
+def handle_create_session(db_session, flow: str, name: str = None, task: str = None, verbose: bool = False):
     """创建新的工作流会话"""
     try:
         session_manager = FlowSessionManager(db_session)
-        new_session = session_manager.create_session(workflow_id=workflow, name=name, task_id=task)
+        new_session = session_manager.create_session(workflow_id=flow, name=name, task_id=task)
 
         if verbose:
             click.echo(f"创建新会话 {new_session.name} (ID: {new_session.id})")

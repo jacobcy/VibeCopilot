@@ -51,7 +51,7 @@ vibecopilot flow list [--type TYPE] [--verbose]
 vibecopilot flow create --source SOURCE [--template TEMPLATE] [--name NAME] [--output OUTPUT] [--verbose]
 
 # 查看工作流
-vibecopilot flow show WORKFLOW_ID [--format {json,text,mermaid}] [--diagram] [--verbose]
+vibecopilot flow show WORKFLOW_ID --flow [--format {json,text,mermaid}] [--diagram] [--verbose]
 
 # 更新工作流
 vibecopilot flow update ID [--name NAME] [--desc DESCRIPTION] [--verbose]
@@ -69,7 +69,7 @@ vibecopilot flow import FILE_PATH [--overwrite] [--verbose]
 vibecopilot flow visualize ID [--session] [--format {mermaid,text}] [--output OUTPUT] [--verbose]
 
 # 运行工作流阶段
-vibecopilot flow run STAGE [--flow-id WORKFLOW_ID] [--name NAME] [--completed COMPLETED] [--session SESSION] [--task TASK_ID] [--verbose]
+vibecopilot flow run STAGE [--flow WORKFLOW_ID] [--name NAME] [--completed COMPLETED] [--session SESSION] [--task TASK_ID] [--verbose]
 
 # 获取工作流阶段上下文
 vibecopilot flow context WORKFLOW_ID STAGE_ID [--session SESSION] [--completed COMPLETED] [--format {json,text}] [--verbose]
@@ -196,7 +196,7 @@ vibecopilot flow create --source descriptions/workflow_desc.txt --template templ
 vibecopilot flow list
 
 # 查看工作流详情
-vibecopilot flow show workflow1
+vibecopilot flow show workflow1 --flow
 
 # 删除工作流
 vibecopilot flow delete workflow1 --force
@@ -206,7 +206,7 @@ vibecopilot flow delete workflow1 --force
 
 ```bash
 # 运行工作流的特定阶段
-vibecopilot flow run stage1 --flow-id workflow1
+vibecopilot flow run stage1 --flow workflow1
 
 # 获取阶段上下文
 vibecopilot flow context workflow1 stage1

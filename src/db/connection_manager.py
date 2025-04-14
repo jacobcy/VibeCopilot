@@ -12,6 +12,7 @@ from typing import Optional
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from src.core.logger import setup_logger
 from src.models.db.base import Base
@@ -57,15 +58,28 @@ class DBConnectionManager:
             # 构建数据库URL
             database_url = f"sqlite:///{db_path}"
 
-            # 创建数据库引擎
-            self._engine = create_engine(database_url, connect_args={"check_same_thread": False})
+            # 从环境变量获取连接池配置或使用默认值
+            pool_size = int(os.environ.get("DB_POOL_SIZE", "20"))
+            max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "30"))
+            pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "60"))
+
+            # 创建数据库引擎，增加连接池配置
+            self._engine = create_engine(
+                database_url,
+                connect_args={"check_same_thread": False},
+                poolclass=QueuePool,
+                pool_size=pool_size,
+                max_overflow=max_overflow,
+                pool_timeout=pool_timeout,
+                pool_recycle=3600,  # 连接回收时间，单位秒
+            )
 
             # 创建会话工厂
             self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
 
             # 记录初始化
             self._initialized = True
-            logger.debug(f"数据库连接管理器初始化完成: {database_url}")
+            logger.debug(f"数据库连接管理器初始化完成: {database_url}, 连接池大小: {pool_size}, 最大溢出: {max_overflow}, 超时: {pool_timeout}秒")
         except Exception as e:
             logger.error(f"初始化数据库连接管理器失败: {e}")
             raise

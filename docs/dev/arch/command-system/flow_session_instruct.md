@@ -133,7 +133,7 @@ vibecopilot flow create dev --name="用户认证开发流程" --desc="处理用�
 - 阶段数: 5 (story, spec, coding, test, review)
 
 # 查看工作流定义详情
-vibecopilot flow show dev-workflow-123
+vibecopilot flow show dev-workflow-123 --flow
 
 # 输出
 🔹 工作流定义: 用户认证开发流程 (ID: dev-workflow-123)
@@ -153,7 +153,7 @@ vibecopilot flow show dev-workflow-123
 
 ```bash
 # 创建一个新的工作流会话
-vibecopilot flow session create dev-workflow-123 --name="用户登录功能开发"
+vibecopilot flow session create --flow=dev-workflow-123 --name="用户登录功能开发"
 
 # 输出
 ✅ 已创建工作流会话

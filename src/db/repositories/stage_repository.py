@@ -10,6 +10,7 @@ from sqlalchemy import and_
 
 from src.db.repository import Repository
 from src.models.db import Stage
+from src.utils.id_generator import EntityType, IdGenerator
 
 
 class StageRepository(Repository[Stage]):
@@ -47,6 +48,37 @@ class StageRepository(Repository[Stage]):
             Optional[Stage]: 阶段，如果不存在则返回None
         """
         return self.session.query(Stage).filter(Stage.id == stage_id).first()
+
+    def create_stage(
+        self, name: str, workflow_id: str, order_index: int = 0, description: Optional[str] = None, config: Optional[dict] = None
+    ) -> Stage:
+        """创建阶段
+
+        Args:
+            name: 阶段名称
+            workflow_id: 工作流ID
+            order_index: 阶段顺序索引
+            description: 阶段描述
+            config: 阶段配置
+
+        Returns:
+            Stage: 创建的阶段
+        """
+        # 使用ID生成器生成标准格式的ID
+        stage_id = IdGenerator.generate_stage_id()
+
+        # 准备阶段数据
+        stage_data = {
+            "id": stage_id,
+            "name": name,
+            "workflow_id": workflow_id,
+            "order_index": order_index,
+            "description": description or "",
+            "config": config or {},
+        }
+
+        # 使用基类的create方法创建实例
+        return super().create(stage_data)
 
     def create(self, stage_data: dict) -> Stage:
         """创建阶段

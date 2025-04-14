@@ -37,7 +37,7 @@ VibeCopilot命令系统作为工作流解释器，主要职责是：
 | | | import | 导入规则 | `vibecopilot rule import <file_path> [--overwrite]` |
 | **工作流定义** | flow | | 工作流定义管理命令 | |
 | | | list | 列出所有工作流定义 | `vibecopilot flow list [--type=<workflow_type>] [--verbose]` |
-| | | show | 查看工作流定义详情 | `vibecopilot flow show --id=<id> [--format=<json\|text>]` |
+| | | show | 查看工作流定义详情 | `vibecopilot flow show <id> --flow [--format=<json\|text>]` |
 | | | create | 创建工作流定义 | `vibecopilot flow create --source=<path> [--template=<template>] [--name=<name>]` |
 | | | update | 更新工作流定义 | `vibecopilot flow update --id=<id> [--name=<name>]` |
 | | | delete | 删除工作流定义 | `vibecopilot flow delete --id=<id> [--force]` |

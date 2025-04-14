@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
 from src.models.db import FlowSession  # Only import FlowSession model
+from src.utils.id_generator import EntityType, IdGenerator
 
 # 创建日志记录器
 logger = logging.getLogger(__name__)
@@ -28,6 +29,55 @@ class FlowSessionRepository(Repository[FlowSession]):
             session: SQLAlchemy会话对象
         """
         super().__init__(session, FlowSession)
+
+    def create_session(
+        self, workflow_id: str, name: str, task_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None, flow_type: Optional[str] = None
+    ) -> FlowSession:
+        """创建工作流会话
+
+        Args:
+            workflow_id: 工作流定义ID
+            name: 会话名称
+            task_id: 关联的任务ID (可选)
+            context: 会话上下文 (可选)
+            flow_type: 工作流类型 (可选)
+
+        Returns:
+            新创建的工作流会话
+
+        Raises:
+            ValueError: 如果提供的参数无效
+        """
+        logger.debug(f"创建工作流会话: workflow_id={workflow_id}, name={name}")
+
+        # 使用ID生成器生成标准格式的ID
+        session_id = IdGenerator.generate_session_id()
+
+        # 准备会话数据
+        session_data = {
+            "id": session_id,
+            "workflow_id": workflow_id,
+            "name": name,
+            "status": "ACTIVE",
+            "task_id": task_id,
+            "flow_type": flow_type,
+            "context": context or {},
+            "is_current": True,
+        }
+
+        # 清除其他当前会话状态
+        current_sessions = self.session.query(FlowSession).filter(FlowSession.is_current == True).all()
+        for current in current_sessions:
+            current.is_current = False
+
+        # 创建新会话
+        try:
+            # 使用Repository基类的create方法
+            return super().create(session_data)
+        except Exception as e:
+            logger.error(f"创建会话失败: {e}")
+            self.session.rollback()
+            raise ValueError(f"创建会话失败: {e}")
 
     def get_all(self) -> List[FlowSession]:
         """获取所有会话

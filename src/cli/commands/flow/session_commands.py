@@ -41,14 +41,14 @@ def session():
 @click.option("--format", type=click.Choice(["yaml", "text", "json"]), default="yaml", help="输出格式")
 @click.option("--status", help="按状态筛选会话")
 @click.option("--flow", help="按工作流ID筛选会话")
-def list_sessions(verbose: bool, format: str, status: Optional[str], workflow: Optional[str]) -> None:
+def list_sessions(verbose: bool, format: str, status: Optional[str], flow: Optional[str]) -> None:
     """列出工作流会话
 
     显示所有已创建的工作流会话及其状态。
 
     选项:
       --status   按会话状态筛选 (ACTIVE、PAUSED、COMPLETED、CLOSED)
-      --flow 按工作流ID筛选
+      --flow     按工作流ID筛选
       --format   输出格式 (yaml、text、json)
     """
     try:
@@ -56,7 +56,7 @@ def list_sessions(verbose: bool, format: str, status: Optional[str], workflow: O
             console.print("正在获取会话列表...")
 
         # 使用命令参数直接传递，不再创建argparse.Namespace对象
-        params: Dict[str, Any] = {"subcommand": "list", "verbose": verbose, "format": format, "status": status, "workflow": workflow}
+        params: Dict[str, Any] = {"subcommand": "list", "verbose": verbose, "format": format, "status": status, "flow": flow}
         success, message, data = handle_session_command(params)
 
         if success:
@@ -155,7 +155,7 @@ def show_session(id_or_name: Optional[str], verbose: bool, format: str) -> None:
 @click.option("--name", "-n", required=False, help="会话名称")
 @click.option("--task", "-t", required=False, help="关联的任务ID")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细输出")
-def create_session(workflow: str, name: Optional[str], task: Optional[str], verbose: bool) -> None:
+def create_session(flow: str, name: Optional[str], task: Optional[str], verbose: bool) -> None:
     """创建工作流会话
 
     创建新的工作流会话并将其设置为当前活动会话。
@@ -172,12 +172,12 @@ def create_session(workflow: str, name: Optional[str], task: Optional[str], verb
     """
     try:
         if verbose:
-            console.print(f"创建新会话, 工作流: {workflow}")
+            console.print(f"创建新会话, 工作流: {flow}")
             if task:
                 console.print(f"关联到任务: {task}")
 
         # 使用命令参数直接传递
-        params: Dict[str, Any] = {"subcommand": "create", "workflow_id": workflow, "name": name, "task_id": task, "verbose": verbose}
+        params: Dict[str, Any] = {"subcommand": "create", "workflow_id": flow, "name": name, "task_id": task, "verbose": verbose}
         success, message, data = handle_session_command(params)
 
         if success:

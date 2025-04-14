@@ -10,6 +10,7 @@ from sqlalchemy import and_
 
 from src.db.repository import Repository
 from src.models.db import Transition
+from src.utils.id_generator import EntityType, IdGenerator
 
 
 class TransitionRepository(Repository[Transition]):
@@ -17,6 +18,45 @@ class TransitionRepository(Repository[Transition]):
 
     def __init__(self, session):
         super().__init__(session, Transition)
+
+    def create_transition(
+        self,
+        workflow_id: str,
+        from_stage: str,
+        to_stage: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        condition: Optional[str] = None,
+    ) -> Transition:
+        """创建转换
+
+        Args:
+            workflow_id: 工作流ID
+            from_stage: 源阶段ID
+            to_stage: 目标阶段ID
+            name: 转换名称
+            description: 转换描述
+            condition: 转换条件
+
+        Returns:
+            Transition: 创建的转换
+        """
+        # 使用ID生成器生成标准格式的ID
+        transition_id = IdGenerator.generate_transition_id()
+
+        # 准备转换数据
+        transition_data = {
+            "id": transition_id,
+            "workflow_id": workflow_id,
+            "from_stage": from_stage,
+            "to_stage": to_stage,
+            "name": name or f"从{from_stage}到{to_stage}",
+            "description": description or "",
+            "condition": condition or "true",
+        }
+
+        # 使用基类的create方法创建实例
+        return super().create(transition_data)
 
     def get_all(self) -> List[Transition]:
         """获取所有转换

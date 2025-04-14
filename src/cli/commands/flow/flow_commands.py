@@ -58,7 +58,7 @@ def register_basic_commands(flow_group):
     @click.option("--format", "-f", type=click.Choice(["json", "text", "mermaid"]), default="text", help="输出格式")
     @click.option("--diagram", is_flag=True, help="在文本或JSON输出中包含Mermaid图表")
     @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-    def show_flow(id: Optional[str], workflow: bool, format: str, diagram: bool, verbose: bool) -> None:
+    def show_flow(id: Optional[str], flow: bool, format: str, diagram: bool, verbose: bool) -> None:
         """
         查看会话或工作流定义详情
 
@@ -74,7 +74,7 @@ def register_basic_commands(flow_group):
         """
         try:
             target_id = id
-            is_workflow = workflow
+            is_workflow = flow
 
             # 如果未提供ID
             if not target_id:

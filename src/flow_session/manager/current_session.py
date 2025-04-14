@@ -44,16 +44,20 @@ class CurrentSessionMixin:
                 other.is_current = False
                 self.session_repo.update(other.id, {"is_current": False})
 
-        # 自动关联任务
-        if session.task_id:
-            try:
-                # 使用导入的TaskService来保持松耦合
-                from src.services.task import TaskService
-
-                task_service = TaskService()
-                task_service.set_current_task(session.task_id)
-            except Exception as e:
-                self._log("log_session_error", f"自动切换任务失败: {e}")
+        # 自动关联任务 - 禁用此功能以避免循环引用
+        # 原先的代码会导致循环引用问题:
+        # FlowSessionManager.switch_session -> TaskService -> TaskSessionService.set_current_task
+        # -> FlowSessionManager.switch_session -> ...
+        #
+        # if session.task_id:
+        #    try:
+        #        # 使用导入的TaskService来保持松耦合
+        #        from src.services.task import TaskService
+        #
+        #        task_service = TaskService()
+        #        task_service.set_current_task(session.task_id)
+        #    except Exception as e:
+        #        self._log("log_session_error", f"自动切换任务失败: {e}")
 
         self._log("log_session_switched", session.id, session.name)
         return session

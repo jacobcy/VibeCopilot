@@ -1,7 +1,7 @@
 """
 工作流会话状态管理
 
-提供工作流会话的状态管理功能，如暂停、恢复、完成和关闭会话。
+提供工作流会话的状态管理功能，如完成和关闭会话。
 """
 
 from typing import Any, Dict, Optional
@@ -63,62 +63,6 @@ class SessionStateMixin:
 
         return session
 
-    def pause_session(self, id_or_name: str) -> Optional[FlowSession]:
-        """暂停会话
-
-        Args:
-            id_or_name: 会话ID或名称
-
-        Returns:
-            更新后的会话对象或None
-
-        Raises:
-            ValueError: 如果会话状态不允许暂停
-        """
-        session = self.get_session(id_or_name)
-        if not session:
-            return None
-
-        if session.status not in ["ACTIVE", "RUNNING"]:
-            raise ValueError(f"无法暂停状态为 {session.status} 的会话")
-
-        # 更新会话状态
-        session.status = "PAUSED"
-        self.session_repo.update(session.id, {"status": "PAUSED"})
-
-        # 记录会话暂停
-        self._log("log_session_paused", session.id, session.name)
-
-        return session
-
-    def resume_session(self, id_or_name: str) -> Optional[FlowSession]:
-        """恢复会话
-
-        Args:
-            id_or_name: 会话ID或名称
-
-        Returns:
-            更新后的会话对象或None
-
-        Raises:
-            ValueError: 如果会话状态不允许恢复
-        """
-        session = self.get_session(id_or_name)
-        if not session:
-            return None
-
-        if session.status != "PAUSED":
-            raise ValueError(f"无法恢复状态为 {session.status} 的会话")
-
-        # 更新会话状态
-        session.status = "ACTIVE"
-        self.session_repo.update(session.id, {"status": "ACTIVE"})
-
-        # 记录会话恢复
-        self._log("log_session_resumed", session.id, session.name)
-
-        return session
-
     def complete_session(self, id_or_name: str) -> Optional[FlowSession]:
         """完成会话
 
@@ -147,7 +91,7 @@ class SessionStateMixin:
 
         return session
 
-    def close_session(self, id_or_name: str) -> Optional[FlowSession]:
+    def close_session(self, id_or_name: str, reason: Optional[str] = None) -> Optional[FlowSession]:
         """结束会话
 
         结束会话意味着该会话已经达到了最终状态，不再进行任何操作。
@@ -155,6 +99,7 @@ class SessionStateMixin:
 
         Args:
             id_or_name: 会话ID或名称
+            reason: 关闭原因
 
         Returns:
             更新后的会话对象或None
@@ -167,7 +112,8 @@ class SessionStateMixin:
         session.status = "CLOSED"
         self.session_repo.update(session.id, {"status": "CLOSED"})
 
-        # 记录会话关闭
-        self._log("log_session_closed", session.id, session.name)
+        # 记录会话关闭和原因
+        context = {"reason": reason} if reason else {}
+        self._log("log_session_closed", session.id, session.name, context)
 
         return session

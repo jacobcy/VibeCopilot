@@ -22,7 +22,7 @@ from src.flow_session.manager import FlowSessionManager
 
 def handle_list_sessions(
     status: Optional[str] = None,
-    workflow: Optional[str] = None,
+    workflow_id: Optional[str] = None,
     format: str = "yaml",
     verbose: bool = False,
     agent_mode: bool = False,
@@ -32,7 +32,7 @@ def handle_list_sessions(
 
     Args:
         status: 状态过滤器
-        workflow: 工作流ID过滤器
+        workflow_id: 工作流ID过滤器
         format: 输出格式 (yaml, text, json)
         verbose: 是否显示详细信息
         agent_mode: 是否为程序处理模式
@@ -52,7 +52,7 @@ def handle_list_sessions(
             # 初始化日志工厂和管理器
             logger_factory = LoggerFactory.get_instance()
             manager = FlowSessionManager(session, logger=logger_factory.get_logger("default"))
-            sessions = manager.list_sessions(status=status, workflow_id=workflow)
+            sessions = manager.list_sessions(status=status, workflow_id=workflow_id)
 
             if verbose:
                 print(f"[调试] 从manager获取到 {len(sessions)} 个会话")

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from src.db.repository import Repository
 from src.models.db import Task, TaskComment
+from src.utils.id_generator import EntityType, IdGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -20,21 +21,61 @@ class TaskRepository(Repository[Task]):
         super().__init__(session, Task)
         self.logger = logger
 
-    def create_task(self, data: Dict[str, Any]) -> Task:
-        """创建任务，特殊处理 labels, linked_prs, linked_commits"""
-        # 确保 labels 等是列表，如果提供了的话
-        for field in ["labels", "linked_prs", "linked_commits"]:
-            if field in data and data[field] is not None and not isinstance(data[field], list):
-                # 可以添加更严格的类型检查或转换逻辑
-                raise ValueError(f"字段 '{field}' 必须是列表或 None")
+    def create_task(
+        self,
+        title: str,
+        description: Optional[str] = None,
+        status: str = "open",
+        priority: str = "medium",
+        assignee: Optional[str] = None,
+        story_id: Optional[str] = None,
+        labels: Optional[List[str]] = None,
+        due_date: Optional[str] = None,
+    ) -> Task:
+        """创建任务
+
+        Args:
+            title: 任务标题
+            description: 任务描述
+            status: 任务状态
+            priority: 任务优先级
+            assignee: 任务负责人
+            story_id: 关联的故事ID
+            labels: 标签列表
+            due_date: 截止日期
+
+        Returns:
+            Task: 创建的任务
+        """
+        # 使用ID生成器生成标准格式的ID
+        task_id = IdGenerator.generate_task_id()
+
+        # 准备任务数据
+        now = datetime.utcnow()
+        task_data = {
+            "id": task_id,
+            "title": title,
+            "description": description or "",
+            "status": status,
+            "priority": priority,
+            "assignee": assignee,
+            "story_id": story_id,
+            "labels": labels or [],
+            "due_date": due_date,
+            "linked_prs": [],
+            "linked_commits": [],
+            "created_at": now,
+            "updated_at": now,
+        }
 
         # 检查Task模型是否有特定属性，如果没有则从数据中删除
         for field in ["roadmap_item_id", "workflow_stage_instance_id", "github_issue_number"]:
-            if not hasattr(Task, field) and field in data:
+            if not hasattr(Task, field) and field in task_data:
                 logger.warning(f"Task模型没有{field}属性，已从创建数据中删除")
-                data.pop(field)
+                task_data.pop(field)
 
-        return self.create(data)
+        # 使用基类的create方法创建实例
+        return super().create(task_data)
 
     def update_task(self, task_id: str, data: Dict[str, Any]) -> Optional[Task]:
         """更新任务，特殊处理 labels, linked_prs, linked_commits"""
@@ -279,22 +320,37 @@ class TaskRepository(Repository[Task]):
 
 
 class TaskCommentRepository(Repository[TaskComment]):
-    """TaskComment仓库"""
+    """任务评论仓库"""
 
     def __init__(self, session: Session):
         super().__init__(session, TaskComment)
-        self.logger = logger
 
     def get_comments_for_task(self, task_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> List[TaskComment]:
-        """获取指定任务的所有评论"""
-        query = self.session.query(TaskComment).filter(TaskComment.task_id == task_id)
+        """获取任务的所有评论"""
+        query = self.session.query(TaskComment).filter(TaskComment.task_id == task_id).order_by(TaskComment.created_at)
         if limit:
             query = query.limit(limit)
         if offset:
             query = query.offset(offset)
-        return query.order_by(TaskComment.created_at.asc()).all()
+        return query.all()
 
     def add_comment(self, task_id: str, content: str, author: Optional[str] = None) -> TaskComment:
-        """为任务添加评论"""
-        comment_data = {"task_id": task_id, "content": content, "author": author}
-        return self.create(comment_data)
+        """添加评论到任务
+
+        Args:
+            task_id: 任务ID
+            content: 评论内容
+            author: 评论作者
+
+        Returns:
+            新创建的评论对象
+        """
+        # 使用通用ID生成方法，由于没有专门为评论设置EntityType，使用GENERIC
+        comment_id = IdGenerator.generate_id(EntityType.GENERIC, "comment")
+
+        # 准备评论数据
+        now = datetime.utcnow()
+        comment_data = {"id": comment_id, "task_id": task_id, "content": content, "author": author or "system", "created_at": now, "updated_at": now}
+
+        # 创建评论
+        return super().create(comment_data)

@@ -47,7 +47,7 @@ vc flow transition add --flow "需求分析流程" --from "分析需求" --to "�
 vc flow list
 
 # 查看工作流详情
-vc flow show "需求分析流程"
+vc flow show "需求分析流程" --flow
 ```
 
 ### 2. 执行工作流

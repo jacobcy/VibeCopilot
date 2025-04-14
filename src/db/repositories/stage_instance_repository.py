@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
 from src.models.db import StageInstance
+from src.utils.id_generator import EntityType, IdGenerator
 
 
 class StageInstanceRepository(Repository[StageInstance]):
@@ -21,6 +22,40 @@ class StageInstanceRepository(Repository[StageInstance]):
             session: SQLAlchemy会话对象
         """
         super().__init__(session, StageInstance)
+
+    def create_stage_instance(
+        self, session_id: str, stage_id: str, status: str = "ACTIVE", context: Optional[Dict[str, Any]] = None
+    ) -> StageInstance:
+        """创建阶段实例
+
+        Args:
+            session_id: 会话ID
+            stage_id: 阶段ID
+            status: 初始状态，默认为"ACTIVE"
+            context: 上下文数据
+
+        Returns:
+            新创建的阶段实例
+        """
+        # 使用ID生成器生成标准格式的ID
+        instance_id = IdGenerator.generate_stage_instance_id()
+
+        # 准备阶段实例数据
+        now = datetime.utcnow()
+        instance_data = {
+            "id": instance_id,
+            "session_id": session_id,
+            "stage_id": stage_id,
+            "status": status,
+            "context": context or {},
+            "deliverables": {},
+            "completed_items": [],
+            "started_at": now,
+            "updated_at": now,
+        }
+
+        # 使用基类的create方法创建实例
+        return super().create(instance_data)
 
     def get_all(self) -> List[StageInstance]:
         """获取所有阶段实例

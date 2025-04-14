@@ -146,14 +146,29 @@ def execute_create_task(
             # 如果指定了工作流类型，创建并关联工作流会话
             if flow:
                 try:
+                    logger.info(f"尝试关联任务 {new_task.id} 到工作流 '{flow}'")
+                    # 通过工作流ID或名称关联工作流会话
                     session = task_service.link_to_flow_session(new_task.id, flow_type=flow)
                     if session:
+                        logger.info(f"成功关联到工作流会话 '{session.get('name')}' (ID: {session.get('id')})")
                         console.print(f"[bold green]成功:[/bold green] 已关联到工作流会话 '{session.get('name')}' (ID: {session.get('id')})")
+                        # 将会话信息添加到结果中
+                        results["workflow_session"] = session
                 except ValueError as ve:
-                    logger.warning(f"关联工作流失败: {ve}")
-                    console.print(f"[bold yellow]警告:[/bold yellow] 创建任务成功，但关联工作流失败: {ve}")
+                    # 详细记录错误原因
+                    error_message = str(ve)
+                    logger.warning(f"关联工作流失败: {error_message}")
+                    console.print(f"[bold yellow]警告:[/bold yellow] 创建任务成功，但关联工作流失败: {error_message}")
                     # 不影响任务创建本身，只是记录警告
-                    results["message"] += f"，但关联工作流失败: {ve}"
+                    results["message"] += f"，但关联工作流失败: {error_message}"
+                    results["warnings"] = [f"关联工作流失败: {error_message}"]
+                except Exception as e:
+                    # 处理其他可能的异常
+                    error_message = f"关联工作流时发生意外错误: {str(e)}"
+                    logger.error(error_message, exc_info=True)
+                    console.print(f"[bold yellow]警告:[/bold yellow] 创建任务成功，但关联工作流失败: {error_message}")
+                    results["message"] += f"，但关联工作流失败: {error_message}"
+                    results["warnings"] = [error_message]
 
             # 设置为当前任务
             task_service.set_current_task(new_task.id)

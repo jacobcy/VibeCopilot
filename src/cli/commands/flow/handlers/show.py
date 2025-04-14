@@ -211,25 +211,45 @@ def _show_session(session_id: str, verbose: bool, output_format: str, diagram: b
         workflow_def = workflow_repo.get_by_id(flow_session.workflow_id)
 
         if not workflow_def:
+            # 获取所有工作流以提供建议
+            all_workflows = workflow_repo.get_all()
+            suggestion_message = ""
+
+            if all_workflows:
+                # 最多展示5个工作流
+                workflows_to_show = all_workflows[:5]
+                suggestion_message = "\n可用的工作流：\n" + "\n".join([f"- {w.name} (ID: {w.id})" for w in workflows_to_show])
+
             error_msg = (
                 f"错误: 会话 {session_id} 引用了不存在的工作流定义 (ID: {flow_session.workflow_id})。\n"
                 "这可能是因为:\n"
                 "1. 工作流定义已被删除\n"
                 "2. 创建会话时使用了错误的工作流ID或名称\n\n"
                 f"建议: 使用 'vc flow session delete {session_id}' 删除此错误会话，然后使用正确的工作流ID创建新会话"
+                f"{suggestion_message}"
             )
             result["message"] = error_msg
             result["code"] = 404
             return result
 
         # 获取工作流定义
-        workflow = workflow_repo.get_by_id(flow_session.workflow_id) if flow_session.workflow_id else None
+        workflow = (
+            workflow_def.to_dict()
+            if hasattr(workflow_def, "to_dict")
+            else {
+                "id": workflow_def.id,
+                "name": workflow_def.name,
+                "type": workflow_def.type,
+                "description": workflow_def.description,
+                "stages_data": workflow_def.stages_data,
+            }
+        )
 
         # 获取会话进度信息
         progress_info = manager.get_session_progress(session_id)
 
         # 获取关联的工作流定义
-        workflow_name = workflow.get("name", flow_session.workflow_id) if workflow else "未知工作流"
+        workflow_name = workflow["name"] if workflow else "未知工作流"
 
         # 准备会话数据
         session_data = (
