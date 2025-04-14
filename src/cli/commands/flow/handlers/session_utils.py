@@ -49,7 +49,7 @@ def get_active_session(
         target_session = get_current_session()
         if not target_session:
             console.print("[red]错误: 没有活动会话。请先创建会话或指定会话ID。[/red]")
-            console.print("[blue]提示: 使用 'vc flow create session --workflow <工作流ID>' 创建新会话[/blue]")
+            console.print("[blue]提示: 使用 'vc flow create session --flow <工作流ID>' 创建新会话[/blue]")
             return None, "", "", None
 
     # 处理target_session可能是对象或字典的情况

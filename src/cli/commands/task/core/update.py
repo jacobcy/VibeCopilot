@@ -74,7 +74,7 @@ def parse_github_url(url: str) -> Tuple[str, int]:
 @click.option("--assignee", "-a", help="任务负责人")
 @click.option("--labels", "-l", multiple=True, help="任务标签 (可设置多个)")
 @click.option("--roadmap", "-r", help="关联的路线图项目 ID")
-@click.option("--workflow", "-w", help="关联的工作流阶段 ID")
+@click.option("--flow", "-w", help="关联的工作流阶段 ID")
 @click.option("--github", "-g", help="关联的 GitHub Issue URL")
 @click.option("--link-story", "-ls", help="关联的故事 ID")
 @click.option("--unlink", "-ul", help="取消关联的故事或 GitHub Issue")

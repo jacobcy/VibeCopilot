@@ -22,7 +22,7 @@ commands:
         description: "工作流或会话ID"
         type: "string"
         required: false
-      "--workflow":
+      "--flow":
         description: "查看工作流定义而非会话信息"
         type: "flag"
       "--format":

@@ -131,7 +131,7 @@ vc task create --title "实现登录功能" --link-story story_123
 vc task list --story story_123
 
 # 创建专注于特定任务的会话
-vc flow session create --workflow auth_flow --task task_456
+vc flow session create --flow auth_flow --task task_456
 
 # 查看任务相关的会话
 vc task show task_456  # 会显示关联的会话

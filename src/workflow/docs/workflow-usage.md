@@ -27,17 +27,17 @@ vc flow create --name "需求分析流程" --desc "从用户需求到PRD文档�
 
 ```bash
 # 添加工作流阶段
-vc flow stage add --workflow "需求分析流程" --name "收集需求" --desc "收集用户需求" --order 1
-vc flow stage add --workflow "需求分析流程" --name "分析需求" --desc "分析用户需求" --order 2
-vc flow stage add --workflow "需求分析流程" --name "编写PRD" --desc "编写PRD文档" --order 3
+vc flow stage add --flow "需求分析流程" --name "收集需求" --desc "收集用户需求" --order 1
+vc flow stage add --flow "需求分析流程" --name "分析需求" --desc "分析用户需求" --order 2
+vc flow stage add --flow "需求分析流程" --name "编写PRD" --desc "编写PRD文档" --order 3
 ```
 
 #### 1.3 添加转换
 
 ```bash
 # 添加阶段转换
-vc flow transition add --workflow "需求分析流程" --from "收集需求" --to "分析需求"
-vc flow transition add --workflow "需求分析流程" --from "分析需求" --to "编写PRD"
+vc flow transition add --flow "需求分析流程" --from "收集需求" --to "分析需求"
+vc flow transition add --flow "需求分析流程" --from "分析需求" --to "编写PRD"
 ```
 
 #### 1.4 查看工作流
@@ -56,10 +56,10 @@ vc flow show "需求分析流程"
 
 ```bash
 # 启动新会话
-vc flow run --workflow "需求分析流程" --name "产品A需求分析"
+vc flow run --flow "需求分析流程" --name "产品A需求分析"
 
 # 指定阶段启动
-vc flow run --workflow "需求分析流程" --stage "收集需求" --name "产品A需求分析"
+vc flow run --flow "需求分析流程" --stage "收集需求" --name "产品A需求分析"
 ```
 
 #### 2.2 查看会话状态

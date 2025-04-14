@@ -139,7 +139,7 @@ class FlowStatusIntegration:
 ```
 vc flow session list                              # 列出所有活动会话
 vc flow session list --status=<status>            # 按状态筛选会话
-vc flow session list --workflow=<workflow_id>     # 按工作流筛选会话
+vc flow session list --flow=<workflow_id>     # 按工作流筛选会话
 
 vc flow session show <session_id>                 # 显示会话详情
 vc flow session pause <session_id>                # 暂停会话

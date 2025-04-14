@@ -244,7 +244,7 @@ def handle_session_command(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
         # 如果是list操作，即使出错也不抛出错误，而是提示没有会话
         if action == "list":
             console.print("\n当前没有工作流会话。\n")
-            console.print("您可以使用 [cyan]vibecopilot flow run --workflow <工作流ID>[/cyan] 创建新会话。\n")
+            console.print("您可以使用 [cyan]vibecopilot flow run --flow <工作流ID>[/cyan] 创建新会话。\n")
             return True, "", {"sessions": []}
 
         return False, f"❌ 会话命令执行失败: {str(e)}", None

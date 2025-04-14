@@ -69,7 +69,7 @@ vibecopilot flow import FILE_PATH [--overwrite] [--verbose]
 vibecopilot flow visualize ID [--session] [--format {mermaid,text}] [--output OUTPUT] [--verbose]
 
 # 运行工作流阶段
-vibecopilot flow run STAGE [--workflow-id WORKFLOW_ID] [--name NAME] [--completed COMPLETED] [--session SESSION] [--task TASK_ID] [--verbose]
+vibecopilot flow run STAGE [--flow-id WORKFLOW_ID] [--name NAME] [--completed COMPLETED] [--session SESSION] [--task TASK_ID] [--verbose]
 
 # 获取工作流阶段上下文
 vibecopilot flow context WORKFLOW_ID STAGE_ID [--session SESSION] [--completed COMPLETED] [--format {json,text}] [--verbose]
@@ -79,7 +79,7 @@ vibecopilot flow next SESSION_ID [--current CURRENT] [--format {json,text}] [--v
 
 # 管理工作流会话
 vibecopilot flow session list [--verbose]
-vibecopilot flow session create --workflow WORKFLOW_ID [--name NAME] [--task TASK_ID]
+vibecopilot flow session create --flow WORKFLOW_ID [--name NAME] [--task TASK_ID]
 vibecopilot flow session show SESSION_ID
 vibecopilot flow session close SESSION_ID
 ```
@@ -104,7 +104,7 @@ VibeCopilot工作流系统与路线图系统紧密集成，通过清晰的实体
 
 ```bash
 # 创建关联到特定任务的会话
-vibecopilot flow session create --workflow dev_workflow --task task_123
+vibecopilot flow session create --flow dev_workflow --task task_123
 
 # 查看特定任务的所有相关会话
 vibecopilot task show task_123 --sessions
@@ -206,7 +206,7 @@ vibecopilot flow delete workflow1 --force
 
 ```bash
 # 运行工作流的特定阶段
-vibecopilot flow run stage1 --workflow-id workflow1
+vibecopilot flow run stage1 --flow-id workflow1
 
 # 获取阶段上下文
 vibecopilot flow context workflow1 stage1
@@ -216,7 +216,7 @@ vibecopilot flow context workflow1 stage1
 
 ```bash
 # 创建关联到特定任务的会话
-vibecopilot flow session create --workflow dev_workflow --task task_123
+vibecopilot flow session create --flow dev_workflow --task task_123
 
 # 在任务上下文中运行工作流
 vibecopilot flow run stage1 --task task_123

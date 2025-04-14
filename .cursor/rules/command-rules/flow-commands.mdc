@@ -131,7 +131,7 @@ commands:
         - text
         - json
       --status: {}
-      --workflow: {}
+      --flow: {}
   flow session show:
     subcommands:
       ID_OR_NAME: {}
@@ -143,7 +143,7 @@ commands:
         - json
   flow session create:
     subcommands:
-      --workflow: {}
+      --flow: {}
       --name: {}
       --task: {}
       --verbose: {}
@@ -180,7 +180,7 @@ commands:
   flow show:
     subcommands:
       ID: {}
-      --workflow: {}
+      --flow: {}
       --format:
         values:
         - json

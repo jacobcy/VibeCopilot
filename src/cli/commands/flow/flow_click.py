@@ -31,7 +31,7 @@ def flow():
       用法: flow create --source <文件路径>
 
     - flow session create: 创建并启动工作会话
-      用法: flow session create --workflow <工作流ID>
+      用法: flow session create --flow <工作流ID>
 
     - flow session list: 列出工作会话
     - flow session show: 查看会话详情

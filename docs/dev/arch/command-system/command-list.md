@@ -50,7 +50,7 @@ VibeCopilot命令系统作为工作流解释器，主要职责是：
 | **工作流会话** | flow session | | 工作流会话管理命令 | |
 | | | list | 列出所有会话 | `vibecopilot flow session list [--format=<json\|text>]` |
 | | | show | 显示会话详情 | `vibecopilot flow session show --id=<id> [--format=<json\|text>]` |
-| | | create | 创建并启动新会话 | `vibecopilot flow session create --workflow=<workflow_id> [--name=<name>]` |
+| | | create | 创建并启动新会话 | `vibecopilot flow session create --flow=<workflow_id> [--name=<name>]` |
 | | | close | 结束会话 | `vibecopilot flow session close --id=<id> [--force]` |
 | | | switch | 切换当前活动会话 | `vibecopilot flow session switch --id=<id>` |
 | | | update | 更新会话属性 | `vibecopilot flow session update --id=<id> [--name=<name>]` |

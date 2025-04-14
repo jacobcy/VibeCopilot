@@ -24,10 +24,10 @@ def session():
     工作流会话管理
 
     工作流会话是工作流定义的运行实例，记录执行状态和上下文。
-    会话通过 'vc flow session create --workflow <工作流>' 命令创建。
+    会话通过 'vc flow session create --flow <工作流>' 命令创建。
 
     常用命令:
-      vc flow session create --workflow <id>  # 创建新会话
+      vc flow session create --flow <id>  # 创建新会话
       vc flow session list                    # 列出所有会话
       vc flow session show <id>               # 显示会话详情
       vc flow session close <id>              # 结束会话
@@ -40,7 +40,7 @@ def session():
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
 @click.option("--format", type=click.Choice(["yaml", "text", "json"]), default="yaml", help="输出格式")
 @click.option("--status", help="按状态筛选会话")
-@click.option("--workflow", help="按工作流ID筛选会话")
+@click.option("--flow", help="按工作流ID筛选会话")
 def list_sessions(verbose: bool, format: str, status: Optional[str], workflow: Optional[str]) -> None:
     """列出工作流会话
 
@@ -48,7 +48,7 @@ def list_sessions(verbose: bool, format: str, status: Optional[str], workflow: O
 
     选项:
       --status   按会话状态筛选 (ACTIVE、PAUSED、COMPLETED、CLOSED)
-      --workflow 按工作流ID筛选
+      --flow 按工作流ID筛选
       --format   输出格式 (yaml、text、json)
     """
     try:
@@ -151,7 +151,7 @@ def show_session(id_or_name: Optional[str], verbose: bool, format: str) -> None:
 
 
 @session.command(name="create", help="创建并启动新会话")
-@click.option("--workflow", "-w", required=True, help="工作流的ID或名称 (不是工作流类型)")
+@click.option("--flow", "-w", required=True, help="工作流的ID或名称 (不是工作流类型)")
 @click.option("--name", "-n", required=False, help="会话名称")
 @click.option("--task", "-t", required=False, help="关联的任务ID")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细输出")
@@ -162,13 +162,13 @@ def create_session(workflow: str, name: Optional[str], task: Optional[str], verb
     每个会话可以关联到一个任务，表明会话的目的是完成该任务。
 
     选项:
-      --workflow  工作流的ID或名称 (必填)，注意不是工作流类型如"dev"
+      --flow  工作流的ID或名称 (必填)，注意不是工作流类型如"dev"
       --name      会话名称 (可选，默认使用工作流名称)
       --task      关联的任务ID (可选，会话将专注于完成此任务)
 
     示例:
-      vc flow session create --workflow dev-workflow-123  # 使用ID创建
-      vc flow session create --workflow "需求分析流程"    # 使用名称创建
+      vc flow session create --flow dev-workflow-123  # 使用ID创建
+      vc flow session create --flow "需求分析流程"    # 使用名称创建
     """
     try:
         if verbose:

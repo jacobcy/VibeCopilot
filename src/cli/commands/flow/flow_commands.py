@@ -54,7 +54,7 @@ def register_basic_commands(flow_group):
 
     @flow_group.command(name="show", help="查看会话或工作流定义详情")
     @click.argument("id", required=False)
-    @click.option("--workflow", "-w", is_flag=True, help="查看工作流定义而非会话信息")
+    @click.option("--flow", "-w", is_flag=True, help="查看工作流定义而非会话信息")
     @click.option("--format", "-f", type=click.Choice(["json", "text", "mermaid"]), default="text", help="输出格式")
     @click.option("--diagram", is_flag=True, help="在文本或JSON输出中包含Mermaid图表")
     @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
@@ -64,13 +64,13 @@ def register_basic_commands(flow_group):
 
         默认显示当前会话信息。
         直接指定ID参数时查看指定会话信息。
-        使用--workflow选项时查看工作流定义。
+        使用--flow选项时查看工作流定义。
 
         示例:
           vc flow show                # 显示当前会话信息
           vc flow show session123     # 显示ID为session123的会话信息
-          vc flow show --workflow dev # 显示ID为dev的工作流定义
-          vc flow show dev --workflow # 显示ID为dev的工作流定义
+          vc flow show --flow dev # 显示ID为dev的工作流定义
+          vc flow show dev --flow # 显示ID为dev的工作流定义
         """
         try:
             target_id = id
@@ -80,7 +80,7 @@ def register_basic_commands(flow_group):
             if not target_id:
                 if is_workflow:
                     # 请求查看工作流但未提供ID
-                    console.print("[red]错误: 使用--workflow选项时必须提供工作流ID[/red]")
+                    console.print("[red]错误: 使用--flow选项时必须提供工作流ID[/red]")
                     return
                 else:
                     # 获取当前会话ID

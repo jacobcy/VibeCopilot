@@ -225,7 +225,7 @@ def format_next_stages_text(data: Dict[str, Any], verbose: bool = False) -> str:
     if next_stages:
         suggested_stage = next_stages[0]
         lines.append(f"  推荐进入下一阶段: {suggested_stage['name']}")
-        lines.append(f"  执行命令: vc flow create --workflow {workflow['id']} --stage {suggested_stage['id']}")
+        lines.append(f"  执行命令: vc flow create --flow {workflow['id']} --stage {suggested_stage['id']}")
     else:
         lines.append("  当前工作流没有推荐的下一步操作。可以考虑结束当前会话:")
         lines.append(f"  执行命令: vc flow session complete {session_info['id']}")

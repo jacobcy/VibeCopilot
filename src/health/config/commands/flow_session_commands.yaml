@@ -13,7 +13,7 @@ commands:
       "--status":
         description: "按状态筛选会话"
         type: "string"
-      "--workflow":
+      "--flow":
         description: "按工作流ID筛选会话"
         type: "string"
     expected_output: ["会话列表"]
@@ -40,7 +40,7 @@ commands:
   "flow session create":
     description: "创建并启动新会话"
     subcommands:
-      "--workflow":
+      "--flow":
         description: "工作流ID"
         type: "string"
         required: true
