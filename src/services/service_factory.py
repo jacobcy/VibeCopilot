@@ -5,11 +5,6 @@
 """
 from typing import Any
 
-from src.db.service import DatabaseService
-from src.roadmap import RoadmapService
-from src.services.task_service import TaskService
-from src.workflow.service import FlowService
-
 
 class ServiceFactory:
     """服务工厂类"""
@@ -56,15 +51,15 @@ class ServiceFactory:
             elif service_type == "task":
                 # 确保数据库表存在
                 from src.db import ensure_tables_exist
-                from src.services.task_service import TaskService
+                from src.services.task import TaskService  # 使用新的模块化任务服务
 
                 ensure_tables_exist()  # 确保数据库表存在但不强制重建
                 # 创建服务实例
                 self._services[service_type] = TaskService()
-            elif service_type == "flow":
-                from src.workflow.service import FlowService
+            elif service_type == "flow_session":
+                from src.flow_session.manager import FlowSessionManager
 
-                self._services[service_type] = FlowService(**kwargs)
+                self._services[service_type] = FlowSessionManager(**kwargs)
             elif service_type == "status":
                 from src.status.service import StatusService
 

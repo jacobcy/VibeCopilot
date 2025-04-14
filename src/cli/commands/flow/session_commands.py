@@ -5,14 +5,14 @@
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 from rich.console import Console
+from sqlalchemy.orm import Session as SQLAlchemySession
 
-from src.cli.commands.flow.handlers.session import handle_session_command
-from src.cli.decorators import pass_service
-from src.workflow.service.flow_service import FlowService
+from src.cli.commands.flow.handlers.session_crud import handle_session_command
+from src.db import init_db
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -41,8 +41,7 @@ def session():
 @click.option("--format", type=click.Choice(["yaml", "text", "json"]), default="yaml", help="输出格式")
 @click.option("--status", help="按状态筛选会话")
 @click.option("--workflow", help="按工作流ID筛选会话")
-@pass_service(service_type="flow")
-def list_sessions(service: FlowService, verbose: bool, format: str, status: Optional[str], workflow: Optional[str]) -> None:
+def list_sessions(verbose: bool, format: str, status: Optional[str], workflow: Optional[str]) -> None:
     """列出工作流会话
 
     显示所有已创建的工作流会话及其状态。
@@ -57,7 +56,7 @@ def list_sessions(service: FlowService, verbose: bool, format: str, status: Opti
             console.print("正在获取会话列表...")
 
         # 使用命令参数直接传递，不再创建argparse.Namespace对象
-        params = {"subcommand": "list", "verbose": verbose, "format": format, "status": status, "workflow": workflow}
+        params: Dict[str, Any] = {"subcommand": "list", "verbose": verbose, "format": format, "status": status, "workflow": workflow}
         success, message, data = handle_session_command(params)
 
         if success:
@@ -75,8 +74,7 @@ def list_sessions(service: FlowService, verbose: bool, format: str, status: Opti
 @session.command(name="switch", help="切换当前活动会话")
 @click.argument("id_or_name", type=str, required=False)
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service(service_type="flow")
-def switch_session(service: FlowService, id_or_name: Optional[str], verbose: bool) -> None:
+def switch_session(id_or_name: Optional[str], verbose: bool) -> None:
     """切换当前活动会话
 
     将指定会话设置为当前活动会话。切换后，所有不指定会话ID的命令
@@ -95,11 +93,11 @@ def switch_session(service: FlowService, id_or_name: Optional[str], verbose: boo
             console.print(f"切换到会话: {id_or_name}")
 
         # 使用命令参数直接传递
-        params = {"subcommand": "switch", "id_or_name": id_or_name, "verbose": verbose}
+        params: Dict[str, Any] = {"subcommand": "switch", "id_or_name": id_or_name, "verbose": verbose}
         success, message, data = handle_session_command(params)
 
         if success:
-            session_info = data.get("session", {})
+            session_info: Dict[str, Any] = data.get("session", {})
             name = session_info.get("name", id_or_name)
             workflow_id = session_info.get("workflow_id", "未知")
             console.print(f"[green]已切换到会话: {name}[/green]")
@@ -119,8 +117,7 @@ def switch_session(service: FlowService, id_or_name: Optional[str], verbose: boo
 @click.argument("id_or_name", type=str, required=False)
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
 @click.option("--format", type=click.Choice(["yaml", "text", "json"]), default="yaml", help="输出格式")
-@pass_service(service_type="flow")
-def show_session(service: FlowService, id_or_name: Optional[str], verbose: bool, format: str) -> None:
+def show_session(id_or_name: Optional[str], verbose: bool, format: str) -> None:
     """显示工作流会话的详细信息
 
     显示会话的完整信息，包括基本信息、当前状态和阶段进度。
@@ -138,7 +135,7 @@ def show_session(service: FlowService, id_or_name: Optional[str], verbose: bool,
             console.print(f"获取会话详情: {id_or_name}")
 
         # 使用命令参数直接传递
-        params = {"subcommand": "show", "id_or_name": id_or_name, "verbose": verbose, "format": format}
+        params: Dict[str, Any] = {"subcommand": "show", "id_or_name": id_or_name, "verbose": verbose, "format": format}
         success, message, data = handle_session_command(params)
 
         if success:
@@ -154,21 +151,24 @@ def show_session(service: FlowService, id_or_name: Optional[str], verbose: bool,
 
 
 @session.command(name="create", help="创建并启动新会话")
-@click.option("--workflow", "-w", required=True, help="Workflow ID to create session for")
-@click.option("--name", "-n", required=False, help="Name for the session")
-@click.option("--task", "-t", required=False, help="Task ID to associate with the session")
-@click.option("--verbose", "-v", is_flag=True, help="Show verbose output")
-@pass_service(service_type="flow")
-def create_session(service: FlowService, workflow: str, name: Optional[str], task: Optional[str], verbose: bool) -> None:
+@click.option("--workflow", "-w", required=True, help="工作流的ID或名称 (不是工作流类型)")
+@click.option("--name", "-n", required=False, help="会话名称")
+@click.option("--task", "-t", required=False, help="关联的任务ID")
+@click.option("--verbose", "-v", is_flag=True, help="显示详细输出")
+def create_session(workflow: str, name: Optional[str], task: Optional[str], verbose: bool) -> None:
     """创建工作流会话
 
     创建新的工作流会话并将其设置为当前活动会话。
     每个会话可以关联到一个任务，表明会话的目的是完成该任务。
 
     选项:
-      --workflow  要运行的工作流定义的ID (必填)
+      --workflow  工作流的ID或名称 (必填)，注意不是工作流类型如"dev"
       --name      会话名称 (可选，默认使用工作流名称)
       --task      关联的任务ID (可选，会话将专注于完成此任务)
+
+    示例:
+      vc flow session create --workflow dev-workflow-123  # 使用ID创建
+      vc flow session create --workflow "需求分析流程"    # 使用名称创建
     """
     try:
         if verbose:
@@ -177,11 +177,11 @@ def create_session(service: FlowService, workflow: str, name: Optional[str], tas
                 console.print(f"关联到任务: {task}")
 
         # 使用命令参数直接传递
-        params = {"subcommand": "create", "workflow_id": workflow, "name": name, "task_id": task, "verbose": verbose}
+        params: Dict[str, Any] = {"subcommand": "create", "workflow_id": workflow, "name": name, "task_id": task, "verbose": verbose}
         success, message, data = handle_session_command(params)
 
         if success:
-            session_info = data.get("session", {})
+            session_info: Dict[str, Any] = data.get("session", {})
             name = session_info.get("name", "未命名")
             id = session_info.get("id")
             task_id = session_info.get("task_id")
@@ -203,8 +203,7 @@ def create_session(service: FlowService, workflow: str, name: Optional[str], tas
 @click.option("--reason", help="会话结束原因")
 @click.option("--force", "-f", is_flag=True, help="强制结束，不提示确认")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service(service_type="flow")
-def close_session(service: FlowService, id_or_name: Optional[str], reason: Optional[str], force: bool, verbose: bool) -> None:
+def close_session(id_or_name: Optional[str], reason: Optional[str], force: bool, verbose: bool) -> None:
     """结束工作流会话
 
     将会话状态设置为已关闭。已关闭的会话可以查看但不能继续使用。
@@ -228,11 +227,11 @@ def close_session(service: FlowService, id_or_name: Optional[str], reason: Optio
             console.print(f"结束会话: {id_or_name}")
 
         # 使用命令参数直接传递
-        params = {"subcommand": "close", "id_or_name": id_or_name, "reason": reason, "force": force, "verbose": verbose}
+        params: Dict[str, Any] = {"subcommand": "close", "id_or_name": id_or_name, "reason": reason, "force": force, "verbose": verbose}
         success, message, data = handle_session_command(params)
 
         if success:
-            session_info = data.get("session", {})
+            session_info: Dict[str, Any] = data.get("session", {})
             name = session_info.get("name", id_or_name)
             console.print(f"[green]已成功结束会话: {name}[/green]")
             if reason:
@@ -249,8 +248,7 @@ def close_session(service: FlowService, id_or_name: Optional[str], reason: Optio
 @click.argument("id_or_name", type=str, required=False)
 @click.option("--force", "-f", is_flag=True, help="强制删除，不提示确认")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service(service_type="flow")
-def delete_session(service: FlowService, id_or_name: Optional[str], force: bool, verbose: bool) -> None:
+def delete_session(id_or_name: Optional[str], force: bool, verbose: bool) -> None:
     """永久删除会话及其相关数据
 
     此操作将会永久删除会话及其所有相关数据。
@@ -275,7 +273,7 @@ def delete_session(service: FlowService, id_or_name: Optional[str], force: bool,
             console.print(f"删除会话: {id_or_name}")
 
         # 使用命令参数直接传递
-        params = {"subcommand": "delete", "id_or_name": id_or_name, "force": force, "verbose": verbose}
+        params: Dict[str, Any] = {"subcommand": "delete", "id_or_name": id_or_name, "force": force, "verbose": verbose}
         success, message, data = handle_session_command(params)
 
         if success:
@@ -293,8 +291,7 @@ def delete_session(service: FlowService, id_or_name: Optional[str], force: bool,
 @click.option("--name", help="新的会话名称")
 @click.option("--status", type=click.Choice(["ACTIVE", "PAUSED", "COMPLETED", "CLOSED"], case_sensitive=True), help="设置会话状态")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service(service_type="flow")
-def update_session(service: FlowService, id_or_name: Optional[str], name: Optional[str], status: Optional[str], verbose: bool) -> None:
+def update_session(id_or_name: Optional[str], name: Optional[str], status: Optional[str], verbose: bool) -> None:
     """更新会话属性
 
     ID_OR_NAME: 会话ID或名称
@@ -315,11 +312,11 @@ def update_session(service: FlowService, id_or_name: Optional[str], name: Option
             return
 
         # 使用命令参数直接传递
-        params = {"subcommand": "update", "id_or_name": id_or_name, "name": name, "status": status, "verbose": verbose}
+        params: Dict[str, Any] = {"subcommand": "update", "id_or_name": id_or_name, "name": name, "status": status, "verbose": verbose}
         success, message, data = handle_session_command(params)
 
         if success:
-            session_info = data.get("session", {})
+            session_info: Dict[str, Any] = data.get("session", {})
             console.print(f"[green]已更新会话[/green]")
             if name:
                 console.print(f"新名称: {name}")

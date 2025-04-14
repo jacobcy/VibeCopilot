@@ -1,0 +1,232 @@
+---
+description: 当用户输入/rule或//rule命令时，激活规则系统，允许增加、修改或删除规则
+globs:
+alwaysApply: false
+id: rule-command
+title: "VibeCopilot规则命令规则"
+type: command_rule
+status: active
+version: "1.0"
+tags: [command, rule, metadata, system]
+related_items: [command-system]
+---
+
+# VibeCopilot规则命令规则
+
+## 规则命令概述
+
+规则命令(`/rule`和`//rule`)用于管理VibeCopilot的规则系统，包括创建、查看、更新和应用规则。规则是指导AI助手行为和项目开发的结构化知识。
+
+## 命令类型和执行方式
+
+### 规则命令形式
+
+- 命令格式：`/rule [subcommand] [args]`
+- 执行方式：由Cursor Agent直接解释执行
+- 适用场景：规则查询、简单规则应用和规则说明
+
+### 程序命令形式
+
+- 命令格式：`//rule [subcommand] [args]`
+- 执行方式：转换为`vibecopilot rule [subcommand] [args]`并通过终端执行
+- 适用场景：规则创建、更新、验证和批量操作
+
+## 子命令详解
+
+| 子命令 | 说明 | 示例 |
+|-------|------|------|
+| `list` | 列出所有规则 | `/rule list [--type=<rule_type>]` |
+| `show` | 显示规则详情 | `/rule show <id>` |
+| `create` | 创建新规则 | `//rule create <template_type> <name>` |
+| `update` | 更新规则 | `//rule update <id> [--vars=<json>]` |
+| `delete` | 删除规则 | `//rule delete <id> [--force]` |
+| `validate` | 验证规则 | `//rule validate <id>` |
+| `export` | 导出规则 | `//rule export <id> [--output=<path>]` |
+| `import` | 导入规则 | `//rule import <file_path> [--overwrite]` |
+| `apply` | 应用规则到指定上下文 | `/rule apply <id> [--context=<context>]` |
+
+## 规则类型定义
+
+VibeCopilot支持多种规则类型：
+
+| 类型 | 说明 | 目录 |
+|-----|------|------|
+| `core` | 核心概念和系统约定 | `/core-rules` |
+| `dev` | 开发流程和实践 | `/dev-rules` |
+| `tech` | 技术栈和标准 | `/tech-rules` |
+| `flow` | 工作流程规则 | `/flow-rules` |
+| `cmd` | 命令使用规则 | `/cmd-rules` |
+| `role` | 专家角色规则 | `/role-rules` |
+| `tool` | 工具使用规则 | `/tool-rules` |
+
+## 规则元数据结构
+
+规则文件包含以下元数据结构：
+
+```yaml
+---
+id: rule-id                      # 规则唯一标识符
+title: "规则标题"                 # 规则名称
+type: rule_type                  # 规则类型
+status: active                   # 规则状态(active/draft/deprecated)
+version: "1.0"                   # 规则版本号
+tags: [tag1, tag2]               # 规则标签
+related_items: [other-rule-id]   # 相关规则
+---
+```
+
+## 规则源文件结构
+
+VibeCopilot使用新的规则源文件体系：
+
+1. **YAML/JSON源文件**：包含结构化规则定义
+2. **模板文件**：定义规则渲染模板
+3. **MDC文件**：最终生成的规则文件
+
+## 规则模板系统
+
+规则通过模板系统生成：
+
+```
+//rule create coding --name="TypeScript编码规范" --vars='{"language":"typescript", "level":"strict"}'
+```
+
+模板变量会按照预定义模板生成完整规则内容。
+
+## 规则版本控制
+
+规则支持版本管理：
+
+1. 主版本号变更（1.0 -> 2.0）表示不兼容变更
+2. 次版本号变更（1.0 -> 1.1）表示向后兼容的功能增强
+3. 修订版本号变更（1.0.0 -> 1.0.1）表示错误修复
+
+## 规则搜索与检索
+
+规则系统支持多种检索方式：
+
+```
+/rule search --query="代码风格" --semantic  # 语义搜索
+/rule search --tags=frontend,typescript     # 标签搜索
+/rule list --type=tech                      # 按类型列出
+```
+
+## 使用示例
+
+```
+# 列出所有技术规则
+/rule list --type=tech
+
+# 显示特定规则
+/rule show frontend-react
+
+# 创建新规则
+//rule create coding --name="Python代码规范" --vars='{"language":"python"}'
+
+# 更新规则内容
+//rule update frontend-react --vars='{"framework_version":"18.0"}'
+
+# 验证规则有效性
+//rule validate frontend-react
+
+# 应用规则
+/rule apply frontend-react --context="组件开发"
+
+# 导出规则
+//rule export frontend-react --format=md --output=./docs/rules/
+
+# 导入规则
+//rule import ./imported_rules/backend-java.yml
+```
+
+## 新旧规则系统过渡
+
+VibeCopilot正在过渡到新的规则系统：
+
+1. 旧规则文件存放在`/bak`目录
+2. 新规则采用源文件+模板生成方式
+3. 两种系统并行运行一段时间
+4. 最终将完全迁移到新的规则系统
+
+## 与其他系统集成
+
+- **流程集成**：工作流可应用特定阶段的规则
+- **任务集成**：可创建遵循规则的任务模板
+- **代码集成**：规则可用于代码风格检查
+- **文档集成**：规则可导出为项目文档
+
+## 程序命令参数表
+(需要在终端将用户指令转换成vibecopilot可接受的命令形式)
+
+<!-- BEGIN_COMMAND_YAML -->
+```yaml
+commands:
+  rule list:
+    subcommands:
+      --type:
+        values:
+        - core
+        - dev
+        - tech
+        - tool
+        - role
+        - command
+        - test
+      --format:
+        values:
+        - table
+        - json
+        - yaml
+  rule show:
+    subcommands:
+      --format:
+        values:
+        - markdown
+        - json
+        - yaml
+  rule create:
+    subcommands:
+      --type:
+        values:
+        - core
+        - dev
+        - tech
+        - tool
+        - role
+        - command
+        - test
+      --description: {}
+      --priority: {}
+      --template:
+        values:
+        - agent
+        - auto
+        - best_practices
+        - command
+        - role
+        - workflow
+  rule delete:
+    subcommands:
+      --force: {}
+  rule import:
+    subcommands:
+      --parser:
+        values:
+        - markdown
+        - yaml
+        - json
+      --model: {}
+      --validate: {}
+      --overwrite: {}
+  rule export:
+    subcommands:
+      --format:
+        values:
+        - markdown
+        - yaml
+        - json
+      --output: {}
+  rule validate: {}
+
+```
+<!-- END_COMMAND_YAML -->

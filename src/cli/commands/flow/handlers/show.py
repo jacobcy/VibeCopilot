@@ -7,14 +7,15 @@ from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
+from src.cli.commands.flow.handlers.formatter import format_stage_summary, format_workflow_summary
+from src.cli.commands.flow.handlers.visualize import generate_session_mermaid, generate_workflow_mermaid
 from src.db import get_session_factory
-from src.flow_session.session.manager import FlowSessionManager
-from src.models.db import FlowSession, WorkflowDefinition
-from src.workflow import get_workflow, get_workflow_by_name, get_workflow_by_type, get_workflow_context  # 直接从workflow包导入
+from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
+from src.flow_session.manager import FlowSessionManager
+from src.workflow.service import get_workflow, get_workflow_by_name, get_workflow_by_type
 
 # Assuming these helpers and operations are accessible
-from src.workflow.exporters.mermaid_exporter import MermaidExporter
-from src.workflow.flow_cmd.helpers import format_checklist, format_deliverables, format_workflow_stages
+from src.workflow.utils.helpers import format_checklist, format_deliverables, format_workflow_stages
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +127,15 @@ def _show_workflow(workflow_id: str, verbose: bool, output_format: str, diagram:
         # 如果需要生成图表
         if diagram:
             try:
-                exporter = MermaidExporter()
-                mermaid_code = exporter.export_workflow(workflow_data)
+                # 直接使用visualize.py中的函数生成Mermaid图表
+                stages = workflow_data.get("stages", {})
+                if isinstance(stages, str):
+                    try:
+                        stages = json.loads(stages)
+                    except:
+                        stages = {}
+
+                mermaid_code = generate_workflow_mermaid(workflow_data, stages)
                 result["data"]["diagram"] = mermaid_code  # Add diagram to data payload
                 # Message will be updated below if format is text
             except Exception as diag_e:
@@ -136,9 +144,8 @@ def _show_workflow(workflow_id: str, verbose: bool, output_format: str, diagram:
 
         # Format for console output if not agent mode and format is text
         if output_format == "text" and not args.get("_agent_mode", False):
-            info = f"工作流ID: {workflow_data.get('id', 'N/A')}\n名称: {workflow_data.get('name', 'Unnamed')}"
-            description = workflow_data.get("description", "无描述")
-            info += f"\n描述: {description}"
+            # 使用format_workflow_summary获取一致格式的工作流摘要
+            info = format_workflow_summary(workflow_data)
 
             stages = workflow_data.get("stages", [])
             if stages:
@@ -182,49 +189,47 @@ def _show_workflow(workflow_id: str, verbose: bool, output_format: str, diagram:
 
 
 def _show_session(session_id: str, verbose: bool, output_format: str, diagram: bool, args: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    显示会话信息
-
-    Args:
-        session_id: 会话ID
-        verbose: 是否显示详细信息
-        output_format: 输出格式
-        diagram: 是否包含图表
-        args: 原始命令参数
-
-    Returns:
-        命令结果
-    """
-    result = {
-        "status": "error",
-        "code": 1,
-        "message": "",
-        "data": None,
-        "meta": {"command": "flow show session", "args": args},
-    }
+    """显示会话详情"""
+    result = {"status": "error", "code": 1, "message": "", "data": None, "meta": {"command": "flow show session", "args": args}}
 
     try:
-        # 创建数据库会话
-        session_factory = get_session_factory()
-        db_session = session_factory()
+        # 获取数据库会话
+        db_session = get_session_factory()()
 
-        # 获取会话信息
-        session_manager = FlowSessionManager(db_session)
-        flow_session = session_manager.get_session(session_id)
+        # 创建管理器
+        manager = FlowSessionManager(db_session)
 
+        # 获取会话
+        flow_session = manager.get_session(session_id)
         if not flow_session:
-            db_session.close()
-            result["message"] = f"找不到会话: {session_id}"
+            result["message"] = f"找不到ID为 {session_id} 的会话"
             result["code"] = 404
             return result
 
+        # 验证工作流定义存在
+        workflow_repo = WorkflowDefinitionRepository(db_session)
+        workflow_def = workflow_repo.get_by_id(flow_session.workflow_id)
+
+        if not workflow_def:
+            error_msg = (
+                f"错误: 会话 {session_id} 引用了不存在的工作流定义 (ID: {flow_session.workflow_id})。\n"
+                "这可能是因为:\n"
+                "1. 工作流定义已被删除\n"
+                "2. 创建会话时使用了错误的工作流ID或名称\n\n"
+                f"建议: 使用 'vc flow session delete {session_id}' 删除此错误会话，然后使用正确的工作流ID创建新会话"
+            )
+            result["message"] = error_msg
+            result["code"] = 404
+            return result
+
+        # 获取工作流定义
+        workflow = workflow_repo.get_by_id(flow_session.workflow_id) if flow_session.workflow_id else None
+
         # 获取会话进度信息
-        progress_info = session_manager.get_session_progress(session_id)
+        progress_info = manager.get_session_progress(session_id)
 
         # 获取关联的工作流定义
-        workflow_id = flow_session.workflow_id
-        workflow = get_workflow(workflow_id)
-        workflow_name = workflow.get("name", workflow_id) if workflow else "未知工作流"
+        workflow_name = workflow.get("name", flow_session.workflow_id) if workflow else "未知工作流"
 
         # 准备会话数据
         session_data = (
@@ -264,7 +269,7 @@ def _show_session(session_id: str, verbose: bool, output_format: str, diagram: b
                 f"会话ID: {flow_session.id}",
                 f"名称: {flow_session.name}",
                 f"状态: {flow_session.status}",
-                f"工作流: {workflow_name} (ID: {workflow_id})",
+                f"工作流: {workflow_name} (ID: {flow_session.workflow_id})",
                 f"创建时间: {flow_session.created_at.strftime('%Y-%m-%d %H:%M:%S') if flow_session.created_at else '未知'}",
                 f"更新时间: {flow_session.updated_at.strftime('%Y-%m-%d %H:%M:%S') if flow_session.updated_at else '未知'}",
                 f"进度: {progress_percent}% ({completed_count}/{total_stages} 阶段)",
@@ -273,7 +278,25 @@ def _show_session(session_id: str, verbose: bool, output_format: str, diagram: b
             ]
 
             # 添加已完成阶段
-            for stage in progress_info.get("completed_stages", []):
+            completed_stages = progress_info.get("completed_stages", [])
+
+            # 确保completed_stages是可迭代的
+            if not isinstance(completed_stages, (list, tuple, dict)):
+                # 如果是整数或其他非可迭代类型，记录一个错误并使用空列表
+                logger.warning(f"完成阶段数据格式错误 - 期望列表但获得: {type(completed_stages)}")
+                completed_stages = []
+                # 尝试通过转换修复错误类型问题
+                try:
+                    # 如果是整数，假设它表示已完成阶段的数量，创建一个空列表
+                    if isinstance(progress_info.get("completed_stages"), int):
+                        logger.info(f"尝试修复数据类型: 将整数 {progress_info.get('completed_stages')} 转换为空列表")
+                        # 更新原数据
+                        progress_info["completed_stages"] = []
+                        completed_stages = []
+                except Exception as e:
+                    logger.error(f"尝试修复数据类型时出错: {str(e)}")
+
+            for stage in completed_stages:
                 completed_at = stage.get("completed_at", "")
                 if completed_at:
                     try:
@@ -291,7 +314,25 @@ def _show_session(session_id: str, verbose: bool, output_format: str, diagram: b
                 info.append(f"▶️ {current_stage['name']} - 进行中")
 
             # 添加待处理阶段
-            for stage in progress_info.get("pending_stages", []):
+            pending_stages = progress_info.get("pending_stages", [])
+
+            # 确保pending_stages是可迭代的
+            if not isinstance(pending_stages, (list, tuple, dict)):
+                # 如果是整数或其他非可迭代类型，记录一个错误并使用空列表
+                logger.warning(f"待处理阶段数据格式错误 - 期望列表但获得: {type(pending_stages)}")
+                pending_stages = []
+                # 尝试通过转换修复错误类型问题
+                try:
+                    # 如果是整数，假设它表示待处理阶段的数量，创建一个空列表
+                    if isinstance(progress_info.get("pending_stages"), int):
+                        logger.info(f"尝试修复数据类型: 将整数 {progress_info.get('pending_stages')} 转换为空列表")
+                        # 更新原数据
+                        progress_info["pending_stages"] = []
+                        pending_stages = []
+                except Exception as e:
+                    logger.error(f"尝试修复数据类型时出错: {str(e)}")
+
+            for stage in pending_stages:
                 info.append(f"⏳ {stage['name']} - 待进行")
 
             # 如果verbose模式，显示上下文信息
@@ -315,8 +356,7 @@ def _show_session(session_id: str, verbose: bool, output_format: str, diagram: b
             # 如果需要图表，添加会话进度的可视化图表
             if diagram and workflow:
                 try:
-                    from src.cli.commands.flow.handlers.visualize_handler import generate_session_mermaid
-
+                    # 直接使用visualize.py中的函数生成Mermaid图表
                     mermaid_code = generate_session_mermaid(flow_session, workflow, progress_info)
                     info.append("")
                     info.append("会话进度图表 (Mermaid):")
@@ -333,8 +373,7 @@ def _show_session(session_id: str, verbose: bool, output_format: str, diagram: b
         elif output_format == "mermaid" and workflow:
             # 如果输出格式是mermaid，生成会话进度图表
             try:
-                from src.cli.commands.flow.handlers.visualize_handler import generate_session_mermaid
-
+                # 直接使用visualize.py中的函数
                 mermaid_code = generate_session_mermaid(flow_session, workflow, progress_info)
                 result["message"] = mermaid_code
                 result["data"]["diagram"] = mermaid_code

@@ -36,7 +36,7 @@ COMMAND_MODULES = {
     "rule": "src.cli.commands.rule.rule_click:rule",
     "roadmap": "src.cli.commands.roadmap.roadmap_click:roadmap",
     "db": "src.cli.commands.db.db_click:db",
-    "flow": "src.cli.commands.flow.flow_main:flow",
+    "flow": "src.cli.commands.flow.flow_click:flow",
     "memory": "src.cli.commands.memory.memory_click:memory",
     "template": "src.cli.commands.template.template_click:template",
     "task": "src.cli.commands.task.task_click:task",

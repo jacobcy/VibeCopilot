@@ -1,0 +1,545 @@
+commands:
+  flow session list:
+    subcommands:
+      --verbose: {}
+      --format:
+        values:
+        - yaml
+        - text
+        - json
+      --status: {}
+      --workflow: {}
+  flow session show:
+    subcommands:
+      ID_OR_NAME: {}
+      --verbose: {}
+      --format:
+        values:
+        - yaml
+        - text
+        - json
+  flow session create:
+    subcommands:
+      --workflow: {}
+      --name: {}
+      --task: {}
+      --verbose: {}
+  flow session close:
+    subcommands:
+      ID_OR_NAME: {}
+      --reason: {}
+      --force: {}
+      --verbose: {}
+  flow session switch:
+    subcommands:
+      ID_OR_NAME: {}
+      --verbose: {}
+  flow session update:
+    subcommands:
+      ID_OR_NAME: {}
+      --name: {}
+      --status:
+        values:
+        - ACTIVE
+        - PAUSED
+        - COMPLETED
+        - CLOSED
+      --verbose: {}
+  flow session delete:
+    subcommands:
+      ID_OR_NAME: {}
+      --force: {}
+      --verbose: {}
+  roadmap sync:
+    subcommands:
+      --theme: {}
+      --operation:
+        values:
+        - push
+        - pull
+      --roadmap: {}
+      --force: {}
+      --verbose: {}
+  roadmap switch:
+    subcommands:
+      roadmap_id: {}
+      --show: {}
+      --clear: {}
+  roadmap list:
+    subcommands:
+      --all: {}
+      --type:
+        values:
+        - all
+        - milestone
+        - story
+        - task
+      --status: {}
+      --assignee: {}
+      --labels: {}
+      --detail: {}
+      --format:
+        values:
+        - text
+        - json
+        - table
+      --verbose: {}
+  roadmap create:
+    subcommands:
+      --epic: {}
+      --description: {}
+      --assignee: {}
+      --labels: {}
+      --priority:
+        values:
+        - high
+        - medium
+        - low
+  roadmap update:
+    subcommands:
+      --sync: {}
+      --comment: {}
+      --assignee: {}
+      --labels: {}
+  roadmap story:
+    subcommands:
+      story_id: {}
+      --title: {}
+      --milestone: {}
+      --description: {}
+      --priority:
+        values:
+        - P0
+        - P1
+        - P2
+        - P3
+      --assignee: {}
+      --labels: {}
+      --status:
+        values:
+        - not_started
+        - in_progress
+        - completed
+        - blocked
+      --comment: {}
+      --format:
+        values:
+        - json
+        - text
+        - table
+      --delete: {}
+      --force: {}
+  roadmap validate:
+    subcommands:
+      source: {}
+      --fix: {}
+      --output: {}
+      --template: {}
+      --verbose: {}
+      --import: {}
+      --roadmap-id: {}
+  roadmap import:
+    subcommands:
+      source: {}
+      --roadmap-id: {}
+      --fix: {}
+      --activate: {}
+      --verbose: {}
+  roadmap show:
+    subcommands:
+      --id: {}
+      --milestone: {}
+      --task: {}
+      --health: {}
+      --format:
+        values:
+        - json
+        - text
+        - table
+  roadmap export:
+    subcommands:
+      --id: {}
+      --output: {}
+      --milestone: {}
+      --template: {}
+  roadmap delete:
+    subcommands:
+      --force: {}
+      --cascade: {}
+  roadmap plan:
+    subcommands:
+      --id: {}
+      --template: {}
+      --from: {}
+      --interactive: {}
+  status:
+    subcommands:
+      show: {}
+      flow: {}
+      roadmap: {}
+      task: {}
+      update: {}
+      init: {}
+  db init:
+    subcommands:
+      --force: {}
+      --verbose: {}
+  db list:
+    subcommands:
+      --type: {}
+      --verbose: {}
+      --format:
+        values:
+        - text
+        - json
+  db show:
+    subcommands:
+      --type: {}
+      --id: {}
+      --format:
+        values:
+        - text
+        - json
+  db query:
+    subcommands:
+      --type: {}
+      --id: {}
+      --query: {}
+      --format:
+        values:
+        - text
+        - json
+      --verbose: {}
+  db create:
+    subcommands:
+      --type: {}
+      --data: {}
+      --verbose: {}
+  db update:
+    subcommands:
+      --type: {}
+      --id: {}
+      --data: {}
+      --verbose: {}
+  db delete:
+    subcommands:
+      --type: {}
+      --id: {}
+      --verbose: {}
+      --force: {}
+  db backup:
+    subcommands:
+      --output: {}
+      --verbose: {}
+  db restore:
+    subcommands:
+      backup_file: {}
+      --force: {}
+      --verbose: {}
+  rule list:
+    subcommands:
+      --type:
+        values:
+        - core
+        - dev
+        - tech
+        - tool
+        - role
+        - command
+        - test
+      --format:
+        values:
+        - table
+        - json
+        - yaml
+  rule show:
+    subcommands:
+      --format:
+        values:
+        - markdown
+        - json
+        - yaml
+  rule create:
+    subcommands:
+      --type:
+        values:
+        - core
+        - dev
+        - tech
+        - tool
+        - role
+        - command
+        - test
+      --description: {}
+      --priority: {}
+      --template:
+        values:
+        - agent
+        - auto
+        - best_practices
+        - command
+        - role
+        - workflow
+  rule delete:
+    subcommands:
+      --force: {}
+  rule import:
+    subcommands:
+      --parser:
+        values:
+        - markdown
+        - yaml
+        - json
+      --model: {}
+      --validate: {}
+      --overwrite: {}
+  rule export:
+    subcommands:
+      --format:
+        values:
+        - markdown
+        - yaml
+        - json
+      --output: {}
+  rule validate: {}
+  task list:
+    subcommands:
+      --status: {}
+      --assignee: {}
+      --label: {}
+      --roadmap: {}
+      --independent: {}
+      --limit: {}
+      --offset: {}
+      --verbose: {}
+      --format:
+        values:
+        - yaml
+        - json
+  task show:
+    subcommands:
+      --verbose: {}
+      --format:
+        values:
+        - yaml
+        - json
+  task create:
+    subcommands:
+      --description: {}
+      --priority:
+        values:
+        - low
+        - medium
+        - high
+      --status:
+        values:
+        - todo
+        - in_progress
+        - done
+      --link-story: {}
+      --link-github: {}
+      --flow:
+        values:
+        - dev
+        - review
+        - deploy
+      --verbose: {}
+  task update:
+    subcommands:
+      --title: {}
+      --description: {}
+      --status: {}
+      --assignee: {}
+      --label: {}
+      --add-label: {}
+      --remove-label: {}
+      --link-story: {}
+      --link-github: {}
+      --unlink:
+        values:
+        - story
+        - github
+  task delete:
+    subcommands:
+      --force: {}
+  task comment:
+    subcommands:
+      --comment: {}
+  task link:
+    subcommands:
+      --flow:
+        values:
+        - dev
+        - review
+        - deploy
+      --session: {}
+  template list:
+    subcommands:
+      --type:
+        values:
+        - rule
+        - command
+        - doc
+        - flow
+        - roadmap
+        - general
+      --verbose: {}
+  template show:
+    subcommands:
+      --format:
+        values:
+        - json
+        - text
+  template create:
+    subcommands:
+      --name: {}
+      --type:
+        values:
+        - rule
+        - command
+        - doc
+        - flow
+        - roadmap
+        - general
+  template update:
+    subcommands:
+      --name: {}
+  template delete:
+    subcommands:
+      --force: {}
+  template generate:
+    subcommands:
+      --vars: {}
+  template export:
+    subcommands:
+      --output: {}
+      --format:
+        values:
+        - json
+        - yaml
+        - text
+  template import-template:
+    subcommands:
+      --overwrite: {}
+      --recursive: {}
+  template init:
+    subcommands:
+      --force: {}
+      --source: {}
+  flow list:
+    subcommands:
+      --type: {}
+      --verbose: {}
+  flow show:
+    subcommands:
+      ID: {}
+      --workflow: {}
+      --format:
+        values:
+        - json
+        - text
+        - mermaid
+      --diagram: {}
+      --verbose: {}
+  flow create:
+    subcommands:
+      --source: {}
+      --template: {}
+      --name: {}
+      --output: {}
+      --verbose: {}
+  flow update:
+    subcommands:
+      ID: {}
+      --name: {}
+      --desc: {}
+      --verbose: {}
+  flow delete:
+    subcommands:
+      WORKFLOW_ID: {}
+      --force: {}
+      --verbose: {}
+  flow export:
+    subcommands:
+      WORKFLOW_ID: {}
+      --format:
+        values:
+        - json
+        - mermaid
+      --output: {}
+      --verbose: {}
+  flow import:
+    subcommands:
+      FILE_PATH: {}
+      --name: {}
+      --verbose: {}
+  flow context:
+    subcommands:
+      STAGE_ID: {}
+      --session: {}
+      --completed: {}
+      --format:
+        values:
+        - json
+        - text
+      --verbose: {}
+  flow next:
+    subcommands:
+      --session: {}
+      --current: {}
+      --format:
+        values:
+        - json
+        - text
+      --verbose: {}
+  flow validate:
+    subcommands:
+      --id: {}
+      --fix: {}
+      --verbose: {}
+  flow visualize:
+    subcommands:
+      ID: {}
+      --session: {}
+      --format:
+        values:
+        - mermaid
+        - text
+      --output: {}
+      --verbose: {}
+  memory list:
+    subcommands:
+      folder: {}
+      --format:
+        values:
+        - json
+        - text
+      --verbose: {}
+      --agent-mode: {}
+  memory show:
+    subcommands:
+      path: {}
+      --format:
+        values:
+        - json
+        - text
+      --verbose: {}
+      --agent-mode: {}
+  memory create:
+    subcommands:
+      --title: {}
+      --folder: {}
+      --tags: {}
+      --content: {}
+      --verbose: {}
+      --agent-mode: {}
+  memory search:
+    subcommands:
+      --query: {}
+      --type: {}
+      --format:
+        values:
+        - json
+        - text
+      --verbose: {}
+      --agent-mode: {}

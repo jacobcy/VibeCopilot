@@ -5,8 +5,8 @@
 """
 
 from src.db import get_session_factory, init_db
-from src.flow_session.cli.handlers.list_handlers import handle_list_sessions
-from src.flow_session.session.manager import FlowSessionManager
+from src.flow_session.core.session_list import handle_list_sessions
+from src.flow_session.manager import FlowSessionManager
 from src.models.db import FlowSession
 
 print("-- 直接查询数据库 --")

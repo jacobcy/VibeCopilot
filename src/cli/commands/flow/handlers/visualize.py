@@ -6,14 +6,19 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
+from rich.console import Console
 from sqlalchemy.orm import Session
 
+from src.cli.commands.flow.handlers.formatter import format_stage_summary, format_workflow_summary
 from src.db import get_session_factory
-from src.flow_session.session.manager import FlowSessionManager
+from src.flow_session.manager import FlowSessionManager
 from src.models.db import FlowSession, WorkflowDefinition
-from src.workflow.operations import get_workflow
+from src.utils.file_utils import write_text_file
+from src.workflow.utils.mermaid_exporter import MermaidExporter
+from src.workflow.utils.workflow_search import get_workflow
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 def handle_visualize_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
@@ -172,37 +177,28 @@ def generate_workflow_mermaid(workflow: Dict[str, Any], stages: Dict[str, Any]) 
     Returns:
         Mermaid图表字符串
     """
-    workflow_id = workflow.get("id", "未知")
-    workflow_name = workflow.get("name", workflow_id)
+    try:
+        # 确保stages是列表格式（MermaidExporter期望的格式）
+        stages_list = []
+        if isinstance(stages, dict):
+            for stage_id, stage_info in stages.items():
+                if isinstance(stage_info, dict):
+                    # 确保每个阶段信息中有id
+                    stage_with_id = stage_info.copy()
+                    if "id" not in stage_with_id:
+                        stage_with_id["id"] = stage_id
+                    stages_list.append(stage_with_id)
 
-    mermaid = [
-        "```mermaid",
-        "flowchart TD",
-        f'    title["工作流: {workflow_name}"]',
-        "    style title fill:#f9f,stroke:#333,stroke-width:2px",
-    ]
+        # 准备完整的工作流数据
+        workflow_data = workflow.copy()
+        workflow_data["stages"] = stages_list
 
-    # 添加阶段节点
-    stage_nodes = []
-    for stage_id, stage_info in stages.items():
-        if isinstance(stage_info, dict):
-            stage_name = stage_info.get("name", stage_id)
-            stage_nodes.append(f'    {stage_id}["{stage_name}"]')
-
-    mermaid.extend(stage_nodes)
-
-    # 添加连接关系
-    connections = []
-    stage_ids = list(stages.keys())
-    for i in range(len(stage_ids) - 1):
-        current_id = stage_ids[i]
-        next_id = stage_ids[i + 1]
-        connections.append(f"    {current_id} --> {next_id}")
-
-    mermaid.extend(connections)
-    mermaid.append("```")
-
-    return "\n".join(mermaid)
+        # 使用MermaidExporter来生成Mermaid图表
+        exporter = MermaidExporter()
+        return exporter.export_workflow(workflow_data)
+    except Exception as e:
+        logger.error(f"生成工作流图表失败: {str(e)}", exc_info=True)
+        raise ValueError(f"生成工作流图表失败: {str(e)}")
 
 
 def generate_workflow_text(workflow: Dict[str, Any], stages: Dict[str, Any]) -> str:
@@ -216,11 +212,11 @@ def generate_workflow_text(workflow: Dict[str, Any], stages: Dict[str, Any]) -> 
     Returns:
         文本表示字符串
     """
-    workflow_id = workflow.get("id", "未知")
-    workflow_name = workflow.get("name", workflow_id)
+    # 使用formatter中的format_workflow_summary确保格式一致性
+    workflow_summary = format_workflow_summary(workflow)
 
     lines = [
-        f"工作流: {workflow_name} (ID: {workflow_id})",
+        workflow_summary,
         "=" * 40,
         "阶段列表:",
     ]
@@ -246,80 +242,28 @@ def generate_session_mermaid(session: FlowSession, workflow: Dict[str, Any], pro
     Returns:
         Mermaid图表字符串
     """
-    workflow_id = workflow.get("id", "未知")
-    workflow_name = workflow.get("name", workflow_id)
-    session_name = session.name
+    try:
+        # 使用MermaidExporter生成基础工作流图表
+        exporter = MermaidExporter()
 
-    # 获取阶段状态
-    completed_stage_ids = [s.get("id") for s in progress.get("completed_stages", [])]
-    current_stage_id = progress.get("current_stage", {}).get("id")
+        # 准备工作流数据，包括进度信息
+        workflow_data = workflow.copy()
 
-    # 计算进度
-    progress_percent = progress.get("progress_percentage", 0)
-    completed_count = progress.get("completed_count", 0)
-    total_stages = progress.get("total_stages", 0)
+        # 添加会话和进度信息
+        workflow_data["session"] = {
+            "id": session.id,
+            "name": session.name,
+            "status": session.status,
+            "progress": progress.get("progress_percentage", 0),
+            "current_stage_id": progress.get("current_stage", {}).get("id"),
+            "completed_stages": [s.get("id") for s in progress.get("completed_stages", [])],
+        }
 
-    mermaid = [
-        "```mermaid",
-        "flowchart TD",
-        f'    title["会话: {session_name} ({progress_percent}% 完成)"]',
-        "    style title fill:#f9f,stroke:#333,stroke-width:2px",
-        f'    subTitle["工作流: {workflow_name} | 已完成: {completed_count}/{total_stages}"]',
-        "    style subTitle fill:#ddf,stroke:#333,stroke-width:1px",
-        "    title --> subTitle",
-    ]
-
-    # 获取阶段
-    stages = workflow.get("stages", {})
-    if isinstance(stages, str):
-        try:
-            stages = json.loads(stages)
-        except:
-            stages = {}
-
-    # 添加阶段节点
-    stage_nodes = []
-    for stage_id, stage_info in stages.items():
-        if not isinstance(stage_info, dict):
-            continue
-
-        stage_name = stage_info.get("name", stage_id)
-
-        # 根据阶段状态设置样式
-        style = ""
-        if stage_id in completed_stage_ids:
-            # 已完成阶段
-            stage_nodes.append(f'    {stage_id}["{stage_name}"]')
-            style = f"    style {stage_id} fill:#9f9,stroke:#333,stroke-width:1px"
-        elif stage_id == current_stage_id:
-            # 当前阶段
-            stage_nodes.append(f'    {stage_id}["{stage_name}"]')
-            style = f"    style {stage_id} fill:#ff9,stroke:#333,stroke-width:2px"
-        else:
-            # 待处理阶段
-            stage_nodes.append(f'    {stage_id}["{stage_name}"]')
-            style = f"    style {stage_id} fill:#ddd,stroke:#333,stroke-width:1px"
-
-        stage_nodes.append(style)
-
-    mermaid.extend(stage_nodes)
-
-    # 添加阶段连接
-    connections = []
-    stage_ids = list(stages.keys())
-    for i in range(len(stage_ids) - 1):
-        current_id = stage_ids[i]
-        next_id = stage_ids[i + 1]
-        connections.append(f"    {current_id} --> {next_id}")
-
-    # 将开始节点连接到第一个阶段
-    if stage_ids:
-        connections.append(f"    subTitle --> {stage_ids[0]}")
-
-    mermaid.extend(connections)
-    mermaid.append("```")
-
-    return "\n".join(mermaid)
+        # 使用MermaidExporter生成包含进度信息的图表
+        return exporter.export_session(workflow_data)
+    except Exception as e:
+        logger.error(f"生成会话图表失败: {str(e)}", exc_info=True)
+        raise ValueError(f"生成会话图表失败: {str(e)}")
 
 
 def generate_session_text(session: FlowSession, workflow: Dict[str, Any], progress: Dict[str, Any]) -> str:

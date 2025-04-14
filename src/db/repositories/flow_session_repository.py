@@ -258,3 +258,27 @@ class FlowSessionRepository(Repository[FlowSession]):
             会话列表
         """
         return self.session.query(FlowSession).filter(FlowSession.task_id == task_id).all()
+
+    def set_current_session(self, session_id: str) -> bool:
+        """设置当前会话
+
+        Args:
+            session_id: 会话ID
+
+        Returns:
+            是否成功设置
+        """
+        try:
+            # 清除其他会话的当前状态
+            self.session.query(FlowSession).filter(FlowSession.is_current == True).update({"is_current": False})
+            # 设置新的当前会话
+            session = self.get_by_id(session_id)
+            if session:
+                session.is_current = True
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"设置当前会话失败: {e}")
+            return False

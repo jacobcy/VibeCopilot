@@ -11,7 +11,9 @@ import logging
 import os
 from typing import Any, Dict, List
 
-from src.workflow.config import PROJECT_ROOT
+from src.core.config import get_config
+
+PROJECT_ROOT = get_config().get("project_root")
 
 logger = logging.getLogger(__name__)
 

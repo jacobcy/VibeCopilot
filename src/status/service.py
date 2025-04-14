@@ -5,47 +5,17 @@
 """
 
 import logging
-import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from src.roadmap.service import RoadmapService
 from src.status.core.health_calculator import HealthCalculator
 from src.status.core.project_state import ProjectState
 from src.status.core.provider_manager import ProviderManager
 from src.status.core.subscriber_manager import SubscriberManager
 from src.status.interfaces import IStatusProvider, IStatusSubscriber
-from src.status.providers.roadmap_provider import RoadmapStatusProvider
-from src.status.providers.task_provider import get_task_status_summary
-from src.status.providers.workflow_provider import WorkflowStatusProvider
-from src.status.subscribers.log_subscriber import LogSubscriber
+from src.status.service_initialization import initialize_components, register_default_providers, register_default_subscribers
+from src.status.status_operations import get_domain_status, get_system_status, initialize_project_status, update_project_phase, update_status
 
 logger = logging.getLogger(__name__)
-
-
-# 定义模拟类，避免导入错误
-class MockRoadmapStatusProvider(IStatusProvider):
-    """路线图状态提供者模拟实现"""
-
-    def __init__(self, roadmap_service=None):
-        """初始化模拟路线图状态提供者"""
-        self._domain = "roadmap"
-
-    @property
-    def domain(self) -> str:
-        """获取状态提供者的领域名称"""
-        return self._domain
-
-    def get_status(self, entity_id=None):
-        """获取模拟状态数据"""
-        return {"status": "warning", "message": "使用模拟路线图数据，真实路线图服务未正确初始化", "health": 50, "domain": self._domain, "mock": True}
-
-    def update_status(self, entity_id, status, **kwargs):
-        """模拟更新状态"""
-        return {"updated": False, "error": "模拟路线图提供者不支持更新操作", "mock": True}
-
-    def list_entities(self, status=None):
-        """返回模拟实体列表"""
-        return [{"id": "mock:roadmap", "name": "模拟路线图数据", "type": "mock", "status": "warning"}]
 
 
 class StatusService:
@@ -66,100 +36,19 @@ class StatusService:
             raise Exception("This class is a singleton! Use get_instance()")
 
         logger.info("初始化状态服务...")
-        self.provider_manager = ProviderManager()
-        self.subscriber_manager = SubscriberManager()
-        self.health_calculator = HealthCalculator()
-        self.project_state = ProjectState()
-        self._register_default_providers()
-        self._register_default_subscribers()
+
+        # 初始化核心组件
+        components = initialize_components()
+        self.provider_manager = components[0]
+        self.subscriber_manager = components[1]
+        self.health_calculator = components[2]
+        self.project_state = components[3]
+
+        # 注册默认提供者和订阅者
+        register_default_providers(self.provider_manager, self.health_calculator, self.project_state)
+        register_default_subscribers(self.subscriber_manager)
+
         logger.info("状态服务初始化完成。")
-
-    def _register_default_providers(self):
-        """注册默认的状态提供者
-
-        包括系统健康状态和项目状态
-        """
-        # 尝试获取数据库会话，但不强制依赖
-        session = None
-        try:
-            from src.db import get_session_factory
-
-            # 直接使用已初始化的会话，减少数据库操作
-            session_factory = get_session_factory()
-            if session_factory is not None:
-                session = session_factory()
-        except Exception as e:
-            logger.warning(f"获取数据库会话失败: {e}")
-            # 将错误降级为警告，不影响状态模块初始化
-
-        # 注册健康状态提供者
-        self.register_provider("health", self.health_calculator.get_health_status)
-
-        # 注册项目状态提供者
-        self.register_provider("project_state", self.project_state.get_project_state)
-
-        # 注册任务状态提供者
-        self.register_provider("task", get_task_status_summary)
-
-        # 注册路线图状态提供者
-        try:
-            # 使用模拟提供者替代临时禁用的真实提供者
-            logger.info("路线图状态提供者已临时禁用，使用模拟提供者")
-            roadmap_provider = MockRoadmapStatusProvider()
-            self.register_provider("roadmap", roadmap_provider)
-            logger.info("模拟路线图状态提供者注册成功")
-        except ImportError as e:
-            logger.error(f"注册路线图状态提供者失败 (导入错误): {e}")
-            self.register_provider(
-                "roadmap",
-                lambda: {
-                    "status": "error",
-                    "error": f"路线图状态提供者导入失败: {e}",
-                    "code": "IMPORT_ERROR",
-                    "health": 0,
-                    "suggestions": ["检查导入路径是否正确", "确保所有必要的模块已安装", "检查代码中是否存在导入冲突"],
-                },
-            )
-        except Exception as e:
-            logger.error(f"注册路线图状态提供者失败: {e}")
-            # 使用模拟数据作为临时解决方案
-            self.register_provider(
-                "roadmap",
-                lambda: {
-                    "status": "error",
-                    "error": f"路线图状态提供者初始化失败: {e}",
-                    "code": "PROVIDER_INIT_ERROR",
-                    "health": 0,
-                    "suggestions": ["检查数据库连接", "确保所有必要的表都已创建", "验证 RoadmapService 配置"],
-                },
-            )
-
-        # 注册工作流状态提供者
-        try:
-            # 使用已初始化的session，避免重复初始化数据库
-            if session:
-                workflow_provider = WorkflowStatusProvider()
-                # 注入现有session到provider
-                workflow_provider._db_session = session
-                self.register_provider("workflow", workflow_provider)
-                logger.info("工作流状态提供者注册成功")
-            else:
-                raise Exception("数据库会话不可用")
-        except Exception as e:
-            logger.error(f"注册工作流状态提供者失败: {e}")
-
-    def _register_default_subscribers(self):
-        """注册默认的状态订阅者
-
-        添加基本的日志订阅者，用于记录状态变更
-        """
-        try:
-            # 注册日志订阅者
-            log_subscriber = LogSubscriber()
-            self.register_subscriber(log_subscriber)
-            logger.info("日志状态订阅者注册成功")
-        except Exception as e:
-            logger.error(f"注册日志状态订阅者失败: {e}")
 
     def register_provider(self, domain: str, provider: Union[IStatusProvider, Callable[[], Any]]):
         """注册状态提供者
@@ -224,31 +113,7 @@ class StatusService:
         Returns:
             Dict[str, Any]: 更新结果
         """
-        logger.debug(f"更新状态: {domain}/{entity_id} -> {status}")
-        try:
-            provider = self.provider_manager.get_provider(domain)
-            if not provider:
-                return {"error": f"未找到领域 '{domain}' 的状态提供者", "updated": False}
-
-            # 获取当前状态，用于记录变更
-            try:
-                current_status = provider.get_status(entity_id)
-                old_status = current_status.get("status", "unknown")
-            except Exception:
-                old_status = "unknown"
-
-            # 调用提供者更新状态
-            result = provider.update_status(entity_id, status, **kwargs)
-
-            # 如果更新成功，通知订阅者
-            if result.get("updated", False):
-                self.subscriber_manager.notify_status_changed(domain, entity_id, old_status, status, result)
-
-            return result
-
-        except Exception as e:
-            logger.error(f"更新状态时出错: {e}", exc_info=True)
-            return {"error": str(e), "updated": False}
+        return update_status(self.provider_manager, self.subscriber_manager, domain, entity_id, status, **kwargs)
 
     def notify_subscribers(self, status_type: str, status: Any):
         """通知订阅者状态更新
@@ -315,23 +180,7 @@ class StatusService:
         Returns:
             Dict[str, Any]: 状态信息
         """
-        logger.debug(f"获取领域状态: {domain}, 实体ID: {entity_id}")
-        try:
-            provider = self.provider_manager.get_provider(domain)
-            if provider is None:
-                return {"error": f"未找到领域 '{domain}' 的状态提供者", "code": "PROVIDER_NOT_FOUND", "suggestions": ["检查提供者是否正确注册", "确认领域名称是否正确"]}
-
-            # 调用提供者的 get_status 方法
-            status_data = provider.get_status(entity_id) if entity_id else provider.get_status()
-
-            if status_data is None:
-                return {"error": f"无法获取领域 '{domain}' 的状态", "code": "STATUS_FETCH_FAILED", "suggestions": ["检查数据库连接", "验证实体ID是否存在"]}
-
-            return status_data
-
-        except Exception as e:
-            logger.error(f"获取领域 '{domain}' 状态时出错: {e}", exc_info=True)
-            return {"error": f"获取领域 '{domain}' 状态失败: {str(e)}", "code": "STATUS_ERROR", "suggestions": ["检查日志获取详细错误信息", "确认系统配置是否正确"]}
+        return get_domain_status(self.provider_manager, domain, entity_id)
 
     def get_system_status(self, detailed: bool = False) -> Dict[str, Any]:
         """获取整体系统状态 (聚合所有 Provider)
@@ -342,58 +191,7 @@ class StatusService:
         Returns:
             Dict[str, Any]: 系统状态
         """
-        logger.debug(f"获取系统状态 (detailed={detailed})...")
-        system_status = {}
-        try:
-            all_statuses = self.provider_manager.get_all_status()
-
-            # 项目基本信息
-            project_state = all_statuses.get("project_state", {})
-            if isinstance(project_state, dict):
-                system_status["project_phase"] = project_state.get("current_phase", "未知")
-                system_status["project_name"] = project_state.get("name", "未命名项目")
-                system_status["project_version"] = project_state.get("version", "N/A")
-            else:
-                system_status["project_phase"] = "错误"
-                system_status["project_name"] = "错误"
-                system_status["project_version"] = "错误"
-
-            # 活动工作流状态
-            workflow_status = all_statuses.get("workflow", {})
-            if isinstance(workflow_status, dict):
-                # 尝试提取活动工作流
-                sessions = workflow_status.get("sessions", [])
-                active_sessions = [s for s in sessions if s.get("status") == "IN_PROGRESS"]
-                system_status["active_workflow"] = active_sessions[0]["name"] if active_sessions else "无"
-                system_status["workflow_count"] = len(sessions)
-            else:
-                system_status["active_workflow"] = "无"
-                system_status["workflow_count"] = 0
-
-            # 包含任务状态摘要
-            system_status["task_summary"] = all_statuses.get("task", {"error": "Task provider 未运行或出错"})
-
-            # 路线图状态摘要
-            roadmap_status = all_statuses.get("roadmap", {})
-            if isinstance(roadmap_status, dict) and "error" not in roadmap_status:
-                system_status["roadmap"] = {
-                    "status": roadmap_status.get("status", "未知"),
-                    "milestones": len(roadmap_status.get("milestone_status", {})),
-                }
-            else:
-                system_status["roadmap"] = {"status": "错误", "error": roadmap_status.get("error", "未知错误")}
-
-            # 健康状态
-            system_status["health"] = all_statuses.get("health", {"error": "Health provider 未运行或出错"})
-
-            if detailed:
-                # 包含所有获取的状态
-                system_status["all_domain_details"] = all_statuses
-
-            return system_status
-        except Exception as e:
-            logger.error(f"获取系统状态时出错: {e}", exc_info=True)
-            return {"error": f"获取系统状态失败: {e}"}
+        return get_system_status(self.provider_manager, detailed)
 
     def list_providers(self) -> List[str]:
         """列出所有已注册的提供者
@@ -412,25 +210,7 @@ class StatusService:
         Returns:
             Dict[str, Any]: 操作结果
         """
-        if not phase:
-            return {"status": "error", "error": "缺少项目阶段参数", "code": "MISSING_PHASE"}
-
-        valid_phases = ["planning", "development", "testing", "release", "maintenance"]
-        if phase.lower() not in valid_phases:
-            return {"status": "error", "error": f"无效的项目阶段: {phase}", "code": "INVALID_PHASE", "suggestions": [f"有效的项目阶段: {', '.join(valid_phases)}"]}
-
-        try:
-            # 更新项目状态
-            self.update_project_state("phase", phase.lower())
-
-            # 设置适当的进度
-            phase_progress = {"planning": 20, "development": 40, "testing": 60, "release": 80, "maintenance": 100}
-            self.update_project_state("progress", phase_progress.get(phase.lower(), 0))
-
-            return {"status": "success", "message": f"已将项目阶段更新为: {phase}", "phase": phase, "系统信息": "项目阶段已更新"}
-        except Exception as e:
-            logger.error(f"更新项目阶段时出错: {e}", exc_info=True)
-            return {"status": "error", "error": f"更新项目阶段失败: {str(e)}", "code": "UPDATE_FAILED"}
+        return update_project_phase(self.project_state, self.subscriber_manager, phase)
 
     def initialize_project_status(self, project_name: str = None) -> Dict[str, Any]:
         """初始化项目状态
@@ -441,25 +221,4 @@ class StatusService:
         Returns:
             Dict[str, Any]: 操作结果
         """
-        try:
-            # 设置项目名称
-            name = project_name if project_name else "VibeCopilot"
-            self.update_project_state("name", name)
-
-            # 设置默认阶段和进度
-            self.update_project_state("phase", "planning")
-            self.update_project_state("progress", 20)
-            self.update_project_state("start_time", time.time())
-
-            return {
-                "status": "success",
-                "message": f"项目 '{name}' 状态已初始化",
-                "name": name,
-                "phase": "planning",
-                "progress": 20,
-                "初始化成功": True,
-                "系统信息": "项目已初始化",
-            }
-        except Exception as e:
-            logger.error(f"初始化项目状态时出错: {e}", exc_info=True)
-            return {"status": "error", "error": f"初始化项目状态失败: {str(e)}", "code": "INIT_FAILED"}
+        return initialize_project_status(self.project_state, self.subscriber_manager, project_name)

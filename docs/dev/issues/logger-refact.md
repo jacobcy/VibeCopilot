@@ -194,7 +194,7 @@ from src.workflow.operations import (
     update_workflow,
     validate_workflow_files,
 )
-from src.workflow.service.components import BaseService, ExecutionService, SessionService, StageService, WorkflowDefinitionService
+from src.workflow.components import BaseService, ExecutionService, SessionService, StageService, WorkflowDefinitionService
 
 # 获取工作流日志记录器
 logger = get_logger("workflow.service", is_workflow=True)

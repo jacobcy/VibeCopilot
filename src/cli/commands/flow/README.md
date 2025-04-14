@@ -5,7 +5,7 @@
 ## 文件结构
 
 - `__init__.py` - 包初始化，暴露主要 `flow` 命令组
-- `flow_main.py` - 主要命令组定义和通用功能
+- `flow_click.py` - 主要命令组定义和通用功能
 - `flow_basic_commands.py` - 基本工作流命令（列表、创建、显示、运行等）
 - `flow_session_commands.py` - 会话管理相关命令
 

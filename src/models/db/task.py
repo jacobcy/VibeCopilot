@@ -33,6 +33,9 @@ class Task(Base):
     created_at = Column(String(50), nullable=True)
     updated_at = Column(String(50), nullable=True)
     completed_at = Column(String(50), nullable=True)
+    github_issue = Column(String, nullable=True)
+    current_session_id = Column(String, nullable=True)
+    is_current = Column(Boolean, default=False)
 
     # 关系
     story = relationship("Story", back_populates="tasks")
@@ -78,6 +81,9 @@ class Task(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "completed_at": self.completed_at,
+            "github_issue": self.github_issue,
+            "current_session_id": self.current_session_id,
+            "is_current": self.is_current,
         }
 
     def __repr__(self):

@@ -224,3 +224,30 @@ vibecopilot flow run stage1 --task task_123
 # 查看特定任务的所有相关会话
 vibecopilot task show task_123 --sessions
 ```
+
+## 重要更新：架构变更
+
+通过 `src.workflow.utils` 模块统一导入和使用：
+
+- `src.workflow.flow_cmd`：包含工作流命令相关功能
+  - `workflow_search.py`：工作流搜索功能
+  - `workflow_context.py`：工作流上下文处理
+  - `workflow_manager.py`：工作流管理功能
+  - `filesystem.py`：文件系统操作支持
+
+```python
+from src.workflow.utils import (
+    get_workflow,                      # 获取工作流
+    list_workflows,                    # 列出工作流
+    create_workflow,                   # 创建工作流
+    update_workflow,                   # 更新工作流
+    delete_workflow,                   # 删除工作流
+    ensure_directory_exists,           # 确保目录存在
+    get_workflow_context,              # 获取工作流上下文
+    format_workflow_stages,            # 格式化工作流阶段
+    create_workflow_from_rule,         # 从规则创建工作流
+    create_workflow_from_template_with_vars  # 使用变量从模板创建工作流
+)
+```
+
+此重构使代码更加模块化并降低了耦合度。

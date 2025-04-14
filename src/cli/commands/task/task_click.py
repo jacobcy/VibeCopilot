@@ -14,7 +14,7 @@ from rich.console import Console
 
 from src.cli.decorators import pass_service
 from src.models.db.task import Task
-from src.services.task_service import TaskService
+from src.services.task import TaskService
 
 from .core.comment import comment_task
 

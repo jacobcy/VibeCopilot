@@ -1,0 +1,253 @@
+---
+description: 当用户输入/roadmap或//roadmap命令时,获得项目活动路线图支持
+globs:
+alwaysApply: false
+id: roadmap-command
+title: "VibeCopilot路线图命令规则"
+type: command_rule
+status: active
+version: "1.0"
+tags: [command, roadmap, planning, rule]
+related_items: [command-system]
+---
+
+# VibeCopilot路线图命令规则
+
+## 路线图命令概述
+
+路线图命令(`/roadmap`和`//roadmap`)用于管理项目路线图，包括创建、查看、更新和同步项目开发计划和重要里程碑。
+
+## 命令类型和执行方式
+
+### 规则命令形式
+
+- 命令格式：`/roadmap [subcommand] [args]`
+- 执行方式：由Cursor Agent直接解释执行
+- 适用场景：简单查询、计划咨询和交互式规划
+
+### 程序命令形式
+
+- 命令格式：`//roadmap [subcommand] [args]`
+- 执行方式：转换为`vibecopilot roadmap [subcommand] [args]`并通过终端执行
+- 适用场景：创建/更新路线图、同步外部数据和持久化操作
+
+## 子命令详解
+
+| 子命令 | 说明 | 示例 |
+|-------|------|------|
+| `list` | 列出所有路线图 | `/roadmap list [--verbose]` |
+| `show` | 查看路线图详情 | `/roadmap show <id>` |
+| `create` | 创建新路线图 | `//roadmap create --name=<name>` |
+| `update` | 更新路线图 | `//roadmap update <id> [--name=<name>]` |
+| `delete` | 删除路线图 | `//roadmap delete <id> [--force]` |
+| `sync` | 同步路线图数据 | `//roadmap sync [--source=<source>]` |
+| `switch` | 切换活动路线图 | `//roadmap switch <id>` |
+| `status` | 查看路线图状态 | `/roadmap status <id>` |
+
+## 路线图组成元素
+
+路线图由以下核心元素组成：
+
+1. **里程碑(Milestones)**：主要开发阶段和关键时间点
+2. **史诗(Epics)**：大型功能集合，包含多个相关故事
+3. **功能(Features)**：具体的产品功能点
+4. **用户故事(Stories)**：从用户视角定义的功能需求
+5. **任务(Tasks)**：具体的开发工作项
+
+## 路线图视图
+
+路线图可以通过不同视图进行查看：
+
+| 视图类型 | 说明 | 调用方式 |
+|---------|------|---------|
+| 时间线视图 | 按时间轴展示里程碑和功能 | `/roadmap show <id> --view=timeline` |
+| 功能视图 | 按功能组织展示计划内容 | `/roadmap show <id> --view=feature` |
+| 进度视图 | 显示各项目进度和状态 | `/roadmap show <id> --view=progress` |
+| 依赖视图 | 显示项目间依赖关系 | `/roadmap show <id> --view=dependency` |
+
+## 路线图集成
+
+路线图系统与其他系统的集成方式：
+
+- **任务集成**：路线图项可自动同步为任务
+- **流程集成**：路线图可触发相应工作流
+- **状态集成**：路线图状态更新会反映在项目状态中
+- **文档集成**：路线图可导出为文档和可视化图表
+
+## 路线图生成与规划
+
+使用`//roadmap plan`可触发交互式规划引导：
+
+1. 分析项目需求和范围
+2. 建议合理的里程碑划分
+3. 提出特性和功能组织建议
+4. 估算开发时间和资源需求
+5. 生成初始路线图草案
+
+## 使用示例
+
+```
+# 列出所有路线图
+/roadmap list
+
+# 查看当前活动路线图
+/roadmap show active
+
+# 创建新路线图
+//roadmap create --name="V2版本开发计划"
+
+# 查看路线图时间线
+/roadmap show v2 --view=timeline
+
+# 更新路线图信息
+//roadmap update v2 --description="包含支付功能的版本"
+
+# 同步外部任务系统数据
+//roadmap sync --source=github
+
+# 切换活动路线图
+//roadmap switch v2
+
+# 生成路线图规划
+//roadmap plan --scope="支付功能"
+```
+
+## 路线图最佳实践
+
+1. 路线图应定期更新以反映最新状态
+2. 每个里程碑应有明确的目标和可衡量的成果
+3. 功能应按优先级排序
+4. 路线图应考虑依赖关系和资源限制
+5. 路线图变更应记录变更原因
+
+## 程序命令参数表
+(需要在终端将用户指令转换成vibecopilot可接受的命令形式)
+
+<!-- BEGIN_COMMAND_YAML -->
+```yaml
+commands:
+  roadmap sync:
+    subcommands:
+      --theme: {}
+      --operation:
+        values:
+        - push
+        - pull
+      --roadmap: {}
+      --force: {}
+      --verbose: {}
+  roadmap switch:
+    subcommands:
+      roadmap_id: {}
+      --show: {}
+      --clear: {}
+  roadmap list:
+    subcommands:
+      --all: {}
+      --type:
+        values:
+        - all
+        - milestone
+        - story
+        - task
+      --status: {}
+      --assignee: {}
+      --labels: {}
+      --detail: {}
+      --format:
+        values:
+        - text
+        - json
+        - table
+      --verbose: {}
+  roadmap create:
+    subcommands:
+      --epic: {}
+      --description: {}
+      --assignee: {}
+      --labels: {}
+      --priority:
+        values:
+        - high
+        - medium
+        - low
+  roadmap update:
+    subcommands:
+      --sync: {}
+      --comment: {}
+      --assignee: {}
+      --labels: {}
+  roadmap story:
+    subcommands:
+      story_id: {}
+      --title: {}
+      --milestone: {}
+      --description: {}
+      --priority:
+        values:
+        - P0
+        - P1
+        - P2
+        - P3
+      --assignee: {}
+      --labels: {}
+      --status:
+        values:
+        - not_started
+        - in_progress
+        - completed
+        - blocked
+      --comment: {}
+      --format:
+        values:
+        - json
+        - text
+        - table
+      --delete: {}
+      --force: {}
+  roadmap validate:
+    subcommands:
+      source: {}
+      --fix: {}
+      --output: {}
+      --template: {}
+      --verbose: {}
+      --import: {}
+      --roadmap-id: {}
+  roadmap import:
+    subcommands:
+      source: {}
+      --roadmap-id: {}
+      --fix: {}
+      --activate: {}
+      --verbose: {}
+  roadmap show:
+    subcommands:
+      --id: {}
+      --milestone: {}
+      --task: {}
+      --health: {}
+      --format:
+        values:
+        - json
+        - text
+        - table
+  roadmap export:
+    subcommands:
+      --id: {}
+      --output: {}
+      --milestone: {}
+      --template: {}
+  roadmap delete:
+    subcommands:
+      --force: {}
+      --cascade: {}
+  roadmap plan:
+    subcommands:
+      --id: {}
+      --template: {}
+      --from: {}
+      --interactive: {}
+
+```
+<!-- END_COMMAND_YAML -->

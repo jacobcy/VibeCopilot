@@ -44,17 +44,51 @@ class WorkflowStatusProvider(IStatusProvider):
 
         Args:
             entity_id: 可选，实体ID。格式为 "flow-<session_id>"。
+                       如果是"current"，则获取当前会话的状态。
                        不提供则获取整个工作流系统的状态。
 
         Returns:
             Dict[str, Any]: 状态信息
         """
         try:
+            # 直接打印到控制台，用于调试
+            print(f"WorkflowStatusProvider.get_status - entity_id={entity_id}")
+
             db_session = self._get_db_session()
             try:
+                session_manager = FlowSessionManager(db_session)
+
+                # 处理获取当前会话的特殊情况
+                if entity_id == "current":
+                    print("尝试获取当前会话...")
+                    # 获取当前会话
+                    current_session = session_manager.get_current_session()
+                    print(f"当前会话: {current_session}")
+
+                    if not current_session:
+                        # 没有当前会话时返回一个明确的提示
+                        print("没有找到当前会话")
+                        return {"domain": self.domain, "status": "unknown", "has_current_session": False, "message": "没有活跃的当前会话"}
+
+                    # 如果current_session是字典（已适配兼容层）
+                    if isinstance(current_session, dict):
+                        print(f"当前会话是字典: {current_session}")
+                        session_id = current_session.get("id")
+                        if not session_id:
+                            print("当前会话ID无效")
+                            return {"domain": self.domain, "error": "当前会话ID无效"}
+
+                        # 将字典转换为实体ID格式
+                        entity_id = f"flow-{session_id}"
+                        print(f"转换为实体ID: {entity_id}")
+                    else:
+                        # 否则是会话对象
+                        print(f"当前会话是对象，ID: {current_session.id}")
+                        entity_id = f"flow-{current_session.id}"
+
                 # 获取整个工作流系统状态
                 if not entity_id:
-                    session_manager = FlowSessionManager(db_session)
+                    print("获取整个工作流系统状态")
                     sessions = session_manager.list_sessions()
 
                     # 转换为状态系统格式
@@ -71,29 +105,33 @@ class WorkflowStatusProvider(IStatusProvider):
 
                 # 解析实体ID
                 if entity_id.startswith("flow-"):
+                    print(f"解析实体ID: {entity_id}")
                     session_id = entity_id[5:]  # 移除"flow-"前缀
 
                     # 获取会话状态
-                    session_manager = FlowSessionManager(db_session)
                     session = session_manager.get_session(session_id)
 
                     if not session:
-                        return {"error": f"找不到会话: {session_id}"}
+                        print(f"找不到会话: {session_id}")
+                        return {"error": f"找不到会话: {session_id}", "domain": self.domain}
 
                     # 转换为状态系统格式
                     status_integration = FlowStatusIntegration(db_session)
                     status_data = status_integration.map_session_to_status(session)
                     status_data["domain"] = self.domain
 
+                    print(f"返回状态数据: {status_data}")
                     return status_data
                 else:
-                    return {"error": f"无效的实体ID格式: {entity_id}"}
+                    print(f"无效的实体ID格式: {entity_id}")
+                    return {"error": f"无效的实体ID格式: {entity_id}", "domain": self.domain}
             finally:
                 db_session.close()
 
         except Exception as e:
             logger.error(f"获取工作流状态时出错: {e}")
-            return {"error": str(e)}
+            print(f"错误: {e}")
+            return {"error": str(e), "domain": self.domain}
 
     def update_status(self, entity_id: str, status: str, **kwargs) -> Dict[str, Any]:
         """更新工作流实体状态

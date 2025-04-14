@@ -10,6 +10,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
+from loguru import logger
 from rich.console import Console
 
 from src.db import get_session_factory
@@ -18,6 +19,7 @@ from src.db.repositories.stage_repository import StageRepository
 from src.db.repositories.task_repository import TaskRepository
 from src.models.db.roadmap import Roadmap
 from src.models.db.stage import Stage
+from src.services.task import TaskService
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -74,6 +76,8 @@ def parse_github_url(url: str) -> Tuple[str, int]:
 @click.option("--roadmap", "-r", help="关联的路线图项目 ID")
 @click.option("--workflow", "-w", help="关联的工作流阶段 ID")
 @click.option("--github", "-g", help="关联的 GitHub Issue URL")
+@click.option("--link-story", "-ls", help="关联的故事 ID")
+@click.option("--unlink", "-ul", help="取消关联的故事或 GitHub Issue")
 def update_task(
     task_id: str,
     title: Optional[str] = None,
@@ -84,6 +88,8 @@ def update_task(
     roadmap: Optional[str] = None,
     workflow: Optional[str] = None,
     github: Optional[str] = None,
+    link_story: Optional[str] = None,
+    unlink: Optional[str] = None,
 ) -> int:
     """
     更新现有任务的信息。
@@ -100,10 +106,12 @@ def update_task(
         roadmap: 新关联的路线图项目ID
         workflow: 新关联的工作流阶段ID
         github: 新关联的GitHub Issue URL
+        link_story: 新关联的故事 ID
+        unlink: 取消关联的故事或 GitHub Issue
     """
     try:
         # 检查是否提供了至少一个更新参数
-        if not any([title, description, status, assignee, labels, roadmap, workflow, github]):
+        if not any([title, description, status, assignee, labels, roadmap, workflow, github, link_story, unlink]):
             console.print("[bold yellow]警告:[/bold yellow] 未提供任何需要更新的字段。使用 --help 查看可用选项。")
             return 1
 
@@ -118,6 +126,8 @@ def update_task(
             roadmap_id=roadmap,
             workflow_id=workflow,
             github_url=github,
+            link_story=link_story,
+            unlink=unlink,
         )
 
         # 处理执行结果
@@ -144,6 +154,8 @@ def execute_update_task(
     roadmap_id: Optional[str] = None,
     workflow_id: Optional[str] = None,
     github_url: Optional[str] = None,
+    link_story: Optional[str] = None,
+    unlink: Optional[str] = None,
 ) -> Dict[str, Any]:
     """执行更新任务的核心逻辑"""
     logger.info(f"执行更新任务命令: task_id={task_id}")
@@ -165,6 +177,8 @@ def execute_update_task(
                 "roadmap_id": roadmap_id,
                 "workflow_id": workflow_id,
                 "github_url": github_url,
+                "link_story": link_story,
+                "unlink": unlink,
             },
         },
     }
@@ -241,6 +255,13 @@ def execute_update_task(
             if github_url is not None:
                 update_data["github_repo"] = github_repo
                 update_data["github_issue_number"] = github_issue_number
+            if link_story:
+                update_data["story_id"] = link_story
+            if unlink:
+                if unlink == "story":
+                    update_data["story_id"] = None
+                elif unlink == "github":
+                    update_data["github_issue"] = None
 
             # 执行更新
             success = task_repo.update(task_id, update_data)

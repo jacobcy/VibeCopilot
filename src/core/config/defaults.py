@@ -8,6 +8,9 @@ from pathlib import Path
 
 from src.core.config.models import ConfigEnvironment, ConfigValue
 
+# 项目根目录
+PROJECT_ROOT = Path(__file__).parents[3]
+
 # 默认配置定义
 DEFAULT_CONFIG = {
     "app": {
@@ -55,5 +58,11 @@ DEFAULT_CONFIG = {
     "sync": {
         "auto_sync_docs": ConfigValue(False, env_key="AUTO_SYNC_DOCS"),
         "auto_sync_interval": ConfigValue(300, env_key="AUTO_SYNC_INTERVAL"),
+    },
+    # 工作流配置
+    "workflow": {
+        "templates_dir": ConfigValue(str(PROJECT_ROOT / "templates" / "flow"), env_key="VIBECOPILOT_TEMPLATE_DIR"),
+        "workflows_dir": ConfigValue(str(PROJECT_ROOT / "workflows"), env_key="VIBECOPILOT_WORKFLOW_DIR"),
+        "template_extension": ConfigValue(".json"),
     },
 }

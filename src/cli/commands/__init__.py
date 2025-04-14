@@ -5,7 +5,7 @@ VibeCopilot CLI命令包
 """
 
 from src.cli.commands.db.db_click import db
-from src.cli.commands.flow.flow_main import flow
+from src.cli.commands.flow.flow_click import flow
 from src.cli.commands.help.help_click import help
 from src.cli.commands.memory.memory_click import memory
 from src.cli.commands.roadmap.roadmap_click import roadmap

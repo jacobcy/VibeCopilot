@@ -10,7 +10,7 @@ import unittest
 from typing import Any, Dict
 from unittest.mock import MagicMock, mock_open, patch
 
-from src.workflow.operations import (
+from src.workflow.service import (
     create_workflow,
     delete_workflow,
     get_workflow,

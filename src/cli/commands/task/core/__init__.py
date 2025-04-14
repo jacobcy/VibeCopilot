@@ -5,7 +5,6 @@
 """
 
 from .base_command import BaseCommand
-from .link import LinkType
 
 # 注意：以下类已经转换为纯Click命令函数
 # - CreateTaskCommand 改为 create_task
@@ -18,5 +17,4 @@ from .link import LinkType
 
 __all__ = [
     "BaseCommand",
-    "LinkType",
 ]

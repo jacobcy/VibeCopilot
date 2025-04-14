@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository
+from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository, get_session_factory
 from src.models.db import StageInstance
 
 
@@ -28,13 +28,12 @@ class StageInstanceManager:
         self.session_repo = FlowSessionRepository(session)
         self.stage_repo = StageInstanceRepository(session)
 
-    def create_instance(self, session_id: str, stage_id: str, name: Optional[str] = None) -> Optional[StageInstance]:
+    def create_instance(self, session_id: str, stage_data: Dict[str, Any]) -> Optional[StageInstance]:
         """创建新的阶段实例
 
         Args:
             session_id: 会话ID
-            stage_id: 阶段ID
-            name: 阶段名称，如果不指定则使用阶段ID
+            stage_data: 阶段数据，包含stage_id和name等信息
 
         Returns:
             新创建的阶段实例或None
@@ -46,6 +45,9 @@ class StageInstanceManager:
         flow_session = self.session_repo.get_by_id(session_id)
         if not flow_session:
             raise ValueError(f"找不到ID为 {session_id} 的会话")
+
+        stage_id = stage_data.get("stage_id") or stage_data.get("id")
+        name = stage_data.get("name", f"阶段-{stage_id}")
 
         # 检查是否已存在相同阶段实例
         existing_instance = self.stage_repo.get_by_session_and_stage(session_id, stage_id)
@@ -61,9 +63,6 @@ class StageInstanceManager:
         stage_def = next((s for s in workflow.stages if s.get("id") == stage_id), None)
         if not stage_def:
             raise ValueError(f"找不到ID为 {stage_id} 的阶段定义")
-
-        if not name:
-            name = stage_def.get("name", f"阶段-{stage_id}")
 
         # 生成实例ID
         instance_id = f"stage-{uuid.uuid4()}"
@@ -98,6 +97,17 @@ class StageInstanceManager:
             阶段实例对象或None
         """
         return self.stage_repo.get_by_id(instance_id)
+
+    def get_session_instances(self, session_id: str) -> List[StageInstance]:
+        """获取会话的所有阶段实例
+
+        Args:
+            session_id: 会话ID
+
+        Returns:
+            阶段实例列表
+        """
+        return self.stage_repo.get_by_session_id(session_id)
 
     def list_instances(self, session_id: Optional[str] = None, status: Optional[str] = None) -> List[StageInstance]:
         """列出阶段实例，可按会话ID和状态过滤
@@ -146,12 +156,12 @@ class StageInstanceManager:
         # 更新状态为激活
         return self.stage_repo.update_status(instance_id, "ACTIVE")
 
-    def complete_instance(self, instance_id: str, deliverables: Optional[Dict[str, Any]] = None) -> Optional[StageInstance]:
+    def complete_stage(self, instance_id: str, context: Optional[Dict[str, Any]] = None) -> Optional[StageInstance]:
         """完成阶段实例
 
         Args:
             instance_id: 阶段实例ID
-            deliverables: 交付物数据
+            context: 上下文数据 (可选)
 
         Returns:
             更新后的阶段实例对象或None
@@ -160,9 +170,9 @@ class StageInstanceManager:
         if not instance:
             return None
 
-        # 如果有交付物，先更新交付物
-        if deliverables:
-            self.stage_repo.update_deliverables(instance_id, deliverables)
+        # 如果有上下文，先更新上下文
+        if context:
+            self.stage_repo.update_context(instance_id, context)
 
         # 标记为已完成
         completed_instance = self.stage_repo.update_status(instance_id, "COMPLETED")
@@ -173,12 +183,12 @@ class StageInstanceManager:
 
         return completed_instance
 
-    def fail_instance(self, instance_id: str, error: str = None) -> Optional[StageInstance]:
+    def fail_stage(self, instance_id: str, reason: Optional[str] = None) -> Optional[StageInstance]:
         """标记阶段实例为失败
 
         Args:
             instance_id: 阶段实例ID
-            error: 错误信息
+            reason: 失败原因 (可选)
 
         Returns:
             更新后的阶段实例对象或None
@@ -188,13 +198,36 @@ class StageInstanceManager:
             return None
 
         # 更新错误信息
-        if error and instance.context:
-            context = instance.context
-            context["error"] = error
+        if reason:
+            context = instance.context or {}
+            context["error"] = reason
             self.stage_repo.update_context(instance_id, context)
 
         # 标记为失败
         return self.stage_repo.update_status(instance_id, "FAILED")
+
+    def skip_stage(self, instance_id: str, reason: Optional[str] = None) -> Optional[StageInstance]:
+        """跳过阶段实例
+
+        Args:
+            instance_id: 阶段实例ID
+            reason: 跳过原因 (可选)
+
+        Returns:
+            更新后的阶段实例对象或None
+        """
+        instance = self.stage_repo.get_by_id(instance_id)
+        if not instance:
+            return None
+
+        # 更新跳过信息
+        if reason:
+            context = instance.context or {}
+            context["skip_reason"] = reason
+            self.stage_repo.update_context(instance_id, context)
+
+        # 标记为已跳过
+        return self.stage_repo.update_status(instance_id, "SKIPPED")
 
     def add_completed_item(self, instance_id: str, item_id: str) -> Optional[StageInstance]:
         """添加已完成项
@@ -248,43 +281,66 @@ class StageInstanceManager:
         if not instance:
             raise ValueError(f"找不到ID为 {instance_id} 的阶段实例")
 
-        # 获取会话和工作流信息以查找阶段详情
-        flow_session = self.session_repo.get_by_id(instance.session_id)
-        if not flow_session:
-            return {"items": [], "completed": 0, "total": 0, "progress": 0}
+        # 获取进度信息
+        progress = {
+            "id": instance.id,
+            "name": instance.name,
+            "stage_id": instance.stage_id,
+            "status": instance.status,
+            "completed_items": instance.completed_items or [],
+            "started_at": instance.started_at.isoformat() if instance.started_at else None,
+            "completed_at": instance.completed_at.isoformat() if instance.completed_at else None,
+        }
 
-        workflow = self.workflow_repo.get_by_id(flow_session.workflow_id)
-        if not workflow or not hasattr(workflow, "stages") or not workflow.stages:
-            return {"items": [], "completed": 0, "total": 0, "progress": 0}
+        return progress
 
-        # 查找阶段定义
-        stage_def = None
 
-        if isinstance(workflow.stages, list):
-            stage_def = next((s for s in workflow.stages if s.get("id") == instance.stage_id), None)
-        elif isinstance(workflow.stages, dict):
-            stage_def = workflow.stages.get(instance.stage_id)
+# 创建数据库会话
+db_session = get_session_factory()()
 
-        if not stage_def:
-            return {"items": [], "completed": 0, "total": 0, "progress": 0}
+# 创建一个全局的单例实例，使用数据库会话
+_manager = StageInstanceManager(session=db_session)
 
-        # 获取阶段项目
-        items = []
-        stage_items = stage_def.get("items", [])
+# ============= 函数导出 =============
+# 这些函数是StageInstanceManager实例方法的包装器
+# 提供函数式API，简化调用
 
-        if isinstance(stage_items, dict):
-            stage_items = [{"id": k, "name": v.get("name", k)} for k, v in stage_items.items()]
 
-        completed_items = instance.completed_items or []
+def get_stage_instance(instance_id: str) -> Optional[StageInstance]:
+    """获取阶段实例详情"""
+    return _manager.get_instance(instance_id)
 
-        for item in stage_items:
-            item_id = item.get("id")
-            item_data = {"id": item_id, "name": item.get("name", item_id), "status": "COMPLETED" if item_id in completed_items else "PENDING"}
-            items.append(item_data)
 
-        # 计算完成情况
-        total = len(items)
-        completed = len(completed_items)
-        progress = (completed / total * 100) if total > 0 else 0
+def get_stages_for_session(session_id: str) -> List[StageInstance]:
+    """获取会话的所有阶段实例"""
+    return _manager.get_session_instances(session_id)
 
-        return {"items": items, "completed": completed, "total": total, "progress": round(progress, 2)}
+
+def create_stage_instance(session_id: str, stage_data: Dict[str, Any]) -> Optional[StageInstance]:
+    """创建阶段实例"""
+    return _manager.create_instance(session_id, stage_data)
+
+
+def complete_stage(instance_id: str, context: Optional[Dict[str, Any]] = None) -> Optional[StageInstance]:
+    """完成阶段"""
+    return _manager.complete_stage(instance_id, context)
+
+
+def fail_stage(instance_id: str, reason: Optional[str] = None) -> Optional[StageInstance]:
+    """标记阶段失败"""
+    return _manager.fail_stage(instance_id, reason)
+
+
+def skip_stage(instance_id: str, reason: Optional[str] = None) -> Optional[StageInstance]:
+    """跳过阶段"""
+    return _manager.skip_stage(instance_id, reason)
+
+
+def update_stage_context(instance_id: str, context: Dict[str, Any]) -> Optional[StageInstance]:
+    """更新阶段上下文"""
+    return _manager.update_context(instance_id, context)
+
+
+def get_stage_progress(instance_id: str) -> Dict[str, Any]:
+    """获取阶段进度"""
+    return _manager.get_instance_progress(instance_id)

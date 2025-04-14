@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Flow模块测试fixtures
+Flow相关测试的共享固件
 """
-
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.orm import Session
 
-from src.flow_session.session.manager import FlowSessionManager
+from src.flow_session.manager import FlowSessionManager
+
+# 导入被测试模块
+from src.workflow.service import get_workflow_by_id, list_workflows
 
 
 @pytest.fixture
 def mock_db_session():
-    """提供模拟的数据库会话"""
-    return MagicMock(spec=Session)
+    """提供模拟数据库会话"""
+    return MagicMock()
 
 
 @pytest.fixture

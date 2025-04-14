@@ -4,10 +4,12 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import click
+from loguru import logger
 from rich.console import Console
 
 from src.db import get_session_factory
 from src.db.repositories.task_repository import TaskRepository
+from src.services.task import TaskService
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -22,7 +24,8 @@ logger = logging.getLogger(__name__)
 @click.option("--link-roadmap", help="关联到 Roadmap Item (Story ID)")
 @click.option("--link-workflow-stage", help="关联到 Workflow Stage Instance ID")
 @click.option("--link-github", help="关联到 GitHub Issue (格式: owner/repo#number)")
-def create_task(title, desc, assignee, label, status, link_roadmap, link_workflow_stage, link_github):
+@click.option("--flow", help="关联到工作流类型")
+def create_task(title, desc, assignee, label, status, link_roadmap, link_workflow_stage, link_github, flow):
     """创建一个新的任务
 
     创建一个新的任务，支持设置标题、描述、负责人、标签等基本信息，
@@ -39,16 +42,17 @@ def create_task(title, desc, assignee, label, status, link_roadmap, link_workflo
             link_roadmap_item_id=link_roadmap,
             link_workflow_stage_instance_id=link_workflow_stage,
             link_github_issue=link_github,
+            flow=flow,
         )
 
         # 输出结果
         if result["status"] == "success":
             console.print(f"[bold green]成功:[/bold green] {result['message']}")
-            if result.get("data"):
+            if result.get("task"):
                 # 使用task_click模块中的format_output函数格式化输出
                 from src.cli.commands.task.task_click import format_output
 
-                print(format_output(result["data"], format="yaml", verbose=True))
+                print(format_output(result["task"], format="yaml", verbose=True))
             return 0
         else:
             console.print(f"[bold red]错误:[/bold red] {result['message']}")
@@ -69,6 +73,7 @@ def execute_create_task(
     link_roadmap_item_id: Optional[str] = None,
     link_workflow_stage_instance_id: Optional[str] = None,
     link_github_issue: Optional[str] = None,
+    flow: Optional[str] = None,
 ) -> Dict[str, Any]:
     """执行创建任务的核心逻辑"""
     logger.info(
@@ -76,14 +81,14 @@ def execute_create_task(
         f"labels={label}, status={status}, "
         f"link_roadmap={link_roadmap_item_id}, "
         f"link_stage={link_workflow_stage_instance_id}, "
-        f"link_github={link_github_issue}"
+        f"link_github={link_github_issue}, flow={flow}"
     )
 
     results = {
         "status": "success",
         "code": 0,
         "message": "",
-        "data": None,
+        "task": None,
         "meta": {
             "command": "task create",
             "args": locals(),
@@ -123,6 +128,7 @@ def execute_create_task(
             return results
 
     try:
+        task_service = TaskService()
         session_factory = get_session_factory()
         with session_factory() as session:
             task_repo = TaskRepository(session)
@@ -131,11 +137,20 @@ def execute_create_task(
             session.commit()  # 需要 commit 来持久化
 
             task_dict = new_task.to_dict()
-            results["data"] = task_dict
+            results["task"] = task_dict
             results["message"] = f"成功创建任务 (ID: {new_task.id})"
 
             # --- 控制台输出 ---
             console.print(f"[bold green]成功:[/bold green] 已创建任务 '{new_task.title}' (ID: {new_task.id})")
+
+            # 如果指定了工作流类型，创建并关联工作流会话
+            if flow:
+                session = task_service.link_to_flow_session(new_task.id, flow_type=flow)
+                if not session:
+                    logger.warning(f"创建工作流会话失败: {flow}")
+
+            # 设置为当前任务
+            task_service.set_current_task(new_task.id)
 
     except ValueError as ve:  # 处理 Repository 中可能的 JSON 字段验证错误
         logger.error(f"创建任务时数据验证失败: {ve}", exc_info=True)

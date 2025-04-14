@@ -61,15 +61,32 @@ def show(service, type="summary", verbose=False, format="text"):
         return 1
 
 
-@status.command(name="flow", help="显示流程状态")
+@status.command(name="workflow", help="显示工作流状态")
+@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
+@click.option("--format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
+@pass_service(service_type="status")
+def workflow(service, verbose=False, format="text"):
+    """显示工作流状态"""
+    try:
+        # 直接调用服务获取工作流状态
+        result = service.get_domain_status("workflow")
+
+        # 输出结果
+        output_result(result, format, "domain", verbose)
+    except Exception as e:
+        console.print(f"[bold red]执行错误:[/bold red] {str(e)}")
+        return 1
+
+
+@status.command(name="flow", help="显示工作流状态 (workflow的别名)")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
 @pass_service(service_type="status")
 def flow(service, verbose=False, format="text"):
-    """显示流程状态"""
+    """显示工作流状态 (workflow的别名)"""
     try:
-        # 直接调用服务获取流程状态
-        result = service.get_domain_status("flow")
+        # 使用实体ID "current" 获取当前会话工作流状态
+        result = service.get_domain_status("workflow", entity_id="current")
 
         # 输出结果
         output_result(result, format, "domain", verbose)
@@ -105,7 +122,25 @@ def task(service, verbose=False, format="text"):
         # 直接调用服务获取任务状态
         result = service.get_domain_status("task")
 
-        # 输出结果
+        # 如果是文本格式且存在当前任务，显示当前任务信息
+        if format == "text" and isinstance(result, dict):
+            if "current_task" in result and result["current_task"]:
+                current = result["current_task"]
+                console.print("\n[bold green]当前活动任务:[/bold green]")
+                console.print(f"  ID: [cyan]{current['id']}[/cyan]")
+                console.print(f"  标题: {current['title']}")
+                console.print(f"  状态: [yellow]{current['status']}[/yellow]")
+                if current.get("priority"):
+                    console.print(f"  优先级: {current['priority']}")
+                if current.get("assignee"):
+                    console.print(f"  负责人: {current['assignee']}")
+
+                console.print("\n要查看完整任务详情，请运行: [bold]vc task show[/bold]\n")
+            else:
+                console.print("\n[bold yellow]当前没有活动任务[/bold yellow]")
+                console.print("要设置当前任务，请运行: [bold]vc task current <任务ID>[/bold]\n")
+
+        # 输出结果（总体状态信息）
         output_result(result, format, "task", verbose)
     except Exception as e:
         console.print(f"[bold red]执行错误:[/bold red] {str(e)}")

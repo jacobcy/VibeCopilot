@@ -1,0 +1,78 @@
+---
+description: 当用户输入/db或//db命令时，管理和执行VibeCopilot中定义的各种流程
+globs:
+alwaysApply: false
+id: db-command
+title: "VibeCopilot数据库命令规则"
+type: command_rule
+status: active
+version: "1.0"
+tags: [command, flow, workflow, rule]
+related_items: [command-system]
+---
+
+## 程序命令参数表
+(需要在终端将用户指令转换成vibecopilot可接受的命令形式)
+
+<!-- BEGIN_COMMAND_YAML -->
+```yaml
+commands:
+  db init:
+    subcommands:
+      --force: {}
+      --verbose: {}
+  db list:
+    subcommands:
+      --type: {}
+      --verbose: {}
+      --format:
+        values:
+        - text
+        - json
+  db show:
+    subcommands:
+      --type: {}
+      --id: {}
+      --format:
+        values:
+        - text
+        - json
+  db query:
+    subcommands:
+      --type: {}
+      --id: {}
+      --query: {}
+      --format:
+        values:
+        - text
+        - json
+      --verbose: {}
+  db create:
+    subcommands:
+      --type: {}
+      --data: {}
+      --verbose: {}
+  db update:
+    subcommands:
+      --type: {}
+      --id: {}
+      --data: {}
+      --verbose: {}
+  db delete:
+    subcommands:
+      --type: {}
+      --id: {}
+      --verbose: {}
+      --force: {}
+  db backup:
+    subcommands:
+      --output: {}
+      --verbose: {}
+  db restore:
+    subcommands:
+      backup_file: {}
+      --force: {}
+      --verbose: {}
+
+```
+<!-- END_COMMAND_YAML -->

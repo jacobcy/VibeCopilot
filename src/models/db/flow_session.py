@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -30,6 +30,8 @@ class FlowSession(Base):
     completed_stages = Column(JSON, default=list)  # 已完成阶段ID列表，JSON格式
     context = Column(JSON, nullable=True)  # 会话上下文，JSON格式
     task_id = Column(String, ForeignKey("tasks.id"), nullable=True)  # 关联的任务ID
+    flow_type = Column(String)
+    is_current = Column(Boolean, default=False)
 
     # 关系
     workflow_definition = relationship("WorkflowDefinition", back_populates="sessions")
@@ -49,6 +51,8 @@ class FlowSession(Base):
             "completed_stages": self.completed_stages,
             "context": self.context,
             "task_id": self.task_id,
+            "flow_type": self.flow_type,
+            "is_current": self.is_current,
         }
 
     @classmethod
@@ -63,6 +67,8 @@ class FlowSession(Base):
             completed_stages=data.get("completed_stages", []),
             context=data.get("context", {}),
             task_id=data.get("task_id"),
+            flow_type=data.get("flow_type"),
+            is_current=data.get("is_current", False),
         )
 
 

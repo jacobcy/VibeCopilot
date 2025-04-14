@@ -250,6 +250,38 @@ class TaskRepository(Repository[Task]):
             self.logger.error(f"获取路线图任务时出错: {e}")
             return []
 
+    def get_current_task(self) -> Optional[Task]:
+        """获取当前任务"""
+        return self.session.query(Task).filter(Task.is_current == True).first()
+
+    def set_current_task(self, task_id: str) -> bool:
+        """设置当前任务"""
+        try:
+            # 清除其他任务的当前状态
+            self.session.query(Task).filter(Task.is_current == True).update({"is_current": False})
+            # 设置新的当前任务
+            task = self.get_by_id(task_id)
+            if task:
+                task.is_current = True
+
+                # 如果任务有关联会话，设置该会话为当前会话
+                if task.current_session_id:
+                    try:
+                        from src.db.repositories.flow_session_repository import FlowSessionRepository
+
+                        session_repo = FlowSessionRepository(self.session)
+                        session_repo.set_current_session(task.current_session_id)
+                    except Exception as e:
+                        logger.error(f"设置关联会话为当前会话失败: {e}")
+
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"设置当前任务失败: {e}")
+            return False
+
 
 class TaskCommentRepository(Repository[TaskComment]):
     """TaskComment仓库"""

@@ -27,13 +27,27 @@ def handle_flow(service: StatusService, args: Dict[str, Any]) -> int:
     output_format = args.get("format", "text")
 
     try:
-        result = service.get_domain_status("workflow")
+        # 获取当前会话状态，使用特殊ID "current"
+        result = service.get_domain_status("workflow", entity_id="current")
+
+        # 调试输出原始结果
+        print(f"调试 - 原始结果: {result}")
 
         # 确保输出包含"流程状态"关键词
         if isinstance(result, dict):
             result["流程状态"] = True
             if "error" in result:
                 result["流程状态信息"] = "获取流程状态出错，但关键词已添加"
+
+            # 添加易于理解的状态名称
+            if "status" in result:
+                status_map = {"PENDING": "待处理", "IN_PROGRESS": "进行中", "ON_HOLD": "已暂停", "COMPLETED": "已完成", "FAILED": "失败", "unknown": "未知"}
+                result["状态"] = status_map.get(result["status"], result["status"])
+
+                # 添加进度百分比信息
+                if "progress" in result:
+                    progress = result["progress"]
+                    result["完成进度"] = f"{progress}%"
 
         output_result(result, output_format, "domain", verbose)
         return 0

@@ -5,10 +5,12 @@ Flow 'list' subcommand handler.
 import logging
 from typing import Any, Dict
 
+from src.cli.commands.flow.handlers.formatter import format_workflow_summary
+
 # Assuming these helpers are still needed and accessible
-# Adjust path if they were moved
-from src.workflow.flow_cmd.helpers import format_workflow_stages
-from src.workflow.operations import list_workflows
+# 使用flow_cmd模块中的功能替代operations
+from src.workflow.utils.helpers import format_workflow_stages
+from src.workflow.utils.workflow_search import list_workflows
 
 logger = logging.getLogger(__name__)
 
@@ -59,16 +61,18 @@ def handle_list_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
             for workflow in workflows:
                 # 确保 workflow 是字典
                 if isinstance(workflow, dict):
-                    info = f"{workflow.get('id', 'N/A')}: {workflow.get('name', 'Unnamed')}"
+                    # 使用format_workflow_summary保持一致的格式
+                    workflow_summary = format_workflow_summary(workflow)
+                    output_lines.append(workflow_summary)
+
                     if verbose:
-                        description = workflow.get("description", "无描述")
-                        info += f"\n  描述: {description}"
+                        # 添加额外的详细信息
                         stages = workflow.get("stages", [])
                         if stages:
                             # Assuming format_workflow_stages takes list of stage dicts
                             stages_info = format_workflow_stages(stages)
-                            info += f"\n  阶段: {stages_info}"
-                    output_lines.append(info)
+                            output_lines.append(f"  阶段: {stages_info}")
+                        output_lines.append("")
                 else:
                     logger.warning(f"工作流数据格式不正确: {workflow}")
 

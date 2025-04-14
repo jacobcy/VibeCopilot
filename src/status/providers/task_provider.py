@@ -49,7 +49,19 @@ class TaskStatusProvider(IStatusProvider):
                     for task in all_tasks:
                         by_status[task.status] = by_status.get(task.status, 0) + 1
 
-                    return {"domain": self.domain, "total": len(all_tasks), "by_status": by_status}
+                    # 获取当前任务信息
+                    current_task = task_repo.get_current_task()
+                    current_task_info = None
+                    if current_task:
+                        current_task_info = {
+                            "id": current_task.id,
+                            "title": current_task.title,
+                            "status": current_task.status,
+                            "priority": current_task.priority,
+                            "assignee": current_task.assignee,
+                        }
+
+                    return {"domain": self.domain, "total": len(all_tasks), "by_status": by_status, "current_task": current_task_info}
 
                 # 获取特定任务状态
                 task = task_repo.get_by_id(entity_id)
