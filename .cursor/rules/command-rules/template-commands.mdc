@@ -169,9 +169,9 @@ variables:
 <!-- BEGIN_COMMAND_YAML -->
 ```yaml
 commands:
-  template list:
+  template list: # 列出所有模板
     subcommands:
-      --type:
+      --type: # 模板类型筛选
         values:
         - rule
         - command
@@ -179,17 +179,18 @@ commands:
         - flow
         - roadmap
         - general
-      --verbose: {}
-  template show:
+      --verbose: # 显示详细信息
+        type: flag
+  template show: # 查看模板详情
     subcommands:
-      --format:
+      --format: # 输出格式
         values:
         - json
         - text
-  template create:
+  template create: # 创建新模板
     subcommands:
-      --name: {}
-      --type:
+      --name: # 模板名称
+      --type: # 模板类型
         values:
         - rule
         - command
@@ -197,31 +198,34 @@ commands:
         - flow
         - roadmap
         - general
-  template update:
+  template update: # 更新模板
     subcommands:
-      --name: {}
-  template delete:
+      --name: # 新的模板名称
+  template delete: # 删除模板
     subcommands:
-      --force: {}
-  template generate:
+      --force: # 强制删除
+        type: flag
+  template generate: # 使用模板生成内容
     subcommands:
-      --vars: {}
-  template export:
+      --vars: # 变量JSON字符串
+  template export: # 导出模板
     subcommands:
-      --output: {}
-      --format:
+      --output: # 输出文件路径
+      --format: # 导出格式
         values:
         - json
         - yaml
         - text
-  template import-template:
+  template import-template: # 导入模板
     subcommands:
-      --overwrite: {}
-      --recursive: {}
-  template init:
+      --overwrite: # 覆盖已存在的模板
+        type: flag
+      --recursive: # 递归导入目录下的所有模板
+        type: flag
+  template init: # 初始化模板库
     subcommands:
-      --force: {}
-      --source: {}
-
+      --force: # 强制初始化
+        type: flag
+      --source: # 指定源目录
 ```
 <!-- END_COMMAND_YAML -->

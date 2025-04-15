@@ -4,15 +4,19 @@
 更新任务命令模块
 """
 
+import json
 import logging
 import os
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 from loguru import logger
 from rich.console import Console
 
+# 导入任务日志相关函数和Memory存储函数
+from src.cli.commands.task.core.memory import append_to_task_log, store_ref_to_memory
 from src.db import get_session_factory
 from src.db.repositories.roadmap_repository import RoadmapRepository
 from src.db.repositories.stage_repository import StageRepository
@@ -69,27 +73,31 @@ def parse_github_url(url: str) -> Tuple[str, int]:
 @click.command(name="update", help="更新现有任务的信息")
 @click.argument("task_id")
 @click.option("--title", "-t", help="任务标题")
-@click.option("--desc", "-d", help="任务描述")
+@click.option("--desc", "--description", "-d", help="任务描述")
 @click.option("--status", "-s", help="任务状态")
 @click.option("--assignee", "-a", help="任务负责人")
 @click.option("--labels", "-l", multiple=True, help="任务标签 (可设置多个)")
+@click.option("--due", "--due-date", help="截止日期 (格式: YYYY-MM-DD，设置为'clear'可清除截止日期)")
 @click.option("--roadmap", "-r", help="关联的路线图项目 ID")
-@click.option("--flow", "-w", help="关联的工作流阶段 ID")
+@click.option("--flow", "--workflow", "-w", help="关联的工作流阶段 ID")
 @click.option("--github", "-g", help="关联的 GitHub Issue URL")
 @click.option("--link-story", "-ls", help="关联的故事 ID")
 @click.option("--unlink", "-ul", help="取消关联的故事或 GitHub Issue")
+@click.option("--ref", "--reference", help="关联参考文档路径")
 def update_task(
     task_id: str,
     title: Optional[str] = None,
-    description: Optional[str] = None,
+    desc: Optional[str] = None,
     status: Optional[str] = None,
     assignee: Optional[str] = None,
     labels: Optional[List[str]] = None,
+    due: Optional[str] = None,
     roadmap: Optional[str] = None,
-    workflow: Optional[str] = None,
+    flow: Optional[str] = None,
     github: Optional[str] = None,
     link_story: Optional[str] = None,
     unlink: Optional[str] = None,
+    ref: Optional[str] = None,
 ) -> int:
     """
     更新现有任务的信息。
@@ -99,19 +107,21 @@ def update_task(
     参数:
         task_id: 要更新的任务ID
         title: 新的任务标题
-        description: 新的任务描述
+        desc: 新的任务描述
         status: 新的任务状态
         assignee: 新的任务负责人
         labels: 新的任务标签列表
+        due: 新的截止日期
         roadmap: 新关联的路线图项目ID
-        workflow: 新关联的工作流阶段ID
+        flow: 新关联的工作流阶段ID
         github: 新关联的GitHub Issue URL
         link_story: 新关联的故事 ID
         unlink: 取消关联的故事或 GitHub Issue
+        ref: 关联的参考文档路径
     """
     try:
         # 检查是否提供了至少一个更新参数
-        if not any([title, description, status, assignee, labels, roadmap, workflow, github, link_story, unlink]):
+        if not any([title, desc, status, assignee, labels, due, roadmap, flow, github, link_story, unlink, ref]):
             console.print("[bold yellow]警告:[/bold yellow] 未提供任何需要更新的字段。使用 --help 查看可用选项。")
             return 1
 
@@ -119,15 +129,17 @@ def update_task(
         result = execute_update_task(
             task_id=task_id,
             title=title,
-            description=description,
+            description=desc,
             status=status,
             assignee=assignee,
             labels=labels,
+            due_date=due,
             roadmap_id=roadmap,
-            workflow_id=workflow,
+            workflow_id=flow,
             github_url=github,
             link_story=link_story,
             unlink=unlink,
+            ref_path=ref,
         )
 
         # 处理执行结果
@@ -151,11 +163,13 @@ def execute_update_task(
     status: Optional[str] = None,
     assignee: Optional[str] = None,
     labels: Optional[List[str]] = None,
+    due_date: Optional[str] = None,
     roadmap_id: Optional[str] = None,
     workflow_id: Optional[str] = None,
     github_url: Optional[str] = None,
     link_story: Optional[str] = None,
     unlink: Optional[str] = None,
+    ref_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """执行更新任务的核心逻辑"""
     logger.info(f"执行更新任务命令: task_id={task_id}")
@@ -174,14 +188,34 @@ def execute_update_task(
                 "status": status,
                 "assignee": assignee,
                 "labels": labels,
+                "due_date": due_date,
                 "roadmap_id": roadmap_id,
                 "workflow_id": workflow_id,
                 "github_url": github_url,
                 "link_story": link_story,
                 "unlink": unlink,
+                "ref_path": ref_path,
             },
         },
     }
+
+    # 记录任务更新
+    log_updates = {}
+
+    if title:
+        log_updates["标题"] = title
+    if description:
+        log_updates["描述"] = description
+    if status:
+        log_updates["状态"] = status
+    if assignee:
+        log_updates["负责人"] = assignee
+    if labels:
+        log_updates["标签"] = ", ".join(labels)
+    if due_date:
+        log_updates["截止日期"] = due_date
+    if ref_path:
+        log_updates["参考文档"] = ref_path
 
     # 解析GitHub链接
     github_repo = None
@@ -189,6 +223,7 @@ def execute_update_task(
     if github_url:
         try:
             github_repo, github_issue_number = parse_github_url(github_url)
+            log_updates["GitHub Issue"] = f"{github_repo}#{github_issue_number}"
         except ValueError as e:
             results["status"] = "error"
             results["code"] = 400
@@ -225,6 +260,7 @@ def execute_update_task(
                     results["code"] = 404
                     results["message"] = f"更新失败: 未找到路线图项目 {roadmap_id}"
                     return results
+                log_updates["路线图项目"] = roadmap_id
 
             # 验证工作流阶段存在
             if workflow_id:
@@ -235,6 +271,35 @@ def execute_update_task(
                     results["code"] = 404
                     results["message"] = f"更新失败: 未找到工作流阶段 {workflow_id}"
                     return results
+                log_updates["工作流阶段"] = workflow_id
+
+            # 记录日志 - 只有在有字段更新时才记录
+            if log_updates:
+                append_to_task_log(task_id, "任务更新", log_updates)
+
+            # 如果提供了参考文档路径，存储到Memory并关联
+            if ref_path:
+                try:
+                    memory_result = store_ref_to_memory(task_id, ref_path)
+                    if not memory_result["success"]:
+                        logger.warning(f"存储参考文档到Memory失败: {memory_result.get('error')}")
+                        console.print(f"[bold yellow]警告:[/bold yellow] 存储参考文档到Memory失败: {memory_result.get('error')}")
+                    elif memory_result.get("updated", False):
+                        logger.info(f"更新参考文档到Memory成功: {memory_result.get('permalink')}")
+                        console.print(f"[bold green]成功:[/bold green] 更新参考文档到Memory")
+                    else:
+                        # 检查是否为模拟数据
+                        if memory_result.get("simulated", False):
+                            logger.warning(f"生成模拟参考链接: {memory_result.get('permalink')}")
+                            console.print(f"[bold yellow]注意:[/bold yellow] 生成模拟参考链接 {memory_result.get('permalink')}")
+                            console.print("[bold yellow]      [/bold yellow] 文档未实际存储到Memory，只创建了引用记录")
+                            console.print("[bold yellow]建议:[/bold yellow] 在Cursor IDE环境中执行此操作以实际存储文档")
+                        else:
+                            logger.info(f"存储参考文档到Memory成功: {memory_result.get('permalink')}")
+                            console.print(f"[bold green]成功:[/bold green] 存储参考文档到Memory")
+                except Exception as e:
+                    logger.error(f"存储参考文档到Memory时出错: {e}")
+                    console.print(f"[bold yellow]警告:[/bold yellow] 存储参考文档到Memory时出错: {e}")
 
             # 准备更新数据
             update_data = {}
@@ -248,6 +313,11 @@ def execute_update_task(
                 update_data["assignee"] = assignee
             if labels is not None:
                 update_data["labels"] = labels
+            if due_date is not None:
+                if due_date.lower() == "clear":
+                    update_data["due_date"] = None  # 设置为None以清除截止日期
+                else:
+                    update_data["due_date"] = due_date
             if roadmap_id is not None:
                 update_data["roadmap_id"] = roadmap_id
             if workflow_id is not None:

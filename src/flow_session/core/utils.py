@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional, Union
 import click
 from sqlalchemy.orm import Session
 
-from src.db.session import SessionLocal
+from src.db import SessionLocal
 from src.flow_session.status.status import SessionStatus
 
 

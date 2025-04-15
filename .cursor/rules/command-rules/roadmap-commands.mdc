@@ -126,128 +126,183 @@ related_items: [command-system]
 <!-- BEGIN_COMMAND_YAML -->
 ```yaml
 commands:
-  roadmap sync:
+  roadmap sync: # 从GitHub同步路线图数据 (用法: roadmap sync [OPTIONS] REPOSITORY)
     subcommands:
-      --theme: {}
-      --operation:
+      --theme: # GitHub项目主题标签
+        type: string
+      --operation: # 同步操作类型
         values:
         - push
         - pull
-      --roadmap: {}
-      --force: {}
-      --verbose: {}
-  roadmap switch:
+      --roadmap: # 指定路线图ID
+        type: string
+      --force: # 强制同步，忽略冲突
+        type: flag
+      --verbose: # 显示详细输出
+        type: flag
+  roadmap switch: # 切换活动路线图
     subcommands:
-      roadmap_id: {}
-      --show: {}
-      --clear: {}
-  roadmap list:
+      roadmap_id: # 路线图ID
+        type: string
+      --show: # 只显示当前活动路线图
+        type: flag
+      --clear: # 清除当前活动路线图设置
+        type: flag
+  roadmap list: # 列出路线图元素或所有路线图
     subcommands:
-      --all: {}
-      --type:
+      --all: # 列出所有路线图而非当前路线图中的元素
+        type: flag
+      --type: # 元素类型
         values:
         - all
         - milestone
         - story
         - task
-      --status: {}
-      --assignee: {}
-      --labels: {}
-      --detail: {}
-      --format:
+      --status: # 按状态筛选
+        type: string
+      --assignee: # 按负责人筛选
+        type: string
+      --labels: # 按标签筛选，多个标签用逗号分隔
+        type: string
+      --detail: # 显示详细信息
+        type: flag
+      --format: # 输出格式
         values:
         - text
         - json
         - table
-      --verbose: {}
-  roadmap create:
+      --verbose: # 显示详细信息
+        type: flag
+  roadmap create: # 创建新的路线图元素 (用法: roadmap create [OPTIONS] {milestone|epic|story} TITLE)
     subcommands:
-      --epic: {}
-      --desc: {}
-      --assignee: {}
-      --labels: {}
-      --priority:
+      --epic: # 所属史诗ID (用于story)
+        type: string
+      --desc: # 详细描述
+        type: string
+      --assignee: # 指派给用户
+        type: string
+      --labels: # 标签列表，用逗号分隔
+        type: string
+      --priority: # 优先级
         values:
         - high
         - medium
         - low
-  roadmap update:
+  roadmap update: # 更新路线图元素状态 (用法: roadmap update [OPTIONS] {milestone|story|task} ID STATUS)
     subcommands:
-      --sync: {}
-      --comment: {}
-      --assignee: {}
-      --labels: {}
-  roadmap story:
+      --sync: # 同步到GitHub
+        type: flag
+      --comment: # 更新说明
+        type: string
+      --assignee: # 更新指派人
+        type: string
+      --labels: # 更新标签（用逗号分隔）
+        type: string
+  roadmap story: # 管理路线图故事
     subcommands:
-      story_id: {}
-      --title: {}
-      --milestone: {}
-      --desc: {}
-      --priority:
+      story_id: # 故事ID
+        type: string
+      --title: # 故事标题
+        type: string
+      --milestone: # 所属里程碑ID
+        type: string
+      --desc: # 故事描述
+        type: string
+      --priority: # 优先级
         values:
         - P0
         - P1
         - P2
         - P3
-      --assignee: {}
-      --labels: {}
-      --status:
+      --assignee: # 指派给用户
+        type: string
+      --labels: # 标签列表，用逗号分隔
+        type: string
+      --status: # 更新状态
         values:
         - not_started
         - in_progress
         - completed
         - blocked
-      --comment: {}
-      --format:
+      --comment: # 状态变更说明
+        type: string
+      --format: # 输出格式
         values:
         - json
         - text
         - table
-      --delete: {}
-      --force: {}
-  roadmap validate:
+      --delete: # 删除故事
+        type: flag
+      --force: # 强制删除，不请求确认
+        type: flag
+  roadmap validate: # 验证路线图YAML文件
     subcommands:
-      source: {}
-      --fix: {}
-      --output: {}
-      --template: {}
-      --verbose: {}
-      --import: {}
-      --roadmap-id: {}
-  roadmap import:
+      source: # 源文件路径
+        type: string
+      --fix: # 自动修复格式问题
+        type: flag
+      --output: # 修复后输出的文件路径
+        type: string
+      --template: # 使用自定义模板验证
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+      --import: # 验证通过后导入路线图
+        type: flag
+      --roadmap-id: # 导入时指定路线图ID
+        type: string
+  roadmap import: # 导入路线图YAML文件
     subcommands:
-      source: {}
-      --roadmap-id: {}
-      --fix: {}
-      --activate: {}
-      --verbose: {}
-  roadmap show:
+      source: # 源文件路径
+        type: string
+      --roadmap-id: # 现有路线图ID
+        type: string
+      --fix: # 自动修复格式问题
+        type: flag
+      --activate: # 导入后设为当前活动路线图
+        type: flag
+      --verbose: # 显示详细信息
+        type: flag
+  roadmap show: # 查看路线图详情
     subcommands:
-      --id: {}
-      --milestone: {}
-      --task: {}
-      --health: {}
-      --format:
+      --id: # 路线图ID
+        type: string
+      --milestone: # 里程碑ID
+        type: string
+      --task: # 任务ID
+        type: string
+      --health: # 显示健康状态检查
+        type: flag
+      --format: # 输出格式
         values:
         - json
         - text
         - table
-  roadmap export:
+  roadmap export: # 导出路线图为YAML
     subcommands:
-      --id: {}
-      --output: {}
-      --milestone: {}
-      --template: {}
-  roadmap delete:
+      --id: # 路线图ID
+        type: string
+      --output: # 输出文件路径
+        type: string
+      --milestone: # 只导出特定里程碑及其任务
+        type: string
+      --template: # 使用特定模板格式
+        type: string
+  roadmap delete: # 删除路线图或元素 (用法: roadmap delete [OPTIONS] {roadmap|milestone|task} ID)
     subcommands:
-      --force: {}
-      --cascade: {}
-  roadmap plan:
+      --force: # 强制删除，不请求确认
+        type: flag
+      --cascade: # 级联删除关联元素
+        type: flag
+  roadmap plan: # 互动式路线图规划
     subcommands:
-      --id: {}
-      --template: {}
-      --from: {}
-      --interactive: {}
-
+      --id: # 要修改的路线图ID
+        type: string
+      --template: # 使用特定模板开始
+        type: string
+      --from: # 从YAML文件开始
+        type: string
+      --interactive: # 始终使用交互式模式
+        type: flag
 ```
 <!-- END_COMMAND_YAML -->

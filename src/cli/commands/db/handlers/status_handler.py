@@ -1,0 +1,302 @@
+"""
+数据库表状态和结构信息查询处理器模块
+
+提供查询数据库表状态信息、结构和统计数据的处理逻辑。
+"""
+
+import json
+import logging
+from typing import Any, Dict, Optional
+
+import click
+import yaml
+from rich.console import Console
+from rich.table import Table
+
+from src.cli.decorators import pass_service
+from src.db.utils.schema import get_all_tables, get_db_stats, get_table_schema, get_table_stats
+
+from .base_handler import ClickBaseHandler
+from .exceptions import DatabaseError, ValidationError
+
+logger = logging.getLogger(__name__)
+console = Console()
+
+
+class StatusHandler(ClickBaseHandler):
+    """数据库表状态和结构信息查询命令处理器"""
+
+    VALID_FORMATS = {"table", "json", "yaml"}
+
+    def __init__(self):
+        super().__init__()
+
+    def validate(self, **kwargs: Dict[str, Any]) -> bool:
+        """
+        验证查询命令参数
+
+        Args:
+            **kwargs: 命令参数
+
+        Returns:
+            bool: 验证是否通过
+
+        Raises:
+            ValidationError: 验证失败时抛出
+        """
+        output_format = kwargs.get("format", "table")
+
+        if output_format not in self.VALID_FORMATS:
+            raise ValidationError(f"不支持的输出格式: {output_format}")
+
+        return True
+
+    def handle(self, **kwargs: Dict[str, Any]) -> int:
+        """
+        处理查询命令
+
+        Args:
+            **kwargs: 命令参数
+
+        Returns:
+            int: 0表示成功，1表示失败
+
+        Raises:
+            DatabaseError: 数据库操作失败时抛出
+        """
+        entity_type = kwargs.get("type", "all")
+        detail = kwargs.get("detail", False)
+        output_format = kwargs.get("format", "table")
+        service = kwargs.get("service")
+
+        if not service:
+            raise DatabaseError("数据库服务未初始化")
+
+        try:
+            self.validate(**kwargs)
+
+            # 根据不同的查询类型执行不同的操作
+            if entity_type == "all":
+                # 将detail传递给_display_db_stats，使其可以选择显示详情
+                return self._display_db_stats(service, output_format, detail)
+            else:
+                # 将detail传递给_display_table_stats
+                return self._display_table_stats(service, entity_type, output_format, detail)
+
+        except Exception as e:
+            logger.error(f"查询数据库表状态或结构信息失败: {str(e)}", exc_info=True)
+            raise DatabaseError(f"查询失败: {str(e)}")
+
+    def _display_db_stats(self, service, output_format: str, show_detail: bool = False) -> int:
+        """显示数据库所有表的统计信息
+
+        Args:
+            service: 数据库服务
+            output_format: 输出格式
+            show_detail: 是否显示详细信息
+
+        Returns:
+            int: 0表示成功，1表示失败
+        """
+        try:
+            stats = get_db_stats(service.session)
+
+            # 创建简化版本和详细版本的信息结构
+            simplified_stats = {"database_stats": {"total_tables": len(stats), "total_records": sum(stats.values())}}
+
+            detailed_stats = {"database_stats": {"tables": [], "total_tables": len(stats), "total_records": sum(stats.values())}}
+
+            # 添加各表信息
+            for table_name, count in stats.items():
+                detailed_stats["database_stats"]["tables"].append({"name": table_name, "record_count": count})
+
+            # 根据是否显示详情选择输出内容
+            if output_format == "json":
+                if show_detail:
+                    print(json.dumps(detailed_stats, indent=2, ensure_ascii=False))
+                else:
+                    # 简洁模式下只显示表名和记录数
+                    simple_list = {"tables": list(stats.keys()), "total_tables": len(stats), "total_records": sum(stats.values())}
+                    print(json.dumps(simple_list, indent=2, ensure_ascii=False))
+            elif output_format == "yaml":
+                if show_detail:
+                    print(yaml.dump(detailed_stats, allow_unicode=True, sort_keys=False, default_flow_style=False))
+                else:
+                    # 简洁模式下只显示表名列表
+                    simple_list = {"tables": list(stats.keys()), "total_tables": len(stats), "total_records": sum(stats.values())}
+                    print(yaml.dump(simple_list, allow_unicode=True, sort_keys=False, default_flow_style=False))
+            else:
+                # 表格展示 - 在任何模式下都保持简洁
+                table = Table(title="数据库统计信息", show_header=True, header_style="bold magenta")
+                table.add_column("表名", style="cyan", width=15)
+
+                if show_detail:
+                    table.add_column("记录数", justify="right", width=10)
+
+                    for table_name, count in stats.items():
+                        table.add_row(table_name, str(count))
+                else:
+                    # 非detail模式下只显示表名
+                    for table_name in stats.keys():
+                        table.add_row(table_name)
+
+                console.print(table)
+
+                # 始终显示总表数和总记录数
+                console.print(f"[bold]总表数: [cyan]{len(stats)}[/cyan][/bold]")
+                console.print(f"[bold]总记录数: [cyan]{sum(stats.values())}[/cyan][/bold]")
+
+            return 0
+        except Exception as e:
+            console.print(f"[red]获取数据库统计信息失败: {str(e)}[/red]")
+            return 1
+
+    def _display_table_stats(self, service, table_name: str, output_format: str, show_examples: bool = False) -> int:
+        """显示指定表的统计和结构信息
+
+        Args:
+            service: 数据库服务
+            table_name: 表名
+            output_format: 输出格式
+            show_examples: 是否显示示例数据
+
+        Returns:
+            int: 0表示成功，1表示失败
+        """
+        try:
+            # 直接获取表的完整信息
+            schema_info = get_table_schema(service.session, table_name)
+
+            if "error" in schema_info:
+                console.print(f"[red]{schema_info['error']}[/red]")
+                return 1
+
+            # 获取表的基本统计信息
+            stats = get_table_stats(service.session, table_name)
+
+            # 创建基础版本的表信息（包含列结构但不包含示例数据）
+            basic_info = {
+                "table_name": schema_info["table_name"],
+                "record_count": schema_info["count"],
+                "columns": [{"name": col["name"], "type": str(col["type"])} for col in schema_info["columns"]],
+            }
+
+            # 添加状态分布（如果有）
+            if stats.get("status_distribution") and len(stats["status_distribution"]) > 0:
+                basic_info["status_distribution"] = stats["status_distribution"]
+
+            if output_format == "json":
+                if show_examples:
+                    # 输出完整信息
+                    print(json.dumps(schema_info, indent=2, ensure_ascii=False))
+                else:
+                    # 输出基础信息（包含结构但无示例）
+                    print(json.dumps(basic_info, indent=2, ensure_ascii=False))
+            elif output_format == "yaml":
+                if show_examples:
+                    # 完整信息 - 根据需要优化示例数据
+                    if table_name.lower() == "rules" and "examples" in schema_info:
+                        # 为规则示例创建更加友好的结构
+                        for i, example in enumerate(schema_info["examples"]):
+                            if "content" in example and example["content"]:
+                                # 截断内容以便更好地显示
+                                content = example["content"]
+                                if len(content) > 200:
+                                    example["content"] = content[:200] + "..."
+
+                    # 输出YAML格式（完整信息）
+                    yaml_str = yaml.dump(schema_info, allow_unicode=True, sort_keys=False, default_flow_style=False)
+                    print(yaml_str)
+                else:
+                    # 输出YAML格式（基础信息，包含列结构）
+                    yaml_str = yaml.dump(basic_info, allow_unicode=True, sort_keys=False, default_flow_style=False)
+                    print(yaml_str)
+            else:  # table format
+                # 表格展示基本信息
+                console.print(f"[bold]表名: [cyan]{schema_info['table_name']}[/cyan][/bold]")
+                console.print(f"[bold]记录数: [cyan]{schema_info['count']}[/cyan][/bold]")
+
+                # 无论是否为detail模式，都显示列结构（但在非detail模式下简化显示）
+                columns_table = Table(title="列结构", show_header=True)
+                columns_table.add_column("列名", style="cyan")
+                columns_table.add_column("类型")
+
+                if show_examples:
+                    # detail模式下显示完整列信息
+                    columns_table.add_column("可空", justify="center")
+                    columns_table.add_column("默认值")
+
+                    for col in schema_info["columns"]:
+                        columns_table.add_row(
+                            col["name"], str(col["type"]), "是" if col["nullable"] else "否", str(col["default"]) if col["default"] is not None else ""
+                        )
+                else:
+                    # 非detail模式下简化列信息
+                    for col in schema_info["columns"]:
+                        columns_table.add_row(col["name"], str(col["type"]))
+
+                console.print(columns_table)
+
+                # 显示状态分布（如果有）
+                if stats.get("status_distribution") and len(stats["status_distribution"]) > 0:
+                    status_table = Table(title="状态分布", show_header=True)
+                    status_table.add_column("状态", style="cyan")
+                    status_table.add_column("数量", justify="right")
+                    status_table.add_column("占比", justify="right")
+
+                    total = stats["total_count"]
+                    for status, count in stats["status_distribution"].items():
+                        percentage = (count / total * 100) if total > 0 else 0
+                        status_table.add_row(str(status), str(count), f"{percentage:.1f}%")
+
+                    console.print(status_table)
+
+                # 仅在detail模式下显示示例数据
+                if show_examples and schema_info["examples"] and len(schema_info["examples"]) > 0:
+                    console.print("\n[bold]示例数据:[/bold]")
+
+                    examples_table = Table(show_header=True)
+
+                    # 动态创建列
+                    example_columns = list(schema_info["examples"][0].keys())
+                    for col_name in example_columns:
+                        examples_table.add_column(col_name)
+
+                    # 添加行数据
+                    for example in schema_info["examples"]:
+                        row_data = [str(example.get(col, "")) for col in example_columns]
+                        examples_table.add_row(*row_data)
+
+                    console.print(examples_table)
+
+            return 0
+        except Exception as e:
+            console.print(f"[red]获取表信息失败: {str(e)}[/red]")
+            return 1
+
+    def error_handler(self, error: Exception) -> None:
+        """
+        处理错误
+
+        Args:
+            error: 捕获的异常
+        """
+        if isinstance(error, (ValidationError, DatabaseError)):
+            console.print(f"[red]{str(error)}[/red]")
+        else:
+            console.print(f"[red]未知错误: {str(error)}[/red]")
+
+
+@click.command(name="status", help="查询数据库表状态和结构信息")
+@click.option("--type", default="all", help="表名称，默认为所有表")
+@click.option("--detail", is_flag=True, help="是否显示示例数据（仅适用于单表查询）")
+@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
+@pass_service(service_type="db")
+def status_db(service, type: str = "all", detail: bool = False, format: str = "table") -> None:
+    """查询数据库表状态和结构信息"""
+    # 如果查询的是rules表且未指定格式，则默认使用yaml格式
+    if type.lower() == "rules" and format == "table":
+        format = "yaml"
+
+    handler = StatusHandler()
+    handler.handle(service=service, type=type, detail=detail, format=format)

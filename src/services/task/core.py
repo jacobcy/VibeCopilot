@@ -6,7 +6,7 @@
 
 import logging
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from loguru import logger
 
@@ -48,13 +48,76 @@ class TaskService:
         """
         return self._session_service.set_current_task(task_id)
 
-    def create_task(self, title: str, story_id: str = None, github_issue: str = None) -> Optional[Dict[str, Any]]:
-        """创建新任务"""
+    def create_task(self, task_data: Union[str, Dict[str, Any]], story_id: str = None, github_issue: str = None) -> Optional[Dict[str, Any]]:
+        """创建新任务
+
+        Args:
+            task_data: 任务数据字典或任务标题字符串
+            story_id: 关联的故事ID（可选）
+            github_issue: GitHub Issue（可选）
+
+        Returns:
+            创建的任务数据字典
+        """
         try:
-            task = self._db_service.task_repo.create({"title": title, "status": "created", "story_id": story_id, "github_issue": github_issue})
-            return task.to_dict() if task else None
+            # 处理不同类型的输入参数
+            if isinstance(task_data, str):
+                # 如果task_data是字符串，则视为任务标题
+                data = {"title": task_data, "status": "created"}
+                if story_id:
+                    data["story_id"] = story_id
+                if github_issue:
+                    data["github_issue"] = github_issue
+            else:
+                # 如果task_data是字典，则直接使用
+                data = task_data.copy()
+                # 确保有status字段
+                if "status" not in data:
+                    data["status"] = "created"
+                # 支持旧的参数方式
+                if story_id and "story_id" not in data:
+                    data["story_id"] = story_id
+                if github_issue and "github_issue" not in data:
+                    data["github_issue"] = github_issue
+
+            logger.info(f"创建任务数据: {data}")
+
+            # 检查是否有引用路径
+            ref_path = data.pop("ref_path", None)
+
+            # 创建任务基本信息
+            task = self._db_service.task_repo.create(data)
+            if not task:
+                logger.error("创建任务失败")
+                return None
+
+            # 转换为字典
+            task_dict = task.to_dict()
+
+            # 如果有引用路径，处理引用
+            if ref_path:
+                logger.info(f"处理引用路径: {ref_path}")
+                try:
+                    # 安全导入，避免循环引用
+                    import importlib
+
+                    memory_module = importlib.import_module("src.cli.commands.task.core.memory")
+                    # 存储引用
+                    memory_result = memory_module.store_ref_to_memory(task.id, ref_path)
+                    if memory_result and memory_result.get("success"):
+                        logger.info(f"成功关联引用: {memory_result.get('permalink')}")
+                        task_dict["ref_path"] = ref_path
+                        task_dict["memory_link"] = memory_result.get("permalink")
+                    else:
+                        error = memory_result.get("error", "未知错误") if memory_result else "存储引用失败"
+                        logger.warning(f"关联引用失败: {error}")
+                except Exception as e:
+                    logger.error(f"处理引用时出错: {e}", exc_info=True)
+
+            # 返回创建的任务
+            return task_dict
         except Exception as e:
-            logger.error(f"创建任务失败: {e}")
+            logger.error(f"创建任务失败: {e}", exc_info=True)
             return None
 
     def update_task(self, task_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

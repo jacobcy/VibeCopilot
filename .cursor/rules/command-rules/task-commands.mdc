@@ -148,77 +148,85 @@ VibeCopilot提供预定义任务模板，简化创建过程：
 <!-- BEGIN_COMMAND_YAML -->
 ```yaml
 commands:
-  task list:
+  task list: # 列出项目中的任务
     subcommands:
-      --status: {}
-      --assignee: {}
-      --label: {}
-      --roadmap: {}
-      --independent: {}
-      --limit: {}
-      --offset: {}
-      --verbose: {}
-      --format:
+      --status: # 按状态过滤
+      --assignee: # 按负责人过滤
+      --label: # 按标签过滤
+      --roadmap: # 按关联的 Story ID 过滤
+      --independent: # 仅显示独立任务
+        type: flag
+      --limit: # 限制返回数量
+        type: integer
+      --offset: # 跳过指定数量的结果
+        type: integer
+      --verbose: # 显示更详细的信息
+        type: flag
+      --format: # 输出格式
         values:
         - yaml
         - json
-  task show:
+  task show: # 显示任务详情
     subcommands:
-      --verbose: {}
-      --format:
+      --verbose: # 显示更详细的信息
+        type: flag
+      --format: # 输出格式
         values:
         - yaml
         - json
-  task create:
+  task create: # 创建新任务
     subcommands:
-      --desc: {}
-      --priority:
+      --desc: # 任务描述
+      --priority: # 任务优先级
         values:
         - low
         - medium
         - high
-      --status:
+      --status: # 任务状态
         values:
         - todo
         - in_progress
         - done
-      --link-story: {}
-      --link-github: {}
-      --flow:
+      --due: # 任务截止日期 (格式: YYYY-MM-DD，默认为创建日期后3天)
+      --link-story: # 关联到Story
+      --link-github: # 关联到GitHub Issue (格式: owner/repo#number)
+      --flow: # 创建并关联工作流会话
         values:
         - dev
         - review
         - deploy
-      --verbose: {}
-  task update:
+      --verbose: # 显示详细信息
+        type: flag
+  task update: # 更新任务信息
     subcommands:
-      --title: {}
-      --desc: {}
-      --status: {}
-      --assignee: {}
-      --label: {}
-      --add-label: {}
-      --remove-label: {}
-      --link-story: {}
-      --link-github: {}
-      --unlink:
+      --title: # 新的任务标题
+      --desc: # 新的任务描述
+      --status: # 新的状态
+      --assignee: # 新的负责人
+      --label: # 设置新的标签列表
+      --add-label: # 添加标签
+      --remove-label: # 移除标签
+      --due: # 任务截止日期 (格式: YYYY-MM-DD，设置为'clear'可清除截止日期)
+      --link-story: # 关联到Story
+      --link-github: # 关联到GitHub Issue (格式: owner/repo#number)
+      --unlink: # 取消关联
         values:
         - story
         - github
-  task delete:
+  task delete: # 删除指定的任务
     subcommands:
-      --force: {}
-  task comment:
+      --force: # 强制删除
+        type: flag
+  task comment: # 添加任务评论
     subcommands:
-      --comment: {}
-  task link:
+      --comment: # 评论内容
+  task link: # 管理任务的工作流会话
     subcommands:
-      --flow:
+      --flow: # 创建新的工作流会话
         values:
         - dev
         - review
         - deploy
-      --session: {}
-
+      --session: # 关联到已存在的会话
 ```
 <!-- END_COMMAND_YAML -->

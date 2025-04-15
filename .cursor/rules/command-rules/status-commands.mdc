@@ -154,14 +154,13 @@ VibeCopilot跟踪以下状态指标：
 <!-- BEGIN_COMMAND_YAML -->
 ```yaml
 commands:
-  status:
+  status: # 项目状态管理命令
     subcommands:
-      show: {}
-      flow: {}
-      roadmap: {}
-      task: {}
-      update: {}
-      init: {}
-
+      show: # 显示项目状态概览
+      flow: # 显示流程状态
+      roadmap: # 显示路线图状态
+      task: # 显示任务状态
+      update: # 更新项目阶段
+      init: # 初始化项目状态
 ```
 <!-- END_COMMAND_YAML -->

@@ -17,62 +17,87 @@ related_items: [command-system]
 <!-- BEGIN_COMMAND_YAML -->
 ```yaml
 commands:
-  db init:
+  db init: # 初始化数据库
     subcommands:
-      --force: {}
-      --verbose: {}
-  db list:
+      --force: # 强制重新初始化数据库
+        type: flag
+      --verbose: # 显示详细信息
+        type: flag
+  db list: # 列出数据库内容
     subcommands:
-      --type: {}
-      --verbose: {}
-      --format:
+      --type: # 实体类型(epic/story/task/label/template)
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+      --format: # 输出格式
         values:
         - text
         - json
-  db show:
+  db show: # 显示数据库条目
     subcommands:
-      --type: {}
-      --id: {}
-      --format:
+      --type: # 实体类型(epic/story/task/label/template)
+        type: string
+      --id: # 实体ID
+        type: string
+      --format: # 输出格式
         values:
         - text
         - json
-  db query:
+  db query: # 查询数据
     subcommands:
-      --type: {}
-      --id: {}
-      --query: {}
-      --format:
+      --type: # 实体类型
+        type: string
+      --id: # 实体ID
+        type: string
+      --query: # 查询字符串
+        type: string
+      --format: # 输出格式
         values:
         - text
         - json
-      --verbose: {}
-  db create:
+      --verbose: # 显示详细信息
+        type: flag
+  db create: # 创建数据库条目
     subcommands:
-      --type: {}
-      --data: {}
-      --verbose: {}
-  db update:
+      --type: # 实体类型
+        type: string
+      --data: # JSON格式的数据
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  db update: # 更新数据库条目
     subcommands:
-      --type: {}
-      --id: {}
-      --data: {}
-      --verbose: {}
-  db delete:
+      --type: # 实体类型
+        type: string
+      --id: # 实体ID
+        type: string
+      --data: # JSON格式的数据
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  db delete: # 删除数据库条目
     subcommands:
-      --type: {}
-      --id: {}
-      --verbose: {}
-      --force: {}
-  db backup:
+      --type: # 实体类型
+        type: string
+      --id: # 实体ID
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+      --force: # 强制删除，不提示确认
+        type: flag
+  db backup: # 备份数据库
     subcommands:
-      --output: {}
-      --verbose: {}
-  db restore:
+      --output: # 备份文件输出路径
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  db restore: # 恢复数据库
     subcommands:
-      backup_file: {}
-      --force: {}
-      --verbose: {}
-
+      backup_file: # 备份文件路径
+        type: string
+      --force: # 强制恢复，不提示确认
+        type: flag
+      --verbose: # 显示详细信息
+        type: flag
 ```
 <!-- END_COMMAND_YAML -->

@@ -65,4 +65,10 @@ DEFAULT_CONFIG = {
         "workflows_dir": ConfigValue(str(PROJECT_ROOT / "workflows"), env_key="VIBECOPILOT_WORKFLOW_DIR"),
         "template_extension": ConfigValue(".json"),
     },
+    # GitHub配置
+    "github": {
+        "owner": ConfigValue(None, env_key="GITHUB_OWNER"),
+        "repo": ConfigValue(None, env_key="GITHUB_REPO"),
+        "api_token": ConfigValue(None, env_key="GITHUB_TOKEN"),
+    },
 }

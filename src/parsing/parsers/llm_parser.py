@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 
 from src.llm.service_factory import create_llm_service
 from src.parsing.base_parser import BaseParser
-from src.parsing.prompt_templates import get_prompt_template
+from src.parsing.prompt_templates import get_prompt_template, get_system_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -48,25 +48,6 @@ class LLMParser(BaseParser):
 
         # 初始化缓存
         self._cache = {}
-
-        # 系统提示
-        self.system_prompts = {
-            "workflow": """你是一个专业的工作流分析专家。你的任务是：
-1. 仔细分析规则文档中定义的流程
-2. 根据提供的模板结构，识别流程中的各个阶段、检查项和交付物
-3. 理解阶段之间的转换关系和条件
-4. 将分析结果转换为结构化的JSON格式
-5. 确保输出的JSON格式完全符合模板要求的结构""",
-            "roadmap": """你是一个专业的路线图结构化专家。你的任务是：
-1. 仔细分析提供的路线图YAML内容
-2. 将内容转换为标准的epic-story-task结构
-3. 确保所有字段名和值符合标准格式
-4. 特别注意将milestone结构转换为epic-story结构
-5. 确保priority字段使用标准值(low, medium, high, critical)
-6. 将结果以JSON格式返回，不要包含任何解释性文本
-7. 确保输出的JSON格式完全符合要求的结构""",
-            "generic": "You are a helpful assistant that parses content accurately.",
-        }
 
     def get_temp_dir(self, sub_dir=None, use_timestamp=True):
         """获取项目临时目录路径
@@ -118,7 +99,7 @@ class LLMParser(BaseParser):
         prompt_template = get_prompt_template(content_type)
 
         # 获取系统提示
-        system_prompt = self.system_prompts.get(content_type, "You are a helpful assistant that parses content accurately.")
+        system_prompt = get_system_prompt(content_type)
 
         # 格式化提示
         prompt = prompt_template.format(content=content)

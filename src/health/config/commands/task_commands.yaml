@@ -76,6 +76,8 @@ commands:
         short: "-s"
         values: ["todo", "in_progress", "done"]
         default: "todo"
+      "--due":
+        description: "任务截止日期 (格式: YYYY-MM-DD，默认为创建日期后3天)"
       "--link-story":
         description: "关联到Story"
       "--link-github":
@@ -121,6 +123,9 @@ commands:
       "--remove-label":
         description: "移除标签"
         multiple: true
+      "--due":
+        description: "任务截止日期 (格式: YYYY-MM-DD，设置为'clear'可清除截止日期)"
+        aliases: ["--due-date"]
       "--link-story":
         description: "关联到Story"
         short: "-s"
@@ -189,3 +194,4 @@ group_config:
   max_description_length: 2000  # 描述最大长度
   allow_task_dependencies: true # 是否允许任务依赖
   enable_task_templates: true   # 是否启用任务模板
+  default_due_date_days: 3      # 默认截止日期天数

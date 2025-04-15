@@ -13,7 +13,7 @@ import traceback
 from typing import Any, Dict, List, Optional, Union
 
 from src.db.connection_manager import get_session_factory
-from src.db.specific_managers.log_manager import LogManager
+from src.db.core.log_manager import LogManager
 
 # 配置日志目录
 LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "logs")

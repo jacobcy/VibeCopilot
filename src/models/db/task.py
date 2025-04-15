@@ -33,9 +33,13 @@ class Task(Base):
     created_at = Column(String(50), nullable=True)
     updated_at = Column(String(50), nullable=True)
     completed_at = Column(String(50), nullable=True)
+    due_date = Column(String(50), nullable=True)  # 任务截止日期，格式为ISO日期字符串
     github_issue = Column(String, nullable=True)
     current_session_id = Column(String, nullable=True)
     is_current = Column(Boolean, default=False)
+    memory_references = Column(
+        JSON, nullable=True
+    )  # 存储为 JSON 对象列表: [{"permalink": "memory://...", "title": "文档名", "added_at": "2023-01-01T00:00:00"}]
 
     # 关系
     story = relationship("Story", back_populates="tasks")
@@ -59,6 +63,8 @@ class Task(Base):
             self.estimated_hours = 0
         if getattr(self, "is_completed", None) is None:
             self.is_completed = False
+        if getattr(self, "memory_references", None) is None:
+            self.memory_references = []
 
         if getattr(self, "created_at", None) is None:
             self.created_at = datetime.now().isoformat()
@@ -81,9 +87,11 @@ class Task(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "completed_at": self.completed_at,
+            "due_date": self.due_date,
             "github_issue": self.github_issue,
             "current_session_id": self.current_session_id,
             "is_current": self.is_current,
+            "memory_references": self.memory_references,
         }
 
     def __repr__(self):

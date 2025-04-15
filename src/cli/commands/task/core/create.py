@@ -1,12 +1,17 @@
 # src/cli/commands/task/core/create.py
 
+import json
 import logging
+import os
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import click
 from loguru import logger
 from rich.console import Console
 
+from src.cli.commands.task.core.memory import append_to_task_log, store_ref_to_memory
+from src.core.config import get_config
 from src.db import get_session_factory
 from src.db.repositories.task_repository import TaskRepository
 from src.services.task import TaskService
@@ -17,19 +22,25 @@ logger = logging.getLogger(__name__)
 
 @click.command(name="create", help="创建一个新的任务")
 @click.option("-t", "--title", required=True, help="任务标题 (必需)")
-@click.option("-d", "--desc", help="任务描述")
+@click.option("-d", "--desc", "--description", help="任务描述")
 @click.option("-a", "--assignee", help="负责人")
 @click.option("-l", "--label", multiple=True, help="标签 (可多次使用)")
 @click.option("-s", "--status", default="open", help="初始状态 (默认: open)")
+@click.option("--due", help="截止日期 (格式: YYYY-MM-DD，默认为创建日期后3天)")
 @click.option("--link-roadmap", help="关联到 Roadmap Item (Story ID)")
 @click.option("--link-workflow-stage", help="关联到 Workflow Stage Instance ID")
 @click.option("--link-github", help="关联到 GitHub Issue (格式: owner/repo#number)")
-@click.option("--flow", help="关联到工作流类型")
-def create_task(title, desc, assignee, label, status, link_roadmap, link_workflow_stage, link_github, flow):
+@click.option("-f", "--flow", "--workflow", help="关联到工作流类型")
+@click.option("-r", "--ref", "--reference", help="关联参考文档路径")
+def create_task(title, desc, assignee, label, status, due, link_roadmap, link_workflow_stage, link_github, flow, ref):
     """创建一个新的任务
 
     创建一个新的任务，支持设置标题、描述、负责人、标签等基本信息，
     以及关联到 Roadmap Item、Workflow Stage 或 GitHub Issue。
+
+    如果不设置截止日期，将默认设置为创建日期后3天。
+
+    可以使用--ref或--reference指定参考文档路径，该文档将被关联到任务。
     """
     try:
         # 执行创建任务的逻辑
@@ -39,10 +50,12 @@ def create_task(title, desc, assignee, label, status, link_roadmap, link_workflo
             assignee=assignee,
             label=list(label) if label else None,
             status=status,
+            due_date=due,
             link_roadmap_item_id=link_roadmap,
             link_workflow_stage_instance_id=link_workflow_stage,
             link_github_issue=link_github,
             flow=flow,
+            ref_path=ref,
         )
 
         # 输出结果
@@ -70,18 +83,21 @@ def execute_create_task(
     assignee: Optional[str] = None,
     label: Optional[List[str]] = None,
     status: Optional[str] = "open",
+    due_date: Optional[str] = None,
     link_roadmap_item_id: Optional[str] = None,
     link_workflow_stage_instance_id: Optional[str] = None,
     link_github_issue: Optional[str] = None,
     flow: Optional[str] = None,
+    ref_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """执行创建任务的核心逻辑"""
     logger.info(
         f"执行创建任务命令: title='{title}', assignee={assignee}, "
-        f"labels={label}, status={status}, "
+        f"labels={label}, status={status}, due_date={due_date}, "
         f"link_roadmap={link_roadmap_item_id}, "
         f"link_stage={link_workflow_stage_instance_id}, "
-        f"link_github={link_github_issue}, flow={flow}"
+        f"link_github={link_github_issue}, flow={flow}, "
+        f"ref_path={ref_path}"
     )
 
     results = {
@@ -95,12 +111,25 @@ def execute_create_task(
         },
     }
 
+    # 如果没有指定assignee，默认设置为"AI Agent"
+    if not assignee:
+        assignee = "AI Agent"
+        logger.info(f"没有指定负责人，默认设置为: {assignee}")
+
+    # 获取配置信息
+    config = get_config()
+    github_owner = config.get("github.owner", None)
+
+    # 记录负责人信息
+    logger.info(f"任务负责人: {github_owner or '未设置'}")
+
     task_data = {
         "title": title,
         "description": description,
         "assignee": assignee,
         "labels": label,
         "status": status,
+        "due_date": due_date,
         "roadmap_item_id": link_roadmap_item_id,
         "workflow_stage_instance_id": link_workflow_stage_instance_id,
     }
@@ -132,8 +161,17 @@ def execute_create_task(
         session_factory = get_session_factory()
         with session_factory() as session:
             task_repo = TaskRepository(session)
-            # 使用 create_task 来处理 JSON 字段
-            new_task = task_repo.create_task(task_data)
+            # 使用 create_task，传递单独的参数而非整个字典
+            new_task = task_repo.create_task(
+                title=task_data.get("title"),
+                description=task_data.get("description"),
+                status=task_data.get("status"),
+                priority=task_data.get("priority", "medium"),
+                assignee=task_data.get("assignee"),
+                story_id=task_data.get("story_id"),
+                labels=task_data.get("labels"),
+                due_date=task_data.get("due_date"),
+            )
             session.commit()  # 需要 commit 来持久化
 
             task_dict = new_task.to_dict()
@@ -142,6 +180,29 @@ def execute_create_task(
 
             # --- 控制台输出 ---
             console.print(f"[bold green]成功:[/bold green] 已创建任务 '{new_task.title}' (ID: {new_task.id})")
+
+            # 创建任务日志
+            create_task_log(new_task.id, new_task.title, description, assignee, ref_path)
+
+            # 如果指定了参考文档，存储到Memory并关联
+            if ref_path:
+                try:
+                    logger.info(f"尝试存储参考文档到Memory: {ref_path}")
+                    memory_result = store_ref_to_memory(new_task.id, ref_path)
+                    if not memory_result["success"]:
+                        error_msg = memory_result.get("error", "未知错误")
+                        logger.warning(f"存储参考文档到Memory失败: {error_msg}")
+                        console.print(f"[bold yellow]警告:[/bold yellow] 存储参考文档到Memory失败: {error_msg}")
+                        # 添加到结果中，但不影响任务创建的成功状态
+                        if "warnings" not in results:
+                            results["warnings"] = []
+                        results["warnings"].append(f"参考文档存储失败: {error_msg}")
+                except Exception as e:
+                    logger.error(f"存储参考文档到Memory时出错: {str(e)}", exc_info=True)
+                    console.print(f"[bold yellow]警告:[/bold yellow] 存储参考文档到Memory时出错: {str(e)}")
+                    if "warnings" not in results:
+                        results["warnings"] = []
+                    results["warnings"].append(f"参考文档存储出错: {str(e)}")
 
             # 如果指定了工作流类型，创建并关联工作流会话
             if flow:
@@ -154,6 +215,9 @@ def execute_create_task(
                         console.print(f"[bold green]成功:[/bold green] 已关联到工作流会话 '{session.get('name')}' (ID: {session.get('id')})")
                         # 将会话信息添加到结果中
                         results["workflow_session"] = session
+
+                        # 记录到任务日志
+                        append_to_task_log(new_task.id, f"关联到工作流: {flow}", {"session_id": session.get("id"), "session_name": session.get("name")})
                 except ValueError as ve:
                     # 详细记录错误原因
                     error_message = str(ve)
@@ -162,6 +226,9 @@ def execute_create_task(
                     # 不影响任务创建本身，只是记录警告
                     results["message"] += f"，但关联工作流失败: {error_message}"
                     results["warnings"] = [f"关联工作流失败: {error_message}"]
+
+                    # 记录到任务日志
+                    append_to_task_log(new_task.id, f"关联工作流失败", {"error": error_message, "flow": flow})
                 except Exception as e:
                     # 处理其他可能的异常
                     error_message = f"关联工作流时发生意外错误: {str(e)}"
@@ -170,8 +237,14 @@ def execute_create_task(
                     results["message"] += f"，但关联工作流失败: {error_message}"
                     results["warnings"] = [error_message]
 
+                    # 记录到任务日志
+                    append_to_task_log(new_task.id, f"关联工作流失败", {"error": error_message, "flow": flow})
+
             # 设置为当前任务
             task_service.set_current_task(new_task.id)
+
+            # 记录到任务日志
+            append_to_task_log(new_task.id, "设置为当前任务")
 
     except ValueError as ve:  # 处理 Repository 中可能的 JSON 字段验证错误
         logger.error(f"创建任务时数据验证失败: {ve}", exc_info=True)
@@ -187,3 +260,29 @@ def execute_create_task(
         console.print(f"[bold red]错误:[/bold red] {e}")
 
     return results
+
+
+def create_task_log(
+    task_id: str, title: str, description: Optional[str] = None, assignee: Optional[str] = None, ref_path: Optional[str] = None
+) -> None:
+    """创建任务日志文件"""
+    # 创建目录结构
+    task_dir = os.path.join(".ai", "tasks", task_id)
+    os.makedirs(task_dir, exist_ok=True)
+
+    # 创建日志文件
+    log_path = os.path.join(task_dir, "task.log")
+
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(log_path, "w") as f:
+        f.write(f"# 任务日志: {title} (ID: {task_id})\n\n")
+        f.write(f"## {current_time} - 任务创建\n")
+        f.write(f"- 标题: {title}\n")
+        if description:
+            f.write(f"- 描述: {description}\n")
+        if assignee:
+            f.write(f"- 负责人: {assignee}\n")
+        if ref_path:
+            f.write(f"- 参考文档: {ref_path}\n")
+        f.write("\n")

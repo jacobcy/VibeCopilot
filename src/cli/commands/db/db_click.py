@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.table import Table
 
 from src.cli.commands.db.handlers.init_handler import init_db
-from src.cli.commands.db.handlers.list_handler import list_db
+from src.cli.commands.db.handlers.list_handler import list_db_cli
 from src.cli.commands.db.handlers.show_handler import show_db
 from src.cli.decorators import pass_service
 
@@ -46,13 +46,13 @@ def init_db(service, verbose: bool, force: bool) -> int:
         return 1
 
 
-@db.command(name="list", help="列出数据库内容")
-@click.option("--type", required=True, help="实体类型(epic/story/task/label/template)")
+@db.command(name="list", help="列出数据库实体对象")
+@click.option("--type", required=False, help="实体类型(epic/story/task/label/template)，不指定则列出所有可用类型")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
 @pass_service(service_type="db")
-def list_db(service, type: str, verbose: bool, format: str) -> int:
-    """列出数据库内容"""
+def list_db(service, type: Optional[str] = None, verbose: bool = False, format: str = "table") -> int:
+    """列出数据库实体对象，如任务、史诗、故事等"""
     try:
         if service is None:
             console.print("[red]错误: 数据库服务未成功创建[/red]")
@@ -60,7 +60,13 @@ def list_db(service, type: str, verbose: bool, format: str) -> int:
 
         logger.debug(f"Click命令收到数据库服务 (ID: {id(service)})")
 
-        # 临时使用旧的 handler，后续会重构
+        # 记录操作日志
+        if type is None:
+            logger.info("未提供类型参数，将列出所有可用实体类型")
+        else:
+            logger.info(f"列出 {type} 类型的实体列表")
+
+        # 使用ListHandler处理
         from src.cli.commands.db.handlers.list_handler import ListHandler
 
         list_handler = ListHandler()
@@ -240,23 +246,33 @@ def clean_db(service, force: bool = False) -> None:
         console.print(f"[red]错误: {str(e)}[/red]")
 
 
-@db.command(name="stats", help="显示数据库统计信息")
-@pass_service
-def db_stats(service) -> None:
-    """显示数据库统计信息"""
+@db.command(name="status", help="查询数据库表结构和状态")
+@click.option("--type", default="all", help="表名称，默认为所有表")
+@click.option("--detail", is_flag=True, help="是否显示详细信息（包括示例数据）")
+@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
+@pass_service(service_type="db")
+def status_db_cli(service, type: str = "all", detail: bool = False, format: str = "table") -> int:
+    """查询数据库表结构和状态"""
     try:
-        stats = service.get_stats()
+        # 如果查询的是rules表且默认表格格式，则使用yaml格式
+        if type.lower() == "rules" and format == "table":
+            # 仅当用户未明确指定格式时自动转换
+            import sys
 
-        table = Table(title="数据库统计信息", show_header=True, header_style="bold magenta")
-        table.add_column("类型", style="dim", width=12)
-        table.add_column("数量", justify="right")
+            if not any(arg.startswith("--format") for arg in sys.argv):
+                format = "yaml"
 
-        for entity_type, count in stats.items():
-            table.add_row(entity_type, str(count))
+        # 创建参数字典，与StatusHandler兼容
+        args_dict = {"type": type, "detail": detail, "format": format, "service": service}
 
-        console.print(table)
+        # 导入并使用StatusHandler
+        from src.cli.commands.db.handlers.status_handler import StatusHandler
+
+        status_handler = StatusHandler()
+        return status_handler.handle(**args_dict)
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")
+        return 1
 
 
 # 注册命令
@@ -267,6 +283,11 @@ db.add_command(query_db)
 db.add_command(create_db)
 db.add_command(update_db)
 db.add_command(delete_db)
+db.add_command(backup_db)
+db.add_command(restore_db)
+db.add_command(clean_db)
+# 使用CLI版本的status命令替代旧版本
+db.add_command(status_db_cli)
 
 if __name__ == "__main__":
     db()

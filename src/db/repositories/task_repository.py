@@ -1,7 +1,7 @@
 # src/db/repositories/task_repository.py
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from sqlalchemy import and_, or_
@@ -52,30 +52,29 @@ class TaskRepository(Repository[Task]):
 
         # 准备任务数据
         now = datetime.utcnow()
-        task_data = {
-            "id": task_id,
-            "title": title,
-            "description": description or "",
-            "status": status,
-            "priority": priority,
-            "assignee": assignee,
-            "story_id": story_id,
-            "labels": labels or [],
-            "due_date": due_date,
-            "linked_prs": [],
-            "linked_commits": [],
-            "created_at": now,
-            "updated_at": now,
-        }
 
-        # 检查Task模型是否有特定属性，如果没有则从数据中删除
-        for field in ["roadmap_item_id", "workflow_stage_instance_id", "github_issue_number"]:
-            if not hasattr(Task, field) and field in task_data:
-                logger.warning(f"Task模型没有{field}属性，已从创建数据中删除")
-                task_data.pop(field)
+        # 如果未设置截止日期，默认为3天后
+        if due_date is None:
+            due_date = (now + timedelta(days=3)).isoformat()
 
-        # 使用基类的create方法创建实例
-        return super().create(task_data)
+        # 创建新的Task实例
+        task = Task(
+            id=task_id,
+            title=title,
+            description=description or "",
+            status=status,
+            priority=priority,
+            assignee=assignee,
+            story_id=story_id,
+            labels=labels or [],
+            due_date=due_date,
+            created_at=now.isoformat(),
+            updated_at=now.isoformat(),
+        )
+
+        # 将任务添加到会话并返回
+        self.session.add(task)
+        return task
 
     def update_task(self, task_id: str, data: Dict[str, Any]) -> Optional[Task]:
         """更新任务，特殊处理 labels, linked_prs, linked_commits"""
@@ -318,6 +317,136 @@ class TaskRepository(Repository[Task]):
             logger.error(f"设置当前任务失败: {e}")
             return False
 
+    def add_memory_reference(self, task_id: str, permalink: str, title: str, added_at: Optional[str] = None) -> Optional[Task]:
+        """添加Memory引用到任务
+
+        Args:
+            task_id: 任务ID
+            permalink: Memory永久链接
+            title: 文档标题
+            added_at: 添加时间（可选，默认为当前时间）
+
+        Returns:
+            更新后的任务，如果失败则返回None
+        """
+        logger.info(f"开始添加Memory引用: {permalink} 到任务 {task_id}")
+
+        # 参数验证
+        if not task_id:
+            logger.error("添加Memory引用失败：任务ID不能为空")
+            return None
+
+        if not permalink:
+            logger.error("添加Memory引用失败：Memory永久链接不能为空")
+            return None
+
+        if not title:
+            logger.warning("Memory引用标题为空，使用默认标题")
+            title = "未命名引用文档"
+
+        # 获取任务
+        try:
+            task = self.get_by_id(task_id)
+            if not task:
+                logger.error(f"添加Memory引用失败：未找到任务 {task_id}")
+                return None
+        except Exception as e:
+            logger.error(f"获取任务 {task_id} 失败: {e}", exc_info=True)
+            return None
+
+        # 准备引用信息
+        if not added_at:
+            added_at = datetime.utcnow().isoformat()
+
+        reference = {"permalink": permalink, "title": title, "added_at": added_at}
+
+        # 获取现有引用，确保是列表类型
+        try:
+            memory_references = task.memory_references
+            # 确保memory_references是列表类型
+            if memory_references is None:
+                memory_references = []
+            elif not isinstance(memory_references, list):
+                logger.warning(f"任务 {task_id} 的memory_references不是列表类型，将重置为空列表")
+                memory_references = []
+        except Exception as e:
+            logger.error(f"获取任务 {task_id} 的memory_references时出错: {e}", exc_info=True)
+            memory_references = []
+
+        logger.info(f"当前任务 {task_id} 有 {len(memory_references)} 个Memory引用")
+
+        # 检查是否已存在相同的引用
+        for ref in memory_references:
+            if isinstance(ref, dict) and ref.get("permalink") == permalink:
+                logger.info(f"Memory引用 {permalink} 已存在于任务 {task_id}")
+                return task
+
+        # 添加新引用
+        memory_references.append(reference)
+        logger.info(f"添加新引用到任务 {task_id}: {permalink}")
+
+        # 更新任务
+        try:
+            updated_task = self.update_task(task_id, {"memory_references": memory_references})
+            if updated_task:
+                logger.info(f"成功更新任务 {task_id}，添加Memory引用 {permalink}")
+                return updated_task
+            else:
+                logger.error(f"更新任务 {task_id} 添加Memory引用失败")
+                return None
+        except ValueError as ve:
+            logger.error(f"更新任务 {task_id} 添加Memory引用时数据验证失败: {ve}", exc_info=True)
+            return None
+        except Exception as e:
+            logger.error(f"更新任务 {task_id} 添加Memory引用时出错: {e}", exc_info=True)
+            return None
+
+    def remove_memory_reference(self, task_id: str, permalink: str) -> Optional[Task]:
+        """从任务中移除Memory引用
+
+        Args:
+            task_id: 任务ID
+            permalink: 要移除的Memory永久链接
+
+        Returns:
+            更新后的任务，如果失败则返回None
+        """
+        # 获取任务
+        task = self.get_by_id(task_id)
+        if not task:
+            logger.warning(f"移除Memory引用失败：未找到任务 {task_id}")
+            return None
+
+        # 获取现有引用
+        memory_references = task.memory_references or []
+
+        # 查找并移除引用
+        new_references = [ref for ref in memory_references if ref.get("permalink") != permalink]
+
+        # 如果没有变化，直接返回
+        if len(new_references) == len(memory_references):
+            logger.info(f"未找到Memory引用 {permalink}，无需移除")
+            return task
+
+        # 更新任务
+        return self.update_task(task_id, {"memory_references": new_references})
+
+    def get_memory_references(self, task_id: str) -> List[Dict[str, Any]]:
+        """获取任务的所有Memory引用
+
+        Args:
+            task_id: 任务ID
+
+        Returns:
+            引用列表，如果任务不存在或没有引用则返回空列表
+        """
+        task = self.get_by_id(task_id)
+        if not task:
+            logger.warning(f"获取Memory引用失败：未找到任务 {task_id}")
+            return []
+
+        return task.memory_references or []
+
 
 class TaskCommentRepository(Repository[TaskComment]):
     """任务评论仓库"""
@@ -350,7 +479,7 @@ class TaskCommentRepository(Repository[TaskComment]):
 
         # 准备评论数据
         now = datetime.utcnow()
-        comment_data = {"id": comment_id, "task_id": task_id, "content": content, "author": author or "system", "created_at": now, "updated_at": now}
+        comment_data = {"id": comment_id, "task_id": task_id, "content": content, "author": author or "system", "created_at": now}
 
         # 创建评论
         return super().create(comment_data)

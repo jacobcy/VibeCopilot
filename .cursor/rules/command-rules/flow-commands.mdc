@@ -122,138 +122,196 @@ VibeCopilot定义了一系列预设工作流模板，可通过命令直接调用
 <!-- BEGIN_COMMAND_YAML -->
 ```yaml
 commands:
-  flow session list:
+  flow session list: # 列出所有会话
     subcommands:
-      --verbose: {}
-      --format:
+      --verbose: # 显示详细信息
+        type: flag
+      --format: # 输出格式
         values:
         - yaml
         - text
         - json
-      --status: {}
-      --flow: {}
-  flow session show:
+      --status: # 按状态筛选会话
+        type: string
+      --flow: # 按工作流ID筛选会话
+        type: string
+  flow session show: # 显示特定会话的详细信息
     subcommands:
-      ID_OR_NAME: {}
-      --verbose: {}
-      --format:
+      ID_OR_NAME: # 会话ID或名称
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+      --format: # 输出格式
         values:
         - yaml
         - text
         - json
-  flow session create:
+  flow session create: # 创建并启动新会话
     subcommands:
-      --flow: {}
-      --name: {}
-      --task: {}
-      --verbose: {}
-  flow session close:
+      --flow: # 工作流ID
+        type: string
+      --name: # 会话名称
+        type: string
+      --task: # 关联的任务ID
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  flow session close: # 结束会话
     subcommands:
-      ID_OR_NAME: {}
-      --reason: {}
-      --force: {}
-      --verbose: {}
-  flow session switch:
+      ID_OR_NAME: # 会话ID或名称
+        type: string
+      --reason: # 会话结束原因
+        type: string
+      --force: # 强制结束，不提示确认
+        type: flag
+      --verbose: # 显示详细信息
+        type: flag
+  flow session switch: # 切换当前活动会话
     subcommands:
-      ID_OR_NAME: {}
-      --verbose: {}
-  flow session update:
+      ID_OR_NAME: # 会话ID或名称
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  flow session update: # 更新会话属性
     subcommands:
-      ID_OR_NAME: {}
-      --name: {}
-      --status:
+      ID_OR_NAME: # 会话ID或名称
+        type: string
+      --name: # 新的会话名称
+        type: string
+      --status: # 设置会话状态
         values:
         - ACTIVE
         - PAUSED
         - COMPLETED
         - CLOSED
-      --verbose: {}
-  flow session delete:
+      --verbose: # 显示详细信息
+        type: flag
+  flow session delete: # 永久删除会话（不可恢复）
     subcommands:
-      ID_OR_NAME: {}
-      --force: {}
-      --verbose: {}
-  flow list:
+      ID_OR_NAME: # 会话ID或名称
+        type: string
+      --force: # 强制删除，不提示确认
+        type: flag
+      --verbose: # 显示详细信息
+        type: flag
+  flow list: # 列出所有工作流定义
     subcommands:
-      --type: {}
-      --verbose: {}
-  flow show:
+      --type: # 按工作流类型筛选
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  flow show: # 查看会话或工作流定义详情
     subcommands:
-      ID: {}
-      --flow: {}
-      --format:
+      ID: # 工作流或会话ID
+        type: string
+      --flow: # 查看工作流定义而非会话信息
+        type: flag
+      --format: # 输出格式
         values:
         - json
         - text
         - mermaid
-      --diagram: {}
-      --verbose: {}
-  flow create:
+      --diagram: # 在输出中包含Mermaid图表
+        type: flag
+      --verbose: # 显示详细信息
+        type: flag
+  flow create: # 创建工作流定义
     subcommands:
-      --source: {}
-      --template: {}
-      --name: {}
-      --output: {}
-      --verbose: {}
-  flow update:
+      --source: # 源文件路径
+        type: string
+      --template: # 工作流模板路径
+        type: string
+      --name: # 工作流名称
+        type: string
+      --output: # 输出工作流文件路径
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  flow update: # 更新工作流定义
     subcommands:
-      ID: {}
-      --name: {}
-      --desc: {}
-      --verbose: {}
-  flow delete:
+      ID: # 工作流ID
+        type: string
+      --name: # 新的工作流名称
+        type: string
+      --desc: # 新的工作流描述
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  flow delete: # 删除工作流定义
     subcommands:
-      WORKFLOW_ID: {}
-      --force: {}
-      --verbose: {}
-  flow export:
+      WORKFLOW_ID: # 工作流ID
+        type: string
+      --force: # 强制删除
+        type: flag
+      --verbose: # 显示详细信息
+        type: flag
+  flow export: # 导出工作流定义
     subcommands:
-      WORKFLOW_ID: {}
-      --format:
+      WORKFLOW_ID: # 工作流ID
+        type: string
+      --format: # 输出格式
         values:
         - json
         - mermaid
-      --output: {}
-      --verbose: {}
-  flow import:
+      --output: # 输出路径
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  flow import: # 导入工作流定义
     subcommands:
-      FILE_PATH: {}
-      --name: {}
-      --verbose: {}
-  flow context:
+      FILE_PATH: # 文件路径
+        type: string
+      --name: # 导入后使用的工作流名称
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
+  flow context: # 获取并解释工作流阶段上下文
     subcommands:
-      STAGE_ID: {}
-      --session: {}
-      --completed: {}
-      --format:
+      STAGE_ID: # 阶段ID
+        type: string
+      --session: # 会话ID或名称
+        type: string
+      --completed: # 标记为已完成的检查项名称或ID
+        type: string
+      --format: # 输出格式
         values:
         - json
         - text
-      --verbose: {}
-  flow next:
+      --verbose: # 显示详细信息
+        type: flag
+  flow next: # 获取下一阶段建议
     subcommands:
-      --session: {}
-      --current: {}
-      --format:
+      --session: # 会话ID或名称
+        type: string
+      --current: # 当前阶段ID
+        type: string
+      --format: # 输出格式
         values:
         - json
         - text
-      --verbose: {}
-  flow validate:
+      --verbose: # 显示详细信息
+        type: flag
+  flow validate: # 验证工作流文件一致性
     subcommands:
-      --id: {}
-      --fix: {}
-      --verbose: {}
-  flow visualize:
+      --id: # 工作流ID
+        type: string
+      --fix: # 自动修复问题
+        type: flag
+      --verbose: # 显示详细信息
+        type: flag
+  flow visualize: # 可视化工作流结构和进度
     subcommands:
-      ID: {}
-      --session: {}
-      --format:
+      ID: # 工作流或会话ID
+        type: string
+      --session: # 目标是会话ID而非工作流ID
+        type: flag
+      --format: # 输出格式
         values:
         - mermaid
         - text
-      --output: {}
-      --verbose: {}
-
+      --output: # 输出文件路径
+        type: string
+      --verbose: # 显示详细信息
+        type: flag
 ```
 <!-- END_COMMAND_YAML -->

@@ -14,6 +14,25 @@ from sqlalchemy.orm import Session
 # 导入连接管理器
 from src.db.connection_manager import ensure_tables_exist, get_engine, get_session, get_session_factory
 
+# 创建默认会话工厂，提供与session.py同样的功能
+SessionLocal = get_session_factory()
+
+
+def get_db() -> Session:
+    """获取数据库会话并确保会话关闭
+
+    兼容session.py的get_db函数，确保会话正确关闭
+
+    Returns:
+        数据库会话对象
+    """
+    db = SessionLocal()
+    try:
+        return db
+    finally:
+        db.close()
+
+
 # Updated imports for flow repositories
 from src.db.repositories.flow_session_repository import FlowSessionRepository
 from src.db.repositories.memory_item_repository import MemoryItemRepository
@@ -42,6 +61,8 @@ __all__ = [
     "get_session",
     "get_session_factory",
     "ensure_tables_exist",
+    "SessionLocal",
+    "get_db",
     "Base",
     "TemplateRepository",
     "TemplateVariableRepository",

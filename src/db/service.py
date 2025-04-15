@@ -10,6 +10,10 @@ from typing import Any, Dict, List, Optional
 # 导入上层模块定义的数据库函数
 from src.db import get_engine, get_session_factory
 from src.db.core.entity_manager import EntityManager
+from src.db.core.epic_manager import EpicManager
+from src.db.core.log_manager import LogManager
+from src.db.core.story_manager import StoryManager
+from src.db.core.task_manager import TaskManager
 from src.db.repositories.log_repository import (
     AuditLogRepository,
     ErrorLogRepository,
@@ -20,10 +24,6 @@ from src.db.repositories.log_repository import (
 )
 from src.db.repositories.roadmap_repository import EpicRepository, StoryRepository
 from src.db.repositories.task_repository import TaskRepository
-from src.db.specific_managers.epic_manager import EpicManager
-from src.db.specific_managers.log_manager import LogManager
-from src.db.specific_managers.story_manager import StoryManager
-from src.db.specific_managers.task_manager import TaskManager
 
 # 直接从各自的模块导入
 from src.models.db.init_db import init_db
@@ -100,10 +100,10 @@ class DatabaseService:
                 raise RuntimeError("实体管理器初始化失败")
 
             # 初始化特定实体管理器，不再传递模拟存储
-            from src.db.specific_managers.epic_manager import EpicManager
-            from src.db.specific_managers.log_manager import LogManager
-            from src.db.specific_managers.story_manager import StoryManager
-            from src.db.specific_managers.task_manager import TaskManager
+            from src.db.core.epic_manager import EpicManager
+            from src.db.core.log_manager import LogManager
+            from src.db.core.story_manager import StoryManager
+            from src.db.core.task_manager import TaskManager
 
             self.epic_manager = EpicManager(self.entity_manager)
             self.story_manager = StoryManager(self.entity_manager)
@@ -408,9 +408,114 @@ class DatabaseService:
             raise
 
     def get_stats(self) -> Dict[str, int]:
-        """获取数据库统计信息"""
-        # TODO: 实现统计逻辑
-        return {"epic": 0, "story": 0, "task": 0, "label": 0, "template": 0}
+        """获取数据库统计信息
+
+        Returns:
+            Dict[str, int]: 包含各实体类型记录数的字典
+        """
+        try:
+            result = {}
+
+            # 获取Epic表统计
+            from src.models.db import Epic
+
+            epic_count = self.session.query(Epic).count()
+            result["epic"] = epic_count
+
+            # 获取Story表统计
+            from src.models.db import Story
+
+            story_count = self.session.query(Story).count()
+            result["story"] = story_count
+
+            # 获取Task表统计
+            from src.models.db.task import Task
+
+            task_count = self.session.query(Task).count()
+            result["task"] = task_count
+
+            # 获取Label表统计
+            from src.models.db import Label
+
+            if hasattr(self.session, "query") and Label is not None:
+                label_count = self.session.query(Label).count()
+                result["label"] = label_count
+            else:
+                result["label"] = 0
+
+            # 获取Template表统计
+            from src.models.db import Template
+
+            if hasattr(self.session, "query") and Template is not None:
+                template_count = self.session.query(Template).count()
+                result["template"] = template_count
+            else:
+                result["template"] = 0
+
+            logger.info(f"获取数据库统计信息成功: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"获取数据库统计信息失败: {str(e)}", exc_info=True)
+            # 返回默认值，避免前端报错
+            return {"epic": 0, "story": 0, "task": 0, "label": 0, "template": 0}
+
+    def get_table_schema(self, table_name: str) -> Dict[str, Any]:
+        """获取数据库表结构信息
+
+        Args:
+            table_name: 表名称，如 'task', 'epic', 'story' 等
+
+        Returns:
+            Dict[str, Any]: 包含表结构信息的字典
+        """
+        try:
+            # 获取对应的模型类
+            model_map = {"epic": "Epic", "story": "Story", "task": "Task", "label": "Label", "template": "Template"}
+
+            if table_name.lower() not in model_map:
+                return {"error": f"不支持的表名: {table_name}"}
+
+            # 导入对应的模型
+            if table_name.lower() == "task":
+                from src.models.db.task import Task as Model
+            else:
+                from src.models.db import Epic, Label, Story, Template
+
+                model_class_name = model_map[table_name.lower()]
+                Model = locals()[model_class_name]
+
+            # 获取表信息
+            from sqlalchemy import inspect
+
+            inspector = inspect(self.session.bind)
+            columns = inspector.get_columns(Model.__tablename__)
+
+            # 查询表记录数量
+            count = self.session.query(Model).count()
+
+            # 获取几条示例数据
+            examples = []
+            sample_rows = self.session.query(Model).limit(3).all()
+            for row in sample_rows:
+                examples.append({c.name: getattr(row, c.name) for c in row.__table__.columns})
+
+            return {
+                "table_name": Model.__tablename__,
+                "count": count,
+                "columns": [
+                    {
+                        "name": col["name"],
+                        "type": str(col["type"]),
+                        "nullable": col["nullable"],
+                        "default": str(col["default"]) if col["default"] is not None else None,
+                    }
+                    for col in columns
+                ],
+                "examples": examples,
+            }
+        except Exception as e:
+            logger.error(f"获取表结构信息失败: {str(e)}", exc_info=True)
+            return {"error": str(e)}
 
     # 日志相关方法
     def get_log_manager(self) -> LogManager:

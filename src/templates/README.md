@@ -39,7 +39,7 @@ from src.templates.repositories import (
     SQLTemplateRepositoryAdapter
 )
 from src.db.repositories.template_repository import TemplateRepository as SQLTemplateRepository
-from src.db.session import get_session
+from src.db import get_session
 
 # 使用文件系统存储
 fs_repo = FileSystemTemplateRepository(storage_dir="./templates")
