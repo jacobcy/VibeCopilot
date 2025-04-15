@@ -17,6 +17,7 @@ from src.cli.commands.memory.handlers import (
     handle_read_note,
     handle_search_notes,
     handle_sync,
+    handle_test_connection,
     handle_update_note,
     handle_write_note,
 )
@@ -207,3 +208,17 @@ def handle_sync_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
 
     # 调用处理函数
     return handle_sync(sync_type=sync_type)
+
+
+def handle_test_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    处理测试连接子命令
+
+    Args:
+        args: 命令行参数，可以是字典或任何支持getattr的对象
+
+    Returns:
+        元组，包含(是否成功, 消息, 结果数据)
+    """
+    # 调用处理函数
+    return handle_test_connection()

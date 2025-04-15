@@ -1,37 +1,50 @@
 """
-Basic Memory适配器
+向量存储适配器
 
-使用Basic Memory作为后端的向量存储实现。
+适配不同的向量存储实现，提供统一的接口。
 """
 
+import asyncio
+import logging
 import os
 from typing import Any, Dict, List, Optional, Union
 
+from src.db.vector.chroma_vector_store import ChromaVectorStore
 from src.db.vector.vector_store import VectorStore
+
+logger = logging.getLogger(__name__)
 
 
 class BasicMemoryAdapter(VectorStore):
     """
-    Basic Memory适配器
+    基本向量存储适配器
 
-    使用Basic Memory作为后端的向量存储实现。
+    提供统一的向量存储接口，底层使用ChromaDB实现。
     """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
-        初始化Basic Memory适配器
+        初始化向量存储适配器
 
         Args:
             config: 配置参数
         """
         super().__init__(config)
 
-        # 配置参数
-        self.default_folder = self.config.get("default_folder", "vibecopilot")
-        self.default_tags = self.config.get("default_tags", "vibecopilot")
+        # 默认配置
+        self.default_config = {
+            "data_dir": os.path.join(os.path.expanduser("~"), "Public", "VibeCopilot", "data", "chroma_db"),
+            "default_folder": "vibecopilot",
+            "default_tags": "vibecopilot",
+        }
 
-        # 这里可以初始化与Basic Memory的连接
-        # 但由于这是示例代码，我们只是模拟实现
+        # 合并配置
+        if config:
+            self.default_config.update(config)
+
+        # 初始化ChromaDB向量存储
+        self.vector_store = ChromaVectorStore(self.default_config)
+        logger.info("初始化ChromaDB向量存储")
 
     async def store(
         self,
@@ -40,78 +53,66 @@ class BasicMemoryAdapter(VectorStore):
         folder: Optional[str] = None,
     ) -> List[str]:
         """
-        存储文本及其元数据到Basic Memory
+        存储文本及元数据到向量库
 
         Args:
-            texts: 待存储的文本列表
-            metadata: 文本对应的元数据列表
+            texts: 要存储的文本列表
+            metadata: 每个文本对应的元数据
             folder: 存储文件夹
 
         Returns:
             存储后的永久链接列表
         """
-        if metadata is None:
-            metadata = [{} for _ in texts]
-
-        # 确保元数据列表长度与文本列表相同
-        if len(metadata) != len(texts):
-            raise ValueError("Metadata list length must match texts list length")
-
-        folder = folder or self.default_folder
-        permalinks = []
-
-        # 模拟存储过程
-        for i, text in enumerate(texts):
-            # 从元数据获取标题，或使用默认标题
-            title = metadata[i].get("title", f"Text {i+1}")
-
-            # 从元数据获取标签，或使用默认标签
-            tags = metadata[i].get("tags", self.default_tags)
-
-            # 模拟生成永久链接
-            permalink = f"memory://{folder}/{title.replace(' ', '_').lower()}"
-            permalinks.append(permalink)
-
-            print(f"Stored text '{title}' with permalink '{permalink}'")
-
-        return permalinks
+        return await self.vector_store.store(texts, metadata, folder)
 
     async def search(
-        self, query: str, limit: int = 5, filter_dict: Optional[Dict[str, Any]] = None
+        self,
+        query: str,
+        limit: int = 5,
+        filter_dict: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        在Basic Memory中搜索相似文本
+        搜索向量库
 
         Args:
-            query: 查询文本
+            query: 搜索查询
             limit: 返回结果数量
             filter_dict: 过滤条件
 
         Returns:
             搜索结果列表
         """
-        # 模拟搜索过程
-        print(f"Searching for '{query}' with limit {limit}")
+        return await self.vector_store.search(query, limit, filter_dict)
 
-        # 假设有一些结果
-        results = [
-            {
-                "permalink": f"memory://{self.default_folder}/result_{i+1}",
-                "content": f"Sample result {i+1} for query '{query}'",
-                "metadata": {
-                    "title": f"Result {i+1}",
-                    "tags": self.default_tags,
-                    "score": 0.9 - (i * 0.1),
-                },
-            }
-            for i in range(min(limit, 3))  # 最多返回3个结果
-        ]
+    async def get(self, id: str) -> Optional[Dict[str, Any]]:
+        """
+        获取文档
 
-        return results
+        Args:
+            id: 永久链接
+
+        Returns:
+            文档内容和元数据
+        """
+        return await self.vector_store.get(id)
+
+    async def update(self, id: str, content: str, metadata: Dict[str, Any]) -> bool:
+        """
+        更新文档
+
+        Args:
+            id: 永久链接
+            content: 新内容
+            metadata: 新元数据
+
+        Returns:
+            更新是否成功
+        """
+        return await self.vector_store.update(id, content, metadata)
 
     async def delete(self, ids: List[str]) -> bool:
         """
-        从Basic Memory中删除文本
+        删除文档
 
         Args:
             ids: 永久链接列表
@@ -119,48 +120,43 @@ class BasicMemoryAdapter(VectorStore):
         Returns:
             删除是否成功
         """
-        # 模拟删除过程
-        for id in ids:
-            print(f"Deleted text with permalink '{id}'")
+        return await self.vector_store.delete(ids)
 
-        return True
-
-    async def update(self, id: str, text: str, metadata: Optional[Dict[str, Any]] = None) -> bool:
+    async def list_folders(self) -> List[str]:
         """
-        更新Basic Memory中的文本和元数据
-
-        Args:
-            id: 永久链接
-            text: 新文本
-            metadata: 新元数据
+        列出所有文件夹
 
         Returns:
-            更新是否成功
+            文件夹列表
         """
-        # 模拟更新过程
-        print(f"Updated text with permalink '{id}'")
+        return await self.vector_store.list_folders()
 
-        return True
-
-    async def get(self, id: str) -> Optional[Dict[str, Any]]:
+    async def list_documents(self, folder: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        从Basic Memory获取文本
+        列出文件夹中的所有文档
 
         Args:
-            id: 永久链接
+            folder: 文件夹名称，如果为None则列出所有文件夹中的文档
 
         Returns:
-            文本及其元数据
+            文档列表
         """
-        # 模拟获取过程
-        print(f"Getting text with permalink '{id}'")
+        return await self.vector_store.list_documents(folder)
 
-        # 假设找到了文本
-        return {
-            "permalink": id,
-            "content": f"Sample content for permalink '{id}'",
-            "metadata": {
-                "title": id.split("/")[-1].replace("_", " ").title(),
-                "tags": self.default_tags,
-            },
-        }
+    async def test_connection(self) -> Dict[str, Any]:
+        """
+        测试连接是否正常
+
+        Returns:
+            测试结果
+        """
+        try:
+            result = await self.vector_store.test_connection()
+
+            # 添加API可用性标记
+            result["details"]["api_available"] = True
+
+            return result
+        except Exception as e:
+            logger.error(f"ChromaDB向量存储连接测试失败: {e}")
+            return {"success": False, "message": f"ChromaDB向量存储连接测试失败: {e}", "details": {"api_available": False, "error": str(e)}}

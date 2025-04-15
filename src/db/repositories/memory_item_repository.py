@@ -7,7 +7,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import or_
+from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
@@ -32,6 +32,11 @@ class MemoryItemRepository(Repository[MemoryItem]):
         content_type: str,
         tags: Optional[str] = None,
         source: Optional[str] = None,
+        permalink: Optional[str] = None,
+        folder: Optional[str] = None,
+        entity_count: int = 0,
+        relation_count: int = 0,
+        observation_count: int = 0,
     ) -> MemoryItem:
         """创建新的记忆项
 
@@ -41,6 +46,11 @@ class MemoryItemRepository(Repository[MemoryItem]):
             content_type: 内容类型
             tags: 标签（逗号分隔）
             source: 来源
+            permalink: 向量库永久链接
+            folder: 向量库目录
+            entity_count: 实体数量
+            relation_count: 关系数量
+            observation_count: 观察数量
 
         Returns:
             MemoryItem: 创建的记忆项
@@ -51,6 +61,12 @@ class MemoryItemRepository(Repository[MemoryItem]):
             "content_type": content_type,
             "tags": tags,
             "source": source,
+            "permalink": permalink,
+            "folder": folder,
+            "entity_count": entity_count,
+            "relation_count": relation_count,
+            "observation_count": observation_count,
+            "vector_updated_at": datetime.utcnow() if permalink else None,
         }
         return super().create(data)
 
@@ -68,6 +84,29 @@ class MemoryItemRepository(Repository[MemoryItem]):
             .filter(or_(MemoryItem.title.ilike(f"%{query}%"), MemoryItem.content.ilike(f"%{query}%"), MemoryItem.tags.ilike(f"%{query}%")))
             .all()
         )
+
+    def find_by_permalink(self, permalink: str) -> Optional[MemoryItem]:
+        """通过向量库永久链接查找记忆项
+
+        Args:
+            permalink: 向量库永久链接
+
+        Returns:
+            Optional[MemoryItem]: 匹配的记忆项，如果不存在则返回None
+        """
+        return self.session.query(MemoryItem).filter(MemoryItem.permalink == permalink).first()
+
+    def find_by_folder(self, folder: str, limit: int = 100) -> List[MemoryItem]:
+        """按向量库目录查找记忆项
+
+        Args:
+            folder: 向量库目录
+            limit: 限制返回数量
+
+        Returns:
+            List[MemoryItem]: 匹配的记忆项列表
+        """
+        return self.session.query(MemoryItem).filter(MemoryItem.folder == folder).order_by(desc(MemoryItem.created_at)).limit(limit).all()
 
     def find_by_category(self, category: str) -> List[MemoryItem]:
         """按分类查找记忆项
@@ -146,6 +185,32 @@ class MemoryItemRepository(Repository[MemoryItem]):
         if update_data:
             return self.update(item_id, update_data)
         return item
+
+    def update_vector_info(
+        self, memory_item_id: int, permalink: str, folder: str, entity_count: int = 0, relation_count: int = 0, observation_count: int = 0
+    ) -> Optional[MemoryItem]:
+        """更新记忆项的向量库信息
+
+        Args:
+            memory_item_id: 记忆项ID
+            permalink: 向量库永久链接
+            folder: 向量库目录
+            entity_count: 实体数量
+            relation_count: 关系数量
+            observation_count: 观察数量
+
+        Returns:
+            Optional[MemoryItem]: 更新后的记忆项，如果不存在则返回None
+        """
+        update_data = {
+            "permalink": permalink,
+            "folder": folder,
+            "entity_count": entity_count,
+            "relation_count": relation_count,
+            "observation_count": observation_count,
+            "vector_updated_at": datetime.utcnow(),
+        }
+        return self.update(memory_item_id, **update_data)
 
     def get_by_id(self, memory_item_id: int) -> Optional[MemoryItem]:
         """

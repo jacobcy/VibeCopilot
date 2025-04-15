@@ -1,24 +1,66 @@
 # Memory Management System
 
-This module provides memory management capabilities for VibeCopilot, enabling content synchronization, entity management, and knowledge storage.
+This module provides memory management capabilities for VibeCopilot, enabling content synchronization, entity management, knowledge storage and retrieval with integrated SQLite and vector database support.
 
 ## Overview
 
 The memory system consists of:
 
-1. **Sync Service**: Synchronizes local content with Basic Memory
-2. **Entity Manager**: Manages knowledge entities and their properties
-3. **Observation Manager**: Records and retrieves observations (facts, events, states)
-4. **Relation Manager**: Handles relationships between entities
+1. **Memory Manager**: Core component managing SQLite and vector database integration
+2. **Sync Service**: Synchronizes local content with Basic Memory
+3. **Entity Manager**: Manages knowledge entities and their properties
+4. **Observation Manager**: Records and retrieves observations (facts, events, states)
+5. **Relation Manager**: Handles relationships between entities
 
 ## Structure
 
+- `memory_manager.py`: Core memory management with SQLite and vector database integration
 - `sync_service.py`: Synchronization service for local content and Basic Memory
 - `entity_manager.py`: Entity management for knowledge entities
 - `observation_manager.py`: Observation management for recording facts and events
 - `relation_manager.py`: Relation management for entity relationships
 
+## Database Integration
+
+The system integrates both SQLite and vector database (ChromaDB) to provide:
+
+- Fast SQL queries for structured data and metadata
+- Semantic vector search for natural language queries
+- Automatic synchronization between SQL and vector storage
+- Data migration capabilities for smooth upgrades
+
 ## Usage
+
+### Memory Manager
+
+The Memory Manager is the primary interface for memory storage and retrieval with database integration.
+
+```python
+from src.memory.memory_manager import MemoryManager
+
+# Create memory manager
+memory_manager = MemoryManager()
+
+# Store new memory
+result = await memory_manager.store_memory(
+    content="Vector databases are specialized database systems designed for storing and retrieving vector embeddings efficiently.",
+    title="Introduction to Vector Databases",
+    tags="vector,database,embeddings",
+    folder="knowledge"
+)
+
+# Retrieve memory by permalink
+memory = await memory_manager.get_memory_by_id(result["permalink"])
+
+# Search memories
+results = await memory_manager.retrieve_memory("What are vector databases?")
+
+# List memories in a folder
+memories = await memory_manager.list_memories(folder="knowledge")
+
+# Delete memory
+result = await memory_manager.delete_memory(permalink)
+```
 
 ### Sync Service
 
@@ -146,6 +188,31 @@ common = await relation_manager.find_common_connections(
 )
 ```
 
+## Database Migration
+
+To update the database schema for vector database integration:
+
+```bash
+python scripts/update_memory_schema.py
+```
+
+This script adds vector database related fields to the MemoryItem model:
+
+- `permalink`: Link to vector database entry
+- `folder`: Vector database storage directory
+- `entity_count`: Number of parsed entities
+- `relation_count`: Number of parsed relationships
+- `observation_count`: Number of parsed observations
+- `vector_updated_at`: Vector database update timestamp
+
+## Example
+
+A complete integration example is available at:
+
+```bash
+python examples/memory_integration_example.py
+```
+
 ## Configuration
 
 All components accept optional configuration parameters that can be used to customize behavior.
@@ -153,10 +220,13 @@ All components accept optional configuration parameters that can be used to cust
 ```python
 config = {
     "default_folder": "custom_folder",
-    "default_tags": "custom_tag"
+    "default_tags": "custom_tag",
+    "vector_store_config": {
+        "instance_id": "memory_manager"
+    }
 }
 
-entity_manager = EntityManager(config)
+memory_manager = MemoryManager(config)
 ```
 
 Default configurations are loaded from the application config.
