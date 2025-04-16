@@ -35,7 +35,7 @@
         "args": [
           "mcp-server-git",
           "--repository",
-          "${workspaceRoot}"
+          "/Users/chenyi/Public/VibeCopilot"
         ]
       },
       "vibe-copilot": {

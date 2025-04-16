@@ -5,17 +5,18 @@
 """
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from src.db import get_session_factory
 from src.db.repositories.memory_item_repository import MemoryItemRepository
-from src.db.vector.chroma_vector_store import ChromaVectorStore
 from src.memory.entity_manager import EntityManager
 from src.memory.memory_formatter import MemoryFormatter
 from src.memory.memory_retrieval import MemoryRetrieval
 from src.memory.memory_store import MemoryStore
 from src.memory.observation_manager import ObservationManager
 from src.memory.relation_manager import RelationManager
+from src.memory.vector.chroma_vector_store import ChromaVectorStore
 from src.parsing.processors.document_processor import DocumentProcessor
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,20 @@ class MemoryManager:
         """
         return await self.store.delete_memory(permalink)
 
+    async def update_memory(self, permalink: str, content: Optional[str] = None, tags: Optional[str] = None) -> Dict[str, Any]:
+        """
+        更新记忆
+
+        Args:
+            permalink: 记忆永久链接
+            content: 新内容，如果提供
+            tags: 新标签，如果提供
+
+        Returns:
+            更新结果
+        """
+        return await self.store.update_memory(permalink, content, tags)
+
     async def list_memories(self, folder: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
         """
         列出所有记忆
@@ -156,3 +171,30 @@ class MemoryManager:
             记忆列表
         """
         return await self.retrieval.list_memories(folder, limit)
+
+    # --- 统计方法 ---
+
+    def get_total_count(self) -> int:
+        """获取总记忆项数量"""
+        return self.memory_item_repo.get_item_count()
+
+    def get_folder_stats(self) -> Dict[str, int]:
+        """获取文件夹统计"""
+        return self.memory_item_repo.get_folder_stats()
+
+    def get_tag_stats(self) -> Dict[str, int]:
+        """获取标签统计"""
+        return self.memory_item_repo.get_tag_stats()
+
+    def get_last_updated_time(self) -> Optional[datetime]:
+        """获取最后更新时间"""
+        return self.memory_item_repo.get_last_updated_time()
+
+    async def get_vector_db_status(self) -> Dict[str, Any]:
+        """获取向量数据库状态"""
+        try:
+            # 直接调用ChromaVectorStore的get_stats方法
+            return await self.vector_store.get_stats()
+        except Exception as e:
+            logger.error(f"获取向量数据库状态失败: {e}")
+            return {"status": "error", "message": str(e)}

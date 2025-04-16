@@ -6,7 +6,7 @@
 
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.vector.memory_adapter import BasicMemoryAdapter
 
 
 class RelationManager:
@@ -90,9 +90,7 @@ class RelationManager:
             "properties": properties,
         }
 
-    async def get_relations(
-        self, entity_id: str, relation_type: Optional[str] = None, direction: str = "both"
-    ) -> List[Dict[str, Any]]:
+    async def get_relations(self, entity_id: str, relation_type: Optional[str] = None, direction: str = "both") -> List[Dict[str, Any]]:
         """
         获取实体的关系
 
@@ -133,11 +131,7 @@ class RelationManager:
                 continue
 
             # 提取属性（排除一些元数据字段）
-            properties = {
-                k: v
-                for k, v in metadata.items()
-                if k not in ["title", "type", "tags", "score", "source_id", "target_id"]
-            }
+            properties = {k: v for k, v in metadata.items() if k not in ["title", "type", "tags", "score", "source_id", "target_id"]}
 
             relations.append(
                 {
@@ -152,9 +146,7 @@ class RelationManager:
 
         return relations
 
-    async def find_path(
-        self, source_id: str, target_id: str, max_depth: int = 3
-    ) -> List[List[Dict[str, Any]]]:
+    async def find_path(self, source_id: str, target_id: str, max_depth: int = 3) -> List[List[Dict[str, Any]]]:
         """
         查找从源实体到目标实体的路径
 

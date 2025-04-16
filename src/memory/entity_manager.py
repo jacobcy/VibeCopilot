@@ -6,7 +6,11 @@
 
 from typing import Any, Dict, List, Optional
 
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from sqlalchemy.orm import Session
+
+# from src.db.vector.memory_adapter import BasicMemoryAdapter # 错误路径
+from src.memory.vector.memory_adapter import BasicMemoryAdapter  # 正确路径
+from src.memory.vector.vector_store import VectorStore
 
 
 class EntityManager:
@@ -31,9 +35,7 @@ class EntityManager:
         vector_config["default_tags"] = vector_config.get("default_tags", "entity")
         self.vector_store = BasicMemoryAdapter(vector_config)
 
-    async def create_entity(
-        self, entity_type: str, properties: Dict[str, Any], content: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def create_entity(self, entity_type: str, properties: Dict[str, Any], content: Optional[str] = None) -> Dict[str, Any]:
         """
         创建实体
 
@@ -123,9 +125,7 @@ class EntityManager:
         entity_name = metadata.get("title", "Unnamed Entity")
 
         # 提取属性（排除一些元数据字段）
-        properties = {
-            k: v for k, v in metadata.items() if k not in ["title", "type", "tags", "score"]
-        }
+        properties = {k: v for k, v in metadata.items() if k not in ["title", "type", "tags", "score"]}
 
         return {
             "id": entity_id,
@@ -136,9 +136,7 @@ class EntityManager:
             "content": entity_data.get("content", ""),
         }
 
-    async def update_entity(
-        self, entity_id: str, properties: Dict[str, Any], content: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+    async def update_entity(self, entity_id: str, properties: Dict[str, Any], content: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         更新实体
 
@@ -219,9 +217,7 @@ class EntityManager:
         # 删除实体
         return await self.vector_store.delete([entity["permalink"]])
 
-    async def search_entities(
-        self, query: str, entity_type: Optional[str] = None, limit: int = 5
-    ) -> List[Dict[str, Any]]:
+    async def search_entities(self, query: str, entity_type: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
         """
         搜索实体
 
@@ -249,9 +245,7 @@ class EntityManager:
             entity_name = metadata.get("title", "Unnamed Entity")
 
             # 提取属性（排除一些元数据字段）
-            properties = {
-                k: v for k, v in metadata.items() if k not in ["title", "type", "tags", "score"]
-            }
+            properties = {k: v for k, v in metadata.items() if k not in ["title", "type", "tags", "score"]}
 
             entities.append(
                 {
@@ -265,3 +259,26 @@ class EntityManager:
             )
 
         return entities
+
+    async def get_entity_stats(self) -> Dict[str, Any]:
+        """
+        获取实体统计信息
+
+        Returns:
+            统计信息字典
+        """
+        try:
+            # 使用向量存储获取实体的统计信息
+            # 注意: 这依赖于BasicMemoryAdapter/ChromaVectorStore是否能区分实体
+            # 假设实体存储在名为"entities"的父文件夹下
+            entity_stats = await self.vector_store.get_stats(folder="entities")
+
+            # 可以进一步按实体类型细分统计，如果需要
+            # total_count = entity_stats.get("total_documents", 0)
+            # type_counts = {}
+            # # 需要额外查询来按类型分组，这里简化处理
+
+            return {"total_entities": entity_stats.get("total_documents", 0), "details": entity_stats}
+        except Exception as e:
+            logger.error(f"获取实体统计失败: {e}")
+            return {"status": "error", "message": str(e)}

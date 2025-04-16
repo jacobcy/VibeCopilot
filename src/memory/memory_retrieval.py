@@ -1,16 +1,16 @@
 """
 记忆检索模块
 
-提供记忆检索和获取功能
+提供基于向量搜索的记忆检索功能
 """
 
 import logging
 from typing import Any, Dict, List, Optional
 
 from src.db.repositories.memory_item_repository import MemoryItemRepository
-from src.db.vector.chroma_vector_store import ChromaVectorStore
 from src.memory.memory_formatter import MemoryFormatter
 from src.memory.memory_utils import extract_original_content, format_error_response, format_success_response
+from src.memory.vector.chroma_vector_store import ChromaVectorStore
 from src.parsing.processors.document_processor import DocumentProcessor
 
 logger = logging.getLogger(__name__)
@@ -57,9 +57,9 @@ class MemoryRetrieval:
             检索结果
         """
         try:
-            # 使用混合搜索
+            # 使用混合搜索 - 修复过滤条件格式
             results = await self.vector_store.hybrid_search(
-                query=query, limit=limit, filter_dict={"content_type": "memory"}, keyword_weight=0.3, semantic_weight=0.7
+                query=query, limit=limit, filter_dict={"$eq": {"content_type": "memory"}}, keyword_weight=0.3, semantic_weight=0.7
             )
 
             # 格式化结果
@@ -102,9 +102,9 @@ class MemoryRetrieval:
             entity_names = [e.get("name", "") for e in entities if e.get("name")]
             entity_query = ", ".join(entity_names)
 
-            # 如果存在实体，进行搜索
+            # 如果存在实体，进行搜索 - 修复过滤条件格式
             if entity_query:
-                results = await self.vector_store.search(query=entity_query, limit=limit, filter_dict={"content_type": "memory"})
+                results = await self.vector_store.search(query=entity_query, limit=limit, filter_dict={"$eq": {"content_type": "memory"}})
 
                 # 处理结果
                 for result in results:
@@ -184,7 +184,7 @@ class MemoryRetrieval:
         relation_count = metadata.get("relation_count", 0)
         observation_count = metadata.get("observation_count", 0)
 
-        new_memory_item = self.memory_item_repo.create(
+        new_memory_item = self.memory_item_repo.create_item(
             title=title,
             content=content,
             content_type="memory",
@@ -192,9 +192,6 @@ class MemoryRetrieval:
             source="vector_store",
             permalink=permalink,
             folder=folder,
-            entity_count=entity_count,
-            relation_count=relation_count,
-            observation_count=observation_count,
         )
 
         # 更新记忆数据和向量库元数据
@@ -276,7 +273,7 @@ class MemoryRetrieval:
                 relation_count = metadata.get("relation_count", 0)
                 observation_count = metadata.get("observation_count", 0)
 
-                self.memory_item_repo.create(
+                self.memory_item_repo.create_item(
                     title=title,
                     content=content,  # 暂时为空，需要单独获取
                     content_type="memory",
@@ -284,7 +281,102 @@ class MemoryRetrieval:
                     source="vector_store",
                     permalink=permalink,
                     folder=folder,
-                    entity_count=entity_count,
-                    relation_count=relation_count,
-                    observation_count=observation_count,
                 )
+
+    async def _search_memory(self, query: str, limit: int = 5, filter_content_type: bool = True) -> List[Dict[str, Any]]:
+        """
+        搜索记忆
+
+        Args:
+            query: 搜索查询
+            limit: 返回结果数量
+            filter_content_type: 是否按内容类型过滤
+
+        Returns:
+            记忆列表
+        """
+        if not query:
+            return []
+
+        try:
+            # 构建过滤条件
+            filter_dict = {}
+            if filter_content_type:
+                # 正确使用$eq格式来设置content_type过滤条件
+                filter_dict = {"$eq": {"content_type": "memory"}}
+
+            # 执行混合搜索
+            results = await self.vector_store.hybrid_search(
+                query=query, limit=limit, filter_dict=filter_dict, keyword_weight=0.3, semantic_weight=0.7
+            )
+
+            if not results:
+                return []
+
+            # 转换结果格式
+            memories = []
+            for item in results:
+                permalink = item.get("permalink", "")
+                content = item.get("content", "")
+                metadata = item.get("metadata", {})
+                score = metadata.get("hybrid_score", 0)
+
+                # 创建Memory对象
+                memory = {
+                    "permalink": permalink,
+                    "content": content,
+                    "metadata": metadata,
+                    "score": score,
+                }
+
+                memories.append(memory)
+
+            return memories
+        except Exception as e:
+            logger.error(f"搜索记忆失败: {e}")
+            return []
+
+    async def search_entity(self, entity_query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        搜索实体
+
+        Args:
+            entity_query: 实体搜索查询
+            limit: 返回结果数量
+
+        Returns:
+            实体列表
+        """
+        if not entity_query:
+            return []
+
+        try:
+            # 构建过滤条件 - 正确使用$eq格式
+            filter_dict = {"$eq": {"content_type": "memory"}}
+
+            # 执行检索
+            results = await self.vector_store.search(query=entity_query, limit=limit, filter_dict=filter_dict)
+
+            if not results:
+                return []
+
+            # 转换结果格式
+            entities = []
+            for item in results:
+                permalink = item.get("permalink", "")
+                content = item.get("content", "")
+                metadata = item.get("metadata", {})
+
+                # 创建Entity对象
+                entity = {
+                    "permalink": permalink,
+                    "content": content,
+                    "metadata": metadata,
+                }
+
+                entities.append(entity)
+
+            return entities
+        except Exception as e:
+            logger.error(f"搜索实体失败: {e}")
+            return []

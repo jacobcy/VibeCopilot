@@ -7,7 +7,7 @@
 import datetime
 from typing import Any, Dict, List, Optional
 
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.vector.memory_adapter import BasicMemoryAdapter
 
 
 class ObservationManager:
@@ -127,18 +127,10 @@ class ObservationManager:
         observation_type = metadata.get("type", "generic")
         observation_title = metadata.get("title", "Unnamed Observation")
         timestamp = metadata.get("timestamp", "")
-        related_entities = (
-            metadata.get("related_entities", "").split(",")
-            if metadata.get("related_entities")
-            else []
-        )
+        related_entities = metadata.get("related_entities", "").split(",") if metadata.get("related_entities") else []
 
         # 去除一些内部元数据字段
-        clean_metadata = {
-            k: v
-            for k, v in metadata.items()
-            if k not in ["title", "type", "tags", "score", "timestamp", "related_entities"]
-        }
+        clean_metadata = {k: v for k, v in metadata.items() if k not in ["title", "type", "tags", "score", "timestamp", "related_entities"]}
 
         return {
             "id": observation_id,
@@ -151,9 +143,7 @@ class ObservationManager:
             "metadata": clean_metadata,
         }
 
-    async def search_observations(
-        self, query: str, observation_type: Optional[str] = None, limit: int = 5
-    ) -> List[Dict[str, Any]]:
+    async def search_observations(self, query: str, observation_type: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
         """
         搜索观察
 
@@ -180,18 +170,10 @@ class ObservationManager:
             observation_type = metadata.get("type", "generic")
             observation_title = metadata.get("title", "Unnamed Observation")
             timestamp = metadata.get("timestamp", "")
-            related_entities = (
-                metadata.get("related_entities", "").split(",")
-                if metadata.get("related_entities")
-                else []
-            )
+            related_entities = metadata.get("related_entities", "").split(",") if metadata.get("related_entities") else []
 
             # 去除一些内部元数据字段
-            clean_metadata = {
-                k: v
-                for k, v in metadata.items()
-                if k not in ["title", "type", "tags", "score", "timestamp", "related_entities"]
-            }
+            clean_metadata = {k: v for k, v in metadata.items() if k not in ["title", "type", "tags", "score", "timestamp", "related_entities"]}
 
             observations.append(
                 {
@@ -209,9 +191,7 @@ class ObservationManager:
 
         return observations
 
-    async def get_recent_observations(
-        self, observation_type: Optional[str] = None, limit: int = 5
-    ) -> List[Dict[str, Any]]:
+    async def get_recent_observations(self, observation_type: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
         """
         获取最近的观察
 
