@@ -15,7 +15,7 @@ import pytest
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.vector.memory_adapter import BasicMemoryAdapter
 
 
 class TestBasicMemoryAdapter:

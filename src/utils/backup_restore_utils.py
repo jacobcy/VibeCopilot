@@ -16,8 +16,12 @@ from typing import Any, Dict, List, Optional, Type
 
 from sqlalchemy.orm import Session
 
+# 导入配置管理器
+from src.core.config import get_config
 from src.db.repository import Repository
-from src.models.db.init_db import get_db_path
+
+# 移除 get_db_path 的导入
+# from src.models.db.init_db import get_db_path
 from src.utils.file_utils import ensure_directory_exists, read_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
@@ -35,6 +39,28 @@ class EntityBackupRestoreHandler(ABC):
         """
         self.entity_type = entity_type
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    def _get_db_path_from_config(self) -> str:
+        """从配置中获取并验证数据库文件路径 (仅限SQLite)"""
+        config_manager = get_config()
+        database_url = config_manager.get("database.url")
+        if not database_url:
+            raise ValueError("Database URL not found in configuration.")
+
+        if not database_url.startswith("sqlite:///"):
+            raise ValueError("Database backup/restore currently only supports SQLite databases.")
+
+        db_path = database_url[len("sqlite:///")]
+        if not os.path.isabs(db_path):
+            project_root = config_manager.get("paths.project_root", os.getcwd())
+            db_path = os.path.abspath(os.path.join(project_root, db_path))
+
+        # 确保目录存在，以防文件还未创建
+        db_dir = os.path.dirname(db_path)
+        if db_dir:
+            ensure_directory_exists(db_dir)
+
+        return db_path
 
     @abstractmethod
     def get_repository(self, session: Session) -> Repository:
@@ -145,7 +171,7 @@ class EntityBackupRestoreHandler(ABC):
             Dict[str, Any]: 备份结果统计
         """
         # 获取原始数据库路径
-        db_path = get_db_path()
+        db_path = self._get_db_path_from_config()
 
         # 复制数据库文件
         shutil.copy2(db_path, output_path)
@@ -306,7 +332,7 @@ class EntityBackupRestoreHandler(ABC):
             Dict[str, Any]: 恢复结果统计
         """
         # 获取原始数据库路径
-        db_path = get_db_path()
+        db_path = self._get_db_path_from_config()
 
         # 如果现有数据库存在且没有强制覆盖标志，则抛出异常
         if os.path.exists(db_path) and not force:

@@ -16,6 +16,10 @@ from rich.table import Table
 from src.core.config import get_config
 from src.db import get_session_factory
 from src.db.repositories.task_repository import TaskRepository
+from src.models.db.task import Task
+from src.roadmap.service.roadmap_service import RoadmapService
+from src.services.task import TaskService
+from src.utils.file_utils import ensure_directory_exists
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -387,3 +391,85 @@ def execute_show_task(
         console.print(f"[bold red]错误:[/bold red] {e}")
 
     return results
+
+
+def _get_task_dir_path(task_id: str) -> Optional[str]:
+    """获取任务目录的路径"""
+    if not task_id:
+        return None
+    config = get_config()
+    project_root = config.get("paths.project_root", os.getcwd())
+    agent_work_dir = config.get("paths.agent_work_dir", ".ai")  # 从配置获取
+    task_dir = os.path.join(project_root, agent_work_dir, "tasks", task_id)
+    return task_dir
+
+
+def _get_task_log_path(task_id: str) -> Optional[str]:
+    """获取任务日志文件的路径"""
+    task_dir = _get_task_dir_path(task_id)
+    if not task_dir:
+        return None
+    log_path = os.path.join(task_dir, "task.log")
+    # 确保目录存在（虽然 get_task_dir_path 应该做了，但再次确认无妨）
+    ensure_directory_exists(os.path.dirname(log_path))
+    return log_path
+
+
+def _read_task_log(task_id: str, last_n: Optional[int] = None) -> Optional[str]:
+    """读取任务日志内容"""
+    log_path = _get_task_log_path(task_id)
+    if not log_path or not os.path.exists(log_path):
+        return "任务日志文件不存在。"
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            if last_n is not None and last_n > 0:
+                return "".join(lines[-last_n:])
+            else:
+                return "".join(lines)
+    except Exception as e:
+        return f"读取任务日志失败: {e}"
+
+
+def _get_task_metadata(task_id: str) -> Optional[Dict[str, Any]]:
+    """获取任务元数据"""
+    task_dir = _get_task_dir_path(task_id)
+    if not task_dir:
+        return None
+    metadata_path = os.path.join(task_dir, "metadata.json")
+    if not os.path.exists(metadata_path):
+        return None
+    try:
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _format_task_details(task: Task, metadata: Optional[Dict[str, Any]] = None) -> Panel:
+    """格式化任务详情以便显示"""
+    # ... (省略格式化逻辑)
+
+
+def _format_task_summary(task: Task) -> str:
+    """格式化任务摘要"""
+    # ... (省略格式化逻辑)
+
+
+def show_task_details(
+    task_service: TaskService,
+    roadmap_service: Optional[RoadmapService],
+    task_id: str,
+    show_log: bool = False,
+    log_lines: Optional[int] = None,
+    verbose: bool = False,
+) -> bool:
+    """显示任务详情的核心逻辑"""
+    # ... (省略获取任务、元数据、工作流等逻辑)
+
+    # 显示日志
+    if show_log:
+        log_content = _read_task_log(task_id, last_n=log_lines)
+        # ... (省略日志显示逻辑)
+
+    return True

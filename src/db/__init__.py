@@ -12,7 +12,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 # 导入连接管理器
-from src.db.connection_manager import ensure_tables_exist, get_engine, get_session, get_session_factory
+from src.db.connection_manager import connection_manager, ensure_tables_exist, get_engine, get_session, get_session_factory
 
 # 创建默认会话工厂，提供与session.py同样的功能
 SessionLocal = get_session_factory()
@@ -33,16 +33,16 @@ def get_db() -> Session:
         db.close()
 
 
-# Updated imports for flow repositories
-from src.db.repositories.flow_session_repository import FlowSessionRepository
-from src.db.repositories.memory_item_repository import MemoryItemRepository
-from src.db.repositories.rule_repository import RuleExampleRepository, RuleItemRepository, RuleRepository
-from src.db.repositories.stage_instance_repository import StageInstanceRepository
-from src.db.repositories.task_repository import TaskCommentRepository, TaskRepository
-from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
-from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
-from src.models.db import Base
-from src.models.db.init_db import get_db_path, init_db
+# Updated imports for flow repositories - 移动到需要它们的地方或由服务层管理
+# from src.db.repositories.flow_session_repository import FlowSessionRepository
+# from src.db.repositories.memory_item_repository import MemoryItemRepository
+# from src.db.repositories.rule_repository import RuleExampleRepository, RuleItemRepository, RuleRepository
+# from src.db.repositories.stage_instance_repository import StageInstanceRepository
+# from src.db.repositories.task_repository import TaskCommentRepository, TaskRepository
+# from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
+# from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
+from src.models.db.base import Base
+from src.models.db.init_db import init_db
 
 logger = logging.getLogger(__name__)
 
@@ -64,17 +64,6 @@ __all__ = [
     "SessionLocal",
     "get_db",
     "Base",
-    "TemplateRepository",
-    "TemplateVariableRepository",
-    "RuleRepository",
-    "RuleItemRepository",
-    "RuleExampleRepository",
-    "FlowSessionRepository",
-    "StageInstanceRepository",
-    "WorkflowDefinitionRepository",
-    "TaskRepository",
-    "TaskCommentRepository",
-    "MemoryItemRepository",
 ]
 
 # 注意: 不要在此处导入 service.py 或其他依赖 src.db 的模块，

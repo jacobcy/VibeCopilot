@@ -19,7 +19,6 @@ from src.cli.commands.memory.memory_subcommands import (
     handle_search_subcommand,
     handle_show_subcommand,
     handle_sync_subcommand,
-    handle_test_subcommand,
     handle_update_subcommand,
     handle_watch_subcommand,
 )
@@ -191,21 +190,5 @@ def watch(verbose, agent_mode):
     success, message, data = handle_watch_subcommand(args)
     if success:
         click.echo(message)
-    else:
-        click.echo(f"错误: {message}", err=True)
-
-
-@memory.command()
-@click.option("--verbose", "-v", is_flag=True, help="提供详细输出")
-@click.option("--agent-mode", is_flag=True, help="启用agent优化的输出格式")
-def test(verbose, agent_mode):
-    """测试MCP Basic Memory连接"""
-    args = click.get_current_context().params
-    success, message, data = handle_test_subcommand(args)
-    if success:
-        click.echo(message)
-        if verbose and data:
-            click.echo("\n详细信息:")
-            click.echo(data)
     else:
         click.echo(f"错误: {message}", err=True)

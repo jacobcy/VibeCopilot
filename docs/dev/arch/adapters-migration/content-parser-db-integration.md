@@ -180,7 +180,7 @@ from basic_memory.mcp.async_client import client
 from basic_memory.mcp.tools.write_note import write_note
 from basic_memory.mcp.tools.search_notes import search_notes
 
-from src.db.vector.vector_store import VectorStore
+from src.memory.vector.vector_store import VectorStore
 from src.core.config import get_config
 
 class BasicMemoryAdapter(VectorStore):
@@ -337,7 +337,7 @@ from typing import List, Dict, Any, Optional, Set
 from src.parsing.parser_factory import create_parser
 from src.db.metadata.rule_repo import RuleRepository
 from src.db.metadata.document_repo import DocumentRepository
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.vector.memory_adapter import BasicMemoryAdapter
 
 class SyncService:
     """同步服务 - 负责将本地内容同步到Basic Memory"""

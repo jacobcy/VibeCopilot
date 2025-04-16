@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db import ensure_tables_exist, get_session_factory, init_db
+from src.db import ensure_tables_exist, get_session_factory
 from src.flow_session import FlowSessionManager, FlowStatusIntegration
 from src.status.interfaces import IStatusProvider
 

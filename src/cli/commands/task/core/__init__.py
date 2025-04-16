@@ -5,16 +5,21 @@
 """
 
 from .base_command import BaseCommand
-
-# 注意：以下类已经转换为纯Click命令函数
-# - CreateTaskCommand 改为 create_task
-# - ListTaskCommand 改为 list_tasks
-# - ShowTaskCommand 改为 show_task
-# - UpdateTaskCommand 改为 update_task
-# - CommentTaskCommand 改为 comment_task
-# - DeleteTaskCommand 改为 delete_task
-# - LinkTaskCommand 改为 link_task
+from .comment import comment_task
+from .create import create_task_command as create_task
+from .delete import delete_task
+from .link import link_task
+from .list import list_tasks
+from .show import show_task
+from .update import update_task
 
 __all__ = [
     "BaseCommand",
+    "create_task",
+    "delete_task",
+    "link_task",
+    "list_tasks",
+    "show_task",
+    "update_task",
+    "comment_task",
 ]

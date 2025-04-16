@@ -12,8 +12,8 @@ from sqlalchemy import and_, desc, func, or_
 from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
-from src.memory.helpers import is_permalink, normalize_path, path_to_permalink  # 导入必要的helper
-from src.models.db import MemoryItem, SyncStatus  # 导入SyncStatus
+from src.models.db.memory_item import MemoryItem
+from src.status.enums import SyncStatus  # 导入SyncStatus - 新路径
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +50,11 @@ class MemoryItemRepository(Repository[MemoryItem]):
             permalink: Basic Memory中的永久链接，可选
             content_type: 内容类型，默认为text
             source: 来源，可选
-            sync_status: 同步状态，默认未同步
+            sync_status: 同步状态，默认未同步（注意：此参数保留但不直接使用，由模型表结构决定）
 
         Returns:
             MemoryItem: 创建的记忆项
         """
-        # 规范化文件夹路径
-        folder = normalize_path(folder)
-
-        # 如果提供了permalink，确保其格式正确
-        if permalink and not is_permalink(permalink):
-            permalink = path_to_permalink(permalink)
-
         # 使用基础 Repository 的 create 方法
         data = {
             "title": title,
@@ -71,7 +64,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
             "tags": tags,
             "permalink": permalink,
             "source": source,
-            "sync_status": sync_status,
+            "sync_status": sync_status.name if isinstance(sync_status, SyncStatus) else str(sync_status),
         }
         try:
             item = super().create(data)
@@ -106,17 +99,12 @@ class MemoryItemRepository(Repository[MemoryItem]):
         """通过永久链接获取记忆项 (来自 helpers.item_utils.get_item_by_permalink)
 
         Args:
-            session: 数据库会话
             permalink: Basic Memory中的永久链接
             include_deleted: 是否包含已删除项
 
         Returns:
             Optional[MemoryItem]: 找到的记忆项，如果不存在则返回None
         """
-        # 确保永久链接格式正确
-        if not is_permalink(permalink):
-            permalink = path_to_permalink(permalink)
-
         try:
             query = self.session.query(MemoryItem).filter(MemoryItem.permalink == permalink)
             if not include_deleted:
@@ -156,13 +144,6 @@ class MemoryItemRepository(Repository[MemoryItem]):
         Returns:
             Optional[MemoryItem]: 更新后的记忆项，如果不存在则返回None
         """
-        # 预处理字段
-        if "folder" in kwargs:
-            kwargs["folder"] = normalize_path(kwargs["folder"])
-
-        if "permalink" in kwargs and kwargs["permalink"] and not is_permalink(kwargs["permalink"]):
-            kwargs["permalink"] = path_to_permalink(kwargs["permalink"])
-
         try:
             # 获取未删除的项
             item = self.get_by_id(memory_item_id, include_deleted=False)
@@ -173,12 +154,15 @@ class MemoryItemRepository(Repository[MemoryItem]):
 
             # 如果没有显式传入 sync_status，则标记为未同步
             if "sync_status" not in kwargs:
-                item.sync_status = SyncStatus.NOT_SYNCED
+                item.sync_status = "NOT_SYNCED"  # 使用字符串而不是SyncStatus.NOT_SYNCED
 
             # 更新字段
             updated = False
             for key, value in kwargs.items():
                 if hasattr(item, key) and getattr(item, key) != value:
+                    # 如果是sync_status枚举，转换为字符串
+                    if key == "sync_status" and isinstance(value, SyncStatus):
+                        value = value.name
                     setattr(item, key, value)
                     updated = True
 
@@ -216,7 +200,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
             if soft_delete:
                 if not item.is_deleted:  # 避免重复软删除
                     item.is_deleted = True
-                    item.sync_status = SyncStatus.NOT_SYNCED  # 软删除也需要同步
+                    item.sync_status = "NOT_SYNCED"  # 使用字符串而不是SyncStatus.NOT_SYNCED
                     self.session.commit()
                     logger.info(f"软删除记忆项: {item.title} (ID={memory_item_id})")
                 else:
@@ -246,10 +230,6 @@ class MemoryItemRepository(Repository[MemoryItem]):
         Returns:
             List[MemoryItem]: 符合条件的记忆项列表
         """
-        # 规范化文件夹路径
-        if folder:
-            folder = normalize_path(folder)
-
         try:
             filters = []
 
@@ -300,13 +280,8 @@ class MemoryItemRepository(Repository[MemoryItem]):
         if not permalink:
             raise ValueError("同步记忆项失败: 远程笔记数据缺少permalink")
 
-        # 确保permalink格式正确
-        if not is_permalink(permalink):
-            permalink = path_to_permalink(permalink)
-            # note_data["permalink"] = permalink # 不应修改输入字典
-
         # 处理文件夹路径
-        folder = normalize_path(note_data.get("folder", "Inbox"))
+        folder = note_data.get("folder", "Inbox")
 
         try:
             # 查找本地是否存在
@@ -349,7 +324,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
                         "tags": note_data.get("tags", item.tags),
                         "source": note_data.get("source", item.source),
                         "remote_updated_at": remote_updated_at,
-                        "sync_status": SyncStatus.SYNCED,
+                        "sync_status": "SYNCED",  # 使用字符串而不是SyncStatus.SYNCED
                         "is_deleted": False,  # 确保未删除
                     }
                     item = self.update_item(item.id, **update_data)
@@ -373,11 +348,8 @@ class MemoryItemRepository(Repository[MemoryItem]):
         Returns:
             bool: 是否成功
         """
-        update_data = {"sync_status": SyncStatus.SYNCED}
+        update_data = {"sync_status": "SYNCED"}  # 使用字符串而不是SyncStatus.SYNCED
         if permalink:
-            # 确保permalink格式正确
-            if not is_permalink(permalink):
-                permalink = path_to_permalink(permalink)
             update_data["permalink"] = permalink
         if remote_updated_at:
             update_data["remote_updated_at"] = remote_updated_at
@@ -404,8 +376,8 @@ class MemoryItemRepository(Repository[MemoryItem]):
             List[MemoryItem]: 未同步的记忆项列表 (包括新增、修改、软删除)
         """
         try:
-            # NOT_SYNCED 状态包括了新增、修改和软删除的项
-            items = self.session.query(MemoryItem).filter(MemoryItem.sync_status == SyncStatus.NOT_SYNCED).all()
+            # 使用字符串而不是SyncStatus.NOT_SYNCED
+            items = self.session.query(MemoryItem).filter(MemoryItem.sync_status == "NOT_SYNCED").all()
             return items
         except Exception as e:
             logger.error(f"获取未同步记忆项失败: {str(e)}")
@@ -481,9 +453,48 @@ class MemoryItemRepository(Repository[MemoryItem]):
             logger.error(f"获取数据库统计信息失败: {str(e)}")
             raise
 
-    # --- 以下是原有 Repository 中的方法，检查是否需要保留或修改 ---
+    def get_folder_stats(self, include_deleted: bool = False) -> Dict[str, int]:
+        """获取文件夹统计信息"""
+        try:
+            query = self.session.query(MemoryItem.folder, func.count(MemoryItem.id)).group_by(MemoryItem.folder)
+            if not include_deleted:
+                query = query.filter(MemoryItem.is_deleted == False)
+            stats = {folder: count for folder, count in query.all()}
+            return stats
+        except Exception as e:
+            logger.error(f"获取文件夹统计失败: {str(e)}")
+            raise
 
-    # def create(...) -> 已被 create_item 替代并增强
+    def get_tag_stats(self, include_deleted: bool = False) -> Dict[str, int]:
+        """获取标签统计信息（注意：标签是逗号分隔的字符串）"""
+        try:
+            # 这种方式效率不高，但对于SQLite足够
+            query = self.session.query(MemoryItem.tags)
+            if not include_deleted:
+                query = query.filter(MemoryItem.is_deleted == False)
+
+            tag_counts: Dict[str, int] = {}
+            for (tags_str,) in query.all():
+                if tags_str:
+                    tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+                    for tag in tags:
+                        tag_counts[tag] = tag_counts.get(tag, 0) + 1
+            return tag_counts
+        except Exception as e:
+            logger.error(f"获取标签统计失败: {str(e)}")
+            raise
+
+    def get_last_updated_time(self, include_deleted: bool = False) -> Optional[datetime]:
+        """获取最后一个更新的记忆项时间"""
+        try:
+            query = self.session.query(func.max(MemoryItem.updated_at))
+            if not include_deleted:
+                query = query.filter(MemoryItem.is_deleted == False)
+            last_updated = query.scalar()
+            return last_updated
+        except Exception as e:
+            logger.error(f"获取最后更新时间失败: {str(e)}")
+            raise
 
     def search_by_content(self, query: str, include_deleted: bool = False) -> List[MemoryItem]:
         """通过内容或标题或标签搜索记忆项 (修改自原有方法)
@@ -511,14 +522,6 @@ class MemoryItemRepository(Repository[MemoryItem]):
             logger.error(f"内容搜索失败: {str(e)}")
             raise
 
-    # find_by_category, find_by_storage_type, find_by_refs, update_refs: 这些方法似乎不再被使用，
-    # 并且 MemoryItem 模型中没有 category, storage_type, entity_refs 等字段。
-    # 如果确认不再需要，可以删除。暂时注释掉。
-    # def find_by_category(...)
-    # def find_by_storage_type(...)
-    # def find_by_refs(...)
-    # def update_refs(...)
-
     def get_all(self, limit: int = 100, offset: int = 0, include_deleted: bool = False) -> List[MemoryItem]:
         """
         获取所有记忆项 (修改自原有方法)
@@ -540,12 +543,28 @@ class MemoryItemRepository(Repository[MemoryItem]):
             logger.error(f"获取所有记忆项失败: {str(e)}")
             raise
 
-    # search_by_title(self, title: str, limit: int = 10) -> 已被 get_by_title 覆盖 (返回单个)
-    # 如果需要模糊搜索并限制数量，可以保留或修改 search_items
+    def find_by_permalink(self, permalink: str, include_deleted: bool = False) -> Optional[MemoryItem]:
+        """通过永久链接获取记忆项 (get_by_permalink的别名)
 
-    # search_by_tags(self, tags: List[str], limit: int = 10) -> 已被 search_items 覆盖
-    # search_items 中的标签逻辑更灵活
+        Args:
+            permalink: Basic Memory中的永久链接
+            include_deleted: 是否包含已删除项
 
-    # update(self, memory_item_id: int, **kwargs) -> 已被 update_item 替代并增强
+        Returns:
+            Optional[MemoryItem]: 找到的记忆项，如果不存在则返回None
+        """
+        return self.get_by_permalink(permalink, include_deleted)
 
-    # delete(self, memory_item_id: int) -> 已被 delete_item 替代并增强 (增加软删除)
+    def find_by_folder(self, folder: str, limit: int = 100, include_deleted: bool = False) -> List[MemoryItem]:
+        """通过文件夹获取记忆项列表 (search_items的包装方法)
+
+        Args:
+            folder: 文件夹名称
+            limit: 返回记录数量限制
+            include_deleted: 是否包含已删除项
+
+        Returns:
+            List[MemoryItem]: 找到的记忆项列表
+        """
+        items = self.search_items(query="", folder=folder, include_deleted=include_deleted)
+        return items[:limit] if items and len(items) > limit else items

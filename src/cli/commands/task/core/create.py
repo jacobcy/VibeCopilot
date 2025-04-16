@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import click
@@ -14,7 +15,11 @@ from src.cli.commands.task.core.memory import append_to_task_log, store_ref_to_m
 from src.core.config import get_config
 from src.db import get_session_factory
 from src.db.repositories.task_repository import TaskRepository
+from src.roadmap.service.roadmap_service import RoadmapService
 from src.services.task import TaskService
+from src.utils.file_utils import ensure_directory_exists
+from src.utils.id_generator import IdGenerator
+from src.workflow.service.create import create_workflow  # TODO: WorkflowManager will be implemented later
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -32,7 +37,19 @@ logger = logging.getLogger(__name__)
 @click.option("--link-github", help="关联到 GitHub Issue (格式: owner/repo#number)")
 @click.option("-f", "--flow", "--workflow", help="关联到工作流类型")
 @click.option("-r", "--ref", "--reference", help="关联参考文档路径")
-def create_task(title, desc, assignee, label, status, due, link_roadmap, link_workflow_stage, link_github, flow, ref):
+def create_task_command(
+    title: str,
+    desc: Optional[str],
+    assignee: Optional[str],
+    label: Optional[List[str]],
+    status: str,
+    due: Optional[str],
+    link_roadmap: Optional[str],
+    link_workflow_stage: Optional[str],
+    link_github: Optional[str],
+    flow: Optional[str],
+    ref: Optional[str],
+) -> int:
     """创建一个新的任务
 
     创建一个新的任务，支持设置标题、描述、负责人、标签等基本信息，
@@ -77,7 +94,7 @@ def create_task(title, desc, assignee, label, status, due, link_roadmap, link_wo
         return 1
 
 
-def execute_create_task(
+def create_task(
     title: str,
     description: Optional[str] = None,
     assignee: Optional[str] = None,
@@ -263,11 +280,17 @@ def execute_create_task(
 
 
 def create_task_log(
-    task_id: str, title: str, description: Optional[str] = None, assignee: Optional[str] = None, ref_path: Optional[str] = None
+    task_id: str,
+    title: str,
+    description: Optional[str] = None,
+    assignee: Optional[str] = None,
+    ref_path: Optional[str] = None,
 ) -> None:
     """创建任务日志文件"""
     # 创建目录结构
-    task_dir = os.path.join(".ai", "tasks", task_id)
+    config = get_config()
+    agent_work_dir = config.get("paths.agent_work_dir", ".ai")
+    task_dir = os.path.join(agent_work_dir, "tasks", task_id)
     os.makedirs(task_dir, exist_ok=True)
 
     # 创建日志文件
@@ -286,3 +309,46 @@ def create_task_log(
         if ref_path:
             f.write(f"- 参考文档: {ref_path}\n")
         f.write("\n")
+
+
+def _get_default_task_name(task_title: Optional[str] = None) -> str:
+    # ... (省略)
+    return "未命名任务"
+
+
+def _create_task_metadata_file(task_dir: str, task_id: str, task_data: Dict[str, Any]):
+    # ... (省略)
+    pass
+
+
+def _create_task_structure(task_id: str, task_data: Dict[str, Any]) -> Optional[str]:
+    """创建任务所需的文件结构"""
+    config = get_config()
+    project_root = config.get("paths.project_root", os.getcwd())
+    agent_work_dir = config.get("paths.agent_work_dir", ".ai")  # 从配置获取 Agent 工作目录
+
+    # 使用 agent_work_dir 构建路径
+    task_dir = os.path.join(project_root, agent_work_dir, "tasks", task_id)
+    ensure_directory_exists(task_dir)
+
+    # 创建元数据文件等逻辑...
+    metadata_path = os.path.join(task_dir, "metadata.json")
+    try:
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(task_data, f, indent=2, ensure_ascii=False)
+    except IOError as e:
+        click.echo(f"错误: 无法写入任务元数据文件 {metadata_path}: {e}", err=True)
+        return None
+
+    # 可能还需要创建其他文件或子目录，例如日志目录
+    log_dir = os.path.join(task_dir, "logs")
+    ensure_directory_exists(log_dir)
+
+    # 创建一个空的 task.log 文件，如果需要的话
+    log_file_path = os.path.join(task_dir, "task.log")
+    try:
+        Path(log_file_path).touch(exist_ok=True)
+    except IOError as e:
+        click.echo(f"警告: 无法创建任务日志文件 {log_file_path}: {e}", err=True)
+
+    return task_dir

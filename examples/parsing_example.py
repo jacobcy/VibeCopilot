@@ -17,7 +17,7 @@ from pathlib import Path
 project_dir = Path(__file__).parent.parent
 sys.path.append(str(project_dir))
 
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.vector.memory_adapter import BasicMemoryAdapter
 from src.parsing.parser_factory import create_parser
 from src.parsing.processors.document_processor import DocumentProcessor
 from src.parsing.processors.entity_processor import EntityProcessor

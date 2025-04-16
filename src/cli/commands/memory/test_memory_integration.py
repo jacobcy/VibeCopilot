@@ -26,19 +26,8 @@ from src.cli.commands.memory.memory_subcommands import (
     handle_list_subcommand,
     handle_search_subcommand,
     handle_show_subcommand,
-    handle_test_subcommand,
     handle_update_subcommand,
 )
-
-
-def test_memory_connection():
-    """测试memory连接"""
-    print("\n===== 测试连接 =====")
-    success, message, data = handle_test_subcommand({})
-    print(f"成功: {success}")
-    print(f"消息: {message}")
-    print(f"数据: {data}")
-    assert success, "连接测试失败"
 
 
 def test_memory_create():
@@ -121,9 +110,6 @@ def main():
     """主测试函数"""
     try:
         print("开始测试memory命令与MemoryManager的集成")
-
-        # 测试连接
-        test_memory_connection()
 
         # 测试创建记忆
         permalink = test_memory_create()

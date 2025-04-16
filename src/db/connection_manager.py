@@ -14,6 +14,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+# 引入 get_config
+from src.core.config.manager import get_config
 from src.core.logger import setup_logger
 from src.models.db.base import Base
 
@@ -35,124 +37,122 @@ class DBConnectionManager:
         return cls._instance
 
     def __init__(self):
+        # 初始化移到 get_engine 或 get_session 调用时，确保 config 已加载
+        pass
+
+    def _initialize_if_needed(self):
+        """如果未初始化，则初始化数据库连接"""
         if not self._initialized:
-            self._initialize()
+            import traceback
 
-    def _initialize(self):
-        """初始化数据库连接"""
-        import traceback
+            # 获取调用栈信息
+            caller_info = "".join(traceback.format_stack()[:-1])
+            logger.debug(f"DBConnectionManager._initialize_if_needed 被调用")
+            # logger.debug(f"调用栈信息: \n{caller_info}") # 可能过于冗长
 
-        # 获取调用栈信息
-        caller_info = "".join(traceback.format_stack()[:-1])
-        logger.debug(f"DBConnectionManager._initialize 被调用")
-        logger.debug(f"调用栈信息: \n{caller_info}")
+            try:
+                config_manager = get_config()
+                # 从 ConfigManager 获取数据库 URL
+                database_url = config_manager.get("database.url")
+                if not database_url:
+                    raise ValueError("Database URL not found in configuration.")
 
-        try:
-            db_path = self._get_db_path()
+                # 检查是否是 SQLite 路径并确保目录存在
+                if database_url.startswith("sqlite:///"):
+                    db_path = database_url[len("sqlite:///") :]
+                    # 确保是绝对路径 (ConfigManager 应该处理了，但 double check)
+                    if not os.path.isabs(db_path):
+                        project_root = config_manager.get("paths.project_root", os.getcwd())
+                        db_path = os.path.abspath(os.path.join(project_root, db_path))
+                        database_url = f"sqlite:///{db_path}"  # 更新为绝对路径URL
 
-            # 确保数据库目录存在
-            db_dir = os.path.dirname(db_path)
-            if db_dir:
-                os.makedirs(db_dir, exist_ok=True)
+                    db_dir = os.path.dirname(db_path)
+                    if db_dir:
+                        os.makedirs(db_dir, exist_ok=True)
 
-            # 构建数据库URL
-            database_url = f"sqlite:///{db_path}"
+                # 从配置获取连接池配置 (如果需要，可以在 defaults.py 中定义)
+                pool_size = config_manager.get("database.pool_size", 20)
+                max_overflow = config_manager.get("database.max_overflow", 30)
+                pool_timeout = config_manager.get("database.pool_timeout", 60)
+                pool_recycle = config_manager.get("database.pool_recycle", 3600)
+                db_debug = config_manager.get("database.debug", False)
 
-            # 从环境变量获取连接池配置或使用默认值
-            pool_size = int(os.environ.get("DB_POOL_SIZE", "20"))
-            max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "30"))
-            pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "60"))
+                # 创建数据库引擎
+                self._engine = create_engine(
+                    database_url,
+                    connect_args={"check_same_thread": False} if database_url.startswith("sqlite") else {},
+                    poolclass=QueuePool,
+                    pool_size=pool_size,
+                    max_overflow=max_overflow,
+                    pool_timeout=pool_timeout,
+                    pool_recycle=pool_recycle,
+                    echo=db_debug,  # 从配置控制是否打印SQL
+                )
 
-            # 创建数据库引擎，增加连接池配置
-            self._engine = create_engine(
-                database_url,
-                connect_args={"check_same_thread": False},
-                poolclass=QueuePool,
-                pool_size=pool_size,
-                max_overflow=max_overflow,
-                pool_timeout=pool_timeout,
-                pool_recycle=3600,  # 连接回收时间，单位秒
-            )
+                # 创建会话工厂
+                self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
 
-            # 创建会话工厂
-            self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
+                self._initialized = True
+                logger.info(f"数据库连接管理器初始化完成: {database_url}")
+                logger.debug(f"连接池配置 - 大小: {pool_size}, 溢出: {max_overflow}, 超时: {pool_timeout}s, 回收: {pool_recycle}s")
+            except Exception as e:
+                logger.error(f"初始化数据库连接管理器失败: {e}", exc_info=True)
+                raise
 
-            # 记录初始化
-            self._initialized = True
-            logger.debug(f"数据库连接管理器初始化完成: {database_url}, 连接池大小: {pool_size}, 最大溢出: {max_overflow}, 超时: {pool_timeout}秒")
-        except Exception as e:
-            logger.error(f"初始化数据库连接管理器失败: {e}")
-            raise
-
-    def _get_db_path(self) -> str:
-        """获取数据库文件路径"""
-        # 获取DATABASE_URL
-        database_url = os.environ.get("DATABASE_URL")
-
-        if database_url:
-            if database_url.startswith("sqlite:///"):
-                # 提取路径部分
-                db_path = database_url[len("sqlite:///") :]
-                # 确保是绝对路径
-                if not os.path.isabs(db_path):
-                    logger.warning(f"数据库路径是相对路径: {db_path}，将基于项目根目录转换为绝对路径")
-                    db_path = os.path.abspath(db_path)
-                return db_path
-            else:
-                logger.warning(f"不支持的数据库URL格式: {database_url}，将使用默认SQLite路径")
-
-        # 使用默认路径
-        default_path = os.path.abspath("data/vibecopilot.db")
-        logger.debug(f"使用默认数据库路径: {default_path}")
-        return default_path
+    # 移除 _get_db_path 方法，因为 URL 直接从 config 获取
+    # def _get_db_path(self) -> str: ...
 
     def get_engine(self) -> Engine:
         """获取数据库引擎"""
-        if not self._initialized:
-            self._initialize()
+        self._initialize_if_needed()
+        if self._engine is None:
+            raise RuntimeError("Database engine is not initialized.")
         return self._engine
 
     def get_session(self) -> Session:
         """获取新的数据库会话"""
-        if not self._initialized:
-            self._initialize()
+        self._initialize_if_needed()
+        if self._session_factory is None:
+            raise RuntimeError("Session factory is not initialized.")
         return self._session_factory()
 
     def get_session_factory(self):
         """获取会话工厂"""
-        if not self._initialized:
-            self._initialize()
+        self._initialize_if_needed()
+        if self._session_factory is None:
+            raise RuntimeError("Session factory is not initialized.")
         return self._session_factory
 
     def ensure_tables_exist(self, force_recreate=False):
-        """确保所有表存在
+        """
+        确保所有表存在
 
         Args:
             force_recreate: 是否强制重新创建表
         """
-        # 检查环境变量中的force_recreate设置
+        # 检查环境变量中的force_recreate设置 (保留此逻辑)
         env_force = os.getenv("FORCE_RECREATE", "").lower() == "true"
         force_recreate = force_recreate or env_force
 
         logger.debug(f"ensure_tables_exist 被调用 (force_recreate={force_recreate})")
 
-        if not self._initialized:
-            logger.debug("数据库连接未初始化，进行初始化...")
-            self._initialize()
+        # 确保引擎已初始化
+        engine = self.get_engine()
 
-        # 如果强制重建，重置_tables_ensured标记
         if force_recreate:
             self._tables_ensured = False
-            logger.debug("强制重新创建所有表")
-            Base.metadata.drop_all(self._engine)
+            logger.warning("强制重新创建所有数据库表")
+            Base.metadata.drop_all(engine)
 
-        # 如果表未确保存在，则创建
         if not self._tables_ensured:
-            # 创建所有表 (如果不存在)
-            Base.metadata.create_all(self._engine)
-            logger.debug("数据库表创建/验证完成")
-            # 标记表已经确保存在
-            self._tables_ensured = True
+            try:
+                Base.metadata.create_all(engine)
+                logger.info("数据库表创建/验证完成")
+                self._tables_ensured = True
+            except Exception as e:
+                logger.error(f"创建数据库表失败: {e}", exc_info=True)
+                # 抛出异常或返回False，取决于调用者如何处理
+                raise RuntimeError(f"Failed to create database tables: {e}")
         else:
             logger.debug("表已经确保存在，跳过表创建过程")
 

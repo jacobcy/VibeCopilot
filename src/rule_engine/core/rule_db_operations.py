@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.db import RuleRepository
+from src.db.repositories.rule_repository import RuleRepository
 from src.models.rule_model import Example, Rule, RuleItem
 
 logger = logging.getLogger(__name__)

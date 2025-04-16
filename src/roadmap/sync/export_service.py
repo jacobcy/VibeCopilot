@@ -6,7 +6,13 @@
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+import yaml
+
+from src.core.config import get_config
+from src.roadmap.core.roadmap_models import Milestone, Roadmap, Story
+from src.utils.file_utils import ensure_dir_exists
 
 from .utils import print_error, print_success
 
@@ -24,6 +30,16 @@ class RoadmapExportService:
             service: 路线图服务
         """
         self.service = service
+        self.config = get_config()
+        self.project_root = self.config.get("paths.project_root", os.getcwd())
+        self.agent_work_dir = self.config.get("paths.agent_work_dir", ".ai")  # 从配置获取
+
+    def _get_default_export_path(self, roadmap_id: str) -> str:
+        """获取默认导出路径"""
+        # 使用 agent_work_dir 构建路径
+        export_dir = os.path.join(self.project_root, self.agent_work_dir, "roadmap", "exports")
+        ensure_dir_exists(export_dir)
+        return os.path.join(export_dir, f"{roadmap_id}.yaml")
 
     def export_to_yaml(self, roadmap_id: Optional[str] = None, output_path: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -46,14 +62,7 @@ class RoadmapExportService:
 
         # 确定文件路径
         if not output_path:
-            # 根据环境变量确定存储路径
-            project_root = os.environ.get("PROJECT_ROOT", os.getcwd())
-            ai_dir = os.path.join(project_root, ".ai")
-            roadmap_dir = os.path.join(ai_dir, "roadmap")
-            os.makedirs(roadmap_dir, exist_ok=True)
-
-            roadmap_name = roadmap.get("name", "roadmap").lower().replace(" ", "_")
-            output_path = os.path.join(roadmap_dir, f"{roadmap_name}.yaml")
+            output_path = self._get_default_export_path(roadmap_id)
 
         # 导出到YAML文件 - 简化实现
         try:
@@ -79,3 +88,21 @@ class RoadmapExportService:
         tasks = self.service.get_tasks(roadmap_id)
 
         return {"roadmap": roadmap, "milestones": milestones, "tasks": tasks}
+
+    def export_roadmap(self, roadmap: Roadmap, output_path: Optional[str] = None) -> Optional[str]:
+        """导出单个路线图对象"""
+        # 将Roadmap对象转换为字典
+        roadmap_dict = roadmap.to_dict()  # 假设 Roadmap 对象有 to_dict 方法
+        return self.export_to_yaml(roadmap_id=roadmap_dict.get("id"), output_path=output_path)
+
+    def export_full_structure(self, data: Dict[str, Any], output_path: Optional[str] = None) -> Optional[str]:
+        """导出包含所有层级的完整结构"""
+        # 这里假设传入的 data 就是可以直接导出的完整字典
+        # 如果需要从数据库或其他地方组装，需要先实现组装逻辑
+        return self.export_to_yaml(roadmap_id=data.get("id"), output_path=output_path)
+
+    def _ensure_export_dir(self):
+        """确保导出目录存在"""
+        # 这个逻辑似乎可以合并到 _get_default_export_path 中
+        export_dir = os.path.join(self.project_root, self.agent_work_dir, "roadmap", "exports")
+        ensure_dir_exists(export_dir)

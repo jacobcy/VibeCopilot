@@ -16,15 +16,9 @@ from src.cli.decorators import pass_service
 from src.models.db.task import Task
 from src.services.task import TaskService
 
+# 导入Click命令
+from .core import comment_task, create_task, delete_task, link_task, list_tasks, show_task, update_task
 from .core.comment import comment_task
-
-# 导入纯Click命令函数
-from .core.create import create_task
-from .core.delete import delete_task
-from .core.link import link_task
-from .core.list import list_tasks
-from .core.show import show_task
-from .core.update import update_task
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -147,7 +141,7 @@ def task():
     pass
 
 
-# 注册所有纯Click命令
+# 注册所有Click命令
 task.add_command(list_tasks)
 task.add_command(create_task)
 task.add_command(show_task)

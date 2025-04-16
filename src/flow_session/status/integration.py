@@ -8,9 +8,12 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db import FlowSessionRepository, WorkflowDefinitionRepository
+# from src.db import FlowSessionRepository, WorkflowDefinitionRepository # 旧导入
+from src.db.repositories.flow_session_repository import FlowSessionRepository
+from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 from src.flow_session.status.status import SessionStatus
 from src.models.db import FlowSession
+from src.status.enums import StatusCategory, WorkflowStatus
 
 # 会话状态到状态系统状态的映射
 SESSION_STATUS_MAPPING = {

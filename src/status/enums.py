@@ -146,3 +146,11 @@ class WorkflowStatus:
     def get_category(cls, status: str) -> StatusCategory:
         """获取状态对应的类别"""
         return cls.STATUS_CATEGORY_MAP.get(status, StatusCategory.TODO)
+
+
+class SyncStatus(Enum):
+    """数据同步状态枚举"""
+
+    SYNCED = auto()  # 已同步
+    NOT_SYNCED = auto()  # 未同步（本地有修改）
+    SYNC_ERROR = auto()  # 同步出错

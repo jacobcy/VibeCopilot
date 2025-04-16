@@ -92,7 +92,7 @@ print(f"规则类型：{rule_data.get('type')}")
 ### 2. 存储和检索内容
 
 ```python
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.vector.memory_adapter import BasicMemoryAdapter
 
 # 创建Basic Memory适配器
 vector_store = BasicMemoryAdapter()
