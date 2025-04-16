@@ -2,9 +2,8 @@ import logging
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine
+# 移除 create_engine, sessionmaker 的导入，因为不再直接使用
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 from src.core.config import get_config  # 更新导入
 from src.models.db import docs_engine  # Assuming docs models exist here
@@ -20,42 +19,14 @@ from src.models.db.base import Base  # Import Base from its definition
 
 logger = logging.getLogger(__name__)
 
-
-def get_db_path():
-    """获取数据库文件路径
-
-    优先级:
-    1. DATABASE_URL 环境变量 (提取路径部分)
-    2. 默认值: data/vibecopilot.db (相对于项目根目录)
-
-    Returns:
-        str: 数据库文件的完整路径
-    """
-    # 获取 DATABASE_URL
-    database_url = os.environ.get("DATABASE_URL")
-
-    if database_url:
-        if database_url.startswith("sqlite:///"):
-            # 提取路径部分
-            db_path = database_url[len("sqlite:///") :]
-            # 确保是绝对路径
-            if not os.path.isabs(db_path):
-                logger.warning(f"数据库路径是相对路径: {db_path}，将基于项目根目录转换为绝对路径")
-                db_path = os.path.abspath(db_path)
-            return db_path
-        else:
-            logger.warning(f"不支持的数据库URL格式: {database_url}，将使用默认SQLite路径")
-
-    # 使用默认路径
-    default_path = os.path.abspath("data/vibecopilot.db")
-    logger.debug(f"使用默认数据库路径: {default_path}")
-    return default_path
+# 移除冗余的 get_db_path 函数
+# def get_db_path(): ...
 
 
 def init_db(force_recreate=False):
     """初始化数据库
 
-    创建数据库表结构，如果表已存在则不会重新创建
+    使用 DBConnectionManager 确保数据库表结构存在
 
     Args:
         force_recreate: 是否强制重新创建表
@@ -63,30 +34,40 @@ def init_db(force_recreate=False):
     Returns:
         bool: 初始化是否成功
     """
-    # import traceback
+    # 引入 connection_manager 相关函数
     from src.db.connection_manager import ensure_tables_exist, get_engine
 
-    # 获取调用栈信息，用于跟踪调用来源
-    # caller_info = "".join(traceback.format_stack()[:-1])
-    # logger.info(f"数据库初始化被调用 (force_recreate={force_recreate})")
-    # logger.info(f"调用栈信息: \n{caller_info}")
+    logger.info(f"数据库初始化被调用 (force_recreate={force_recreate})")
 
     try:
         # 使用连接管理器确保表存在
-        ensure_tables_exist(force_recreate)
-        # logger.info("数据库表初始化完成")
+        success = ensure_tables_exist(force_recreate)
+        if success:
+            logger.info("数据库表初始化/验证完成")
+        else:
+            # ensure_tables_exist 内部会记录错误，这里只记录最终结果
+            logger.error("数据库表初始化/验证失败")
+            return False
 
-        # 返回引擎以兼容旧代码
-        return get_engine()
+        # 返回 True 表示成功 (即使表已存在)
+        return True
 
     except Exception as e:
-        logger.error(f"初始化数据库失败: {e}")
+        # ensure_tables_exist 内部的错误应该已经记录
+        logger.error(f"初始化数据库时发生意外错误: {e}", exc_info=True)
         return False
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    success = init_db()
+    # 可以添加 --force 参数支持
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Initialize the VibeCopilot database.")
+    parser.add_argument("--force", action="store_true", help="Force recreation of database tables.")
+    args = parser.parse_args()
+
+    success = init_db(force_recreate=args.force)
     if success:
         print("数据库初始化成功")
     else:

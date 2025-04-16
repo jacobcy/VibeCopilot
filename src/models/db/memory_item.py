@@ -7,7 +7,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 
 from .base import Base
 
@@ -25,6 +25,11 @@ class MemoryItem(Base):
     source = Column(String(255), nullable=True)  # 来源
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_deleted = Column(Boolean, nullable=False, default=False)  # 软删除标记
+
+    # 同步状态 (使用字符串而不是枚举避免循环导入)
+    sync_status = Column(String(20), nullable=False, default="NOT_SYNCED")  # 对应SyncStatus枚举值
+    remote_updated_at = Column(DateTime, nullable=True)  # 远程更新时间
 
     # 向量库相关字段
     permalink = Column(String(255), nullable=True, index=True)  # 向量库中的永久链接
