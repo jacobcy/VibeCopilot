@@ -21,7 +21,6 @@ from sqlalchemy.orm import sessionmaker
 
 from src.db.connection_manager import get_engine, get_session
 from src.models.db import Base
-from src.models.db.init_db import get_db_path
 from src.models.db.memory_item import MemoryItem
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

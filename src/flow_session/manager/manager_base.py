@@ -10,7 +10,11 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository
+# 将导入移动到方法内部以解决循环导入 - 不再需要，直接从 repositories 导入
+# from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository
+from src.db.repositories.flow_session_repository import FlowSessionRepository
+from src.db.repositories.stage_instance_repository import StageInstanceRepository
+from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 
 
 class FlowSessionManagerBase:
@@ -26,6 +30,9 @@ class FlowSessionManagerBase:
             session: SQLAlchemy会话对象
             logger: 可选的日志记录器
         """
+        # 将导入移动到方法内部以解决循环导入 - 不再需要
+        # from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository
+
         self.session = session
         self.workflow_repo = WorkflowDefinitionRepository(session)
         self.session_repo = FlowSessionRepository(session)

@@ -51,14 +51,15 @@ def init_memory_items():
     success_count = 0
     for item in items:
         try:
-            data = {
-                "title": item["title"],
-                "content": item["content"],
-                "content_type": item["content_type"],
-                "tags": ",".join(item["tags"]) if item["tags"] else None,
-                "source": item["source"],
-            }
-            repo.create(**data)
+            # 使用专用的create_item方法创建记忆项
+            repo.create_item(
+                title=item["title"],
+                content=item["content"],
+                content_type=item["content_type"],
+                tags=",".join(item["tags"]) if item["tags"] else None,
+                source=item["source"],
+                folder="Inbox",  # 设置默认文件夹
+            )
             success_count += 1
         except Exception as e:
             logger.error(f"创建记忆项失败: {item['title']}", exc_info=True)

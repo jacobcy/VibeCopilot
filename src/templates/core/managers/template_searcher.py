@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db import TemplateRepository, TemplateVariableRepository
+from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
 from src.models import Template as TemplateModel
 
 logger = logging.getLogger(__name__)
@@ -107,11 +107,7 @@ class TemplateSearcher:
         # 如果有关键词，在Python中筛选（可以根据需要改为数据库筛选）
         if query:
             query = query.lower()
-            filtered_templates = [
-                t
-                for t in templates
-                if query in t.name.lower() or (t.description and query in t.description.lower())
-            ]
+            filtered_templates = [t for t in templates if query in t.name.lower() or (t.description and query in t.description.lower())]
             logger.debug(f"按关键词 '{query}' 筛选后剩余 {len(filtered_templates)} 个模板")
             templates = filtered_templates
 

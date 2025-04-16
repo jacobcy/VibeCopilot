@@ -12,6 +12,9 @@ from rich.console import Console
 
 from src.cli.commands.status.output_helpers import output_result
 from src.cli.decorators import pass_service
+
+# 引入 get_config
+from src.core.config import get_config
 from src.status import StatusService
 
 console = Console()
@@ -34,9 +37,12 @@ def status():
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
 @pass_service(service_type="status")
-def show(service, type="summary", verbose=False, format="text"):
+def show(service: StatusService, type="summary", verbose=False, format="text"):
     """显示项目状态概览"""
     try:
+        config_manager = get_config()
+        app_name = config_manager.get("app.name", "VibeCopilot")  # 获取应用名称
+
         # 获取基本系统状态
         if type == "all":
             result = service.get_system_status(detailed=True)
@@ -44,6 +50,13 @@ def show(service, type="summary", verbose=False, format="text"):
             result = service.get_critical_status()
         else:  # summary
             result = service.get_system_status(detailed=False)
+
+        # 将应用名称添加到结果中以便输出
+        if isinstance(result, dict):
+            # 确保 system_info 存在
+            if "system_info" not in result:
+                result["system_info"] = {}
+            result["system_info"]["app_name"] = app_name
 
         # 获取任务摘要
         try:
@@ -55,6 +68,9 @@ def show(service, type="summary", verbose=False, format="text"):
             result["task_summary"] = {"error": f"获取任务摘要失败: {task_e}"}
 
         # 输出结果
+        if format == "text":
+            console.print(f"[bold cyan]=== {app_name} 状态概览 ===[/bold cyan]\n")
+
         output_result(result, format, "system", verbose)
     except Exception as e:
         console.print(f"[bold red]执行错误:[/bold red] {str(e)}")

@@ -13,7 +13,7 @@ from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
 
-from src.db import TemplateRepository, TemplateVariableRepository
+from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
 from src.models import Template as TemplateModel
 
 from .template_utils import load_template_from_file, normalize_template_id

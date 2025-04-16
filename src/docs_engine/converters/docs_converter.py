@@ -3,14 +3,12 @@
 提供统一的文档引擎接口，使用src.parsing解析文档文件，并提供格式转换功能
 """
 
-import asyncio
 import logging
 import os
 from typing import Any, Dict, List, Optional
 
 from src.docs_engine.engine import create_document_engine
 from src.parsing import create_parser
-from src.parsing.processors.document_processor import DocumentProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -30,47 +28,49 @@ def parse_document_file(file_path: str, parser_type: Optional[str] = None, model
     """
     logger.info(f"使用parsing模块解析文档文件: {file_path}")
 
-    # 配置参数
+    # 创建解析器
     config = {}
     if model:
         config["model"] = model
 
-    # 创建文档处理器
-    processor = DocumentProcessor(backend=parser_type or "openai", config=config)
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"文件不存在: {file_path}")
 
-    # 处理文档文件
-    result = processor.process_document_file(file_path)
+    # 读取文件内容
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
 
-    # 检查处理结果
-    if not result.get("success", True):
-        logger.error(f"文档解析失败: {result.get('error', '未知错误')}")
-        return result
+    # 使用新的parsing接口
+    parser = create_parser(content_type="document", backend=parser_type or "openai", config=config)
 
-    # 确保字段格式一致性 - 添加文件信息
-    if "_file_info" not in result:
-        file_info = result.get("file_info", {})
-        if file_info:
-            result["_file_info"] = {
-                "path": file_info.get("path", file_path),
-                "name": file_info.get("name", os.path.basename(file_path)),
-                "extension": os.path.splitext(file_info.get("name", os.path.basename(file_path)))[1],
-                "directory": file_info.get("directory", os.path.dirname(file_path)),
-            }
-        else:
-            result["_file_info"] = {
-                "path": file_path,
-                "name": os.path.basename(file_path),
-                "extension": os.path.splitext(file_path)[1],
-                "directory": os.path.dirname(file_path),
-            }
+    # 使用parse_text方法
+    # 注意：parse_text是异步方法，需要在异步上下文中调用
+    # 这里我们使用一个简单的同步实现
+    import asyncio
 
-    # 确保其他字段存在，保持API兼容性
-    if "blocks" not in result:
-        result["blocks"] = []
+    try:
+        import nest_asyncio
 
-    if "title" not in result:
-        # 尝试从文件名中提取标题
-        result["title"] = os.path.splitext(os.path.basename(file_path))[0]
+        nest_asyncio.apply()
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(parser.parse_text(content, content_type="document"))
+    except Exception as e:
+        logger.error(f"调用解析器失败: {str(e)}")
+        result = {
+            "success": False,
+            "error": str(e),
+            "content_type": "document",
+            "content_preview": content[:100] + "..." if len(content) > 100 else content,
+        }
+
+    # 添加文件信息
+    result["_file_info"] = {
+        "path": file_path,
+        "name": os.path.basename(file_path),
+        "extension": os.path.splitext(file_path)[1],
+        "directory": os.path.dirname(file_path),
+    }
 
     logger.info(f"文档文件解析完成: {file_path}")
     return result
@@ -92,49 +92,36 @@ def parse_document_content(content: str, context: str = "", parser_type: Optiona
     """
     logger.info(f"使用parsing模块解析文档内容, 上下文: {context}")
 
-    # 配置参数
+    # 创建解析器
     config = {"context": context}
     if model:
         config["model"] = model
 
-    # 创建文档处理器
-    processor = DocumentProcessor(backend=parser_type or "openai", config=config)
+    # 使用新的parsing接口
+    parser = create_parser(content_type="document", backend=parser_type or "openai", config=config)
 
-    try:
-        # 使用DocumentProcessor处理文本
-        result = processor.process_document_text(content)
+    # 判断解析器类型
+    if hasattr(parser, "parse"):
+        # 如果是LLMParser，使用parse方法
+        result = parser.parse(content, content_type="document")
+    else:
+        # 如果是其他解析器，使用同步方法
+        import asyncio
 
-        # 检查处理结果
-        if not result.get("success", True):
-            logger.error(f"文档内容解析失败: {result.get('error', '未知错误')}")
-            return result
+        try:
+            import nest_asyncio
 
-        # 确保字段格式一致性
-        if "blocks" not in result:
-            result["blocks"] = []
-
-        if "title" not in result:
-            # 尝试从内容中提取标题
-            lines = content.split("\n")
-            for line in lines:
-                if line.startswith("# "):
-                    result["title"] = line[2:].strip()
-                    break
-            if "title" not in result:
-                result["title"] = "未命名文档"
-
-        # 添加上下文信息
-        if context and "_context" not in result:
-            result["_context"] = context
-
-    except Exception as e:
-        logger.error(f"调用文档处理器失败: {str(e)}")
-        result = {
-            "success": False,
-            "error": str(e),
-            "content_type": "document",
-            "content_preview": content[:100] + "..." if len(content) > 100 else content,
-        }
+            nest_asyncio.apply()
+            loop = asyncio.get_event_loop()
+            result = loop.run_until_complete(parser.parse_text(content, content_type="document"))
+        except Exception as e:
+            logger.error(f"调用解析器失败: {str(e)}")
+            result = {
+                "success": False,
+                "error": str(e),
+                "content_type": "document",
+                "content_preview": content[:100] + "..." if len(content) > 100 else content,
+            }
 
     logger.info(f"文档内容解析完成")
     return result
@@ -154,57 +141,8 @@ def extract_document_blocks(file_path: str) -> List[Dict[str, Any]]:
     # 解析文档
     doc_data = parse_document_file(file_path)
 
-    # 检查文档解析是否成功
-    if not doc_data.get("success", True):
-        logger.error(f"文档解析失败，无法提取块: {doc_data.get('error', '未知错误')}")
-        return []
-
-    # 提取块
+    # 返回块列表
     blocks = doc_data.get("blocks", [])
-
-    # 如果没有找到块，尝试从结构中提取
-    if not blocks and "structure" in doc_data:
-        # 从结构中创建块
-        structure = doc_data.get("structure", {})
-
-        # 从标题提取块
-        if "headings" in structure:
-            for heading in structure.get("headings", []):
-                blocks.append(
-                    {
-                        "type": "heading",
-                        "level": heading.get("level", 1),
-                        "text": heading.get("text", ""),
-                        "id": heading.get("id", ""),
-                    }
-                )
-
-        # 从段落提取块
-        if "paragraphs" in structure:
-            for para in structure.get("paragraphs", []):
-                blocks.append(
-                    {
-                        "type": "paragraph",
-                        "text": para.get("text", ""),
-                        "id": para.get("id", ""),
-                    }
-                )
-
-    # 如果仍然没有找到块，尝试从内容中提取
-    if not blocks and "content" in doc_data:
-        content = doc_data.get("content", "")
-        # 简单地按照空行分割
-        sections = content.split("\n\n")
-        for i, section in enumerate(sections):
-            if section.strip():
-                blocks.append(
-                    {
-                        "type": "section",
-                        "text": section.strip(),
-                        "id": f"section-{i+1}",
-                    }
-                )
-
     logger.info(f"提取了 {len(blocks)} 个块")
     return blocks
 
@@ -220,43 +158,51 @@ def import_document_to_db(file_path: str) -> Dict[str, Any]:
     """
     logger.info(f"导入文档到数据库: {file_path}")
 
-    # 使用DocumentProcessor解析文档
-    processor = DocumentProcessor()
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"文件不存在: {file_path}")
+
+    # 读取文件内容
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 使用新的parsing接口解析并保存
+    parser = create_parser(content_type="document")
+
+    # 使用parse_text方法
+    # 注意：parse_text是异步方法，需要在异步上下文中调用
+    import asyncio
 
     try:
-        # 处理文档文件
-        doc_data = processor.process_document_file(file_path)
+        import nest_asyncio
 
-        if not doc_data.get("success", True):
-            logger.error(f"文档解析失败: {doc_data.get('error', '未知错误')}")
-            return {"success": False, "error": doc_data.get("error", "未知错误"), "message": "文档解析失败"}
-
-        # 获取文件信息
-        file_info = {
-            "path": doc_data.get("file_info", {}).get("path", file_path),
-            "name": doc_data.get("file_info", {}).get("name", os.path.basename(file_path)),
-            "extension": os.path.splitext(os.path.basename(file_path))[1],
-            "directory": doc_data.get("file_info", {}).get("directory", os.path.dirname(file_path)),
-        }
-
-        # 添加文件信息，确保与之前的格式兼容
-        doc_data["_file_info"] = file_info
-
-        logger.info(f"文档解析成功: {doc_data.get('title', '无标题')}")
-
-        # 进行数据库导入操作...
-        # 这里可以根据实际需要添加数据库导入逻辑
-
-        return {
-            "success": True,
-            "document_id": doc_data.get("id", ""),
-            "title": doc_data.get("title", "无标题"),
-            "block_count": len(doc_data.get("blocks", [])),
-            "message": f"文档 '{doc_data.get('title', '无标题')}' 已成功导入到数据库",
-        }
+        nest_asyncio.apply()
+        loop = asyncio.get_event_loop()
+        doc_data = loop.run_until_complete(parser.parse_text(content, content_type="document"))
     except Exception as e:
-        logger.error(f"导入文档到数据库失败: {str(e)}")
-        return {"success": False, "error": str(e), "message": "导入文档到数据库失败"}
+        logger.error(f"调用解析器失败: {str(e)}")
+        doc_data = {
+            "success": False,
+            "error": str(e),
+            "content_type": "document",
+            "content_preview": content[:100] + "..." if len(content) > 100 else content,
+        }
+
+    # 添加文件信息
+    doc_data["_file_info"] = {
+        "path": file_path,
+        "name": os.path.basename(file_path),
+        "extension": os.path.splitext(file_path)[1],
+        "directory": os.path.dirname(file_path),
+    }
+
+    return {
+        "success": True,
+        "document_id": doc_data.get("id"),
+        "title": doc_data.get("title"),
+        "block_count": len(doc_data.get("blocks", [])),
+        "message": f"文档 '{doc_data.get('title')}' 已成功导入到数据库",
+    }
 
 
 def convert_document_links(content: str, from_format: str, to_format: str) -> str:

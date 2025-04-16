@@ -32,7 +32,7 @@ class RuleProcessor:
         # 创建解析器
         self.parser = create_parser("rule", backend, config)
 
-    def process_rule_text(self, content: str) -> Dict[str, Any]:
+    async def process_rule_text(self, content: str) -> Dict[str, Any]:
         """
         处理规则文本
 
@@ -43,7 +43,7 @@ class RuleProcessor:
             处理结果
         """
         # 解析规则内容
-        result = self.parser.parse_text(content, "rule")
+        result = await self.parser.parse_text(content, "rule")
 
         # 验证规则结构
         if not self._validate_rule_structure(result):
@@ -53,7 +53,7 @@ class RuleProcessor:
 
         return result
 
-    def process_rule_file(self, file_path: str) -> Dict[str, Any]:
+    async def process_rule_file(self, file_path: str) -> Dict[str, Any]:
         """
         处理规则文件
 
@@ -72,7 +72,7 @@ class RuleProcessor:
             content = f.read()
 
         # 处理规则文本
-        result = self.process_rule_text(content)
+        result = await self.process_rule_text(content)
 
         # 添加文件信息
         result["file_info"] = {
@@ -83,9 +83,7 @@ class RuleProcessor:
 
         return result
 
-    def process_rule_directory(
-        self, directory_path: str, pattern="**/*.mdc"
-    ) -> List[Dict[str, Any]]:
+    async def process_rule_directory(self, directory_path: str, pattern="**/*.mdc") -> List[Dict[str, Any]]:
         """
         处理规则目录
 
@@ -106,7 +104,7 @@ class RuleProcessor:
         # 处理每个规则文件
         results = []
         for file_path in rule_files:
-            result = self.process_rule_file(file_path)
+            result = await self.process_rule_file(file_path)
             results.append(result)
 
         return results
@@ -125,9 +123,7 @@ class RuleProcessor:
             "title": rule_result.get("title", ""),
             "type": rule_result.get("front_matter", {}).get("type", ""),
             "description": rule_result.get("front_matter", {}).get("description", ""),
-            "tags": rule_result.get("front_matter", {}).get("tags", "").split(",")
-            if rule_result.get("front_matter", {}).get("tags")
-            else [],
+            "tags": rule_result.get("front_matter", {}).get("tags", "").split(",") if rule_result.get("front_matter", {}).get("tags") else [],
             "valid": rule_result.get("validation", {}).get("valid", False),
         }
 

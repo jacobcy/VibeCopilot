@@ -10,12 +10,12 @@ import logging
 import sys
 from typing import Any, Dict, List, Tuple, Union
 
-from src.memory import MemoryService
+from src.memory import MemoryService, get_memory_service
 
 logger = logging.getLogger(__name__)
 
 # 创建MemoryService的单例，所有处理函数共享使用
-_memory_service = MemoryService()
+_memory_service = get_memory_service()
 
 
 def _get_attr(args: Union[Dict[str, Any], Any], name: str, default=None) -> Any:
@@ -197,14 +197,48 @@ def handle_sync_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
     """
     处理同步子命令
 
+    只同步docs/目录下的文档，不同步规则
+    注意：仅此命令使用同步编排器而非MemoryService
+
     Args:
         args: 命令行参数，可以是字典或任何支持getattr的对象
 
     Returns:
         元组，包含(是否成功, 消息, 结果数据)
     """
-    # 使用统一的MemoryService
-    return _memory_service.sync_all()
+    try:
+        # 导入SyncOrchestrator，避免直接依赖memory内部实现
+        import asyncio
+
+        from src.status.sync.sync_orchestrator import SyncOrchestrator
+
+        # 创建SyncOrchestrator实例
+        sync_orchestrator = SyncOrchestrator()
+
+        # 仅同步document类型，不同步规则
+        coroutine = sync_orchestrator.sync_by_type("document")
+
+        # 使用事件循环执行异步函数
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            # 如果没有可用的事件循环，创建一个新的
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(coroutine)
+
+        # 处理结果
+        total_synced = result.get("total_synced", 0)
+        return True, f"文档同步完成：已同步{total_synced}个文档", result
+    except ImportError as e:
+        # 如果无法导入SyncOrchestrator，报错
+        logger.error(f"无法导入同步编排器: {e}")
+        return False, "文档同步失败：无法导入同步编排器", {"error": str(e)}
+    except Exception as e:
+        # 捕获所有其他异常
+        logger.error(f"文档同步失败: {e}")
+        return False, f"文档同步失败: {str(e)}", {"error": str(e)}
 
 
 def handle_watch_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:

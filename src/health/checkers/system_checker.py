@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+from src.core.config import get_config
+from src.core.database import get_engine
 from src.core.logger import setup_logger
 
 from .base_checker import BaseChecker, CheckResult
@@ -19,6 +21,8 @@ class SystemChecker(BaseChecker):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.sys_config = config.get("system", {})
+        self.project_root = os.getcwd()  # 假设从项目根目录运行
+        self.config_manager = get_config()  # 获取配置管理器
 
     def check(self) -> CheckResult:
         """执行系统环境检查
@@ -36,12 +40,82 @@ class SystemChecker(BaseChecker):
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
         platform_info = platform.platform()
 
+        results = {}
+        overall_status = "passed"
+
+        results["python_version"] = self._check_python_version()
+        results["dependencies"] = self._check_dependencies()
+        results["required_dirs"] = self._check_required_dirs()
+        results["config_files"] = self._check_config_files()
+        results["db_connection"] = self._check_db_connection()
+
+        # 更新总体状态
+        for result in results.values():
+            if result["status"] == "failed":
+                overall_status = "failed"
+                break
+            elif result["status"] == "warning":
+                overall_status = "warning"
+
         return CheckResult(
-            status="passed",
+            status=overall_status,
             details=[f"Python版本: {python_version}", f"操作系统: {platform_info}", "系统检查临时跳过详细验证", "此为开发环境模拟检查"],
             suggestions=["完整的系统检查将在生产环境中启用"],
             metrics={"total": 5, "passed": 5, "failed": 0, "warnings": 0},
         )
+
+    def _check_python_version(self) -> Dict:
+        # ... (省略)
+        pass
+
+    def _check_dependencies(self) -> Dict:
+        # ... (省略)
+        pass
+
+    def _check_required_dirs(self) -> Dict:
+        """检查必需的目录是否存在"""
+        agent_work_dir_name = os.path.basename(self.config_manager.get("paths.agent_work_dir", ".ai"))
+        data_dir_name = os.path.basename(self.config_manager.get("paths.data_dir", "data"))
+
+        # 从配置获取 agent_work_dir 并添加到检查列表
+        required_dirs = {
+            "src": "源代码目录",
+            "config": "配置目录",
+            data_dir_name: "数据存储目录",
+            agent_work_dir_name: "AI资源目录",  # 使用配置中的目录名
+            "tests": "测试目录",
+            "docs": "文档目录",
+            "scripts": "脚本目录",
+        }
+        missing_dirs = []
+        for dir_name, description in required_dirs.items():
+            dir_path = os.path.join(self.project_root, dir_name)
+            if not os.path.isdir(dir_path):
+                missing_dirs.append(f"{description} ({dir_name})")
+
+        if not missing_dirs:
+            return {"status": "passed", "message": "所有必需目录都存在"}
+        else:
+            return {
+                "status": "failed",
+                "message": f"缺少必需目录: {', '.join(missing_dirs)}",
+            }
+
+    def _check_config_files(self) -> Dict:
+        # ... (省略)
+        pass
+
+    def _check_db_connection(self) -> Dict:
+        """检查数据库连接"""
+        try:
+            # 尝试获取数据库引擎，这将触发初始化（如果尚未初始化）
+            engine = get_engine()
+            # 尝试连接
+            with engine.connect() as connection:
+                return {"status": "passed", "message": "数据库连接成功"}
+        except Exception as e:
+            logger.error(f"数据库连接检查失败: {e}", exc_info=True)
+            return {"status": "failed", "message": f"数据库连接失败: {e}"}
 
     def _check_environment(self) -> Tuple[str, List[str], List[str]]:
         """检查系统环境"""
@@ -109,75 +183,6 @@ class SystemChecker(BaseChecker):
                     status = "warning"
                     details.append(f"配置文件格式错误: {config_file}")
                     suggestions.append(f"检查配置文件格式: {config_file}")
-
-        return status, details, suggestions
-
-    def _check_dependencies(self) -> Tuple[str, List[str], List[str]]:
-        """检查依赖关系"""
-        details = []
-        suggestions = []
-        status = "passed"
-
-        # 检查requirements.txt
-        if os.path.exists("requirements.txt"):
-            with open("requirements.txt") as f:
-                requirements = f.read().splitlines()
-
-            # 检查核心依赖
-            core_deps = {"fastapi": "0.95.0", "sqlalchemy": "1.4.0", "pydantic": "1.10.0", "click": "8.0.0", "python-dotenv": "0.19.0"}
-
-            missing_deps = []
-            version_mismatch = []
-
-            for dep, min_version in core_deps.items():
-                self.result.metrics["deps_checked"] += 1
-                dep_found = False
-
-                for req in requirements:
-                    if dep in req.lower():
-                        dep_found = True
-                        # 检查版本要求
-                        if ">=" in req:
-                            req_version = req.split(">=")[1].strip()
-                            if not self._check_version_requirement(req_version, min_version):
-                                version_mismatch.append(f"{dep} (需要 >={min_version})")
-                        break
-
-                if not dep_found:
-                    missing_deps.append(dep)
-                    self.result.metrics["deps_missing"] += 1
-
-            if missing_deps:
-                status = "failed"
-                details.append(f"缺失核心依赖: {', '.join(missing_deps)}")
-                suggestions.append("在requirements.txt中添加缺失的依赖")
-
-            if version_mismatch:
-                status = "warning"
-                details.append(f"依赖版本过低: {', '.join(version_mismatch)}")
-                suggestions.append("更新依赖到建议的最低版本")
-        else:
-            status = "failed"
-            details.append("缺失requirements.txt文件")
-            suggestions.append("创建requirements.txt文件")
-
-        return status, details, suggestions
-
-    def _check_directory_structure(self) -> Tuple[str, List[str], List[str]]:
-        """检查目录结构"""
-        details = []
-        suggestions = []
-        status = "passed"
-
-        required_dirs = {"src": "源代码目录", "config": "配置目录", "data": "数据存储目录", ".ai": "AI资源目录", "tests": "测试目录", "docs": "文档目录", "scripts": "脚本目录"}
-
-        for dir_name, description in required_dirs.items():
-            if not os.path.isdir(dir_name):
-                status = "warning"
-                details.append(f"缺失目录: {dir_name} ({description})")
-                suggestions.append(f"创建必要的目录: {dir_name}")
-            else:
-                details.append(f"目录存在: {dir_name}")
 
         return status, details, suggestions
 

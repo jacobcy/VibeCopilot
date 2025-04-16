@@ -15,8 +15,11 @@ from typing import Any, Dict, Optional
 from loguru import logger
 from rich.console import Console
 
+# 引入 get_config
+from src.core.config import get_config
+
 # 导入统一的 MemoryService 接口
-from src.memory import MemoryService
+from src.memory import MemoryService, get_memory_service
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -35,10 +38,9 @@ def safe_import(module_name: str):
 # 将append_to_task_log函数直接实现在memory模块中，避免循环导入
 def append_to_task_log(task_id: str, action: str, details: Optional[Dict[str, Any]] = None) -> None:
     """向任务日志添加新条目"""
-    log_path = os.path.join(".ai", "tasks", task_id, "task.log")
-
-    if not os.path.exists(os.path.dirname(log_path)):
-        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    log_path = get_task_log_path(task_id)
+    if not log_path:
+        return
 
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -241,3 +243,60 @@ def store_ref_to_memory(task_id: str, ref_path: str) -> Dict[str, Any]:
         logger.error(error_msg, exc_info=True)
         console.print(f"[bold red]错误:[/bold red] {error_msg}")
         return {"success": False, "error": error_msg}
+
+
+def get_task_log_path(task_id: str) -> Optional[str]:
+    """获取任务日志文件的路径"""
+    if not task_id:
+        return None
+
+    config = get_config()
+    project_root = config.get("paths.project_root", os.getcwd())
+    # 从配置获取 Agent 工作目录
+    agent_work_dir = config.get("paths.agent_work_dir", ".ai")
+
+    # 使用 agent_work_dir 构建路径
+    log_path = os.path.join(project_root, agent_work_dir, "tasks", task_id, "task.log")
+    log_dir = os.path.dirname(log_path)
+
+    # 确保目录存在
+    ensure_dir_exists(log_dir)
+
+    return log_path
+
+
+def add_memory_to_task(
+    task_id: str,
+    memory_content: str,
+    memory_title: Optional[str] = None,
+    memory_tags: Optional[str] = None,
+    memory_folder: Optional[str] = None,
+) -> bool:
+    """将记忆添加到任务日志和全局知识库"""
+    log_path = get_task_log_path(task_id)
+    if not log_path:
+        click.echo(f"错误：无效的任务ID '{task_id}'", err=True)
+        return False
+
+    # ... (省略追加日志逻辑)
+
+    # 添加到全局知识库
+    try:
+        memory_service = get_memory_service()
+        # 使用 task_id 作为文件夹，或提供默认/配置值
+        folder = memory_folder or f"task_{task_id}"
+        success, msg, data = memory_service.create_note(
+            content=memory_content,
+            title=memory_title or f"Task {task_id} Memory",
+            tags=memory_tags or f"task,{task_id}",
+            folder=folder,
+        )
+        if not success:
+            click.echo(f"警告：添加到全局知识库失败: {msg}", err=True)
+            # 不阻塞主要流程
+    except MemoryServiceError as e:
+        click.echo(f"警告：无法连接到记忆服务: {e}", err=True)
+    except Exception as e:
+        click.echo(f"警告：添加到全局知识库时发生意外错误: {e}", err=True)
+
+    return True

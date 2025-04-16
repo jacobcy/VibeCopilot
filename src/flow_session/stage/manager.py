@@ -10,7 +10,12 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository, get_session_factory
+from src.db import get_session_factory  # 重新添加 get_session_factory 的导入
+
+# from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository, get_session_factory # 旧导入
+from src.db.repositories.flow_session_repository import FlowSessionRepository
+from src.db.repositories.stage_instance_repository import StageInstanceRepository
+from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 from src.models.db import StageInstance
 
 

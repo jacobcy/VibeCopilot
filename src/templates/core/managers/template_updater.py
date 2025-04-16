@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
-from src.db import TemplateRepository, TemplateVariableRepository
+from src.db.repositories.template_repository import TemplateRepository, TemplateVariableRepository
 from src.models import Template as TemplateModel
 
 logger = logging.getLogger(__name__)
@@ -39,9 +39,7 @@ class TemplateUpdater:
         self.template_repo = template_repo
         self.variable_repo = variable_repo
 
-    def update_template(
-        self, template_id: str, template_data: Dict[str, Any]
-    ) -> Optional[TemplateModel]:
+    def update_template(self, template_id: str, template_data: Dict[str, Any]) -> Optional[TemplateModel]:
         """
         更新模板
 
@@ -92,9 +90,7 @@ class TemplateUpdater:
 
         return result_template
 
-    def _update_template_variables(
-        self, template_id: str, variables_data: list, db_template: Any
-    ) -> None:
+    def _update_template_variables(self, template_id: str, variables_data: list, db_template: Any) -> None:
         """
         更新模板变量
 
@@ -115,16 +111,10 @@ class TemplateUpdater:
                 var_update = {
                     "name": var_data.get("name", existing_var_dict[var_id].name),
                     "type": var_data.get("type", existing_var_dict[var_id].type),
-                    "description": var_data.get(
-                        "description", existing_var_dict[var_id].description
-                    ),
-                    "default_value": json.dumps(var_data.get("default"))
-                    if "default" in var_data
-                    else existing_var_dict[var_id].default_value,
+                    "description": var_data.get("description", existing_var_dict[var_id].description),
+                    "default_value": json.dumps(var_data.get("default")) if "default" in var_data else existing_var_dict[var_id].default_value,
                     "required": var_data.get("required", existing_var_dict[var_id].required),
-                    "enum_values": json.dumps(var_data.get("enum_values"))
-                    if "enum_values" in var_data
-                    else existing_var_dict[var_id].enum_values,
+                    "enum_values": json.dumps(var_data.get("enum_values")) if "enum_values" in var_data else existing_var_dict[var_id].enum_values,
                 }
                 self.variable_repo.update(var_id, var_update)
             else:
@@ -145,13 +135,9 @@ class TemplateUpdater:
             "name": var_data.get("name"),
             "type": var_data.get("type"),
             "description": var_data.get("description", ""),
-            "default_value": json.dumps(var_data.get("default"))
-            if var_data.get("default") is not None
-            else None,
+            "default_value": json.dumps(var_data.get("default")) if var_data.get("default") is not None else None,
             "required": var_data.get("required", True),
-            "enum_values": json.dumps(var_data.get("enum_values"))
-            if var_data.get("enum_values")
-            else None,
+            "enum_values": json.dumps(var_data.get("enum_values")) if var_data.get("enum_values") else None,
         }
         created_var = self.variable_repo.create(new_var)
 

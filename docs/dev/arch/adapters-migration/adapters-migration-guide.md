@@ -97,7 +97,7 @@ from src.memory.entity_manager import EntityManager
 from src.memory.observation_manager import ObservationManager
 from src.memory.relation_manager import RelationManager
 from src.memory.sync_service import SyncService
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.vector.memory_adapter import BasicMemoryAdapter
 
 # 创建同步服务
 sync_service = SyncService()

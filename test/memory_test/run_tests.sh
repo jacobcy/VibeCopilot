@@ -25,6 +25,7 @@ export PYTHONPATH="$ROOT_DIR:$PYTHONPATH"
 
 # 运行接口一致性测试
 echo -e "${YELLOW}1. 运行MemoryService接口一致性测试${RESET}"
+export PYTHONPATH=$ROOT_DIR:$PYTHONPATH
 python "$TEST_DIR/test_memory_service.py"
 if [ $? -ne 0 ]; then
     echo -e "${RED}接口一致性测试失败!${RESET}"
@@ -53,6 +54,36 @@ fi
 echo -e "${GREEN}快速功能测试通过${RESET}"
 echo
 
+# 运行标准遵循测试
+echo -e "${YELLOW}4. 运行标准遵循测试${RESET}"
+python "$TEST_DIR/permalink_test.py"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}标准遵循测试失败!${RESET}"
+    exit 1
+fi
+echo -e "${GREEN}标准遵循测试通过${RESET}"
+echo
+
+# 运行责任分离测试
+echo -e "${YELLOW}5. 运行责任分离测试${RESET}"
+python "$TEST_DIR/test_sync_separation.py"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}责任分离测试失败!${RESET}"
+    exit 1
+fi
+echo -e "${GREEN}责任分离测试通过${RESET}"
+echo
+
+# 运行性能测试
+echo -e "${YELLOW}6. 运行性能测试${RESET}"
+python "$TEST_DIR/performance_test.py"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}性能测试失败!${RESET}"
+    exit 1
+fi
+echo -e "${GREEN}性能测试通过${RESET}"
+echo
+
 echo -e "${GREEN}所有测试通过!${RESET}"
 echo -e "${BLUE}注意:${RESET} 所有测试均已使用MemoryService统一封装"
 echo
@@ -61,6 +92,9 @@ echo "===== 测试报告 ====="
 echo "1. 接口一致性: ✅ 通过"
 echo "2. 命令行接口: ✅ 通过"
 echo "3. 功能完整性: ✅ 通过"
+echo "4. 标准遵循: ✅ 通过"
+echo "5. 责任分离: ✅ 通过"
+echo "6. 性能指标: ✅ 通过"
 
 # 提供手动测试选项
 echo

@@ -17,7 +17,7 @@ from typing import List, Optional
 project_dir = Path(__file__).parent.parent.parent
 sys.path.append(str(project_dir))
 
-from src.memory.sync_service import SyncService
+from src.status.sync.sync_orchestrator import SyncOrchestrator
 
 # Configure logging
 logging.basicConfig(
@@ -39,29 +39,25 @@ async def main(file_paths: Optional[List[str]] = None, content_type: Optional[st
     """
     logger.info(f"Starting synchronization to Basic Memory...")
 
-    # Initialize sync service
-    sync_service = SyncService()
+    # Initialize sync orchestrator
+    sync_orchestrator = SyncOrchestrator()
 
     # Synchronize files
     if content_type:
         logger.info(f"Syncing {content_type} content...")
-        result = await sync_service.sync_by_type(content_type, file_paths)
+        result = await sync_orchestrator.sync_by_type(content_type, file_paths)
     else:
         logger.info("Syncing all content...")
-        result = await sync_service.sync_all(file_paths)
+        result = await sync_orchestrator.orchestrate_sync(file_paths)
 
     # Print results
     logger.info("\nSynchronization complete!")
 
     if "rules" in result:
-        logger.info(
-            f"Rules: Synced {result['rules']['synced_count']} / {result['rules']['total_count']}"
-        )
+        logger.info(f"Rules: Synced {result['rules']['synced_count']} / {result['rules']['total_count']}")
 
     if "documents" in result:
-        logger.info(
-            f"Documents: Synced {result['documents']['synced_count']} / {result['documents']['total_count']}"
-        )
+        logger.info(f"Documents: Synced {result['documents']['synced_count']} / {result['documents']['total_count']}")
 
     logger.info(f"Total: Synced {result.get('total_synced', 0)} files")
 
@@ -70,9 +66,7 @@ if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Synchronize files to Basic Memory")
     parser.add_argument("--files", type=str, help="Space-separated list of file paths to sync")
-    parser.add_argument(
-        "--type", type=str, choices=["rule", "document"], help="Content type to sync"
-    )
+    parser.add_argument("--type", type=str, choices=["rule", "document"], help="Content type to sync")
     args = parser.parse_args()
 
     # Parse file list
