@@ -22,6 +22,7 @@ from src.db.repositories.log_repository import (
     TaskLogRepository,
     WorkflowLogRepository,
 )
+from src.db.repositories.memory_item_repository import MemoryItemRepository
 from src.db.repositories.roadmap_repository import EpicRepository, StoryRepository
 from src.db.repositories.task_repository import TaskRepository
 
@@ -73,18 +74,21 @@ class DatabaseService:
             self.session = session_factory()
 
             # 初始化各种仓库，所有实体类型都使用SQLAlchemy仓库
+            from src.db.repositories.memory_item_repository import MemoryItemRepository
             from src.db.repositories.roadmap_repository import EpicRepository, StoryRepository
             from src.db.repositories.task_repository import TaskRepository
 
             self.epic_repo = EpicRepository(self.session)
             self.story_repo = StoryRepository(self.session)
             self.task_repo = TaskRepository(self.session)
+            self.memory_item_repo = MemoryItemRepository(self.session)
 
             # 类型到仓库的映射
             self.repo_map = {
                 "epic": self.epic_repo,
                 "story": self.story_repo,
                 "task": self.task_repo,
+                "memory_item": self.memory_item_repo,
             }
 
             logger.debug(f"初始化的仓库: {', '.join(self.repo_map.keys())}")
@@ -137,6 +141,9 @@ class DatabaseService:
 
         if not hasattr(self, "task_manager") or self.task_manager is None:
             raise RuntimeError("Task管理器未初始化")
+
+        if not hasattr(self, "memory_item_repo") or self.memory_item_repo is None:
+            raise RuntimeError("MemoryItemRepository未初始化")
 
     # 通用实体管理方法，委托给实体管理器
 
@@ -434,6 +441,15 @@ class DatabaseService:
             task_count = self.session.query(Task).count()
             result["task"] = task_count
 
+            # 获取MemoryItem表统计
+            from src.models.db import MemoryItem
+
+            if hasattr(self.session, "query") and MemoryItem is not None:
+                memory_item_count = self.session.query(MemoryItem).filter(MemoryItem.is_deleted == False).count()
+                result["memory_item"] = memory_item_count
+            else:
+                result["memory_item"] = 0
+
             # 获取Label表统计
             from src.models.db import Label
 
@@ -457,7 +473,7 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"获取数据库统计信息失败: {str(e)}", exc_info=True)
             # 返回默认值，避免前端报错
-            return {"epic": 0, "story": 0, "task": 0, "label": 0, "template": 0}
+            return {"epic": 0, "story": 0, "task": 0, "label": 0, "template": 0, "memory_item": 0}
 
     def get_table_schema(self, table_name: str) -> Dict[str, Any]:
         """获取数据库表结构信息
@@ -470,7 +486,7 @@ class DatabaseService:
         """
         try:
             # 获取对应的模型类
-            model_map = {"epic": "Epic", "story": "Story", "task": "Task", "label": "Label", "template": "Template"}
+            model_map = {"epic": "Epic", "story": "Story", "task": "Task", "label": "Label", "template": "Template", "memory_item": "MemoryItem"}
 
             if table_name.lower() not in model_map:
                 return {"error": f"不支持的表名: {table_name}"}
@@ -479,7 +495,7 @@ class DatabaseService:
             if table_name.lower() == "task":
                 from src.models.db.task import Task as Model
             else:
-                from src.models.db import Epic, Label, Story, Template
+                from src.models.db import Epic, Label, MemoryItem, Story, Template
 
                 model_class_name = model_map[table_name.lower()]
                 Model = locals()[model_class_name]

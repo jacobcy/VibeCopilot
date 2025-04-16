@@ -20,6 +20,7 @@ from src.cli.commands.memory.memory_subcommands import (
     handle_show_subcommand,
     handle_sync_subcommand,
     handle_update_subcommand,
+    handle_watch_subcommand,
 )
 
 console = Console()
@@ -136,15 +137,13 @@ def search(query, type, format, verbose, agent_mode):
         click.echo(f"错误: {message}", err=True)
 
 
-@memory.command(name="import")
-@click.option("--source-dir", required=True, help="源文档目录")
-@click.option("--recursive", is_flag=True, help="递归导入子目录")
+@memory.command()
 @click.option("--verbose", "-v", is_flag=True, help="提供详细输出")
 @click.option("--agent-mode", is_flag=True, help="启用agent优化的输出格式")
-def import_docs(source_dir, recursive, verbose, agent_mode):
-    """导入本地文档到知识库"""
+def sync(verbose, agent_mode):
+    """同步知识库文件和索引"""
     args = click.get_current_context().params
-    success, message, data = handle_import_subcommand(args)
+    success, message, data = handle_sync_subcommand(args)
     if success:
         click.echo(message)
     else:
@@ -168,13 +167,27 @@ def export(db, output, format, verbose, agent_mode):
 
 
 @memory.command()
-@click.option("--sync-type", required=True, type=click.Choice(["to-obsidian", "to-docs", "watch"]), help="同步类型")
+@click.option("--source-dir", required=True, help="源文档目录")
+@click.option("--recursive", is_flag=True, help="递归导入子目录")
 @click.option("--verbose", "-v", is_flag=True, help="提供详细输出")
 @click.option("--agent-mode", is_flag=True, help="启用agent优化的输出格式")
-def sync(sync_type, verbose, agent_mode):
-    """同步Obsidian和标准文档"""
+def import_docs(source_dir, recursive, verbose, agent_mode):
+    """从外部导入文档到知识库"""
     args = click.get_current_context().params
-    success, message, data = handle_sync_subcommand(args)
+    success, message, data = handle_import_subcommand(args)
+    if success:
+        click.echo(message)
+    else:
+        click.echo(f"错误: {message}", err=True)
+
+
+@memory.command()
+@click.option("--verbose", "-v", is_flag=True, help="提供详细输出")
+@click.option("--agent-mode", is_flag=True, help="启用agent优化的输出格式")
+def watch(verbose, agent_mode):
+    """持续监控知识库文件变化并自动同步"""
+    args = click.get_current_context().params
+    success, message, data = handle_watch_subcommand(args)
     if success:
         click.echo(message)
     else:

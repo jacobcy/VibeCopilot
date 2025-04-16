@@ -7,21 +7,15 @@
 """
 
 import logging
+import sys
 from typing import Any, Dict, List, Tuple, Union
 
-from src.cli.commands.memory.handlers import (
-    handle_delete_note,
-    handle_export,
-    handle_import,
-    handle_list_notes,
-    handle_read_note,
-    handle_search_notes,
-    handle_sync,
-    handle_update_note,
-    handle_write_note,
-)
+from src.memory import MemoryService
 
 logger = logging.getLogger(__name__)
+
+# 创建MemoryService的单例，所有处理函数共享使用
+_memory_service = MemoryService()
 
 
 def _get_attr(args: Union[Dict[str, Any], Any], name: str, default=None) -> Any:
@@ -41,8 +35,8 @@ def handle_list_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
     Returns:
         元组，包含(是否成功, 消息, 结果列表)
     """
-    # 调用处理函数
-    return handle_list_notes(folder=_get_attr(args, "folder"))
+    # 使用统一的MemoryService
+    return _memory_service.list_notes(folder=_get_attr(args, "folder"))
 
 
 def handle_show_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -60,8 +54,8 @@ def handle_show_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
     if not path:
         return False, "错误: 缺少必要参数 --path (文档路径或标识符)", {}
 
-    # 调用处理函数
-    return handle_read_note(path=path)
+    # 使用统一的MemoryService
+    return _memory_service.read_note(path=path)
 
 
 def handle_create_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -84,11 +78,19 @@ def handle_create_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
         return False, "错误: 缺少必要参数 --folder (存储目录)", {}
 
     # 获取内容
-    # 在实际实现中，这里可能需要从当前会话或剪贴板获取内容
-    content = _get_attr(args, "content") or "这是示例内容。实际实现中将使用会话内容或用户提供的内容。"
+    # 修复：确认在有管道输入时能正确处理
+    content = _get_attr(args, "content")
 
-    # 调用处理函数
-    return handle_write_note(content=content, title=title, folder=folder, tags=_get_attr(args, "tags"))
+    # 如果没有提供content，尝试从标准输入读取
+    if not content and not sys.stdin.isatty():
+        content = sys.stdin.read()
+
+    # 仍然没有内容时使用默认值
+    if not content:
+        content = "这是示例内容。实际实现中将使用会话内容或用户提供的内容。"
+
+    # 使用统一的MemoryService
+    return _memory_service.create_note(content=content, title=title, folder=folder, tags=_get_attr(args, "tags"))
 
 
 def handle_update_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -110,8 +112,8 @@ def handle_update_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     if not content:
         return False, "错误: 缺少必要参数 --content (更新后的内容)", {}
 
-    # 调用处理函数
-    return handle_update_note(path=path, content=content, tags=_get_attr(args, "tags"))
+    # 使用统一的MemoryService
+    return _memory_service.update_note(path=path, content=content, tags=_get_attr(args, "tags"))
 
 
 def handle_delete_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -129,9 +131,9 @@ def handle_delete_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     if not path:
         return False, "错误: 缺少必要参数 --path (文档路径或标识符)", {}
 
-    # 调用处理函数
+    # 使用统一的MemoryService
     force = _get_attr(args, "force", False)
-    return handle_delete_note(path=path, force=force)
+    return _memory_service.delete_note(path=path, force=force)
 
 
 def handle_search_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, List[Dict[str, Any]]]:
@@ -149,8 +151,8 @@ def handle_search_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     if not query:
         return False, "错误: 缺少必要参数 --query (搜索关键词)", []
 
-    # 调用处理函数
-    return handle_search_notes(query=query, content_type=_get_attr(args, "type"))
+    # 使用统一的MemoryService
+    return _memory_service.search_notes(query=query, content_type=_get_attr(args, "type"))
 
 
 def handle_import_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -168,9 +170,9 @@ def handle_import_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     if not source_dir:
         return False, "错误: 缺少必要参数 --source-dir (源文档目录)", {}
 
-    # 调用处理函数
+    # 使用统一的MemoryService
     recursive = _get_attr(args, "recursive", False)
-    return handle_import(source_dir=source_dir, recursive=recursive)
+    return _memory_service.import_documents(source_dir=source_dir, recursive=recursive)
 
 
 def handle_export_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -183,11 +185,12 @@ def handle_export_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     Returns:
         元组，包含(是否成功, 消息, 结果数据)
     """
-    # 获取可选参数
+    # 获取参数
+    output_dir = _get_attr(args, "output")
     format_type = _get_attr(args, "format", "md")
 
-    # 调用处理函数
-    return handle_export(db_path=_get_attr(args, "db"), output_dir=_get_attr(args, "output"), format_type=format_type)
+    # 使用统一的MemoryService
+    return _memory_service.export_documents(output_dir=output_dir, format_type=format_type)
 
 
 def handle_sync_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -200,10 +203,19 @@ def handle_sync_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
     Returns:
         元组，包含(是否成功, 消息, 结果数据)
     """
-    # 检查必需参数
-    sync_type = _get_attr(args, "sync_type")
-    if not sync_type:
-        return False, "错误: 缺少必要参数 --sync-type (同步类型)", {}
+    # 使用统一的MemoryService
+    return _memory_service.sync_all()
 
-    # 调用处理函数
-    return handle_sync(sync_type=sync_type)
+
+def handle_watch_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    处理监控子命令，启动知识库内容变更监控
+
+    Args:
+        args: 命令行参数，可以是字典或任何支持getattr的对象
+
+    Returns:
+        元组，包含(是否成功, 消息, 结果数据)
+    """
+    # 使用统一的MemoryService
+    return _memory_service.start_sync_watch()
