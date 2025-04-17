@@ -6,133 +6,130 @@ from pathlib import Path
 import yaml
 
 
+# Helper function to safely get description
+def get_desc(data_dict, key, default=""):
+    if isinstance(data_dict, dict):
+        return data_dict.get(key, {}).get("description", default)
+    return default
+
+
+# Modified filter_command_data
 def filter_command_data(data):
     """
-    过滤命令数据，提取命令结构并准备注释内容
+    过滤命令数据，提取命令结构（区分arguments和options）并准备注释内容
 
     Args:
         data: 原始命令数据
 
     Returns:
-        dict: 过滤后的命令数据
-        dict: 命令和参数的描述，用于后续添加注释
+        dict: 过滤后的命令数据 (包含 arguments 和 options)
+        dict: 命令、参数和选项的描述
     """
     if not isinstance(data, dict):
         return data, {}
 
     filtered = {}
-    descriptions = {}  # 存储描述信息，用于后面作为注释添加
+    descriptions = {}
 
     for key, value in data.items():
-        # 处理主命令结构
         if key == "commands":
             if isinstance(value, dict):
                 filtered[key] = {}
-                descriptions[key] = {}
+                descriptions[key] = {}  # For command descriptions
 
-                # 处理每个命令
                 for cmd_name, cmd_data in value.items():
-                    filtered[key][cmd_name] = {}
-                    descriptions[key][cmd_name] = cmd_data.get("description", "")
+                    # Initialize command entry in filtered data and descriptions
+                    filtered[key][cmd_name] = {"arguments": {}, "options": {}}
+                    descriptions[key][cmd_name] = {"description": cmd_data.get("description", ""), "arguments": {}, "options": {}}
 
-                    # 处理子命令
-                    if "subcommands" in cmd_data and isinstance(cmd_data["subcommands"], dict):
-                        filtered[key][cmd_name]["subcommands"] = {}
-                        descriptions[key][cmd_name + ".subcommands"] = {}
+                    # Process Arguments
+                    if "arguments" in cmd_data and isinstance(cmd_data["arguments"], list):
+                        for arg_data in cmd_data["arguments"]:
+                            if isinstance(arg_data, dict) and "name" in arg_data:
+                                arg_name = arg_data["name"]
+                                filtered[key][cmd_name]["arguments"][arg_name] = {}  # Store only name
+                                descriptions[key][cmd_name]["arguments"][arg_name] = arg_data.get("description", "")
 
-                        for subcmd_name, subcmd_data in cmd_data["subcommands"].items():
-                            filtered[key][cmd_name]["subcommands"][subcmd_name] = {}
-                            descriptions[key][cmd_name + ".subcommands"][subcmd_name] = subcmd_data.get("description", "")
+                    # Process Options (formerly subcommands in this context)
+                    if "options" in cmd_data and isinstance(cmd_data["options"], dict):
+                        for opt_name, opt_data in cmd_data["options"].items():
+                            filtered[key][cmd_name]["options"][opt_name] = {}  # Store only name
+                            descriptions[key][cmd_name]["options"][opt_name] = opt_data.get("description", "")
 
-                            # 保留值列表
-                            if "values" in subcmd_data:
-                                filtered[key][cmd_name]["subcommands"][subcmd_name]["values"] = subcmd_data["values"]
-
-                            # 保留类型信息
-                            if "type" in subcmd_data:
-                                filtered[key][cmd_name]["subcommands"][subcmd_name]["type"] = subcmd_data["type"]
-
-                    # 保留值列表
-                    if "values" in cmd_data:
-                        filtered[key][cmd_name]["values"] = cmd_data["values"]
             else:
+                # Keep non-dict command structures as is? Or raise error?
+                # For now, keep as is, assuming valid structure upstream.
                 filtered[key] = value
-        # 保留其他关键结构
-        elif key in ["subcommands", "values"]:
-            if isinstance(value, dict):
-                filtered[key] = {k: filter_command_data(v)[0] for k, v in value.items()}
-            else:
-                filtered[key] = value
+        # We are only interested in the top-level 'commands' key for this structure
+        # Other keys like 'group_config' are ignored for the rule file.
 
     return filtered, descriptions
 
 
+# Modified format_yaml_with_comments
 def format_yaml_with_comments(yaml_obj, descriptions, verbose=False):
     """
-    将YAML对象转换为带注释的YAML文本
+    将过滤后的命令数据转换为带注释的YAML文本 (arguments/options structure)
 
     Args:
-        yaml_obj: YAML数据对象
-        descriptions: 描述信息字典
+        yaml_obj: 过滤后的YAML数据对象 (来自 filter_command_data)
+        descriptions: 描述信息字典 (来自 filter_command_data)
         verbose: 是否显示详细信息
 
     Returns:
         str: 带注释的YAML文本
     """
-    # 生成YAML文本
     yaml_lines = []
     yaml_lines.append("commands:")
 
     if verbose:
-        print("正在生成带注释的YAML：")
+        print("正在生成带注释的YAML (新结构)：")
 
-    # 添加命令及其描述
     for cmd_name, cmd_data in yaml_obj.get("commands", {}).items():
-        desc = descriptions.get("commands", {}).get(cmd_name, "")
-        if desc:
-            yaml_lines.append(f"  {cmd_name}: # {desc}")
+        cmd_desc = descriptions.get("commands", {}).get(cmd_name, {}).get("description", "")
+        if cmd_desc:
+            yaml_lines.append(f"  {cmd_name}: # {cmd_desc}")
             if verbose:
-                print(f"  添加命令: {cmd_name} # {desc}")
+                print(f"  添加命令: {cmd_name} # {cmd_desc}")
         else:
             yaml_lines.append(f"  {cmd_name}:")
             if verbose:
                 print(f"  添加命令: {cmd_name}")
 
-        # 添加子命令及其描述
-        if "subcommands" in cmd_data and isinstance(cmd_data["subcommands"], dict):
-            yaml_lines.append("    subcommands:")
-            subcmd_key = cmd_name + ".subcommands"
-            for subcmd_name, subcmd_data in cmd_data["subcommands"].items():
-                subcmd_desc = descriptions.get("commands", {}).get(subcmd_key, {}).get(subcmd_name, "")
-                if subcmd_desc:
-                    yaml_lines.append(f"      {subcmd_name}: # {subcmd_desc}")
+        # Add Arguments
+        if cmd_data.get("arguments"):
+            yaml_lines.append("    arguments:")
+            arg_descs = descriptions.get("commands", {}).get(cmd_name, {}).get("arguments", {})
+            for arg_name in cmd_data["arguments"]:
+                arg_desc = arg_descs.get(arg_name, "")
+                if arg_desc:
+                    yaml_lines.append(f"      {arg_name}: # {arg_desc}")
                     if verbose:
-                        print(f"    添加子命令: {subcmd_name} # {subcmd_desc}")
+                        print(f"      添加参数: {arg_name} # {arg_desc}")
                 else:
-                    yaml_lines.append(f"      {subcmd_name}:")
+                    yaml_lines.append(f"      {arg_name}:")
                     if verbose:
-                        print(f"    添加子命令: {subcmd_name}")
+                        print(f"      添加参数: {arg_name}")
 
-                # 添加值列表
-                if "values" in subcmd_data and isinstance(subcmd_data["values"], list):
-                    yaml_lines.append("        values:")
-                    for val in subcmd_data["values"]:
-                        yaml_lines.append(f"        - {val}")
-
-                # 添加类型
-                if "type" in subcmd_data:
-                    yaml_lines.append(f"        type: {subcmd_data['type']}")
-
-        # 添加命令的值列表
-        if "values" in cmd_data and isinstance(cmd_data["values"], list):
-            yaml_lines.append("    values:")
-            for val in cmd_data["values"]:
-                yaml_lines.append(f"    - {val}")
+        # Add Options
+        if cmd_data.get("options"):
+            yaml_lines.append("    options:")
+            opt_descs = descriptions.get("commands", {}).get(cmd_name, {}).get("options", {})
+            for opt_name in cmd_data["options"]:
+                opt_desc = opt_descs.get(opt_name, "")
+                if opt_desc:
+                    yaml_lines.append(f"      {opt_name}: # {opt_desc}")
+                    if verbose:
+                        print(f"      添加选项: {opt_name} # {opt_desc}")
+                else:
+                    yaml_lines.append(f"      {opt_name}:")
+                    if verbose:
+                        print(f"      添加选项: {opt_name}")
 
     yaml_content = "\n".join(yaml_lines)
 
     if verbose:
-        print(f"生成了{len(yaml_lines)}行YAML内容")
+        print(f"生成了 {len(yaml_lines)} 行 YAML 内容 (新结构)")
 
     return yaml_content
 
@@ -147,77 +144,82 @@ def format_yaml_for_markdown(yaml_content):
 
 def update_mdc_file(mdc_path, yaml_content, verbose=False, force=False):
     """
-    更新MDC文件中的YAML内容
+    更新MDC文件中的YAML内容，确保只替换指定标签之间的部分。
 
     Args:
         mdc_path: MDC文件路径
-        yaml_content: 新的YAML内容
+        yaml_content: 新的YAML内容 (不包含标签)
         verbose: 是否显示详细信息
-        force: 是否强制重写整个文件
     """
     if verbose:
         print(f"准备更新文件: {mdc_path}")
 
-    # 如果文件不存在或者强制重写
-    if not mdc_path.exists() or force:
+    start_tag = "<!-- BEGIN_COMMAND_YAML -->"
+    end_tag = "<!-- END_COMMAND_YAML -->"
+    new_yaml_block_with_tags = format_yaml_for_markdown(yaml_content)
+
+    header = ""
+    footer = ""
+    content = ""
+
+    if mdc_path.exists():
+        content = mdc_path.read_text(encoding="utf-8")
         if verbose:
-            if not mdc_path.exists():
-                print(f"文件不存在，创建新文件")
-            else:
-                print(f"强制重写文件")
+            print(f"读取现有文件，长度: {len(content)} 字节")
 
-        # 为了保留文件头信息和其他内容，如果文件存在且是重写模式，我们先抽取文件头
-        file_header = ""
-        if mdc_path.exists() and force:
-            content = mdc_path.read_text(encoding="utf-8")
-            # 寻找yaml块开始标记的位置
-            yaml_start = content.find("<!-- BEGIN_COMMAND_YAML -->")
-            if yaml_start > 0:
-                file_header = content[:yaml_start].rstrip() + "\n\n"
-            else:
-                file_header = content
+        start_index = content.find(start_tag)
+        end_index = -1
+        if start_index != -1:
+            # Search for end tag *after* the start tag
+            end_index = content.find(end_tag, start_index + len(start_tag))
 
-        # 写入文件
-        mdc_path.write_text(file_header + format_yaml_for_markdown(yaml_content), encoding="utf-8")
-        return
+        if start_index != -1 and end_index != -1:
+            # Both tags found, extract header and footer
+            if verbose:
+                print("找到现有YAML块，准备替换")
+            header = content[:start_index]
+            footer = content[end_index + len(end_tag) :]
+            # Ensure header ends with appropriate newlines if not empty
+            if header and not header.endswith("\n\n"):
+                if header.endswith("\n"):
+                    header += "\n"
+                else:
+                    header += "\n\n"
+            # Ensure footer starts with appropriate newlines if not empty
+            if footer and not footer.startswith("\n"):
+                # Check if header already added double newline
+                if header.endswith("\n\n"):
+                    # Need to be careful not to add triple newline
+                    pass  # Header already provides separation
+                elif header.endswith("\n"):
+                    footer = "\n" + footer
+                else:  # header is empty or doesn't end with newline
+                    footer = "\n\n" + footer
 
-    # 读取现有文件内容
-    content = mdc_path.read_text(encoding="utf-8")
-    if verbose:
-        print(f"读取文件，长度: {len(content)} 字节")
-
-    # 查找YAML块
-    pattern = r"<!-- BEGIN_COMMAND_YAML -->.*?<!-- END_COMMAND_YAML -->"
-    yaml_block = format_yaml_for_markdown(yaml_content)
-
-    if verbose:
-        print(f"新YAML块长度: {len(yaml_block)} 字节")
-
-    # 如果找到YAML块，替换它
-    if re.search(pattern, content, re.DOTALL):
-        if verbose:
-            print("找到现有YAML块，进行替换")
-        new_content = re.sub(pattern, yaml_block, content, flags=re.DOTALL)
+            new_content = header + new_yaml_block_with_tags + footer
+        else:
+            # Tags not found or incomplete, treat existing content as header
+            if verbose:
+                print("未找到完整的YAML块，将添加到文件末尾（或覆盖，取决于原始逻辑）")
+            # Treat existing content as header, ensure separation
+            header = content.rstrip() + "\n\n" if content else ""
+            new_content = header + new_yaml_block_with_tags
+            footer = ""  # No footer if appending
     else:
-        # 如果没有找到，添加到文件末尾
+        # File does not exist, create new with just the block
         if verbose:
-            print("未找到YAML块，添加到文件末尾")
-        new_content = content + "\n\n" + yaml_block
+            print(f"文件不存在，创建新文件")
+        new_content = new_yaml_block_with_tags
+        # Header and footer remain empty
 
-    # 写入更新后的内容
+    # Write the reconstructed content
     if verbose:
         print(f"写入更新后的内容，长度: {len(new_content)} 字节")
+        # Optional: Log parts for debugging
+        # print(f"\n--- Header ({len(header)} bytes) ---\n{header[:100]}...")
+        # print(f"\n--- New Block ({len(new_yaml_block_with_tags)} bytes) ---\n{new_yaml_block_with_tags[:200]}...")
+        # print(f"\n--- Footer ({len(footer)} bytes) ---\n{footer[:100]}...")
 
-    # 打印更改前后的YAML部分，便于调试
-    if verbose:
-        print("\n--- 原YAML块 ---")
-        yaml_match = re.search(pattern, content, re.DOTALL)
-        if yaml_match:
-            print(yaml_match.group(0)[:200] + "..." if len(yaml_match.group(0)) > 200 else yaml_match.group(0))
-        print("\n--- 新YAML块 ---")
-        print(yaml_block[:200] + "..." if len(yaml_block) > 200 else yaml_block)
-
-    # 写入文件
     mdc_path.write_text(new_content, encoding="utf-8")
 
 
@@ -227,7 +229,7 @@ def merge_command_files(verbose=False, force=False):
 
     Args:
         verbose: 是否显示详细信息
-        force: 是否强制重写规则文件
+        force: (已弃用，但保留以兼容旧调用) 是否强制重写规则文件
 
     Returns:
         dict: 包含处理结果的字典，包括成功和失败的文件列表
@@ -242,8 +244,8 @@ def merge_command_files(verbose=False, force=False):
     if verbose:
         print(f"命令配置源目录: {base_dir}")
         print(f"规则目标目录: {rules_dir}")
-        if force:
-            print("强制重写模式已启用")
+        # if force: # No longer relevant for the core logic
+        #     print("强制重写模式已启用")
 
     # 确保目标目录存在
     rules_dir.mkdir(parents=True, exist_ok=True)
@@ -262,7 +264,9 @@ def merge_command_files(verbose=False, force=False):
         return result
 
     # 读取并过滤所有命令文件
-    yaml_files = list(base_dir.glob("*_commands.yaml"))
+    yaml_files = list(base_dir.glob("*_commands.yaml"))  # Specific pattern
+    # Exclude config.yaml
+    yaml_files = [f for f in yaml_files if f.name != "config.yaml"]
     result["total_files"] = len(yaml_files)
 
     if verbose:
@@ -275,10 +279,11 @@ def merge_command_files(verbose=False, force=False):
                 if not data or "commands" not in data:
                     if verbose:
                         print(f"警告: 文件 {yaml_file} 中没有找到有效的命令配置")
-                    result["failed"].append({"path": str(yaml_file), "error": "没有有效的命令配置"})
+                    # Still add to failed? Or just skip? Let's skip silently for now.
+                    # result["failed"].append({"path": str(yaml_file), "error": "没有有效的命令配置"})
                     continue
 
-                filtered_data, descriptions = filter_command_data(data)
+                filtered_data, descriptions = filter_command_data(data)  # Use modified function
                 base_name = yaml_file.stem
 
                 # 记录命令数量
@@ -294,8 +299,17 @@ def merge_command_files(verbose=False, force=False):
                     command_groups[group_name] = {"commands": {}}
                     description_groups[group_name] = {"commands": {}}
 
-                command_groups[group_name]["commands"].update(filtered_data["commands"])
-                description_groups[group_name]["commands"].update(descriptions["commands"])
+                # Merge commands data correctly
+                existing_commands = command_groups[group_name].get("commands", {})
+                new_commands = filtered_data.get("commands", {})
+                existing_commands.update(new_commands)  # Merge new commands into existing
+                command_groups[group_name]["commands"] = existing_commands
+
+                # Merge descriptions correctly
+                existing_descs = description_groups[group_name].get("commands", {})
+                new_descs = descriptions.get("commands", {})
+                existing_descs.update(new_descs)
+                description_groups[group_name]["commands"] = existing_descs
 
                 if verbose:
                     print(f"处理文件: {yaml_file} -> 命令组: {group_name}")
@@ -311,10 +325,11 @@ def merge_command_files(verbose=False, force=False):
         try:
             mdc_path = rules_dir / f"{group_name}-commands.mdc"
 
-            # 转换为带注释的YAML格式
+            # 转换为带注释的YAML格式 (use modified function)
             yaml_content = format_yaml_with_comments(commands, description_groups[group_name], verbose)
 
-            update_mdc_file(mdc_path, yaml_content, verbose, force)
+            # Use the rewritten update function (force parameter is now ignored internally)
+            update_mdc_file(mdc_path, yaml_content, verbose=verbose)
 
             if verbose:
                 print(f"已更新规则文件: {mdc_path}")
@@ -327,5 +342,18 @@ def merge_command_files(verbose=False, force=False):
 
 
 if __name__ == "__main__":
-    result = merge_command_files(verbose=True)
-    print(f"处理完成: 成功 {len(result['success'])} 个文件, 失败 {len(result['failed'])} 个文件")
+    # Example usage: python src/health/merge_commands.py --verbose
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Merge command configs into rule files.")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
+    # Keep force for backward compatibility, but it's ignored by the new update_mdc_file
+    parser.add_argument("--force", action="store_true", help="(Deprecated) Force rewrite rule files.")
+    args = parser.parse_args()
+
+    result = merge_command_files(verbose=args.verbose, force=args.force)
+    print(f"\n处理完成: 成功 {len(result['success'])} 个文件, 失败 {len(result['failed'])} 个文件")
+    if result["failed"]:
+        print("失败详情:")
+        for fail in result["failed"]:
+            print(f"- {fail['path']}: {fail['error']}")

@@ -19,7 +19,7 @@ class MemoryItem(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(255), nullable=False, index=True)
-    content = Column(Text, nullable=False)
+    summary = Column(Text, nullable=False)  # 内容摘要，必须有值
     content_type = Column(String(50), nullable=False, default="text")  # text, code, image, etc.
     tags = Column(String(255), nullable=True)  # 逗号分隔的标签
     source = Column(String(255), nullable=True)  # 来源

@@ -6,9 +6,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+from sqlalchemy import text
+
 from src.core.config import get_config
-from src.core.database import get_engine
 from src.core.logger import setup_logger
+from src.db.connection_manager import get_engine
 
 from .base_checker import BaseChecker, CheckResult
 

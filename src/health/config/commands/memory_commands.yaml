@@ -1,40 +1,45 @@
-name: memory
-description: "知识库管理命令，支持内容存储、检索和管理"
-type: group
+# Memory commands configuration
+# Removed top-level metadata (name, description, type: group)
 
 commands:
   "memory list":
     description: "列出知识库内容"
-    subcommands:
-      "folder":
+    arguments:
+      - name: "folder" # Positional argument
         description: "筛选特定目录的内容"
         required: false
+        type: "string" # Assuming string type
+    options:
       "--format":
         description: "输出格式 (json/text)"
         values: ["json", "text"]
         default: "text"
         required: false
+        type: "string"
       "--verbose":
         short: "v"
         description: "提供详细输出"
         type: "flag"
-        required: false
+        required: false # Flags are implicitly false unless present
       "--agent-mode":
         description: "启用agent优化的输出格式"
         type: "flag"
-        required: false
+        required: false # Flags are implicitly false unless present
 
   "memory show":
     description: "显示知识库内容详情"
-    subcommands:
-      "path":
+    arguments:
+      - name: "path" # Positional argument
         description: "文档路径或标识符"
         required: true
+        type: "string" # Assuming string type
+    options:
       "--format":
         description: "输出格式 (json/text)"
         values: ["json", "text"]
         default: "text"
         required: false
+        type: "string"
       "--verbose":
         short: "v"
         description: "提供详细输出"
@@ -47,19 +52,24 @@ commands:
 
   "memory create":
     description: "创建知识库内容"
-    subcommands:
+    # No positional arguments
+    options:
       "--title":
         description: "文档标题"
         required: true
+        type: "string"
       "--folder":
         description: "存储目录"
         required: true
+        type: "string"
       "--tags":
         description: "标签列表，逗号分隔"
         required: false
+        type: "string"
       "--content":
         description: "要保存的内容（如果不提供，将使用当前对话内容）"
         required: false
+        type: "string"
       "--verbose":
         short: "v"
         description: "提供详细输出"
@@ -72,18 +82,22 @@ commands:
 
   "memory search":
     description: "语义搜索知识库"
-    subcommands:
+    # No positional arguments
+    options:
       "--query":
         description: "搜索关键词"
         required: true
+        type: "string"
       "--type":
         description: "内容类型"
         required: false
+        type: "string"
       "--format":
         description: "输出格式 (json/text)"
         values: ["json", "text"]
         default: "text"
         required: false
+        type: "string"
       "--verbose":
         short: "v"
         description: "提供详细输出"

@@ -6,9 +6,9 @@
 
 import json
 import logging
-import os
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
@@ -16,16 +16,10 @@ from loguru import logger
 from rich.console import Console
 
 # 导入任务日志相关函数和Memory存储函数
-from src.cli.commands.task.core.memory import append_to_task_log, store_ref_to_memory
-from src.db import get_session_factory
-from src.db.repositories.roadmap_repository import RoadmapRepository
-from src.db.repositories.stage_repository import StageRepository
-from src.db.repositories.task_repository import TaskRepository
-from src.models.db.roadmap import Roadmap
-from src.models.db.stage import Stage
+from src.db.session_manager import session_scope
+from src.memory import get_memory_service
 from src.services.task import TaskService
 
-logger = logging.getLogger(__name__)
 console = Console()
 
 # 定义有效的任务状态
@@ -54,18 +48,14 @@ def parse_github_url(url: str) -> Tuple[str, int]:
     url_match = re.match(url_pattern, url)
 
     if url_match:
-        repo = url_match.group(1)
-        issue_number = int(url_match.group(2))
-        return repo, issue_number
+        return url_match.group(1), int(url_match.group(2))
 
     # 尝试解析简短格式
     short_pattern = r"([^/]+/[^#]+)#(\d+)"
     short_match = re.match(short_pattern, url)
 
     if short_match:
-        repo = short_match.group(1)
-        issue_number = int(short_match.group(2))
-        return repo, issue_number
+        return short_match.group(1), int(short_match.group(2))
 
     raise ValueError(f"无效的GitHub URL格式: {url}。支持的格式: 'owner/repo#123' 或 'https://github.com/owner/repo/issues/123'")
 
@@ -76,28 +66,22 @@ def parse_github_url(url: str) -> Tuple[str, int]:
 @click.option("--desc", "--description", "-d", help="任务描述")
 @click.option("--status", "-s", help="任务状态")
 @click.option("--assignee", "-a", help="任务负责人")
-@click.option("--labels", "-l", multiple=True, help="任务标签 (可设置多个)")
+@click.option("--labels", "-l", multiple=True, help="设置新的标签列表")
 @click.option("--due", "--due-date", help="截止日期 (格式: YYYY-MM-DD，设置为'clear'可清除截止日期)")
-@click.option("--roadmap", "-r", help="关联的路线图项目 ID")
-@click.option("--flow", "--workflow", "-w", help="关联的工作流阶段 ID")
-@click.option("--github", "-g", help="关联的 GitHub Issue URL")
-@click.option("--link-story", "-ls", help="关联的故事 ID")
-@click.option("--unlink", "-ul", help="取消关联的故事或 GitHub Issue")
-@click.option("--ref", "--reference", help="关联参考文档路径")
+@click.option("--link-github", "-g", help="关联的 GitHub Issue URL")
+@click.option("--link-story", "-s", help="关联的故事 ID")
+@click.option("--unlink", type=click.Choice(["story", "github"]), help="取消关联 (story 或 github)")
 def update_task(
     task_id: str,
     title: Optional[str] = None,
     desc: Optional[str] = None,
     status: Optional[str] = None,
     assignee: Optional[str] = None,
-    labels: Optional[List[str]] = None,
+    labels: Optional[Tuple[str]] = None,
     due: Optional[str] = None,
-    roadmap: Optional[str] = None,
-    flow: Optional[str] = None,
-    github: Optional[str] = None,
+    link_github: Optional[str] = None,
     link_story: Optional[str] = None,
     unlink: Optional[str] = None,
-    ref: Optional[str] = None,
 ) -> int:
     """
     更新现有任务的信息。
@@ -110,18 +94,16 @@ def update_task(
         desc: 新的任务描述
         status: 新的任务状态
         assignee: 新的任务负责人
-        labels: 新的任务标签列表
+        labels: 设置新的标签列表 (覆盖现有)
         due: 新的截止日期
-        roadmap: 新关联的路线图项目ID
-        flow: 新关联的工作流阶段ID
-        github: 新关联的GitHub Issue URL
-        link_story: 新关联的故事 ID
-        unlink: 取消关联的故事或 GitHub Issue
-        ref: 关联的参考文档路径
+        link_github: 关联 GitHub Issue URL
+        link_story: 关联故事 ID
+        unlink: 取消关联 (story 或 github)
     """
     try:
         # 检查是否提供了至少一个更新参数
-        if not any([title, desc, status, assignee, labels, due, roadmap, flow, github, link_story, unlink, ref]):
+        update_args = [title, desc, status, assignee, labels, due, link_github, link_story, unlink]
+        if not any(arg is not None and arg != () for arg in update_args):
             console.print("[bold yellow]警告:[/bold yellow] 未提供任何需要更新的字段。使用 --help 查看可用选项。")
             return 1
 
@@ -132,19 +114,20 @@ def update_task(
             description=desc,
             status=status,
             assignee=assignee,
-            labels=labels,
+            labels=list(labels) if labels else None,
             due_date=due,
-            roadmap_id=roadmap,
-            workflow_id=flow,
-            github_url=github,
+            github_url=link_github,
             link_story=link_story,
             unlink=unlink,
-            ref_path=ref,
         )
 
         # 处理执行结果
-        if result["status"] == "success":
-            console.print(f"[bold green]成功:[/bold green] {result['message']}")
+        if result["status"] == "success" or result["status"] == "warning":
+            console.print(f"[bold green]结果:[/bold green] {result['message']}")
+            if warnings := result.get("warnings"):
+                console.print("\n[bold yellow]警告:[/bold yellow]")
+                for warning in warnings:
+                    console.print(f"- {warning}")
             return 0
         else:
             console.print(f"[bold red]错误:[/bold red] {result['message']}")
@@ -164,12 +147,9 @@ def execute_update_task(
     assignee: Optional[str] = None,
     labels: Optional[List[str]] = None,
     due_date: Optional[str] = None,
-    roadmap_id: Optional[str] = None,
-    workflow_id: Optional[str] = None,
     github_url: Optional[str] = None,
     link_story: Optional[str] = None,
     unlink: Optional[str] = None,
-    ref_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """执行更新任务的核心逻辑"""
     logger.info(f"执行更新任务命令: task_id={task_id}")
@@ -181,56 +161,55 @@ def execute_update_task(
         "data": None,
         "meta": {
             "command": "task update",
-            "args": {
-                "task_id": task_id,
-                "title": title,
-                "description": description,
-                "status": status,
-                "assignee": assignee,
-                "labels": labels,
-                "due_date": due_date,
-                "roadmap_id": roadmap_id,
-                "workflow_id": workflow_id,
-                "github_url": github_url,
-                "link_story": link_story,
-                "unlink": unlink,
-                "ref_path": ref_path,
-            },
+            "args": locals(),
         },
+        "warnings": [],
     }
 
-    # 记录任务更新
+    # Prepare log updates dictionary (can be passed to TaskService.log_task_activity)
     log_updates = {}
+    update_data = {}
 
-    if title:
+    if title is not None:
         log_updates["标题"] = title
-    if description:
+        update_data["title"] = title
+    if description is not None:
         log_updates["描述"] = description
-    if status:
+        update_data["description"] = description
+    if status is not None:
         log_updates["状态"] = status
-    if assignee:
+        update_data["status"] = status
+    if assignee is not None:
         log_updates["负责人"] = assignee
-    if labels:
+        update_data["assignee"] = assignee
+    if labels is not None:
         log_updates["标签"] = ", ".join(labels)
-    if due_date:
+        update_data["labels"] = labels
+    if due_date is not None:
         log_updates["截止日期"] = due_date
-    if ref_path:
-        log_updates["参考文档"] = ref_path
-
-    # 解析GitHub链接
-    github_repo = None
-    github_issue_number = None
-    if github_url:
+        update_data["due_date"] = None if due_date.lower() == "clear" else due_date
+    if github_url is not None:
         try:
             github_repo, github_issue_number = parse_github_url(github_url)
             log_updates["GitHub Issue"] = f"{github_repo}#{github_issue_number}"
+            update_data["github_repo"] = github_repo
+            update_data["github_issue_number"] = github_issue_number
         except ValueError as e:
             results["status"] = "error"
             results["code"] = 400
             results["message"] = f"GitHub URL 格式无效: {e}"
             return results
+    if link_story is not None:
+        log_updates["关联故事"] = link_story
+        update_data["story_id"] = link_story
+    if unlink == "story":
+        log_updates["取消关联故事"] = True
+        update_data["story_id"] = None
+    elif unlink == "github":
+        log_updates["取消关联GitHub"] = True
+        update_data["github_issue_number"] = None
+        update_data["github_repo"] = None
 
-    # 验证任务状态值
     if status and status not in VALID_TASK_STATUSES:
         valid_statuses = ", ".join(VALID_TASK_STATUSES)
         results["status"] = "error"
@@ -238,119 +217,68 @@ def execute_update_task(
         results["message"] = f"无效的任务状态: {status}。有效状态值为: {valid_statuses}"
         return results
 
-    session_factory = get_session_factory()
-    with session_factory() as session:
-        try:
-            task_repo = TaskRepository(session)
+    try:
+        with session_scope() as session:
+            task_service = TaskService()
+            memory_service = get_memory_service()
 
-            # 检查任务是否存在
-            task = task_repo.get_by_id(task_id)
+            task = task_service.get_task(session, task_id)
             if not task:
                 results["status"] = "error"
                 results["code"] = 404
                 results["message"] = f"更新失败: 未找到任务 {task_id}"
                 return results
 
-            # 验证路线图存在
-            if roadmap_id:
-                roadmap_repo = RoadmapRepository(session)
-                roadmap_item = roadmap_repo.get_by_id(roadmap_id)
-                if not roadmap_item:
-                    results["status"] = "error"
-                    results["code"] = 404
-                    results["message"] = f"更新失败: 未找到路线图项目 {roadmap_id}"
-                    return results
-                log_updates["路线图项目"] = roadmap_id
+            original_task_data_for_log = task.copy()
+            has_updates = False
 
-            # 验证工作流阶段存在
-            if workflow_id:
-                stage_repo = StageRepository(session)
-                workflow_stage = stage_repo.get_by_id(workflow_id)
-                if not workflow_stage:
-                    results["status"] = "error"
-                    results["code"] = 404
-                    results["message"] = f"更新失败: 未找到工作流阶段 {workflow_id}"
-                    return results
-                log_updates["工作流阶段"] = workflow_id
+            if update_data:
+                logger.info(f"准备更新任务 {task_id} 使用数据: {update_data}")
+                updated_task_dict = task_service.update_task(session, task_id, update_data)
 
-            # 记录日志 - 只有在有字段更新时才记录
-            if log_updates:
-                append_to_task_log(task_id, "任务更新", log_updates)
-
-            # 如果提供了参考文档路径，存储到Memory并关联
-            if ref_path:
-                try:
-                    memory_result = store_ref_to_memory(task_id, ref_path)
-                    if not memory_result["success"]:
-                        logger.warning(f"存储参考文档到Memory失败: {memory_result.get('error')}")
-                        console.print(f"[bold yellow]警告:[/bold yellow] 存储参考文档到Memory失败: {memory_result.get('error')}")
-                    elif memory_result.get("updated", False):
-                        logger.info(f"更新参考文档到Memory成功: {memory_result.get('permalink')}")
-                        console.print(f"[bold green]成功:[/bold green] 更新参考文档到Memory")
-                    else:
-                        # 检查是否为模拟数据
-                        if memory_result.get("simulated", False):
-                            logger.warning(f"生成模拟参考链接: {memory_result.get('permalink')}")
-                            console.print(f"[bold yellow]注意:[/bold yellow] 生成模拟参考链接 {memory_result.get('permalink')}")
-                            console.print("[bold yellow]      [/bold yellow] 文档未实际存储到Memory，只创建了引用记录")
-                            console.print("[bold yellow]建议:[/bold yellow] 在Cursor IDE环境中执行此操作以实际存储文档")
-                        else:
-                            logger.info(f"存储参考文档到Memory成功: {memory_result.get('permalink')}")
-                            console.print(f"[bold green]成功:[/bold green] 存储参考文档到Memory")
-                except Exception as e:
-                    logger.error(f"存储参考文档到Memory时出错: {e}")
-                    console.print(f"[bold yellow]警告:[/bold yellow] 存储参考文档到Memory时出错: {e}")
-
-            # 准备更新数据
-            update_data = {}
-            if title is not None:
-                update_data["title"] = title
-            if description is not None:
-                update_data["description"] = description
-            if status is not None:
-                update_data["status"] = status  # 直接使用字符串状态
-            if assignee is not None:
-                update_data["assignee"] = assignee
-            if labels is not None:
-                update_data["labels"] = labels
-            if due_date is not None:
-                if due_date.lower() == "clear":
-                    update_data["due_date"] = None  # 设置为None以清除截止日期
+                if updated_task_dict:
+                    has_updates = True
+                    results["data"] = updated_task_dict
+                    logger.info(f"任务 {task_id} 更新成功")
                 else:
-                    update_data["due_date"] = due_date
-            if roadmap_id is not None:
-                update_data["roadmap_id"] = roadmap_id
-            if workflow_id is not None:
-                update_data["workflow_stage_id"] = workflow_id
-            if github_url is not None:
-                update_data["github_repo"] = github_repo
-                update_data["github_issue_number"] = github_issue_number
-            if link_story:
-                update_data["story_id"] = link_story
-            if unlink:
-                if unlink == "story":
-                    update_data["story_id"] = None
-                elif unlink == "github":
-                    update_data["github_issue"] = None
-
-            # 执行更新
-            success = task_repo.update(task_id, update_data)
-            if success:
-                session.commit()
-                updated_fields = ", ".join(update_data.keys())
-                results["message"] = f"成功更新任务 {task_id} (更新字段: {updated_fields})"
-                results["data"] = {"task_id": task_id, "updated": True, "updated_fields": list(update_data.keys())}
+                    raise Exception(f"TaskService.update_task 未能成功更新任务 {task_id}")
             else:
-                session.rollback()
-                results["status"] = "error"
-                results["code"] = 500
-                results["message"] = f"更新任务 {task_id} 失败"
+                logger.info(f"没有提供需要更新的任务字段 (除了参考文档，已单独处理或警告)")
+                if results["warnings"]:
+                    results["status"] = "warning"
+                results["message"] = "没有提供需要更新的任务字段"
+                return results
 
-        except Exception as e:
-            session.rollback()
-            logger.error(f"更新任务时出错: {e}", exc_info=True)
-            results["status"] = "error"
-            results["code"] = 500
-            results["message"] = f"更新任务时出错: {e}"
+            if has_updates and log_updates:
+                try:
+                    changes_for_log = {}
+                    for k, v in log_updates.items():
+                        original_value = original_task_data_for_log.get(k.lower().replace(" ", "_"))
+                        if isinstance(original_value, list):
+                            original_value = ", ".join(map(str, original_value))
+                        current_value = updated_task_dict.get(k.lower().replace(" ", "_"))
+                        if isinstance(current_value, list):
+                            current_value = ", ".join(map(str, current_value))
+
+                        if str(original_value) != str(current_value):
+                            changes_for_log[k] = {"from": original_value, "to": v}
+
+                    if changes_for_log:
+                        if hasattr(task_service, "log_task_activity") and callable(getattr(task_service, "log_task_activity")):
+                            task_service.log_task_activity(session, task_id, "任务更新", details=changes_for_log)
+                        else:
+                            logger.warning("TaskService does not have log_task_activity method. Skipping log.")
+                            results["warnings"].append("无法记录任务更新日志 (TaskService 功能缺失)")
+                except Exception as log_e:
+                    logger.error(f"记录任务更新日志时出错: {log_e}", exc_info=True)
+                    results["warnings"].append(f"记录任务更新日志时出错: {log_e}")
+
+            results["message"] = f"任务 {task_id} 更新成功。"
+
+    except Exception as e:
+        logger.error(f"更新任务数据库操作期间出错: {e}", exc_info=True)
+        results["status"] = "error"
+        results["code"] = 500
+        results["message"] = f"更新任务失败: {e}"
 
     return results

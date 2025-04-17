@@ -7,8 +7,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from src.db import get_session_factory
-from src.db.repositories import TaskRepository
+from src.db.session_manager import session_scope
+from src.services.task.core import TaskService
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -43,36 +43,33 @@ def list_tasks(
     并可以通过 --verbose 选项显示更详细的任务信息。
     """
     try:
-        # 执行列出任务的逻辑
         result = execute_list_tasks(
             status=list(status) if status else None,
             assignee=assignee,
             label=list(label) if label else None,
             roadmap_item_id=roadmap,
             independent=independent,
-            temp=temp,  # 添加临时任务过滤参数
+            temp=temp,
             limit=limit,
             offset=offset,
             verbose=verbose,
             format=format,
         )
 
-        # 处理执行结果
         if result["status"] == "success":
             if not result.get("data"):
                 console.print("[yellow]未找到符合条件的任务。[/yellow]")
-                return 0
+                return
 
-            # 格式化输出 - 使用task_click模块的format_output
             if format.lower() == "json":
                 import json
 
                 print(json.dumps(result["data"], ensure_ascii=False, indent=2))
-            else:  # 默认使用YAML
+            else:
                 import yaml
 
                 print(yaml.safe_dump(result["data"], allow_unicode=True, sort_keys=False))
-            return 0
+            return
         else:
             console.print(f"[bold red]错误:[/bold red] {result['message']}")
             return 1
@@ -89,7 +86,7 @@ def execute_list_tasks(
     label: Optional[List[str]] = None,
     roadmap_item_id: Optional[str] = None,
     independent: Optional[bool] = None,
-    temp: Optional[str] = "all",  # "yes", "no", "all"
+    temp: Optional[str] = "all",
     limit: Optional[int] = None,
     offset: Optional[int] = None,
     verbose: bool = False,
@@ -126,29 +123,38 @@ def execute_list_tasks(
     # "all" 不设置过滤条件
 
     try:
-        session_factory = get_session_factory()
-        with session_factory() as session:
-            task_repo = TaskRepository(session)
-            tasks = task_repo.search_tasks(
-                status=status,
-                assignee=assignee,
-                labels=label,
-                roadmap_item_id=roadmap_item_id,
-                is_independent=is_independent_filter,
-                is_temporary=is_temporary_filter,  # 添加临时任务过滤参数
-                limit=limit,
-                offset=offset,
-            )
+        # 使用TaskService获取任务列表
+        with session_scope() as session:
+            task_service = TaskService()
 
-            task_dicts = [task.to_dict() for task in tasks]
-            results["data"] = task_dicts
-            results["message"] = f"成功检索到 {len(task_dicts)} 个任务"
+            # 构建查询参数
+            query_params = {
+                "session": session,
+                "status": status,
+                "assignee": assignee,
+                "labels": label,
+                "roadmap_item_id": roadmap_item_id,
+                "is_independent": is_independent_filter,
+                "is_temporary": is_temporary_filter,
+                "limit": limit,
+                "offset": offset,
+            }
 
-            # --- 控制台输出 ---
+            # 使用TaskQueryService的search_tasks方法
+            # tasks = task_service._query_service.search_tasks(**query_params)
+            # 改为调用 TaskService 的公共方法
+            tasks = task_service.search_tasks(**query_params)
+
             if not tasks:
                 console.print("[yellow]未找到符合条件的任务。[/yellow]")
                 return results
 
+            # 转换任务列表为字典格式
+            task_dicts = [task for task in tasks]
+            results["data"] = task_dicts
+            results["message"] = f"成功检索到 {len(task_dicts)} 个任务"
+
+            # --- 控制台输出 ---
             table = Table(title="任务列表")
             table.add_column("ID", style="dim", width=12)
             table.add_column("标题", style="bold cyan")
@@ -161,24 +167,24 @@ def execute_list_tasks(
 
             for task in tasks:
                 row = [
-                    task.id[:8] + "..." if not verbose else task.id,
-                    task.title,
-                    task.status,
-                    task.assignee if task.assignee else "-",
+                    task.get("id", "")[:8] + "..." if not verbose else task.get("id", ""),
+                    task.get("title", ""),
+                    task.get("status", ""),
+                    task.get("assignee", "-"),
                 ]
                 if verbose:
                     # 添加任务类型：临时任务或正式任务
-                    task_type = "临时任务" if task.story_id is None else "正式任务"
+                    task_type = "临时任务" if not task.get("story_id") else "正式任务"
                     row.append(task_type)
                     # 关联Story
-                    row.append(task.story_id if task.story_id else "-")
+                    row.append(task.get("story_id", "-"))
                     # 创建时间
-                    created_time = "-"
-                    if hasattr(task, "created_at") and task.created_at:
-                        if hasattr(task.created_at, "strftime"):
-                            created_time = task.created_at.strftime("%Y-%m-%d %H:%M")
+                    created_time = task.get("created_at", "-")
+                    if created_time != "-":
+                        if hasattr(created_time, "strftime"):
+                            created_time = created_time.strftime("%Y-%m-%d %H:%M")
                         else:
-                            created_time = str(task.created_at)
+                            created_time = str(created_time)
                     row.append(created_time)
                 table.add_row(*row)
 

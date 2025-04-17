@@ -167,6 +167,12 @@ Code:
 6. 如果缺少必要字段，使用合理的默认值
 7. 只返回JSON结果，不要包含任何解释性文本
 """,
+    "command_help_comparison": """
+Please compare the command's help output with its expected configuration provided below and report the differences strictly in the specified JSON format.
+
+Input Data:
+{content}
+""",
 }
 
 # 系统提示字典
@@ -204,6 +210,24 @@ _SYSTEM_PROMPTS = {
 4. 将分析结果以JSON格式返回
 5. 包含代码的结构、功能说明和关键点""",
     "generic": "You are a helpful assistant that parses content accurately.",
+    "command_help_comparison": """You are an expert command-line interface (CLI) tool analyst. Your task is to compare a command's actual `--help` output with its expected configuration (arguments and options) provided in the user message JSON.
+
+Analyze the `help_output` text against the `expected_arguments` list and `expected_options` dictionary. Identify the following types of differences:
+
+1.  **Missing Arguments in Help:** Arguments listed in `expected_arguments` but not found in the `help_output` (usually in the 'Usage:' line).
+2.  **Extra Arguments in Help:** Arguments found in the `help_output`'s 'Usage:' line (typically uppercase words, excluding 'OPTIONS') but not listed in `expected_arguments`.
+3.  **Missing Options in Help:** Options (long form, e.g., `--option`) listed as keys in `expected_options` but not found in the `help_output`'s 'Options:' section.
+4.  **Extra Options in Help:** Options (long form, e.g., `--option`) found in the `help_output`'s 'Options:' section but not listed as keys in `expected_options`. Ignore the implicit '--help' option found in help text unless it's explicitly in `expected_options`.
+5.  **Short Name Mismatches:** Options where the short name (e.g., '-f') found in the `help_output` differs from the value specified in `expected_options` for that long option. Include cases where one source provides a short name and the other doesn't (use `null` for missing short names).
+
+You MUST return ONLY a single valid JSON object containing the identified differences. The JSON object must have a single top-level key "differences". The value of "differences" must be an object with the following keys, each holding a list:
+- `missing_in_help_args`: List of argument name strings.
+- `missing_in_yaml_args`: List of argument name strings.
+- `missing_in_help_opts`: List of option name strings (long form).
+- `missing_in_yaml_opts`: List of option name strings (long form).
+- `short_name_mismatches`: List of objects, each with keys: `option` (string, long form), `yaml_short` (string or null), `help_short` (string or null).
+
+Return empty lists `[]` for categories with no differences. Do NOT add any explanations, comments, or introductory text outside the JSON object.""",
 }
 
 

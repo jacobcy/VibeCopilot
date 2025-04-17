@@ -1,5 +1,5 @@
 ---
-description: 当用户输入/db或//db命令时，管理和执行VibeCopilot中定义的各种流程
+description: 当用户输入/db或//db命令时，运行数据库管理工具
 globs:
 alwaysApply: false
 id: db-command
@@ -18,86 +18,52 @@ related_items: [command-system]
 ```yaml
 commands:
   db init: # 初始化数据库
-    subcommands:
+    options:
       --force: # 强制重新初始化数据库
-        type: flag
       --verbose: # 显示详细信息
-        type: flag
   db list: # 列出数据库内容
-    subcommands:
+    options:
       --type: # 实体类型(epic/story/task/label/template)
-        type: string
       --verbose: # 显示详细信息
-        type: flag
       --format: # 输出格式
-        values:
-        - text
-        - json
   db show: # 显示数据库条目
-    subcommands:
+    options:
       --type: # 实体类型(epic/story/task/label/template)
-        type: string
       --id: # 实体ID
-        type: string
       --format: # 输出格式
-        values:
-        - text
-        - json
   db query: # 查询数据
-    subcommands:
+    options:
       --type: # 实体类型
-        type: string
       --id: # 实体ID
-        type: string
       --query: # 查询字符串
-        type: string
       --format: # 输出格式
-        values:
-        - text
-        - json
       --verbose: # 显示详细信息
-        type: flag
   db create: # 创建数据库条目
-    subcommands:
+    options:
       --type: # 实体类型
-        type: string
       --data: # JSON格式的数据
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   db update: # 更新数据库条目
-    subcommands:
+    options:
       --type: # 实体类型
-        type: string
       --id: # 实体ID
-        type: string
       --data: # JSON格式的数据
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   db delete: # 删除数据库条目
-    subcommands:
+    options:
       --type: # 实体类型
-        type: string
       --id: # 实体ID
-        type: string
       --verbose: # 显示详细信息
-        type: flag
       --force: # 强制删除，不提示确认
-        type: flag
   db backup: # 备份数据库
-    subcommands:
+    options:
       --output: # 备份文件输出路径
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   db restore: # 恢复数据库
-    subcommands:
+    arguments:
       backup_file: # 备份文件路径
-        type: string
+    options:
       --force: # 强制恢复，不提示确认
-        type: flag
       --verbose: # 显示详细信息
-        type: flag
 ```
 <!-- END_COMMAND_YAML -->

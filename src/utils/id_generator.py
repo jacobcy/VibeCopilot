@@ -21,6 +21,7 @@ class EntityType(Enum):
     USER = "ur"
     PROJECT = "pj"
     RULE = "rl"
+    MEMORY_ITEM = "mi"
     GENERIC = "id"  # 通用类型
 
 

@@ -23,7 +23,8 @@ def init_rules():
     refresh_config()
 
     session = get_session()
-    repo = RuleRepository(session)
+    # Initialize repo without session
+    repo = RuleRepository()
 
     # 添加一些示例规则
     rules = [
@@ -64,7 +65,8 @@ def init_rules():
     success_count = 0
     for rule in rules:
         try:
-            repo.create(data=rule)
+            # Pass session to create method
+            repo.create(session, data=rule)
             success_count += 1
         except Exception as e:
             logger.error(f"创建规则失败: {rule['name']}", exc_info=True)

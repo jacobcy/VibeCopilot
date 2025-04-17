@@ -7,6 +7,7 @@ Stage Repository Module
 from typing import List, Optional
 
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from src.db.repository import Repository
 from src.models.db import Stage
@@ -16,45 +17,61 @@ from src.utils.id_generator import EntityType, IdGenerator
 class StageRepository(Repository[Stage]):
     """阶段仓库"""
 
-    def __init__(self, session):
-        super().__init__(session, Stage)
+    def __init__(self):
+        # 移除 session 参数，只传入模型类
+        super().__init__(Stage)
 
-    def get_all(self) -> List[Stage]:
+    def get_all(self, session: Session) -> List[Stage]:
         """获取所有阶段
+
+        Args:
+            session: 数据库会话
 
         Returns:
             List[Stage]: 阶段列表
         """
-        return self.session.query(Stage).all()
+        # 使用传入的 session
+        return session.query(self.model_class).all()
 
-    def get_by_workflow_id(self, workflow_id: str) -> List[Stage]:
+    def get_by_workflow_id(self, session: Session, workflow_id: str) -> List[Stage]:
         """根据工作流ID获取阶段
 
         Args:
+            session: 数据库会话
             workflow_id: 工作流ID
 
         Returns:
             List[Stage]: 阶段列表
         """
-        return self.session.query(Stage).filter(Stage.workflow_id == workflow_id).order_by(Stage.order_index).all()
+        # 使用传入的 session
+        return session.query(self.model_class).filter(self.model_class.workflow_id == workflow_id).order_by(self.model_class.order_index).all()
 
-    def get_by_id(self, stage_id: str) -> Optional[Stage]:
+    def get_by_id(self, session: Session, stage_id: str) -> Optional[Stage]:
         """根据ID获取阶段
 
         Args:
+            session: 数据库会话
             stage_id: 阶段ID
 
         Returns:
             Optional[Stage]: 阶段，如果不存在则返回None
         """
-        return self.session.query(Stage).filter(Stage.id == stage_id).first()
+        # 使用传入的 session
+        return session.query(self.model_class).filter(self.model_class.id == stage_id).first()
 
     def create_stage(
-        self, name: str, workflow_id: str, order_index: int = 0, description: Optional[str] = None, config: Optional[dict] = None
+        self,
+        session: Session,  # 添加 session 参数
+        name: str,
+        workflow_id: str,
+        order_index: int = 0,
+        description: Optional[str] = None,
+        config: Optional[dict] = None,
     ) -> Stage:
         """创建阶段
 
         Args:
+            session: 数据库会话
             name: 阶段名称
             workflow_id: 工作流ID
             order_index: 阶段顺序索引
@@ -77,34 +94,40 @@ class StageRepository(Repository[Stage]):
             "config": config or {},
         }
 
-        # 使用基类的create方法创建实例
-        return super().create(stage_data)
+        # 使用基类的create方法创建实例，并传递 session
+        # 注意：假设基类的 create 也已被修改为接受 session
+        return super().create(session, stage_data)
 
-    def create(self, stage_data: dict) -> Stage:
+    def create(self, session: Session, stage_data: dict) -> Stage:
         """创建阶段
 
         Args:
+            session: 数据库会话
             stage_data: 阶段数据
 
         Returns:
             Stage: 创建的阶段
         """
         stage = Stage(**stage_data)
-        self.session.add(stage)
-        self.session.commit()
+        # 使用传入的 session 添加
+        session.add(stage)
+        # 移除 commit，由调用者管理事务
+        # session.commit()
         return stage
 
-    def update(self, stage_id: str, stage_data: dict) -> Optional[Stage]:
+    def update(self, session: Session, stage_id: str, stage_data: dict) -> Optional[Stage]:
         """更新阶段
 
         Args:
+            session: 数据库会话
             stage_id: 阶段ID
             stage_data: 阶段数据
 
         Returns:
             Optional[Stage]: 更新后的阶段，如果不存在则返回None
         """
-        stage = self.get_by_id(stage_id)
+        # 使用传入的 session 调用 get_by_id
+        stage = self.get_by_id(session, stage_id)
         if not stage:
             return None
 
@@ -112,22 +135,27 @@ class StageRepository(Repository[Stage]):
             if hasattr(stage, key):
                 setattr(stage, key, value)
 
-        self.session.commit()
+        # 移除 commit，由调用者管理事务
+        # session.commit()
         return stage
 
-    def delete(self, stage_id: str) -> bool:
+    def delete(self, session: Session, stage_id: str) -> bool:
         """删除阶段
 
         Args:
+            session: 数据库会话
             stage_id: 阶段ID
 
         Returns:
             bool: 是否删除成功
         """
-        stage = self.get_by_id(stage_id)
+        # 使用传入的 session 调用 get_by_id
+        stage = self.get_by_id(session, stage_id)
         if not stage:
             return False
 
-        self.session.delete(stage)
-        self.session.commit()
+        # 使用传入的 session 删除
+        session.delete(stage)
+        # 移除 commit，由调用者管理事务
+        # session.commit()
         return True
