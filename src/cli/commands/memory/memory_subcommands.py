@@ -132,6 +132,7 @@ def handle_delete_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
         return False, "错误: 缺少必要参数 --path (文档路径或标识符)", {}
 
     # 使用统一的MemoryService
+    # 直接传递原始路径，MemoryService内部会处理
     force = _get_attr(args, "force", False)
     return _memory_service.delete_note(path=path, force=force)
 

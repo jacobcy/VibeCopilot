@@ -18,22 +18,21 @@ logger = logging.getLogger(__name__)
 
 
 class Repository(Generic[T]):
-    """数据访问对象基类"""
+    """数据访问对象基类 (无状态)"""
 
-    def __init__(self, session: Session, model_class: Type[T]):
+    def __init__(self, model_class: Type[T]):
         """初始化
 
         Args:
-            session: SQLAlchemy会话对象
             model_class: 模型类
         """
-        self.session = session
         self.model_class = model_class
 
-    def create(self, data: Dict[str, Any]) -> T:
+    def create(self, session: Session, data: Dict[str, Any]) -> T:
         """创建记录
 
         Args:
+            session: SQLAlchemy 会话对象
             data: 数据字典
 
         Returns:
@@ -68,31 +67,32 @@ class Repository(Generic[T]):
             }
             print(f"Repository.create - 实例属性: {instance_attrs}")
 
-            self.session.add(instance)
-            self.session.commit()
-            logger.debug(f"实体对象提交成功，ID: {getattr(instance, 'id', None)}")
+            session.add(instance)
+            session.flush()
+            logger.debug(f"实体对象已添加到会话，ID: {getattr(instance, 'id', None)}")
             return instance
         except Exception as e:
             logger.error(f"创建实体对象失败: {str(e)}")
             print(f"Repository.create - 异常: {str(e)}")
-            self.session.rollback()
             raise e
 
-    def get_by_id(self, id: str) -> Optional[T]:
+    def get_by_id(self, session: Session, id: str) -> Optional[T]:
         """根据ID获取记录
 
         Args:
+            session: SQLAlchemy 会话对象
             id: 实体ID
 
         Returns:
             实体对象或None
         """
-        return self.session.query(self.model_class).filter(self.model_class.id == id).first()
+        return session.query(self.model_class).filter(self.model_class.id == id).first()
 
-    def get_all(self, as_dict: bool = False) -> List[Any]:
+    def get_all(self, session: Session, as_dict: bool = False) -> List[Any]:
         """获取所有记录
 
         Args:
+            session: SQLAlchemy 会话对象
             as_dict: 是否将对象转换为字典返回，默认为False
 
         Returns:
@@ -100,7 +100,7 @@ class Repository(Generic[T]):
         """
         try:
             logger.debug(f"获取所有 {self.model_class.__name__} 实体")
-            entities = self.session.query(self.model_class).all()
+            entities = session.query(self.model_class).all()
             logger.debug(f"找到 {len(entities)} 个 {self.model_class.__name__} 实体")
 
             if not as_dict:
@@ -157,10 +157,11 @@ class Repository(Generic[T]):
 
         return result
 
-    def update(self, id: str, data: Dict[str, Any]) -> Optional[T]:
+    def update(self, session: Session, id: str, data: Dict[str, Any]) -> Optional[T]:
         """更新记录
 
         Args:
+            session: SQLAlchemy 会话对象
             id: 实体ID
             data: 更新数据
 
@@ -168,7 +169,7 @@ class Repository(Generic[T]):
             更新后的实体对象或None
         """
         try:
-            instance = self.get_by_id(id)
+            instance = self.get_by_id(session, id)
             if not instance:
                 return None
 
@@ -176,43 +177,43 @@ class Repository(Generic[T]):
                 if hasattr(instance, key):
                     setattr(instance, key, value)
 
-            self.session.commit()
+            session.flush()
             return instance
         except Exception as e:
-            self.session.rollback()
             raise e
 
-    def delete(self, id: str) -> bool:
+    def delete(self, session: Session, id: str) -> bool:
         """删除记录
 
         Args:
+            session: SQLAlchemy 会话对象
             id: 实体ID
 
         Returns:
             是否删除成功
         """
         try:
-            instance = self.get_by_id(id)
+            instance = self.get_by_id(session, id)
             if not instance:
                 return False
 
-            self.session.delete(instance)
-            self.session.commit()
+            session.delete(instance)
+            session.flush()
             return True
         except Exception as e:
-            self.session.rollback()
             raise e
 
-    def filter(self, **filters) -> List[T]:
+    def filter(self, session: Session, **filters) -> List[T]:
         """根据过滤条件查询
 
         Args:
+            session: SQLAlchemy 会话对象
             **filters: 过滤条件
 
         Returns:
             符合条件的实体对象列表
         """
-        query = self.session.query(self.model_class)
+        query = session.query(self.model_class)
 
         for attr, value in filters.items():
             if hasattr(self.model_class, attr):

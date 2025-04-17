@@ -7,6 +7,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy.orm import Session
+
 # 导入上层模块定义的数据库函数
 from src.db import get_engine, get_session_factory
 from src.db.core.entity_manager import EntityManager
@@ -14,6 +16,7 @@ from src.db.core.epic_manager import EpicManager
 from src.db.core.log_manager import LogManager
 from src.db.core.story_manager import StoryManager
 from src.db.core.task_manager import TaskManager
+from src.db.repositories.flow_session_repository import FlowSessionRepository
 from src.db.repositories.log_repository import (
     AuditLogRepository,
     ErrorLogRepository,
@@ -24,7 +27,13 @@ from src.db.repositories.log_repository import (
 )
 from src.db.repositories.memory_item_repository import MemoryItemRepository
 from src.db.repositories.roadmap_repository import EpicRepository, StoryRepository
+from src.db.repositories.rule_repository import RuleRepository
+from src.db.repositories.stage_instance_repository import StageInstanceRepository
+from src.db.repositories.stage_repository import StageRepository
 from src.db.repositories.task_repository import TaskRepository
+from src.db.repositories.template_repository import TemplateRepository
+from src.db.repositories.transition_repository import TransitionRepository
+from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 
 # 直接从各自的模块导入
 from src.models.db.init_db import init_db
@@ -47,63 +56,74 @@ class DatabaseService:
 
     def __init__(self):
         """初始化数据库服务"""
-        # 单例模式，只初始化一次
         if self._initialized:
             logger.debug("DatabaseService已初始化，跳过重复初始化")
             return
 
         try:
-            # 使用connection_manager确保数据库表已初始化
             from src.db.connection_manager import ensure_tables_exist, get_engine, get_session_factory
 
-            # 确保表已初始化
             ensure_tables_exist()
-
-            # 获取数据库引擎
             engine = get_engine()
             if not engine:
                 logger.error("数据库引擎获取失败")
                 raise RuntimeError("数据库引擎获取失败")
 
-            # 使用会话工厂
-            session_factory = get_session_factory()
-            if not session_factory:
-                logger.error("数据库会话工厂获取失败")
-                raise RuntimeError("数据库会话工厂获取失败")
-
-            self.session = session_factory()
-
-            # 初始化各种仓库，所有实体类型都使用SQLAlchemy仓库
+            # 初始化各种仓库，不再传递 session
+            from src.db.repositories.flow_session_repository import FlowSessionRepository
             from src.db.repositories.memory_item_repository import MemoryItemRepository
             from src.db.repositories.roadmap_repository import EpicRepository, StoryRepository
+            from src.db.repositories.rule_repository import RuleRepository
+            from src.db.repositories.stage_instance_repository import StageInstanceRepository
+            from src.db.repositories.stage_repository import StageRepository
             from src.db.repositories.task_repository import TaskRepository
+            from src.db.repositories.template_repository import TemplateRepository
+            from src.db.repositories.transition_repository import TransitionRepository
+            from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 
-            self.epic_repo = EpicRepository(self.session)
-            self.story_repo = StoryRepository(self.session)
-            self.task_repo = TaskRepository(self.session)
-            self.memory_item_repo = MemoryItemRepository(self.session)
+            # Import log repositories if they need to be in repo_map (currently not planned)
+            # from src.db.repositories.log_repository import ...
 
-            # 类型到仓库的映射
+            self.epic_repo = EpicRepository()
+            self.story_repo = StoryRepository()
+            self.task_repo = TaskRepository()
+            self.memory_item_repo = MemoryItemRepository()
+            self.rule_repo = RuleRepository()
+            self.template_repo = TemplateRepository()
+            self.workflow_repo = WorkflowDefinitionRepository()
+            self.stage_repo = StageRepository()
+            self.flow_session_repo = FlowSessionRepository()
+            self.stage_instance_repo = StageInstanceRepository()
+            self.transition_repo = TransitionRepository()
+
             self.repo_map = {
                 "epic": self.epic_repo,
                 "story": self.story_repo,
                 "task": self.task_repo,
                 "memory_item": self.memory_item_repo,
+                "rule": self.rule_repo,
+                "template": self.template_repo,
+                "workflow": self.workflow_repo,  # Maps to WorkflowDefinitionRepository
+                "stage": self.stage_repo,
+                "flow_session": self.flow_session_repo,
+                "stage_instance": self.stage_instance_repo,
+                "transition": self.transition_repo,
+                # Add other repositories here if needed for EntityManager
             }
 
-            logger.debug(f"初始化的仓库: {', '.join(self.repo_map.keys())}")
+            logger.debug(f"初始化的仓库 (in repo_map): {', '.join(self.repo_map.keys())}")
 
-            # 初始化实体管理器，不再传递模拟存储
+            # 初始化实体管理器，不再传递 session
             from src.db.core.entity_manager import EntityManager
 
             self.entity_manager = EntityManager(self.repo_map)
 
-            # 验证实体管理器初始化正确
+            # 验证实体管理器初始化
             if not hasattr(self.entity_manager, "repositories") or not self.entity_manager.repositories:
                 logger.error("实体管理器初始化失败，repositories为空")
                 raise RuntimeError("实体管理器初始化失败")
 
-            # 初始化特定实体管理器，不再传递模拟存储
+            # 初始化特定实体管理器，不再传递 session
             from src.db.core.epic_manager import EpicManager
             from src.db.core.log_manager import LogManager
             from src.db.core.story_manager import StoryManager
@@ -112,14 +132,10 @@ class DatabaseService:
             self.epic_manager = EpicManager(self.entity_manager)
             self.story_manager = StoryManager(self.entity_manager)
             self.task_manager = TaskManager(self.entity_manager, self.task_repo)
-            self.log_manager = LogManager(self.session)
+            self.log_manager = LogManager()
 
-            # 最后验证所有关键组件已初始化
             self._validate_initialization()
-
-            # 标记已初始化
             self.__class__._initialized = True
-
             logger.info("数据库服务初始化成功")
         except Exception as e:
             logger.error(f"数据库服务初始化失败: {e}", exc_info=True)
@@ -127,9 +143,6 @@ class DatabaseService:
 
     def _validate_initialization(self):
         """验证所有必要组件是否已正确初始化"""
-        if not hasattr(self, "session") or self.session is None:
-            raise RuntimeError("数据库会话未初始化")
-
         if not hasattr(self, "entity_manager") or self.entity_manager is None:
             raise RuntimeError("实体管理器未初始化")
 
@@ -147,22 +160,24 @@ class DatabaseService:
 
     # 通用实体管理方法，委托给实体管理器
 
-    def get_entity(self, entity_type: str, entity_id: str) -> Dict[str, Any]:
+    def get_entity(self, session: Session, entity_type: str, entity_id: str) -> Dict[str, Any]:
         """通用获取实体方法
 
         Args:
+            session: 数据库会话
             entity_type: 实体类型
             entity_id: 实体ID
 
         Returns:
             实体数据
         """
-        return self.entity_manager.get_entity(entity_type, entity_id)
+        return self.entity_manager.get_entity(session, entity_type, entity_id)
 
-    def get_entities(self, entity_type: str) -> List[Dict[str, Any]]:
+    def get_entities(self, session: Session, entity_type: str) -> List[Dict[str, Any]]:
         """通用获取实体列表方法
 
         Args:
+            session: 数据库会话
             entity_type: 实体类型
 
         Returns:
@@ -171,34 +186,28 @@ class DatabaseService:
         try:
             logger.info(f"尝试获取实体列表，类型: {entity_type}")
 
-            # 检查会话
-            if not hasattr(self, "session") or self.session is None:
-                logger.error("数据库会话未初始化")
-                raise RuntimeError("数据库会话未初始化")
-
-            # 检查实体管理器
             if not hasattr(self, "entity_manager") or self.entity_manager is None:
                 logger.error("实体管理器未初始化")
                 raise RuntimeError("实体管理器未初始化")
 
-            # 检查实体类型
             if entity_type not in self.repo_map:
                 logger.warning(f"未知实体类型: {entity_type}，已知类型: {list(self.repo_map.keys())}")
+                return []
 
             # 尝试使用特定方法
             if entity_type == "epic" and hasattr(self, "list_epics"):
                 logger.info("使用list_epics方法获取epic列表")
-                result = self.list_epics()
+                result = self.list_epics(session)
             elif entity_type == "story" and hasattr(self, "list_stories"):
                 logger.info("使用list_stories方法获取story列表")
-                result = self.list_stories()
+                result = self.list_stories(session)
             elif entity_type == "task" and hasattr(self, "list_tasks"):
                 logger.info("使用list_tasks方法获取task列表")
-                result = self.list_tasks()
+                result = self.list_tasks(session)
             else:
                 # 尝试获取实体列表
                 logger.info(f"使用entity_manager.get_entities获取{entity_type}列表")
-                result = self.entity_manager.get_entities(entity_type)
+                result = self.entity_manager.get_entities(session, entity_type)
 
             logger.info(f"成功获取 {len(result)} 个 {entity_type} 实体")
             return result
@@ -206,22 +215,24 @@ class DatabaseService:
             logger.error(f"获取 {entity_type} 实体列表失败: {e}")
             raise
 
-    def create_entity(self, entity_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_entity(self, session: Session, entity_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """通用创建实体方法
 
         Args:
+            session: 数据库会话
             entity_type: 实体类型
             data: 实体数据
 
         Returns:
             创建的实体
         """
-        return self.entity_manager.create_entity(entity_type, data)
+        return self.entity_manager.create_entity(session, entity_type, data)
 
-    def update_entity(self, entity_type: str, entity_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_entity(self, session: Session, entity_type: str, entity_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """通用更新实体方法
 
         Args:
+            session: 数据库会话
             entity_type: 实体类型
             entity_id: 实体ID
             data: 更新数据
@@ -229,143 +240,168 @@ class DatabaseService:
         Returns:
             更新后的实体
         """
-        return self.entity_manager.update_entity(entity_type, entity_id, data)
+        return self.entity_manager.update_entity(session, entity_type, entity_id, data)
 
-    def delete_entity(self, entity_type: str, entity_id: str) -> bool:
+    def delete_entity(self, session: Session, entity_type: str, entity_id: str) -> bool:
         """通用删除实体方法
 
         Args:
+            session: 数据库会话
             entity_type: 实体类型
             entity_id: 实体ID
 
         Returns:
             是否成功
         """
-        return self.entity_manager.delete_entity(entity_type, entity_id)
+        return self.entity_manager.delete_entity(session, entity_type, entity_id)
 
-    def search_entities(self, entity_type: str, query: str) -> List[Dict[str, Any]]:
+    def search_entities(self, session: Session, entity_type: str, query: str) -> List[Dict[str, Any]]:
         """通用搜索实体方法
 
         Args:
+            session: 数据库会话
             entity_type: 实体类型
             query: 搜索关键词
 
         Returns:
             匹配的实体列表
         """
-        return self.entity_manager.search_entities(entity_type, query)
+        return self.entity_manager.search_entities(session, entity_type, query)
 
     # Epic相关方法，委托给Epic管理器
 
-    def get_epic(self, epic_id: str) -> Dict[str, Any]:
+    def get_epic(self, session: Session, epic_id: str) -> Dict[str, Any]:
         """获取Epic信息"""
-        return self.epic_manager.get_epic(epic_id)
+        epic = self.epic_repo.get_by_id(session, epic_id)
+        return epic.to_dict() if epic else None
 
-    def list_epics(self) -> List[Dict[str, Any]]:
+    def list_epics(self, session: Session) -> List[Dict[str, Any]]:
         """获取所有Epic"""
-        return self.epic_manager.list_epics()
+        epics = self.epic_repo.get_all(session)
+        return [epic.to_dict() for epic in epics]
 
-    def create_epic(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_epic(self, session: Session, data: Dict[str, Any]) -> Dict[str, Any]:
         """创建Epic"""
-        return self.epic_manager.create_epic(data)
+        epic = self.epic_repo.create(session, **data)
+        return epic.to_dict()
 
-    def update_epic(self, epic_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_epic(self, session: Session, epic_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """更新Epic"""
-        return self.epic_manager.update_epic(epic_id, data)
+        epic = self.epic_repo.update(session, epic_id, data)
+        return epic.to_dict() if epic else None
 
-    def delete_epic(self, epic_id: str) -> bool:
+    def delete_epic(self, session: Session, epic_id: str) -> bool:
         """删除Epic"""
-        return self.epic_manager.delete_epic(epic_id)
+        return self.epic_repo.delete(session, epic_id)
 
     # Story相关方法，委托给Story管理器
 
-    def get_story(self, story_id: str) -> Dict[str, Any]:
+    def get_story(self, session: Session, story_id: str) -> Dict[str, Any]:
         """获取Story信息"""
-        return self.story_manager.get_story(story_id)
+        story = self.story_repo.get_by_id(session, story_id)
+        return story.to_dict() if story else None
 
-    def list_stories(self) -> List[Dict[str, Any]]:
+    def list_stories(self, session: Session) -> List[Dict[str, Any]]:
         """获取所有Story"""
-        return self.story_manager.list_stories()
+        stories = self.story_repo.get_all(session)
+        return [story.to_dict() for story in stories]
 
-    def create_story(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_story(self, session: Session, data: Dict[str, Any]) -> Dict[str, Any]:
         """创建Story"""
-        return self.story_manager.create_story(data)
+        story = self.story_repo.create(session, **data)
+        return story.to_dict()
 
-    def update_story(self, story_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_story(self, session: Session, story_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """更新Story"""
-        return self.story_manager.update_story(story_id, data)
+        story = self.story_repo.update(session, story_id, data)
+        return story.to_dict() if story else None
 
-    def delete_story(self, story_id: str) -> bool:
+    def delete_story(self, session: Session, story_id: str) -> bool:
         """删除Story"""
-        return self.story_manager.delete_story(story_id)
+        return self.story_repo.delete(session, story_id)
 
     # Task相关方法，委托给Task管理器
 
-    def get_task(self, task_id: str) -> Dict[str, Any]:
+    def get_task(self, session: Session, task_id: str) -> Dict[str, Any]:
         """获取Task信息"""
-        return self.task_manager.get_task(task_id)
+        task = self.task_repo.get_by_id(session, task_id)
+        return task.to_dict() if task else None
 
-    def list_tasks(self) -> List[Dict[str, Any]]:
+    def list_tasks(self, session: Session) -> List[Dict[str, Any]]:
         """获取所有Task"""
-        return self.task_manager.list_tasks()
+        tasks = self.task_repo.get_all(session)
+        return [task.to_dict() for task in tasks]
 
-    def create_task(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_task(self, session: Session, data: Dict[str, Any]) -> Dict[str, Any]:
         """创建Task"""
-        return self.task_manager.create_task(data)
+        task = self.task_repo.create_task(session, **data)
+        return task.to_dict()
 
-    def update_task(self, task_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_task(self, session: Session, task_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """更新Task"""
-        return self.task_manager.update_task(task_id, data)
+        task = self.task_repo.update_task(session, task_id, data)
+        return task.to_dict() if task else None
 
-    def delete_task(self, task_id: str) -> bool:
+    def delete_task(self, session: Session, task_id: str) -> bool:
         """删除Task"""
-        return self.task_manager.delete_task(task_id)
+        return self.task_repo.delete(session, task_id)
 
     # 其他特定实体类型方法
 
-    def get_label(self, label_id: str) -> Dict[str, Any]:
+    def get_label(self, session: Session, label_id: str) -> Dict[str, Any]:
         """获取Label信息"""
-        return self.get_entity("label", label_id)
+        logger.warning("get_label 方法未完全实现 session 传递")
+        return None
 
-    def get_template(self, template_id: str) -> Dict[str, Any]:
+    def get_template(self, session: Session, template_id: str) -> Dict[str, Any]:
         """获取Template信息"""
-        return self.get_entity("template", template_id)
+        logger.warning("get_template 方法未完全实现 session 传递")
+        return None
 
-    def list_labels(self) -> List[Dict[str, Any]]:
+    def list_labels(self, session: Session) -> List[Dict[str, Any]]:
         """获取所有Label"""
-        return self.get_entities("label")
+        logger.warning("list_labels 方法未完全实现 session 传递")
+        return []
 
-    def list_templates(self) -> List[Dict[str, Any]]:
+    def list_templates(self, session: Session) -> List[Dict[str, Any]]:
         """获取所有Template"""
-        return self.get_entities("template")
+        logger.warning("list_templates 方法未完全实现 session 传递")
+        return []
 
-    def search_templates(self, query: str, tags=None) -> List[Dict[str, Any]]:
+    def search_templates(self, session: Session, query: str, tags=None) -> List[Dict[str, Any]]:
         """搜索模板"""
-        return self.search_entities("template", query)
+        logger.warning("search_templates 方法未完全实现 session 传递")
+        return []
 
-    def create_label(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_label(self, session: Session, data: Dict[str, Any]) -> Dict[str, Any]:
         """创建Label"""
-        return self.create_entity("label", data)
+        logger.warning("create_label 方法未完全实现 session 传递")
+        return {}
 
-    def create_template(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_template(self, session: Session, data: Dict[str, Any]) -> Dict[str, Any]:
         """创建Template"""
-        return self.create_entity("template", data)
+        logger.warning("create_template 方法未完全实现 session 传递")
+        return {}
 
-    def update_label(self, label_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_label(self, session: Session, label_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """更新Label"""
-        return self.update_entity("label", label_id, data)
+        logger.warning("update_label 方法未完全实现 session 传递")
+        return None
 
-    def update_template(self, template_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_template(self, session: Session, template_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """更新Template"""
-        return self.update_entity("template", template_id, data)
+        logger.warning("update_template 方法未完全实现 session 传递")
+        return None
 
-    def delete_label(self, label_id: str) -> bool:
+    def delete_label(self, session: Session, label_id: str) -> bool:
         """删除Label"""
-        return self.delete_entity("label", label_id)
+        logger.warning("delete_label 方法未完全实现 session 传递")
+        return False
 
-    def delete_template(self, template_id: str) -> bool:
+    def delete_template(self, session: Session, template_id: str) -> bool:
         """删除Template"""
-        return self.delete_entity("template", template_id)
+        logger.warning("delete_template 方法未完全实现 session 传递")
+        return False
 
     def backup(self, path: Optional[str] = None) -> str:
         """备份数据库"""
@@ -538,24 +574,24 @@ class DatabaseService:
         """获取日志管理器"""
         return self.log_manager
 
-    def get_workflow_logs(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    def get_workflow_logs(self, session: Session, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         """获取工作流日志列表"""
-        return self.log_manager.get_workflow_logs(limit, offset)
+        return self.log_manager.get_workflow_logs(session, limit, offset)
 
-    def get_workflow_operations(self, workflow_id: str) -> List[Dict[str, Any]]:
+    def get_workflow_operations(self, session: Session, workflow_id: str) -> List[Dict[str, Any]]:
         """获取指定工作流的操作日志"""
-        return self.log_manager.get_workflow_operations(workflow_id)
+        return self.log_manager.get_workflow_operations(session, workflow_id)
 
-    def get_operation_tasks(self, operation_id: str) -> List[Dict[str, Any]]:
+    def get_operation_tasks(self, session: Session, operation_id: str) -> List[Dict[str, Any]]:
         """获取指定操作的任务日志"""
-        return self.log_manager.get_operation_tasks(operation_id)
+        return self.log_manager.get_operation_tasks(session, operation_id)
 
-    def get_recent_errors(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_recent_errors(self, session: Session, limit: int = 50) -> List[Dict[str, Any]]:
         """获取最近的错误日志"""
-        return self.log_manager.get_recent_errors(limit)
+        return self.log_manager.get_recent_errors(session, limit)
 
-    def get_user_audit_logs(self, user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_user_audit_logs(self, session: Session, user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         """获取用户的审计日志"""
-        return self.log_manager.get_user_audit_logs(user_id, limit)
+        return self.log_manager.get_user_audit_logs(session, user_id, limit)
 
     # 日志记录方法是通过log_service.py直接访问的，不需要在这里提供

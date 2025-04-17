@@ -17,10 +17,14 @@ TABLE_TO_ENTITY_MAP = {
     "epics": "epic",
     "stories": "story",
     "templates": "template",
-    "labels": "label",
     "rules": "rule",
     "workflows": "workflow",
     "comments": "comment",
+    "stages": "stage",
+    "flow_sessions": "flow_session",
+    "stage_instances": "stage_instance",
+    "transitions": "transition",
+    "memory_items": "memory_item",
 }
 
 # 实体类型到表名的映射
@@ -29,10 +33,14 @@ ENTITY_TO_TABLE_MAP = {
     "epic": "epics",
     "story": "stories",
     "template": "templates",
-    "label": "labels",
     "rule": "rules",
     "workflow": "workflows",
     "comment": "comments",
+    "stage": "stages",
+    "flow_session": "flow_sessions",
+    "stage_instance": "stage_instances",
+    "transition": "transitions",
+    "memory_item": "memory_items",
 }
 
 

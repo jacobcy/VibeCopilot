@@ -22,7 +22,8 @@ def init_workflows():
     refresh_config()
 
     session = get_session()
-    repo = WorkflowDefinitionRepository(session)
+    # Initialize repo without session
+    repo = WorkflowDefinitionRepository()
 
     # 添加一些示例工作流
     workflows = [
@@ -64,7 +65,8 @@ def init_workflows():
     success_count = 0
     for workflow in workflows:
         try:
-            repo.create(data=workflow)
+            # Pass session to create method
+            repo.create(session, data=workflow)
             success_count += 1
         except Exception as e:
             logger.error(f"创建工作流失败: {workflow['name']}", exc_info=True)

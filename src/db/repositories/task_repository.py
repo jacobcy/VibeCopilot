@@ -17,12 +17,13 @@ logger = logging.getLogger(__name__)
 class TaskRepository(Repository[Task]):
     """Task仓库"""
 
-    def __init__(self, session: Session):
-        super().__init__(session, Task)
+    def __init__(self):
+        super().__init__(Task)
         self.logger = logger
 
     def create_task(
         self,
+        session: Session,
         title: str,
         description: Optional[str] = None,
         status: str = "open",
@@ -73,10 +74,10 @@ class TaskRepository(Repository[Task]):
         )
 
         # 将任务添加到会话并返回
-        self.session.add(task)
+        session.add(task)
         return task
 
-    def update_task(self, task_id: str, data: Dict[str, Any]) -> Optional[Task]:
+    def update_task(self, session: Session, task_id: str, data: Dict[str, Any]) -> Optional[Task]:
         """更新任务，特殊处理 labels, linked_prs, linked_commits"""
         # 确保 labels 等是列表，如果提供了的话
         for field in ["labels", "linked_prs", "linked_commits"]:
@@ -94,20 +95,56 @@ class TaskRepository(Repository[Task]):
 
         # 如果状态变为 closed，记录 closed_at 时间
         if "status" in data and data["status"] in ["closed", "done"] and data.get("closed_at") is None:
-            existing_task = self.get_by_id(task_id)
+            existing_task = self.get_by_id(session, task_id)
             if existing_task and existing_task.status not in ["closed", "done"]:
                 data["closed_at"] = datetime.utcnow()
         elif "status" in data and data["status"] not in ["closed", "done"]:
             data["closed_at"] = None  # 如果从 closed/done 切换回 open/in_progress，清除 closed_at
 
-        return self.update(task_id, data)
+        return self.update(session, task_id, data)
 
-    def get_by_id_with_comments(self, task_id: str) -> Optional[Task]:
+    def get_by_id(self, session: Session, entity_id: str) -> Optional[Task]:
+        """通过ID获取任务 (覆盖或实现基类方法)"""
+        return session.query(self.model_class).filter(self.model_class.id == entity_id).first()
+
+    def update(self, session: Session, entity_id: str, data: Dict[str, Any]) -> Optional[Task]:
+        """通过ID更新任务 (覆盖或实现基类方法)"""
+        entity = self.get_by_id(session, entity_id)
+        if entity:
+            for key, value in data.items():
+                if hasattr(entity, key):
+                    setattr(entity, key, value)
+                else:
+                    logger.warning(f"尝试更新不存在的属性 {key} for {self.model_class.__name__}")
+            # 不需要 commit/flush
+            return entity
+        return None
+
+    def delete(self, session: Session, entity_id: str) -> bool:
+        """通过ID删除任务 (覆盖或实现基类方法)"""
+        entity = self.get_by_id(session, entity_id)
+        if entity:
+            session.delete(entity)
+            # 不需要 commit/flush
+            return True
+        return False
+
+    def get_all(self, session: Session, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Task]:
+        """获取所有任务 (覆盖或实现基类方法)"""
+        query = session.query(self.model_class)
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
+        return query.all()
+
+    def get_by_id_with_comments(self, session: Session, task_id: str) -> Optional[Task]:
         """获取任务及其所有评论"""
-        return self.session.query(Task).options(joinedload(Task.comments)).filter(Task.id == task_id).first()
+        return session.query(Task).options(joinedload(Task.comments)).filter(Task.id == task_id).first()
 
     def search_tasks(
         self,
+        session: Session,
         status: Optional[List[str]] = None,
         assignee: Optional[str] = None,
         labels: Optional[List[str]] = None,
@@ -118,7 +155,7 @@ class TaskRepository(Repository[Task]):
         offset: Optional[int] = None,
     ) -> List[Task]:
         """根据多种条件搜索任务"""
-        query = self.session.query(Task)
+        query = session.query(Task)
 
         if status:
             query = query.filter(Task.status.in_(status))
@@ -170,83 +207,83 @@ class TaskRepository(Repository[Task]):
         results = query.all()
         return results
 
-    def link_to_roadmap(self, task_id: str, roadmap_item_id: Optional[str]) -> Optional[Task]:
+    def link_to_roadmap(self, session: Session, task_id: str, roadmap_item_id: Optional[str]) -> Optional[Task]:
         """关联或取消关联任务到 Roadmap Item
 
         在简化方案中，我们将roadmap_item_id映射到story_id
         """
         logger.info(f"将任务 {task_id} 关联到路线图项 {roadmap_item_id}，映射到story_id")
-        return self.update_task(task_id, {"story_id": roadmap_item_id})
+        return self.update_task(session, task_id, {"story_id": roadmap_item_id})
 
-    def link_to_workflow_stage(self, task_id: str, workflow_stage_instance_id: Optional[str]) -> Optional[Task]:
+    def link_to_workflow_stage(self, session: Session, task_id: str, workflow_stage_instance_id: Optional[str]) -> Optional[Task]:
         """关联或取消关联任务到 Workflow Stage Instance"""
         # 检查Task模型是否有workflow_stage_instance_id属性
         if hasattr(Task, "workflow_stage_instance_id"):
-            return self.update_task(task_id, {"workflow_stage_instance_id": workflow_stage_instance_id})
+            return self.update_task(session, task_id, {"workflow_stage_instance_id": workflow_stage_instance_id})
         else:
             logger.warning("Task模型没有workflow_stage_instance_id属性，无法关联到工作流阶段")
             # 返回未修改的任务
-            return self.get_by_id(task_id)
+            return self.get_by_id(session, task_id)
 
-    def link_to_github_issue(self, task_id: str, issue_number: Optional[int]) -> Optional[Task]:
+    def link_to_github_issue(self, session: Session, task_id: str, issue_number: Optional[int]) -> Optional[Task]:
         """关联或取消关联任务到 GitHub Issue"""
         # 检查Task模型是否有github_issue_number属性
         if hasattr(Task, "github_issue_number"):
-            return self.update_task(task_id, {"github_issue_number": issue_number})
+            return self.update_task(session, task_id, {"github_issue_number": issue_number})
         else:
             logger.warning("Task模型没有github_issue_number属性，无法关联到GitHub Issue")
             # 返回未修改的任务
-            return self.get_by_id(task_id)
+            return self.get_by_id(session, task_id)
 
-    def add_linked_pr(self, task_id: str, repo: str, pr_number: int) -> Optional[Task]:
+    def add_linked_pr(self, session: Session, task_id: str, repo: str, pr_number: int) -> Optional[Task]:
         """添加关联的 Pull Request"""
-        task = self.get_by_id(task_id)
+        task = self.get_by_id(session, task_id)
         if not task:
             return None
         linked_prs = task.linked_prs or []
         new_pr = {"repo": repo, "pr_number": pr_number}
         if new_pr not in linked_prs:
             linked_prs.append(new_pr)
-            return self.update_task(task_id, {"linked_prs": linked_prs})
+            return self.update_task(session, task_id, {"linked_prs": linked_prs})
         return task
 
-    def remove_linked_pr(self, task_id: str, repo: str, pr_number: int) -> Optional[Task]:
+    def remove_linked_pr(self, session: Session, task_id: str, repo: str, pr_number: int) -> Optional[Task]:
         """移除关联的 Pull Request"""
-        task = self.get_by_id(task_id)
+        task = self.get_by_id(session, task_id)
         if not task or not task.linked_prs:
             return task
         linked_prs = task.linked_prs
         pr_to_remove = {"repo": repo, "pr_number": pr_number}
         if pr_to_remove in linked_prs:
             linked_prs.remove(pr_to_remove)
-            return self.update_task(task_id, {"linked_prs": linked_prs})
+            return self.update_task(session, task_id, {"linked_prs": linked_prs})
         return task
 
-    def add_linked_commit(self, task_id: str, repo: str, sha: str) -> Optional[Task]:
+    def add_linked_commit(self, session: Session, task_id: str, repo: str, sha: str) -> Optional[Task]:
         """添加关联的 Commit"""
-        task = self.get_by_id(task_id)
+        task = self.get_by_id(session, task_id)
         if not task:
             return None
         linked_commits = task.linked_commits or []
         new_commit = {"repo": repo, "sha": sha}
         if new_commit not in linked_commits:
             linked_commits.append(new_commit)
-            return self.update_task(task_id, {"linked_commits": linked_commits})
+            return self.update_task(session, task_id, {"linked_commits": linked_commits})
         return task
 
-    def remove_linked_commit(self, task_id: str, repo: str, sha: str) -> Optional[Task]:
+    def remove_linked_commit(self, session: Session, task_id: str, repo: str, sha: str) -> Optional[Task]:
         """移除关联的 Commit"""
-        task = self.get_by_id(task_id)
+        task = self.get_by_id(session, task_id)
         if not task or not task.linked_commits:
             return task
         linked_commits = task.linked_commits
         commit_to_remove = {"repo": repo, "sha": sha}
         if commit_to_remove in linked_commits:
             linked_commits.remove(commit_to_remove)
-            return self.update_task(task_id, {"linked_commits": linked_commits})
+            return self.update_task(session, task_id, {"linked_commits": linked_commits})
         return task
 
-    def get_by_story_id(self, story_id: str) -> List[Task]:
+    def get_by_story_id(self, session: Session, story_id: str) -> List[Task]:
         """根据故事ID获取任务列表
 
         Args:
@@ -255,9 +292,9 @@ class TaskRepository(Repository[Task]):
         Returns:
             List[Task]: 任务列表
         """
-        return self.session.query(Task).filter(Task.story_id == story_id).all()
+        return session.query(Task).filter(Task.story_id == story_id).all()
 
-    def get_by_roadmap_id(self, roadmap_id: str) -> List[Task]:
+    def get_by_roadmap_id(self, session: Session, roadmap_id: str) -> List[Task]:
         """获取指定路线图的所有任务
 
         Args:
@@ -271,7 +308,7 @@ class TaskRepository(Repository[Task]):
             from src.models.db import Epic, Story
 
             tasks = (
-                self.session.query(Task)
+                session.query(Task)
                 .join(Story, Task.story_id == Story.id)
                 .join(Epic, Story.epic_id == Epic.id)
                 .filter(Epic.roadmap_id == roadmap_id)
@@ -285,17 +322,17 @@ class TaskRepository(Repository[Task]):
             self.logger.error(f"获取路线图任务时出错: {e}")
             return []
 
-    def get_current_task(self) -> Optional[Task]:
+    def get_current_task(self, session: Session) -> Optional[Task]:
         """获取当前任务"""
-        return self.session.query(Task).filter(Task.is_current == True).first()
+        return session.query(Task).filter(Task.is_current == True).first()
 
-    def set_current_task(self, task_id: str) -> bool:
+    def set_current_task(self, session: Session, task_id: str) -> bool:
         """设置当前任务"""
         try:
             # 清除其他任务的当前状态
-            self.session.query(Task).filter(Task.is_current == True).update({"is_current": False})
+            session.query(Task).filter(Task.is_current == True).update({"is_current": False})
             # 设置新的当前任务
-            task = self.get_by_id(task_id)
+            task = self.get_by_id(session, task_id)
             if task:
                 task.is_current = True
 
@@ -304,20 +341,20 @@ class TaskRepository(Repository[Task]):
                     try:
                         from src.db.repositories.flow_session_repository import FlowSessionRepository
 
-                        session_repo = FlowSessionRepository(self.session)
+                        session_repo = FlowSessionRepository(session)
                         session_repo.set_current_session(task.current_session_id)
                     except Exception as e:
                         logger.error(f"设置关联会话为当前会话失败: {e}")
 
-                self.session.commit()
+                session.commit()
                 return True
             return False
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             logger.error(f"设置当前任务失败: {e}")
             return False
 
-    def add_memory_reference(self, task_id: str, permalink: str, title: str, added_at: Optional[str] = None) -> Optional[Task]:
+    def add_memory_reference(self, session: Session, task_id: str, permalink: str, title: str, added_at: Optional[str] = None) -> Optional[Task]:
         """添加Memory引用到任务
 
         Args:
@@ -346,7 +383,7 @@ class TaskRepository(Repository[Task]):
 
         # 获取任务
         try:
-            task = self.get_by_id(task_id)
+            task = self.get_by_id(session, task_id)
             if not task:
                 logger.error(f"添加Memory引用失败：未找到任务 {task_id}")
                 return None
@@ -387,7 +424,7 @@ class TaskRepository(Repository[Task]):
 
         # 更新任务
         try:
-            updated_task = self.update_task(task_id, {"memory_references": memory_references})
+            updated_task = self.update_task(session, task_id, {"memory_references": memory_references})
             if updated_task:
                 logger.info(f"成功更新任务 {task_id}，添加Memory引用 {permalink}")
                 return updated_task
@@ -401,7 +438,7 @@ class TaskRepository(Repository[Task]):
             logger.error(f"更新任务 {task_id} 添加Memory引用时出错: {e}", exc_info=True)
             return None
 
-    def remove_memory_reference(self, task_id: str, permalink: str) -> Optional[Task]:
+    def remove_memory_reference(self, session: Session, task_id: str, permalink: str) -> Optional[Task]:
         """从任务中移除Memory引用
 
         Args:
@@ -412,7 +449,7 @@ class TaskRepository(Repository[Task]):
             更新后的任务，如果失败则返回None
         """
         # 获取任务
-        task = self.get_by_id(task_id)
+        task = self.get_by_id(session, task_id)
         if not task:
             logger.warning(f"移除Memory引用失败：未找到任务 {task_id}")
             return None
@@ -429,9 +466,9 @@ class TaskRepository(Repository[Task]):
             return task
 
         # 更新任务
-        return self.update_task(task_id, {"memory_references": new_references})
+        return self.update_task(session, task_id, {"memory_references": new_references})
 
-    def get_memory_references(self, task_id: str) -> List[Dict[str, Any]]:
+    def get_memory_references(self, session: Session, task_id: str) -> List[Dict[str, Any]]:
         """获取任务的所有Memory引用
 
         Args:
@@ -440,7 +477,7 @@ class TaskRepository(Repository[Task]):
         Returns:
             引用列表，如果任务不存在或没有引用则返回空列表
         """
-        task = self.get_by_id(task_id)
+        task = self.get_by_id(session, task_id)
         if not task:
             logger.warning(f"获取Memory引用失败：未找到任务 {task_id}")
             return []
@@ -451,19 +488,19 @@ class TaskRepository(Repository[Task]):
 class TaskCommentRepository(Repository[TaskComment]):
     """任务评论仓库"""
 
-    def __init__(self, session: Session):
-        super().__init__(session, TaskComment)
+    def __init__(self):
+        super().__init__(None, TaskComment)
 
-    def get_comments_for_task(self, task_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> List[TaskComment]:
+    def get_comments_for_task(self, session: Session, task_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> List[TaskComment]:
         """获取任务的所有评论"""
-        query = self.session.query(TaskComment).filter(TaskComment.task_id == task_id).order_by(TaskComment.created_at)
+        query = session.query(TaskComment).filter(TaskComment.task_id == task_id).order_by(TaskComment.created_at)
         if limit:
             query = query.limit(limit)
         if offset:
             query = query.offset(offset)
         return query.all()
 
-    def add_comment(self, task_id: str, content: str, author: Optional[str] = None) -> TaskComment:
+    def add_comment(self, session: Session, task_id: str, content: str, author: Optional[str] = None) -> TaskComment:
         """添加评论到任务
 
         Args:

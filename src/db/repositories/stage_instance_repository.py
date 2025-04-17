@@ -13,22 +13,19 @@ from src.utils.id_generator import EntityType, IdGenerator
 
 
 class StageInstanceRepository(Repository[StageInstance]):
-    """阶段实例仓库"""
+    """阶段实例仓库 (无状态)"""
 
-    def __init__(self, session: Session):
-        """初始化
-
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, StageInstance)
+    def __init__(self):
+        """初始化 (不再存储 session)"""
+        super().__init__(StageInstance)
 
     def create_stage_instance(
-        self, session_id: str, stage_id: str, status: str = "ACTIVE", context: Optional[Dict[str, Any]] = None
+        self, session: Session, session_id: str, stage_id: str, status: str = "ACTIVE", context: Optional[Dict[str, Any]] = None
     ) -> StageInstance:
         """创建阶段实例
 
         Args:
+            session: SQLAlchemy 会话对象
             session_id: 会话ID
             stage_id: 阶段ID
             status: 初始状态，默认为"ACTIVE"
@@ -37,56 +34,48 @@ class StageInstanceRepository(Repository[StageInstance]):
         Returns:
             新创建的阶段实例
         """
-        # 使用ID生成器生成标准格式的ID
-        instance_id = IdGenerator.generate_stage_instance_id()
-
-        # 准备阶段实例数据
-        now = datetime.utcnow()
         instance_data = {
-            "id": instance_id,
+            "id": IdGenerator.generate_stage_instance_id(),
             "session_id": session_id,
             "stage_id": stage_id,
             "status": status,
             "context": context or {},
             "deliverables": {},
             "completed_items": [],
-            "started_at": now,
-            "updated_at": now,
+            "started_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
         }
+        new_instance = super().create(session, instance_data)
+        return new_instance
 
-        # 使用基类的create方法创建实例
-        return super().create(instance_data)
-
-    def get_all(self) -> List[StageInstance]:
+    def get_all(self, session: Session) -> List[StageInstance]:
         """获取所有阶段实例
 
-        重写父类的get_all方法，确保返回StageInstance对象列表而非字典列表
+        Args:
+            session: SQLAlchemy 会话对象
 
         Returns:
             阶段实例对象列表
         """
-        return self.session.query(StageInstance).all()
+        return super().get_all(session, as_dict=False)
 
-    def get_by_session_id(self, session_id: str) -> List[StageInstance]:
+    def get_by_session_id(self, session: Session, session_id: str) -> List[StageInstance]:
         """根据会话ID获取阶段实例列表
 
         Args:
+            session: SQLAlchemy 会话对象
             session_id: 会话ID
 
         Returns:
             阶段实例列表
         """
-        return (
-            self.session.query(StageInstance)
-            .filter(StageInstance.session_id == session_id)
-            .order_by(StageInstance.started_at)  # 使用started_at而不是created_at排序
-            .all()
-        )
+        return session.query(StageInstance).filter(StageInstance.session_id == session_id).order_by(StageInstance.started_at).all()
 
-    def get_by_session_and_stage(self, session_id: str, stage_id: str) -> Optional[StageInstance]:
+    def get_by_session_and_stage(self, session: Session, session_id: str, stage_id: str) -> Optional[StageInstance]:
         """根据会话ID和阶段ID获取阶段实例
 
         Args:
+            session: SQLAlchemy 会话对象
             session_id: 会话ID
             stage_id: 阶段ID
 
@@ -94,56 +83,57 @@ class StageInstanceRepository(Repository[StageInstance]):
             阶段实例对象或None
         """
         return (
-            self.session.query(StageInstance)
+            session.query(StageInstance)
             .filter(
                 and_(
                     StageInstance.session_id == session_id,
-                    StageInstance.stage_id == stage_id,  # 使用stage_id而不是stage_name
+                    StageInstance.stage_id == stage_id,
                 )
             )
-            .order_by(StageInstance.started_at.desc())  # 使用started_at替代created_at
+            .order_by(StageInstance.started_at.desc())
             .first()
         )
 
-    # This method was missing in the previous read, adding based on outline
-    def find_by_session_and_stage_id(self, session_id: str, stage_id_or_name: str) -> Optional[StageInstance]:
-        """根据会话ID和阶段标识符（ID或名称）查找最新的阶段实例
+    def find_by_session_and_stage_id(self, session: Session, session_id: str, stage_id_or_name: str) -> Optional[StageInstance]:
+        """根据会话ID和阶段标识符查找最新的阶段实例
 
         Args:
+            session: SQLAlchemy 会话对象
             session_id: 会话ID
             stage_id_or_name: 阶段的ID或名称
 
         Returns:
             最新的阶段实例对象或None
         """
-        # 首先尝试作为stage_id查找
         return (
-            self.session.query(StageInstance)
+            session.query(StageInstance)
             .filter(
                 and_(
                     StageInstance.session_id == session_id,
-                    StageInstance.stage_id == stage_id_or_name,  # 使用stage_id而不是stage_name
+                    StageInstance.stage_id == stage_id_or_name,
                 )
             )
-            .order_by(StageInstance.started_at.desc())  # 使用started_at替代created_at
+            .order_by(StageInstance.started_at.desc())
             .first()
         )
 
-    def get_by_status(self, status: str) -> List[StageInstance]:
+    def get_by_status(self, session: Session, status: str) -> List[StageInstance]:
         """根据状态获取阶段实例列表
 
         Args:
+            session: SQLAlchemy 会话对象
             status: 阶段实例状态
 
         Returns:
             阶段实例列表
         """
-        return self.session.query(StageInstance).filter(StageInstance.status == status).order_by(StageInstance.started_at).all()
+        return session.query(StageInstance).filter(StageInstance.status == status).order_by(StageInstance.started_at).all()
 
-    def get_by_session_and_status(self, session_id: str, status: str) -> List[StageInstance]:
+    def get_by_session_and_status(self, session: Session, session_id: str, status: str) -> List[StageInstance]:
         """根据会话ID和状态获取阶段实例列表
 
         Args:
+            session: SQLAlchemy 会话对象
             session_id: 会话ID
             status: 阶段实例状态
 
@@ -151,130 +141,115 @@ class StageInstanceRepository(Repository[StageInstance]):
             阶段实例列表
         """
         return (
-            self.session.query(StageInstance)
+            session.query(StageInstance)
             .filter(and_(StageInstance.session_id == session_id, StageInstance.status == status))
-            .order_by(StageInstance.started_at)  # 使用started_at替代created_at
+            .order_by(StageInstance.started_at)
             .all()
         )
 
-    def update_status(self, instance_id: str, status: str) -> Optional[StageInstance]:
+    def update_status(self, session: Session, instance_id: str, status: str) -> Optional[StageInstance]:
         """更新阶段实例状态
 
         Args:
+            session: SQLAlchemy 会话对象
             instance_id: 实例ID
             status: 新状态
 
         Returns:
             更新后的阶段实例对象或None
         """
-        instance = self.get_by_id(instance_id)
+        instance = self.get_by_id(session, instance_id)
         if not instance:
             return None
-
         instance.status = status
         instance.updated_at = datetime.utcnow()
-        self.session.commit()
         return instance
 
-    def add_completed_item(self, instance_id: str, item_id: str) -> Optional[StageInstance]:
+    def add_completed_item(self, session: Session, instance_id: str, item_id: str) -> Optional[StageInstance]:
         """添加已完成项
 
         Args:
+            session: SQLAlchemy 会话对象
             instance_id: 实例ID
             item_id: 已完成项ID
 
         Returns:
             更新后的阶段实例对象或None
         """
-        instance = self.get_by_id(instance_id)
+        instance = self.get_by_id(session, instance_id)
         if not instance:
             return None
-
-        if not instance.completed_items:  # Assuming JSON or similar list field
+        if not instance.completed_items:
             instance.completed_items = []
-
-        # Avoid duplicates if necessary
         if item_id not in instance.completed_items:
-            # Need to handle mutable JSON field correctly for SQLAlchemy
             new_list = list(instance.completed_items)
             new_list.append(item_id)
             instance.completed_items = new_list
-
             instance.updated_at = datetime.utcnow()
-            self.session.commit()
-
         return instance
 
-    def update_context(self, instance_id: str, context: Dict[str, Any]) -> Optional[StageInstance]:
+    def update_context(self, session: Session, instance_id: str, context: Dict[str, Any]) -> Optional[StageInstance]:
         """更新阶段实例上下文
 
         Args:
+            session: SQLAlchemy 会话对象
             instance_id: 实例ID
             context: 上下文数据
 
         Returns:
             更新后的阶段实例对象或None
         """
-        instance = self.get_by_id(instance_id)
+        instance = self.get_by_id(session, instance_id)
         if not instance:
             return None
-
-        if not instance.context:  # Assuming JSON field
+        if not instance.context:
             instance.context = {}
-
-        # Handle mutable JSON field
         new_context = dict(instance.context)
         new_context.update(context)
         instance.context = new_context
-
         instance.updated_at = datetime.utcnow()
-        self.session.commit()
         return instance
 
-    def update_deliverables(self, instance_id: str, deliverables: Dict[str, Any]) -> Optional[StageInstance]:
+    def update_deliverables(self, session: Session, instance_id: str, deliverables: Dict[str, Any]) -> Optional[StageInstance]:
         """更新阶段实例交付物
 
         Args:
+            session: SQLAlchemy 会话对象
             instance_id: 实例ID
             deliverables: 交付物数据
 
         Returns:
             更新后的阶段实例对象或None
         """
-        instance = self.get_by_id(instance_id)
+        instance = self.get_by_id(session, instance_id)
         if not instance:
             return None
-
-        if not instance.deliverables:  # Assuming JSON field
+        if not instance.deliverables:
             instance.deliverables = {}
-
-        # Handle mutable JSON field
         new_deliverables = dict(instance.deliverables)
         new_deliverables.update(deliverables)
         instance.deliverables = new_deliverables
-
         instance.updated_at = datetime.utcnow()
-        self.session.commit()
         return instance
 
-    def complete_instance(self, instance_id: str, deliverables: Optional[Dict[str, Any]] = None) -> Optional[StageInstance]:
-        """完成阶段实例，更新状态和结束时间，可选更新交付物
+    def complete_instance(self, session: Session, instance_id: str, deliverables: Optional[Dict[str, Any]] = None) -> Optional[StageInstance]:
+        """完成阶段实例，包括状态更新和交付物更新
 
         Args:
+            session: SQLAlchemy 会话对象
             instance_id: 实例ID
-            deliverables: 可选的最终交付物
+            deliverables: 交付物数据 (可选)
 
         Returns:
             更新后的阶段实例对象或None
         """
-        instance = self.get_by_id(instance_id)
+        instance = self.get_by_id(session, instance_id)
         if not instance:
             return None
 
-        now = datetime.utcnow()
         instance.status = "COMPLETED"
-        instance.ended_at = now
-        instance.updated_at = now
+        instance.ended_at = datetime.utcnow()
+        instance.updated_at = instance.ended_at
 
         if deliverables:
             if not instance.deliverables:
@@ -283,5 +258,4 @@ class StageInstanceRepository(Repository[StageInstance]):
             new_deliverables.update(deliverables)
             instance.deliverables = new_deliverables
 
-        self.session.commit()
         return instance

@@ -3,43 +3,54 @@
 commands:
   "flow session list":
     description: "列出所有会话"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
       "--format":
         description: "输出格式"
         values: ["yaml", "text", "json"]
+        required: false
+        type: "string"
       "--status":
         description: "按状态筛选会话"
         type: "string"
+        required: false
       "--flow":
         description: "按工作流ID筛选会话"
         type: "string"
+        required: false
     expected_output: ["会话列表"]
     timeout: 5
     critical: true
 
   "flow session show":
     description: "显示特定会话的详细信息"
-    subcommands:
-      "ID_OR_NAME":
+    arguments:
+      - name: "id_or_name" # Renamed from ID_OR_NAME
         description: "会话ID或名称"
         type: "string"
         required: false
+    options:
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
       "--format":
         description: "输出格式"
         values: ["yaml", "text", "json"]
+        required: false
+        type: "string"
     expected_output: ["会话详情"]
     timeout: 5
     critical: true
 
   "flow session create":
     description: "创建并启动新会话"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--flow":
         description: "工作流ID"
         type: "string"
@@ -47,83 +58,100 @@ commands:
       "--name":
         description: "会话名称"
         type: "string"
+        required: false
       "--task":
         description: "关联的任务ID"
         type: "string"
+        required: false
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["会话创建成功"]
     timeout: 10
     critical: true
 
   "flow session close":
     description: "结束会话"
-    subcommands:
-      "ID_OR_NAME":
+    arguments:
+      - name: "id_or_name" # Renamed from ID_OR_NAME
         description: "会话ID或名称"
         type: "string"
         required: false
+    options:
       "--reason":
         description: "会话结束原因"
         type: "string"
+        required: false
       "--force":
         description: "强制结束，不提示确认"
         type: "flag"
+        required: false
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["会话已结束"]
     timeout: 5
     critical: true
 
   "flow session switch":
     description: "切换当前活动会话"
-    subcommands:
-      "ID_OR_NAME":
+    arguments:
+      - name: "id_or_name" # Renamed from ID_OR_NAME
         description: "会话ID或名称"
         type: "string"
         required: false
+    options:
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["已切换会话"]
     timeout: 5
     critical: true
 
   "flow session update":
     description: "更新会话属性"
-    subcommands:
-      "ID_OR_NAME":
+    arguments:
+      - name: "id_or_name" # Renamed from ID_OR_NAME
         description: "会话ID或名称"
         type: "string"
         required: false
+    options:
       "--name":
         description: "新的会话名称"
         type: "string"
+        required: false
       "--status":
         description: "设置会话状态"
         values: ["ACTIVE", "PAUSED", "COMPLETED", "CLOSED"]
+        required: false
+        type: "string"
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["会话已更新"]
     timeout: 5
     critical: true
 
   "flow session delete":
     description: "永久删除会话（不可恢复）"
-    subcommands:
-      "ID_OR_NAME":
+    arguments:
+      - name: "id_or_name" # Renamed from ID_OR_NAME
         description: "会话ID或名称"
         type: "string"
         required: false
+    options:
       "--force":
         description: "强制删除，不提示确认"
         type: "flag"
+        required: false
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["会话已删除"]
     timeout: 5
     critical: true

@@ -15,49 +15,48 @@ from src.models.db import Rule, RuleExample, RuleItem
 
 
 class RuleRepository(Repository[Rule]):
-    """Rule仓库类"""
+    """Rule仓库类 (无状态)"""
 
-    def __init__(self, session: Session):
-        """初始化Rule仓库
+    def __init__(self):
+        """初始化Rule仓库"""
+        super().__init__(Rule)
 
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, Rule)
-
-    def get_by_name(self, name: str) -> Optional[Rule]:
+    def get_by_name(self, session: Session, name: str) -> Optional[Rule]:
         """根据名称获取规则
 
         Args:
+            session: SQLAlchemy会话对象
             name: 规则名称
 
         Returns:
             Rule对象或None
         """
-        return self.session.query(Rule).filter(Rule.name == name).first()
+        return session.query(Rule).filter(Rule.name == name).first()
 
-    def get_by_type(self, rule_type: str) -> List[Rule]:
+    def get_by_type(self, session: Session, rule_type: str) -> List[Rule]:
         """根据类型获取规则
 
         Args:
+            session: SQLAlchemy会话对象
             rule_type: 规则类型
 
         Returns:
             Rule对象列表
         """
-        return self.session.query(Rule).filter(Rule.type == rule_type).all()
+        return session.query(Rule).filter(Rule.type == rule_type).all()
 
-    def get_for_file(self, file_path: str) -> List[Rule]:
+    def get_for_file(self, session: Session, file_path: str) -> List[Rule]:
         """获取适用于指定文件的规则
 
         Args:
+            session: SQLAlchemy会话对象
             file_path: 文件路径
 
         Returns:
             适用的Rule对象列表
         """
         # 获取所有规则
-        all_rules = self.get_all()
+        all_rules = self.get_all(session)
 
         # 筛选出始终应用的规则和文件模式匹配的规则
         applicable_rules = []
@@ -97,16 +96,17 @@ class RuleRepository(Repository[Rule]):
 
         return fnmatch.fnmatch(path, pattern)
 
-    def search_by_tags(self, tags: List[str]) -> List[Rule]:
+    def search_by_tags(self, session: Session, tags: List[str]) -> List[Rule]:
         """根据标签搜索规则
 
         Args:
+            session: SQLAlchemy会话对象
             tags: 标签列表
 
         Returns:
             匹配的Rule对象列表
         """
-        rules = self.get_all()
+        rules = self.get_all(session)
         if not tags:
             return rules
 
@@ -118,10 +118,11 @@ class RuleRepository(Repository[Rule]):
 
         return results
 
-    def create_rule(self, rule_data: Dict[str, Any], items: List[Dict[str, Any]], examples: List[Dict[str, Any]]) -> Rule:
+    def create_rule(self, session: Session, rule_data: Dict[str, Any], items: List[Dict[str, Any]], examples: List[Dict[str, Any]]) -> Rule:
         """创建规则及其条目和示例
 
         Args:
+            session: SQLAlchemy会话对象
             rule_data: 规则数据
             items: 规则条目数据列表
             examples: 规则示例数据列表
@@ -129,44 +130,42 @@ class RuleRepository(Repository[Rule]):
         Returns:
             创建的Rule对象
         """
-        # 确保rule_data中有id字段
         if "id" not in rule_data or not rule_data["id"]:
-            # 如果id不存在或为空，则自动生成一个id
             if "name" in rule_data and rule_data["name"]:
-                # 如果有名称，则使用名称生成id
                 from ..utils.text import normalize_string
 
                 rule_data["id"] = normalize_string(rule_data["name"])
             else:
-                # 否则生成一个随机id
                 rule_data["id"] = f"rule_{uuid.uuid4().hex[:8]}"
 
-        # 创建规则
-        rule = self.create(rule_data)
+        rule = self.create(session, rule_data)
 
-        # 创建规则条目
-        item_repo = RuleItemRepository(self.session)
+        item_repo = RuleItemRepository()
         for item_data in items:
             item_id = f"{rule.id}-item-{len(rule.items) + 1}"
-            item = item_repo.create({**item_data, "id": item_id})
+            item = item_repo.create(session, {**item_data, "id": item_id})
             rule.items.append(item)
 
-        # 创建规则示例
-        example_repo = RuleExampleRepository(self.session)
+        example_repo = RuleExampleRepository()
         for example_data in examples:
             example_id = f"{rule.id}-example-{len(rule.examples) + 1}"
-            example = example_repo.create({**example_data, "id": example_id})
+            example = example_repo.create(session, {**example_data, "id": example_id})
             rule.examples.append(example)
 
-        self.session.commit()
         return rule
 
     def update_rule_with_relations(
-        self, rule_id: str, rule_data: Dict[str, Any], items: Optional[List[Dict[str, Any]]] = None, examples: Optional[List[Dict[str, Any]]] = None
+        self,
+        session: Session,
+        rule_id: str,
+        rule_data: Dict[str, Any],
+        items: Optional[List[Dict[str, Any]]] = None,
+        examples: Optional[List[Dict[str, Any]]] = None,
     ) -> Optional[Rule]:
         """更新规则及其关联数据
 
         Args:
+            session: SQLAlchemy会话对象
             rule_id: 规则ID
             rule_data: 规则数据
             items: 规则条目数据列表
@@ -175,122 +174,108 @@ class RuleRepository(Repository[Rule]):
         Returns:
             更新后的Rule对象或None
         """
-        rule = self.get_by_id(rule_id)
+        rule = self.get_by_id(session, rule_id)
         if not rule:
             return None
 
-        # 更新规则属性
         for key, value in rule_data.items():
             if hasattr(rule, key):
                 setattr(rule, key, value)
 
-        # 更新规则条目
         if items is not None:
-            # 清除现有条目
             rule.items = []
-
-            # 添加新条目
-            item_repo = RuleItemRepository(self.session)
+            item_repo = RuleItemRepository()
             for item_data in items:
                 item_id = f"{rule.id}-item-{len(rule.items) + 1}"
-                item = item_repo.create({**item_data, "id": item_id})
+                item = item_repo.create(session, {**item_data, "id": item_id})
                 rule.items.append(item)
 
-        # 更新规则示例
         if examples is not None:
-            # 清除现有示例
             rule.examples = []
-
-            # 添加新示例
-            example_repo = RuleExampleRepository(self.session)
+            example_repo = RuleExampleRepository()
             for example_data in examples:
                 example_id = f"{rule.id}-example-{len(rule.examples) + 1}"
-                example = example_repo.create({**example_data, "id": example_id})
+                example = example_repo.create(session, {**example_data, "id": example_id})
                 rule.examples.append(example)
 
-        self.session.commit()
         return rule
 
 
 class RuleItemRepository(Repository[RuleItem]):
-    """RuleItem仓库类"""
+    """RuleItem仓库类 (无状态)"""
 
-    def __init__(self, session: Session):
-        """初始化RuleItem仓库
+    def __init__(self):
+        """初始化RuleItem仓库"""
+        super().__init__(RuleItem)
 
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, RuleItem)
-
-    def get_by_rule(self, rule_id: str) -> List[RuleItem]:
+    def get_by_rule(self, session: Session, rule_id: str) -> List[RuleItem]:
         """获取规则的所有条目
 
         Args:
+            session: SQLAlchemy会话对象
             rule_id: 规则ID
 
         Returns:
             RuleItem对象列表
         """
-        return self.session.query(RuleItem).filter(RuleItem.rules.any(id=rule_id)).all()
+        return session.query(RuleItem).filter(RuleItem.rules.any(id=rule_id)).all()
 
-    def get_by_category(self, category: str) -> List[RuleItem]:
+    def get_by_category(self, session: Session, category: str) -> List[RuleItem]:
         """获取特定分类的规则条目
 
         Args:
+            session: SQLAlchemy会话对象
             category: 分类名称
 
         Returns:
             RuleItem对象列表
         """
-        return self.session.query(RuleItem).filter(RuleItem.category == category).all()
+        return session.query(RuleItem).filter(RuleItem.category == category).all()
 
-    def get_high_priority_items(self, priority_threshold: int = 5) -> List[RuleItem]:
+    def get_high_priority_items(self, session: Session, priority_threshold: int = 5) -> List[RuleItem]:
         """获取高优先级的规则条目
 
         Args:
+            session: SQLAlchemy会话对象
             priority_threshold: 优先级阈值，默认为5
 
         Returns:
             RuleItem对象列表
         """
-        return self.session.query(RuleItem).filter(RuleItem.priority >= priority_threshold).all()
+        return session.query(RuleItem).filter(RuleItem.priority >= priority_threshold).all()
 
 
 class RuleExampleRepository(Repository[RuleExample]):
-    """RuleExample仓库类"""
+    """RuleExample仓库类 (无状态)"""
 
-    def __init__(self, session: Session):
-        """初始化RuleExample仓库
+    def __init__(self):
+        """初始化RuleExample仓库"""
+        super().__init__(RuleExample)
 
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, RuleExample)
-
-    def get_by_rule(self, rule_id: str) -> List[RuleExample]:
+    def get_by_rule(self, session: Session, rule_id: str) -> List[RuleExample]:
         """获取规则的所有示例
 
         Args:
+            session: SQLAlchemy会话对象
             rule_id: 规则ID
 
         Returns:
             RuleExample对象列表
         """
-        return self.session.query(RuleExample).filter(RuleExample.rules.any(id=rule_id)).all()
+        return session.query(RuleExample).filter(RuleExample.rules.any(id=rule_id)).all()
 
-    def get_valid_examples(self) -> List[RuleExample]:
+    def get_valid_examples(self, session: Session) -> List[RuleExample]:
         """获取所有有效示例
 
         Returns:
             有效的RuleExample对象列表
         """
-        return self.session.query(RuleExample).filter(RuleExample.is_valid is True).all()
+        return session.query(RuleExample).filter(RuleExample.is_valid == True).all()
 
-    def get_invalid_examples(self) -> List[RuleExample]:
+    def get_invalid_examples(self, session: Session) -> List[RuleExample]:
         """获取所有无效示例
 
         Returns:
             无效的RuleExample对象列表
         """
-        return self.session.query(RuleExample).filter(RuleExample.is_valid is False).all()
+        return session.query(RuleExample).filter(RuleExample.is_valid == False).all()

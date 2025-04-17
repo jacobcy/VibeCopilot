@@ -10,7 +10,7 @@ from .create import create_task_command as create_task
 from .delete import delete_task
 from .link import link_task
 from .list import list_tasks
-from .show import show_task
+from .show import show
 from .update import update_task
 
 __all__ = [
@@ -19,7 +19,7 @@ __all__ = [
     "delete_task",
     "link_task",
     "list_tasks",
-    "show_task",
+    "show",
     "update_task",
     "comment_task",
 ]

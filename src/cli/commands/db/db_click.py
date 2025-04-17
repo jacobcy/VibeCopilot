@@ -14,6 +14,7 @@ from rich.table import Table
 from src.cli.commands.db.handlers.init_handler import init_db
 from src.cli.commands.db.handlers.list_handler import list_db_cli
 from src.cli.commands.db.handlers.show_handler import show_db
+from src.cli.commands.db.handlers.status_handler import status_db
 from src.cli.decorators import pass_service
 
 console = Console()
@@ -246,38 +247,9 @@ def clean_db(service, force: bool = False) -> None:
         console.print(f"[red]错误: {str(e)}[/red]")
 
 
-@db.command(name="status", help="查询数据库表结构和状态")
-@click.option("--type", default="all", help="表名称，默认为所有表")
-@click.option("--detail", is_flag=True, help="是否显示详细信息（包括示例数据）")
-@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
-@pass_service(service_type="db")
-def status_db_cli(service, type: str = "all", detail: bool = False, format: str = "table") -> int:
-    """查询数据库表结构和状态"""
-    try:
-        # 如果查询的是rules表且默认表格格式，则使用yaml格式
-        if type.lower() == "rules" and format == "table":
-            # 仅当用户未明确指定格式时自动转换
-            import sys
-
-            if not any(arg.startswith("--format") for arg in sys.argv):
-                format = "yaml"
-
-        # 创建参数字典，与StatusHandler兼容
-        args_dict = {"type": type, "detail": detail, "format": format, "service": service}
-
-        # 导入并使用StatusHandler
-        from src.cli.commands.db.handlers.status_handler import StatusHandler
-
-        status_handler = StatusHandler()
-        return status_handler.handle(**args_dict)
-    except Exception as e:
-        console.print(f"[red]错误: {str(e)}[/red]")
-        return 1
-
-
 # 注册命令
 db.add_command(init_db)
-db.add_command(list_db)
+db.add_command(list_db_cli)
 db.add_command(show_db)
 db.add_command(query_db)
 db.add_command(create_db)
@@ -286,8 +258,7 @@ db.add_command(delete_db)
 db.add_command(backup_db)
 db.add_command(restore_db)
 db.add_command(clean_db)
-# 使用CLI版本的status命令替代旧版本
-db.add_command(status_db_cli)
+db.add_command(status_db)
 
 if __name__ == "__main__":
     db()

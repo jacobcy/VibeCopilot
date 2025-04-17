@@ -4,17 +4,22 @@
 commands:
   "rule list":
     description: "列出所有规则或指定类型的规则"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--type":
         description: "按类型筛选规则"
         values: ["core", "dev", "tech", "tool", "role", "command", "test"]
+        required: false
+        type: "string"
       "--format":
         description: "输出格式"
         values: ["table", "json", "yaml"]
+        required: false
+        type: "string"
     expected_output: ["规则列表", "规则类型", "规则名称", "优先级", "描述"]
     timeout: 5
     critical: true
-    validation:
+    validation: # Keep command level validation for now
       - "检查规则类型是否有效"
       - "验证输出格式支持"
 
@@ -25,10 +30,13 @@ commands:
         description: "规则名称（格式：类型/名称，如 core-rules/config）"
         required: true
         validation: "必须符合规则命名格式"
-    subcommands:
+        type: "string"
+    options:
       "--format":
         description: "输出格式"
         values: ["markdown", "json", "yaml"]
+        required: false
+        type: "string"
     expected_output: ["规则详情", "规则内容", "元数据"]
     timeout: 5
     critical: true
@@ -40,22 +48,28 @@ commands:
         description: "规则名称（遵循命名规范）"
         required: true
         validation: "必须符合规则命名格式"
-    subcommands:
+        type: "string"
+    options:
       "--type":
         description: "规则类型"
-        required: true
+        required: true # Keep required as true
         values: ["core", "dev", "tech", "tool", "role", "command", "test"]
+        type: "string"
       "--desc":
         description: "规则描述"
         type: "string"
+        required: false
       "--priority":
         description: "规则优先级 (1-100)"
         type: "integer"
         default: 50
         validation: "必须在1-100范围内"
+        required: false
       "--template":
         description: "使用预定义模板"
         values: ["agent", "auto", "best_practices", "command", "role", "workflow"]
+        required: false
+        type: "string"
     expected_output: ["规则创建成功"]
     timeout: 10
     critical: true
@@ -72,10 +86,12 @@ commands:
         description: "规则名称"
         required: true
         validation: "必须是存在的规则"
-    subcommands:
+        type: "string"
+    options:
       "--force":
         description: "强制删除（跳过确认）"
         type: "flag"
+        required: false
     expected_output: ["规则删除成功"]
     timeout: 5
     critical: true
@@ -90,21 +106,27 @@ commands:
         description: "规则文件路径（支持.md/.yaml/.json）"
         required: true
         validation: "文件必须存在且格式正确"
-    subcommands:
+        type: "string"
+    options:
       "--parser":
         description: "解析器类型"
         values: ["markdown", "yaml", "json"]
+        required: false
+        type: "string"
       "--model":
         description: "模型名称（用于AI增强）"
         type: "string"
+        required: false
       "--validate":
         description: "是否验证规则"
         type: "flag"
         default: true
+        required: false
       "--overwrite":
         description: "是否覆盖已存在的规则"
         type: "flag"
         default: false
+        required: false
     expected_output: ["规则导入成功"]
     timeout: 10
     critical: true
@@ -120,15 +142,19 @@ commands:
         description: "规则名称"
         required: true
         validation: "必须是存在的规则"
-    subcommands:
+        type: "string"
+    options:
       "--format":
         description: "导出格式"
         values: ["markdown", "yaml", "json"]
         default: "markdown"
+        required: false
+        type: "string"
       "--output":
         description: "输出路径"
         type: "string"
         validation: "路径必须可写"
+        required: false # Output path might be optional (e.g., print to stdout)
     expected_output: ["规则导出成功"]
     timeout: 5
     critical: true
@@ -140,6 +166,8 @@ commands:
         description: "规则名称"
         required: true
         validation: "必须是存在的规则"
+        type: "string"
+    options: {} # No options defined currently
     expected_output: ["规则验证结果"]
     timeout: 5
     critical: true

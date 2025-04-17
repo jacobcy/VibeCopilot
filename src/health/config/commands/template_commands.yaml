@@ -3,14 +3,18 @@
 commands:
   "template list":
     description: "列出所有模板"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--type":
         description: "模板类型筛选"
         values: ["rule", "command", "doc", "flow", "roadmap", "general"]
+        required: false
+        type: "string"
       "--verbose":
         description: "显示详细信息"
         short: "-v"
         type: "flag"
+        required: false
     expected_output: ["模板列表", "模板"]
     timeout: 5
     critical: true
@@ -21,24 +25,30 @@ commands:
       - name: "template_id"
         description: "模板ID"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--format":
         description: "输出格式"
         values: ["json", "text"]
+        required: false
+        type: "string"
     expected_output: ["模板详情", "内容"]
     timeout: 5
     critical: true
 
   "template create":
     description: "创建新模板"
-    subcommands:
+    arguments: [] # No positional arguments defined in original, assuming options only
+    options:
       "--name":
         description: "模板名称"
         required: true
+        type: "string"
       "--type":
         description: "模板类型"
         values: ["rule", "command", "doc", "flow", "roadmap", "general"]
         required: true
+        type: "string"
     expected_output: ["创建", "模板", "成功"]
     timeout: 8
     critical: true
@@ -49,9 +59,12 @@ commands:
       - name: "template_id"
         description: "模板ID"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--name":
         description: "新的模板名称"
+        required: false # Assuming name update is optional
+        type: "string"
     expected_output: ["更新", "模板", "成功"]
     timeout: 8
     critical: true
@@ -62,10 +75,12 @@ commands:
       - name: "template_id"
         description: "模板ID"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--force":
         description: "强制删除"
         type: "flag"
+        required: false
     expected_output: ["删除", "模板", "成功"]
     timeout: 5
     critical: true
@@ -76,12 +91,16 @@ commands:
       - name: "template_id"
         description: "模板ID"
         required: true
+        type: "string"
       - name: "output_file"
         description: "输出文件路径"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--vars":
         description: "变量JSON字符串"
+        required: false
+        type: "string"
     expected_output: ["生成", "成功"]
     timeout: 10
     critical: true
@@ -92,41 +111,53 @@ commands:
       - name: "template_id"
         description: "模板ID"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--output":
         description: "输出文件路径"
+        required: false # Assuming optional (e.g., print to stdout)
+        type: "string"
       "--format":
         description: "导出格式"
         values: ["json", "yaml", "text"]
+        required: false
+        type: "string"
     expected_output: ["导出", "模板", "成功"]
     timeout: 8
     critical: false
 
-  "template import-template":
+  "template import-template": # Renamed from import to avoid clash with Python keyword
     description: "导入模板"
     arguments:
       - name: "file_path"
         description: "文件路径"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--overwrite":
         description: "覆盖已存在的模板"
         type: "flag"
+        required: false
       "--recursive":
         description: "递归导入目录下的所有模板"
         type: "flag"
+        required: false
     expected_output: ["导入", "模板", "成功"]
     timeout: 10
     critical: false
 
   "template init":
     description: "初始化模板库"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--force":
         description: "强制初始化"
         type: "flag"
+        required: false
       "--source":
         description: "指定源目录"
+        required: false
+        type: "string"
     expected_output: ["初始化", "模板库", "成功"]
     timeout: 15
     critical: false

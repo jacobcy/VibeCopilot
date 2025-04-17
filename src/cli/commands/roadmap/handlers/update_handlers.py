@@ -77,7 +77,7 @@ class RoadmapUpdateHandlers:
                     "old_status": result.get("old_status"),
                     "new_status": status,
                     "params": update_params,
-                    "sync_status": "synced" if args.get("sync") else "not_synced",
+                    "sync_status": "SYNCED" if args.get("sync") else "NOT_SYNCED",
                 },
             }
 

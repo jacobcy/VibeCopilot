@@ -29,43 +29,7 @@ related_items: [command-system]
 
 - 命令格式：`//flow [subcommand] [args]`
 - 执行方式：转换为`vibecopilot flow [subcommand] [args]`并通过终端执行
-- 适用场景：复杂工作流执行、会话管理和持久化操作
-
-## 子命令详解
-
-### 工作流定义操作
-
-| 子命令 | 说明 | 示例 |
-|-------|------|------|
-| `list` | 列出所有可用工作流定义 | `/flow list [--type=<workflow_type>]` |
-| `show` | 查看工作流定义详情 | `/flow show <id>` |
-| `run` | 执行特定工作流的阶段 | `/flow run <workflow_name>:<stage_name>` |
-| `next` | 获取工作流下一步建议 | `/flow next` |
-| `visualize` | 可视化工作流结构 | `/flow visualize <id>` |
-
-### 工作流会话操作
-
-| 子命令 | 说明 | 示例 |
-|-------|------|------|
-| `session list` | 列出所有工作流会话 | `/flow session list [--status=<status>]` |
-| `session show` | 查看会话详情和进度 | `/flow session show <id>` |
-| `session create` | 创建新的工作流会话 | `/flow session create <workflow_id>` |
-| `session pause` | 暂停工作流会话 | `/flow session pause <id>` |
-| `session resume` | 恢复暂停的会话 | `/flow session resume <id>` |
-| `session abort` | 终止工作流会话 | `/flow session abort <id>` |
-
-## 常用工作流模板
-
-VibeCopilot定义了一系列预设工作流模板，可通过命令直接调用：
-
-| 工作流ID | 描述 | 调用示例 |
-|---------|------|---------|
-| `dev:story` | 用户故事开发流程 | `//flow run dev:story` |
-| `dev:feature` | 功能开发流程 | `//flow run dev:feature` |
-| `dev:bugfix` | Bug修复流程 | `//flow run dev:bugfix` |
-| `doc:guide` | 文档编写流程 | `//flow run doc:guide` |
-| `review:code` | 代码审核流程 | `//flow run review:code` |
-| `test:integration` | 集成测试流程 | `//flow run test:integration` |
+- 适用场景：复杂工作流执行、会话管理和持久化操作 |
 
 ## 工作流上下文使用
 
@@ -79,35 +43,13 @@ VibeCopilot定义了一系列预设工作流模板，可通过命令直接调用
 
 ## 流程引导功能
 
-调用`//flow run <workflow>`会自动引导用户完成整个流程：
+调用`//flow next`会自动引导用户完成整个流程：
 
 1. 显示工作流概述和目标
 2. 展示当前阶段任务和要求
 3. 提供完成当前阶段的指导
 4. 在完成后建议下一步操作
 5. 根据情境提供相关资源和参考
-
-## 使用示例
-
-```
-# 列出所有可用工作流
-/flow list
-
-# 查看特定工作流详情
-/flow show dev:story
-
-# 执行用户故事开发流程
-//flow run dev:story
-
-# 创建新的功能开发会话
-//flow session create dev:feature --name="支付集成"
-
-# 在现有会话中执行下一阶段
-//flow run dev:feature:implementation --session=12345
-
-# 可视化工作流结构
-/flow visualize dev:feature
-```
 
 ## 与其他命令的集成
 
@@ -123,195 +65,119 @@ VibeCopilot定义了一系列预设工作流模板，可通过命令直接调用
 ```yaml
 commands:
   flow session list: # 列出所有会话
-    subcommands:
+    options:
       --verbose: # 显示详细信息
-        type: flag
       --format: # 输出格式
-        values:
-        - yaml
-        - text
-        - json
       --status: # 按状态筛选会话
-        type: string
       --flow: # 按工作流ID筛选会话
-        type: string
   flow session show: # 显示特定会话的详细信息
-    subcommands:
-      ID_OR_NAME: # 会话ID或名称
-        type: string
+    arguments:
+      id_or_name: # 会话ID或名称
+    options:
       --verbose: # 显示详细信息
-        type: flag
       --format: # 输出格式
-        values:
-        - yaml
-        - text
-        - json
   flow session create: # 创建并启动新会话
-    subcommands:
+    options:
       --flow: # 工作流ID
-        type: string
       --name: # 会话名称
-        type: string
       --task: # 关联的任务ID
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   flow session close: # 结束会话
-    subcommands:
-      ID_OR_NAME: # 会话ID或名称
-        type: string
+    arguments:
+      id_or_name: # 会话ID或名称
+    options:
       --reason: # 会话结束原因
-        type: string
       --force: # 强制结束，不提示确认
-        type: flag
       --verbose: # 显示详细信息
-        type: flag
   flow session switch: # 切换当前活动会话
-    subcommands:
-      ID_OR_NAME: # 会话ID或名称
-        type: string
+    arguments:
+      id_or_name: # 会话ID或名称
+    options:
       --verbose: # 显示详细信息
-        type: flag
   flow session update: # 更新会话属性
-    subcommands:
-      ID_OR_NAME: # 会话ID或名称
-        type: string
+    arguments:
+      id_or_name: # 会话ID或名称
+    options:
       --name: # 新的会话名称
-        type: string
       --status: # 设置会话状态
-        values:
-        - ACTIVE
-        - PAUSED
-        - COMPLETED
-        - CLOSED
       --verbose: # 显示详细信息
-        type: flag
   flow session delete: # 永久删除会话（不可恢复）
-    subcommands:
-      ID_OR_NAME: # 会话ID或名称
-        type: string
+    arguments:
+      id_or_name: # 会话ID或名称
+    options:
       --force: # 强制删除，不提示确认
-        type: flag
       --verbose: # 显示详细信息
-        type: flag
   flow list: # 列出所有工作流定义
-    subcommands:
+    options:
       --type: # 按工作流类型筛选
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   flow show: # 查看会话或工作流定义详情
-    subcommands:
-      ID: # 工作流或会话ID
-        type: string
+    arguments:
+      id: # 工作流或会话ID
+    options:
       --flow: # 查看工作流定义而非会话信息
-        type: flag
       --format: # 输出格式
-        values:
-        - json
-        - text
-        - mermaid
       --diagram: # 在输出中包含Mermaid图表
-        type: flag
       --verbose: # 显示详细信息
-        type: flag
   flow create: # 创建工作流定义
-    subcommands:
+    options:
       --source: # 源文件路径
-        type: string
       --template: # 工作流模板路径
-        type: string
       --name: # 工作流名称
-        type: string
       --output: # 输出工作流文件路径
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   flow update: # 更新工作流定义
-    subcommands:
-      ID: # 工作流ID
-        type: string
+    arguments:
+      id: # 工作流ID
+    options:
       --name: # 新的工作流名称
-        type: string
       --desc: # 新的工作流描述
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   flow delete: # 删除工作流定义
-    subcommands:
-      WORKFLOW_ID: # 工作流ID
-        type: string
+    arguments:
+      workflow_id: # 工作流ID
+    options:
       --force: # 强制删除
-        type: flag
       --verbose: # 显示详细信息
-        type: flag
   flow export: # 导出工作流定义
-    subcommands:
-      WORKFLOW_ID: # 工作流ID
-        type: string
+    arguments:
+      workflow_id: # 工作流ID
+    options:
       --format: # 输出格式
-        values:
-        - json
-        - mermaid
       --output: # 输出路径
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   flow import: # 导入工作流定义
-    subcommands:
-      FILE_PATH: # 文件路径
-        type: string
+    arguments:
+      file_path: # 文件路径
+    options:
       --name: # 导入后使用的工作流名称
-        type: string
       --verbose: # 显示详细信息
-        type: flag
   flow context: # 获取并解释工作流阶段上下文
-    subcommands:
-      STAGE_ID: # 阶段ID
-        type: string
+    arguments:
+      stage_id: # 阶段ID
+    options:
       --session: # 会话ID或名称
-        type: string
       --completed: # 标记为已完成的检查项名称或ID
-        type: string
       --format: # 输出格式
-        values:
-        - json
-        - text
       --verbose: # 显示详细信息
-        type: flag
   flow next: # 获取下一阶段建议
-    subcommands:
+    options:
       --session: # 会话ID或名称
-        type: string
       --current: # 当前阶段ID
-        type: string
       --format: # 输出格式
-        values:
-        - json
-        - text
       --verbose: # 显示详细信息
-        type: flag
   flow validate: # 验证工作流文件一致性
-    subcommands:
+    options:
       --id: # 工作流ID
-        type: string
       --fix: # 自动修复问题
-        type: flag
       --verbose: # 显示详细信息
-        type: flag
   flow visualize: # 可视化工作流结构和进度
-    subcommands:
-      ID: # 工作流或会话ID
-        type: string
+    arguments:
+      id: # 工作流或会话ID
+    options:
       --session: # 目标是会话ID而非工作流ID
-        type: flag
       --format: # 输出格式
-        values:
-        - mermaid
-        - text
       --output: # 输出文件路径
-        type: string
       --verbose: # 显示详细信息
-        type: flag
 ```
 <!-- END_COMMAND_YAML -->

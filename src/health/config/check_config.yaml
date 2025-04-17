@@ -37,7 +37,45 @@ system:
 # 命令配置
 command:
   timeout: 30  # 命令执行超时时间(秒)
-  # 必需命令列表
+  # 添加命令组配置
+  command_groups:
+    - name: "roadmap"
+      description: "路线图管理命令"
+      config_file: "roadmap_commands.yaml"
+      critical: true
+    - name: "task"
+      description: "任务管理命令"
+      config_file: "task_commands.yaml"
+      critical: true
+    - name: "memory"
+      description: "记忆管理命令"
+      config_file: "memory_commands.yaml"
+      critical: true
+    - name: "flow_session"
+      description: "流程会话管理命令"
+      config_file: "flow_session_commands.yaml"
+      critical: true
+    - name: "rule"
+      description: "规则管理命令"
+      config_file: "rule_commands.yaml"
+      critical: true
+    - name: "db"
+      description: "数据库管理命令"
+      config_file: "db_commands.yaml"
+      critical: true
+    - name: "flow"
+      description: "流程管理命令"
+      config_file: "flow_commands.yaml"
+      critical: true
+    - name: "status"
+      description: "状态管理命令"
+      config_file: "status_commands.yaml"
+      critical: true
+    - name: "template"
+      description: "模板管理命令"
+      config_file: "template_commands.yaml"
+      critical: true
+  # 必需命令列表（兼容旧格式）
   required_commands:
     - name: "rule list"
       type: "rule"

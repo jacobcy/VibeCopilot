@@ -8,8 +8,8 @@ from typing import Any, Dict
 import click
 from rich.console import Console
 
-from src.db import get_session_factory
-from src.db.repositories.task_repository import TaskRepository
+from src.db.session_manager import session_scope
+from src.services.task.core import TaskService
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -70,33 +70,40 @@ def execute_delete_task(task_id: str) -> Dict[str, Any]:
     }
 
     try:
-        session_factory = get_session_factory()
-        with session_factory() as session:
-            task_repo = TaskRepository(session)
+        # --- Database Operations within session_scope ---
+        with session_scope() as session:
+            task_service = TaskService()
 
-            # 检查任务是否存在
-            task = task_repo.get_by_id(task_id)
+            # Check if task exists (read operation)
+            task = task_service.get_task(session, task_id)
             if not task:
                 results["status"] = "error"
                 results["code"] = 404
                 results["message"] = f"删除失败：未找到 Task ID: {task_id}"
+                # Return early, no rollback needed for read fail
                 return results
 
-            # 执行删除操作
-            deleted = task_repo.delete(task_id)
+            # Perform delete operation
+            deleted = task_service.delete_task(session, task_id)
             if deleted:
-                session.commit()
                 results["message"] = f"成功删除任务 {task_id}"
             else:
-                session.rollback()
+                # If delete_task returns False, it means deletion failed within the service
+                # session_scope will handle rollback if an exception was raised there.
+                # If it returned False without exception, set error status here.
                 results["status"] = "error"
                 results["code"] = 500
-                results["message"] = f"删除任务 {task_id} 失败"
+                results["message"] = f"删除任务 {task_id} 失败 (服务层返回失败)"
+                # Optionally raise an exception here to ensure rollback if delete_task
+                # returning False implies a state inconsistency.
+                # raise Exception(f"delete_task service call failed for {task_id}")
 
     except Exception as e:
-        logger.error(f"删除任务时出错: {e}", exc_info=True)
+        # Errors within session_scope or during service calls will trigger rollback
+        logger.error(f"删除任务数据库操作期间出错: {e}", exc_info=True)
         results["status"] = "error"
         results["code"] = 500
         results["message"] = f"删除任务时出错: {e}"
+        # Error message printing is handled by the caller command
 
     return results

@@ -3,7 +3,7 @@
 
 提供Roadmap、Epic、Milestone、Story、Task等实体的数据访问接口。
 """
-
+import logging
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -14,41 +14,40 @@ from src.models.db.task import Task
 
 
 class RoadmapRepository(Repository[Roadmap]):
-    """Roadmap仓库"""
+    """Roadmap仓库 (无状态)"""
 
-    def __init__(self, session: Session):
-        """初始化Roadmap仓库
+    def __init__(self):
+        """初始化Roadmap仓库 (不再存储 session)"""
+        super().__init__(Roadmap)
 
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, Roadmap)
-
-    def get_with_related(self, roadmap_id: str) -> Optional[Roadmap]:
+    def get_with_related(self, session: Session, roadmap_id: str) -> Optional[Roadmap]:
         """获取Roadmap及其所有关联数据
 
         Args:
+            session: SQLAlchemy 会话对象
             roadmap_id: Roadmap ID
 
         Returns:
             Roadmap对象或None
         """
-        return self.session.query(Roadmap).filter(Roadmap.id == roadmap_id).first()
+        return session.query(Roadmap).filter(Roadmap.id == roadmap_id).first()
 
-    def get_by_name(self, name: str) -> Optional[Roadmap]:
+    def get_by_name(self, session: Session, name: str) -> Optional[Roadmap]:
         """通过名称获取路线图
 
         Args:
+            session: SQLAlchemy 会话对象
             name: 路线图名称
 
         Returns:
             Roadmap对象或None
         """
-        return self.session.query(Roadmap).filter(Roadmap.name == name).first()
+        return session.query(Roadmap).filter(Roadmap.name == name).first()
 
-    def get_stats(self, roadmap_id: str) -> Dict[str, Any]:
+    def get_stats(self, session: Session, roadmap_id: str) -> Dict[str, Any]:
         """获取路线图统计信息"""
         try:
+            # Placeholder - replace with actual queries using 'session'
             # 实际实现应查询数据库获取统计信息
             return {"milestones_count": 5, "epics_count": 8, "stories_count": 15, "tasks_count": 47, "completed_tasks": 23, "overall_progress": 48.9}
         except Exception as e:
@@ -164,42 +163,68 @@ class MilestoneRepository(Repository[Milestone]):
 
 
 class EpicRepository(Repository[Epic]):
-    """Epic仓库"""
+    """Epic仓库 (无状态)"""
 
-    def __init__(self, session: Session):
-        """初始化Epic仓库
+    def __init__(self):
+        """初始化Epic仓库"""
+        super().__init__(Epic)
 
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, Epic)
+    def get_with_stories(self, session: Session, epic_id: str) -> Optional[Epic]:
+        """获取Epic及其关联的Stories"""
+        return session.query(Epic).options(joinedload(Epic.stories)).filter(Epic.id == epic_id).first()
 
-    def get_with_stories(self, epic_id: str) -> Optional[Epic]:
-        """获取Epic及其关联的Stories
+    def get_by_id(self, session: Session, entity_id: str) -> Optional[Epic]:
+        """通过ID获取Epic (覆盖或实现基类方法)"""
+        return session.query(self.model_class).filter(self.model_class.id == entity_id).first()
 
-        Args:
-            epic_id: Epic ID
+    def update(self, session: Session, entity_id: str, data: Dict[str, Any]) -> Optional[Epic]:
+        """通过ID更新Epic (覆盖或实现基类方法)"""
+        entity = self.get_by_id(session, entity_id)
+        if entity:
+            for key, value in data.items():
+                if hasattr(entity, key):
+                    setattr(entity, key, value)
+                else:
+                    logger.warning(f"尝试更新不存在的属性 {key} for {self.model_class.__name__}")
+            return entity
+        return None
 
-        Returns:
-            Epic对象或None
-        """
-        return self.session.query(Epic).filter(Epic.id == epic_id).first()
+    def delete(self, session: Session, entity_id: str) -> bool:
+        """通过ID删除Epic (覆盖或实现基类方法)"""
+        entity = self.get_by_id(session, entity_id)
+        if entity:
+            session.delete(entity)
+            return True
+        return False
 
-    def get_progress(self, epic_id: str) -> Dict[str, Any]:
-        """获取Epic进度
+    def get_all(self, session: Session, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Epic]:
+        """获取所有Epic (覆盖或实现基类方法)"""
+        query = session.query(self.model_class)
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
+        return query.all()
 
-        Args:
-            epic_id: Epic ID
+    def create(self, session: Session, **data: Any) -> Epic:
+        """创建Epic (覆盖或实现基类方法)"""
+        if "id" not in data:
+            from src.utils.id_generator import EntityType, IdGenerator
 
-        Returns:
-            进度统计信息
-        """
-        epic = self.get_by_id(epic_id)
+            data["id"] = IdGenerator.generate_id(EntityType.EPIC)
+        entity = self.model_class(**data)
+        session.add(entity)
+        return entity
+
+    def get_progress(self, session: Session, epic_id: str) -> Dict[str, Any]:
+        """获取Epic进度"""
+        epic = self.get_by_id(session, epic_id)
         if not epic:
             return {"error": "Epic not found"}
 
-        story_count = len(epic.stories)
-        completed_stories = sum(1 for story in epic.stories if story.status == "completed")
+        # Assuming Story relation is loaded or queried separately if needed
+        story_count = len(epic.stories) if epic.stories else 0
+        completed_stories = sum(1 for story in epic.stories if story and story.status == "completed") if epic.stories else 0
 
         return {
             "total_stories": story_count,
@@ -207,83 +232,47 @@ class EpicRepository(Repository[Epic]):
             "progress": (completed_stories / story_count * 100) if story_count > 0 else 0,
         }
 
-    def get_by_roadmap_id(self, roadmap_id: str) -> List[Any]:
-        """获取指定路线图的所有Epic
-
-        Args:
-            roadmap_id: 路线图ID
-
-        Returns:
-            List[Any]: Epic列表
-        """
+    def get_by_roadmap_id(self, session: Session, roadmap_id: str) -> List[Any]:
+        """获取指定路线图的所有Epic"""
         try:
-            return self.session.query(Epic).filter(Epic.roadmap_id == roadmap_id).all()
+            return session.query(Epic).filter(Epic.roadmap_id == roadmap_id).all()
         except Exception as e:
-            self.logger.error(f"获取路线图Epic时出错: {e}")
+            logger.error(f"获取路线图Epic时出错: {e}")
             return []
 
 
 class StoryRepository(Repository[Story]):
-    """Story仓库"""
+    """Story仓库 (无状态)"""
 
-    def __init__(self, session: Session):
-        """初始化Story仓库
+    def __init__(self):
+        """初始化Story仓库"""
+        super().__init__(Story)
 
-        Args:
-            session: SQLAlchemy会话对象
-        """
-        super().__init__(session, Story)
+    def get_with_tasks(self, session: Session, story_id: str) -> Optional[Story]:
+        """获取Story及其关联的Tasks"""
+        return session.query(Story).options(joinedload(Story.tasks)).filter(Story.id == story_id).first()
 
-    def get_with_tasks(self, story_id: str) -> Optional[Story]:
-        """获取Story及其关联的Tasks
+    def get_by_epic(self, session: Session, epic_id: str) -> List[Story]:
+        """获取指定Epic下的所有Stories"""
+        return session.query(Story).filter(Story.epic_id == epic_id).all()
 
-        Args:
-            story_id: Story ID
+    def get_by_epic_id(self, session: Session, epic_id: str) -> List[Story]:
+        """获取指定Epic ID的所有故事"""
+        try:
+            return session.query(Story).filter(Story.epic_id == epic_id).all()
+        except Exception as e:
+            logger.error(f"获取Epic故事时出错: {e}")
+            return []
 
-        Returns:
-            Story对象或None
-        """
-        return self.session.query(Story).filter(Story.id == story_id).first()
-
-    def get_by_epic(self, epic_id: str) -> List[Story]:
-        """获取指定Epic下的所有Stories
-
-        Args:
-            epic_id: Epic ID
-
-        Returns:
-            Story对象列表
-        """
-        return self.session.query(Story).filter(Story.epic_id == epic_id).all()
-
-    def get_by_epic_id(self, epic_id: str) -> List[Story]:
-        """获取指定Epic下的所有Stories（别名方法）
-
-        该方法是get_by_epic的别名，保持兼容性
-
-        Args:
-            epic_id: Epic ID
-
-        Returns:
-            Story对象列表
-        """
-        return self.get_by_epic(epic_id)
-
-    def get_progress(self, story_id: str) -> Dict[str, Any]:
-        """获取Story进度
-
-        Args:
-            story_id: Story ID
-
-        Returns:
-            进度统计信息
-        """
-        story = self.get_by_id(story_id)
+    def get_progress(self, session: Session, story_id: str) -> Dict[str, Any]:
+        """获取Story进度"""
+        story = self.get_by_id(session, story_id)
         if not story:
             return {"error": "Story not found"}
 
-        task_count = len(story.tasks)
-        completed_tasks = sum(1 for task in story.tasks if task.status == "completed")
+        # Assuming Task relation is loaded or queried separately if needed
+        task_count = len(story.tasks) if story.tasks else 0
+        completed_tasks = sum(1 for task in story.tasks if task and task.status in ["completed", "done"]) if story.tasks else 0
 
         return {
             "total_tasks": task_count,
@@ -291,18 +280,56 @@ class StoryRepository(Repository[Story]):
             "progress": (completed_tasks / task_count * 100) if task_count > 0 else 0,
         }
 
-    def get_by_roadmap_id(self, roadmap_id: str) -> List[Any]:
-        """获取指定路线图的所有故事
+    def get_by_roadmap_id(self, session: Session, roadmap_id: str) -> List[Any]:
+        """获取指定路线图的所有故事"""
+        from src.models.db import Epic
 
-        Args:
-            roadmap_id: 路线图ID
-
-        Returns:
-            List[Any]: 故事列表
-        """
         try:
             # 通过Epic关联查询
-            return self.session.query(Story).join(Epic, Story.epic_id == Epic.id).filter(Epic.roadmap_id == roadmap_id).all()
+            return session.query(Story).join(Epic, Story.epic_id == Epic.id).filter(Epic.roadmap_id == roadmap_id).all()
         except Exception as e:
-            self.logger.error(f"获取路线图故事时出错: {e}")
+            logger.error(f"获取路线图故事时出错: {e}")
             return []
+
+    def get_by_id(self, session: Session, entity_id: str) -> Optional[Story]:
+        """通过ID获取Story (覆盖或实现基类方法)"""
+        return session.query(self.model_class).filter(self.model_class.id == entity_id).first()
+
+    def update(self, session: Session, entity_id: str, data: Dict[str, Any]) -> Optional[Story]:
+        """通过ID更新Story (覆盖或实现基类方法)"""
+        entity = self.get_by_id(session, entity_id)
+        if entity:
+            for key, value in data.items():
+                if hasattr(entity, key):
+                    setattr(entity, key, value)
+                else:
+                    logger.warning(f"尝试更新不存在的属性 {key} for {self.model_class.__name__}")
+            return entity
+        return None
+
+    def delete(self, session: Session, entity_id: str) -> bool:
+        """通过ID删除Story (覆盖或实现基类方法)"""
+        entity = self.get_by_id(session, entity_id)
+        if entity:
+            session.delete(entity)
+            return True
+        return False
+
+    def get_all(self, session: Session, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Story]:
+        """获取所有Story (覆盖或实现基类方法)"""
+        query = session.query(self.model_class)
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
+        return query.all()
+
+    def create(self, session: Session, **data: Any) -> Story:
+        """创建Story (覆盖或实现基类方法)"""
+        if "id" not in data:
+            from src.utils.id_generator import EntityType, IdGenerator
+
+            data["id"] = IdGenerator.generate_id(EntityType.STORY)
+        entity = self.model_class(**data)
+        session.add(entity)
+        return entity

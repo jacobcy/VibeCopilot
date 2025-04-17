@@ -4,20 +4,24 @@ commands:
   # 数据库基础命令
   "db init":
     description: "初始化数据库"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--force":
         description: "强制重新初始化数据库"
         type: "flag"
+        required: false
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["数据库初始化成功"]
     timeout: 10
     critical: true
 
   "db list":
     description: "列出数据库内容"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--type":
         description: "实体类型(epic/story/task/label/template)"
         type: "string"
@@ -25,17 +29,21 @@ commands:
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
       "--format":
         description: "输出格式"
         values: ["text", "json"]
         default: "text"
+        required: false
+        type: "string"
     expected_output: ["数据库内容列表"]
     timeout: 5
     critical: true
 
   "db show":
     description: "显示数据库条目"
-    subcommands:
+    arguments: [] # Assuming type and id are options, not positional
+    options:
       "--type":
         description: "实体类型(epic/story/task/label/template)"
         type: "string"
@@ -48,13 +56,16 @@ commands:
         description: "输出格式"
         values: ["text", "json"]
         default: "text"
+        required: false
+        type: "string"
     expected_output: ["条目详情"]
     timeout: 5
     critical: true
 
   "db query":
     description: "查询数据"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--type":
         description: "实体类型"
         type: "string"
@@ -62,23 +73,29 @@ commands:
       "--id":
         description: "实体ID"
         type: "string"
+        required: false # Assuming ID is optional for broader queries
       "--query":
         description: "查询字符串"
         type: "string"
+        required: false # Assuming query string is optional
       "--format":
         description: "输出格式"
         values: ["text", "json"]
         default: "text"
+        required: false
+        type: "string"
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["查询结果"]
     timeout: 5
     critical: true
 
   "db create":
     description: "创建数据库条目"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--type":
         description: "实体类型"
         type: "string"
@@ -90,13 +107,15 @@ commands:
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["创建成功"]
     timeout: 10
     critical: true
 
   "db update":
     description: "更新数据库条目"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--type":
         description: "实体类型"
         type: "string"
@@ -112,13 +131,15 @@ commands:
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["更新成功"]
     timeout: 10
     critical: true
 
   "db delete":
     description: "删除数据库条目"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--type":
         description: "实体类型"
         type: "string"
@@ -130,39 +151,47 @@ commands:
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
       "--force":
         description: "强制删除，不提示确认"
         type: "flag"
+        required: false
     expected_output: ["删除成功"]
     timeout: 5
     critical: true
 
   "db backup":
     description: "备份数据库"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--output":
         description: "备份文件输出路径"
         type: "string"
+        required: false # Output might be optional (e.g., default path)
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["备份成功"]
     timeout: 30
     critical: true
 
   "db restore":
     description: "恢复数据库"
-    subcommands:
-      "backup_file":
+    arguments:
+      - name: "backup_file"
         description: "备份文件路径"
         type: "string"
         required: true
+    options:
       "--force":
         description: "强制恢复，不提示确认"
         type: "flag"
+        required: false
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["恢复成功"]
     timeout: 30
     critical: true

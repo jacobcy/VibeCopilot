@@ -3,37 +3,52 @@
 commands:
   "task list":
     description: "列出项目中的任务"
-    subcommands:
+    arguments: [] # No positional arguments
+    options:
       "--status":
         description: "按状态过滤"
         short: "-s"
+        required: false
+        type: "string"
       "--assignee":
         description: "按负责人过滤"
         short: "-a"
+        required: false
+        type: "string"
       "--label":
         description: "按标签过滤"
         short: "-l"
         multiple: true
+        required: false
+        type: "string"
       "--roadmap":
         description: "按关联的 Story ID 过滤"
         short: "-r"
+        required: false
+        type: "string"
       "--independent":
         description: "仅显示独立任务"
         short: "-i"
         type: "flag"
+        required: false
       "--limit":
         description: "限制返回数量"
         type: "integer"
+        required: false
       "--offset":
         description: "跳过指定数量的结果"
         type: "integer"
+        required: false
       "--verbose":
         description: "显示更详细的信息"
         short: "-v"
         type: "flag"
+        required: false
       "--format":
         description: "输出格式"
         values: ["yaml", "json"]
+        required: false
+        type: "string"
     expected_output: ["列出项目中的任务", "任务列表"]
     timeout: 5
     critical: true
@@ -44,14 +59,30 @@ commands:
       - name: "task_id"
         description: "任务ID"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--verbose":
         description: "显示更详细的信息"
         short: "-v"
         type: "flag"
+        required: false
       "--format":
         description: "输出格式"
         values: ["yaml", "json"]
+        required: false
+        type: "string"
+      "--log":
+        description: "(假设) 显示相关日志"
+        type: "flag"
+        required: false
+      "--ref":
+        description: "(假设) 显示引用信息"
+        type: "flag"
+        required: false
+      "--comments":
+        description: "(假设) 显示评论"
+        type: "flag"
+        required: false
     expected_output: ["任务详情", "标题", "状态"]
     timeout: 5
     critical: true
@@ -62,34 +93,51 @@ commands:
       - name: "title"
         description: "任务标题"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--desc":
         description: "任务描述"
         short: "-d"
+        required: false
+        type: "string"
       "--priority":
         description: "任务优先级"
         short: "-p"
         values: ["low", "medium", "high"]
         default: "medium"
+        required: false
+        type: "string"
       "--status":
         description: "任务状态"
         short: "-s"
         values: ["todo", "in_progress", "done"]
         default: "todo"
+        required: false
+        type: "string"
       "--due":
         description: "任务截止日期 (格式: YYYY-MM-DD，默认为创建日期后3天)"
+        required: false
+        type: "string"
       "--link-story":
         description: "关联到Story"
+        required: false
+        type: "string"
       "--link-github":
+        short: "-g"
         description: "关联到GitHub Issue (格式: owner/repo#number)"
+        required: false
+        type: "string"
       "--flow":
         description: "创建并关联工作流会话"
         short: "-f"
         values: ["dev", "review", "deploy"]
+        required: false
+        type: "string"
       "--verbose":
         description: "显示详细信息"
         short: "-v"
         type: "flag"
+        required: false
     expected_output: ["创建", "任务", "成功"]
     timeout: 8
     critical: true
@@ -100,41 +148,54 @@ commands:
       - name: "task_id"
         description: "任务ID"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--title":
         description: "新的任务标题"
         short: "-t"
+        required: false
+        type: "string"
       "--desc":
         description: "新的任务描述"
         short: "-d"
+        required: false
+        type: "string"
       "--status":
         description: "新的状态"
         short: "-s"
+        required: false
+        type: "string"
       "--assignee":
         description: "新的负责人"
         short: "-a"
-      "--label":
+        required: false
+        type: "string"
+      "--labels":
         description: "设置新的标签列表"
         short: "-l"
         multiple: true
-      "--add-label":
-        description: "添加标签"
-        multiple: true
-      "--remove-label":
-        description: "移除标签"
-        multiple: true
+        required: false
+        type: "string"
       "--due":
         description: "任务截止日期 (格式: YYYY-MM-DD，设置为'clear'可清除截止日期)"
         aliases: ["--due-date"]
+        required: false
+        type: "string"
       "--link-story":
         description: "关联到Story"
         short: "-s"
+        required: false
+        type: "string"
       "--link-github":
         description: "关联到GitHub Issue (格式: owner/repo#number)"
         short: "-g"
+        required: false
+        type: "string"
       "--unlink":
         description: "取消关联"
         values: ["story", "github"]
+        required: false
+        type: "string"
     expected_output: ["更新", "任务", "成功"]
     timeout: 8
     critical: true
@@ -145,11 +206,13 @@ commands:
       - name: "task_id"
         description: "任务ID"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--force":
         description: "强制删除"
         short: "-f"
         type: "flag"
+        required: false
     expected_output: ["删除", "任务", "成功"]
     timeout: 5
     critical: true
@@ -160,11 +223,13 @@ commands:
       - name: "task_id"
         description: "任务ID"
         required: true
-    subcommands:
+        type: "string"
+    options:
       "--comment":
         description: "评论内容"
         short: "-c"
-        required: true
+        required: true # Keep required as true based on original
+        type: "string"
     expected_output: ["评论", "添加", "成功"]
     timeout: 5
     critical: true
@@ -175,14 +240,19 @@ commands:
       - name: "task_id"
         description: "任务ID，不指定则使用当前任务"
         required: false
-    subcommands:
+        type: "string"
+    options:
       "--flow":
         description: "创建新的工作流会话"
         short: "-f"
         values: ["dev", "review", "deploy"]
+        required: false
+        type: "string"
       "--session":
         description: "关联到已存在的会话"
         short: "-s"
+        required: false
+        type: "string"
     expected_output: ["关联", "工作流", "成功"]
     timeout: 5
     critical: true
