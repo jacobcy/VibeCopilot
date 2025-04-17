@@ -99,35 +99,6 @@ VibeCopilot跟踪以下状态指标：
 //status notify --event=phase_change --channel=slack
 //status notify --event=low_task_completion --threshold=70
 ```
-
-## 使用示例
-
-```
-# 显示项目总体状态
-/status show
-
-# 查看当前工作流状态
-/status flow
-
-# 显示任务完成情况
-/status task --view=completion
-
-# 更新项目阶段
-//status update --phase=development
-
-# 初始化新项目状态
-//status init --name="支付功能开发"
-
-# 检查特定指标
-/status metrics --name=test_coverage
-
-# 生成状态报告
-//status report --format=markdown --period=weekly
-
-# 查看状态历史
-/status history --days=30
-```
-
 ## 状态集成
 
 状态系统与其他系统的集成：
@@ -155,12 +126,5 @@ VibeCopilot跟踪以下状态指标：
 ```yaml
 commands:
   status: # 项目状态管理命令
-    subcommands:
-      show: # 显示项目状态概览
-      flow: # 显示流程状态
-      roadmap: # 显示路线图状态
-      task: # 显示任务状态
-      update: # 更新项目阶段
-      init: # 初始化项目状态
 ```
 <!-- END_COMMAND_YAML -->

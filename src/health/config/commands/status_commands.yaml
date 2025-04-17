@@ -6,90 +6,94 @@ commands:
     subcommands:
       show:
         description: "显示项目状态概览"
-        required: true
-        parameters:
+        options:
           "--type":
             description: "状态类型"
-            options: ["all", "summary", "critical"]
+            values: ["all", "summary", "critical"]
             default: "summary"
+            type: "string"
           "--verbose":
             description: "显示详细信息"
             type: "flag"
           "--format":
             description: "输出格式"
-            options: ["text", "json"]
+            values: ["text", "json"]
             default: "text"
+            type: "string"
         validation:
           required_output: ["项目状态"]
       flow:
         description: "显示流程状态"
-        required: true
-        parameters:
+        options:
           "--verbose":
             description: "显示详细信息"
             type: "flag"
           "--format":
             description: "输出格式"
-            options: ["text", "json"]
+            values: ["text", "json"]
             default: "text"
+            type: "string"
         validation:
           required_output: ["错误:"]
       roadmap:
         description: "显示路线图状态"
-        required: true
-        parameters:
+        options:
           "--verbose":
             description: "显示详细信息"
             type: "flag"
           "--format":
             description: "输出格式"
-            options: ["text", "json"]
+            values: ["text", "json"]
             default: "text"
+            type: "string"
         validation:
           required_output: ["错误:"]
       task:
         description: "显示任务状态"
-        required: true
-        parameters:
+        options:
           "--verbose":
             description: "显示详细信息"
             type: "flag"
           "--format":
             description: "输出格式"
-            options: ["text", "json"]
+            values: ["text", "json"]
             default: "text"
+            type: "string"
         validation:
           required_output: ["状态:"]
       update:
         description: "更新项目阶段"
-        required: true
-        parameters:
+        options:
           "--phase":
             description: "项目阶段"
             required: true
-            options: ["planning", "development", "testing", "release", "maintenance"]
+            values: ["planning", "development", "testing", "release", "maintenance"]
+            type: "string"
           "--verbose":
             description: "显示详细信息"
             type: "flag"
           "--format":
             description: "输出格式"
-            options: ["text", "json"]
+            values: ["text", "json"]
             default: "text"
+            type: "string"
         validation:
           required_parameters: ["--phase"]
       init:
         description: "初始化项目状态"
-        required: true
-        parameters:
+        options:
           "--name":
             description: "项目名称"
+            required: false
+            type: "string"
           "--verbose":
             description: "显示详细信息"
             type: "flag"
           "--format":
             description: "输出格式"
-            options: ["text", "json"]
+            values: ["text", "json"]
             default: "text"
+            type: "string"
         validation:
           required_output: ["初始化"]
 

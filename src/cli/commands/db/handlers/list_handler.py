@@ -14,6 +14,7 @@ from rich.console import Console
 from rich.table import Table
 
 from src.cli.decorators import pass_service
+from src.db import get_session
 from src.db.utils.entity_mapping import get_valid_entity_types, map_entity_to_table, map_table_to_entity
 from src.db.utils.schema import get_all_tables
 
@@ -46,46 +47,10 @@ class ListHandler(ClickBaseHandler):
         Raises:
             ValidationError: 验证失败时抛出
         """
-        entity_type = kwargs.get("type")
         output_format = kwargs.get("format", "table")
-        service = kwargs.get("service")
-
-        # 如果提供了实体类型，需要验证其有效性
-        if entity_type:
-            try:
-                # 获取有效的实体类型
-                valid_types = get_valid_entity_types(service.session)
-
-                # 检查是否为有效的实体类型
-                if entity_type not in valid_types:
-                    # 尝试将表名映射为实体类型
-                    mapped_entity = map_table_to_entity(entity_type)
-                    if mapped_entity != entity_type and mapped_entity in valid_types:
-                        # 更新为正确的实体类型
-                        kwargs["type"] = mapped_entity
-                        logger.info(f"将表名/输入 {entity_type} 映射为实体类型 {mapped_entity}")
-                    else:
-                        # 如果是service中注册的实体类型就通过验证
-                        if hasattr(service, "repo_map") and entity_type in service.repo_map:
-                            pass
-                        else:
-                            # 既不是已知实体类型也不是可映射的表名
-                            raise ValidationError(f"不支持的实体类型: {entity_type}，可用类型: {', '.join(sorted(valid_types))}")
-            except Exception as e:
-                logger.error(f"验证实体类型时出错: {str(e)}")
-                # 如果获取实体类型失败，使用service.repo_map作为备选
-                if hasattr(service, "repo_map") and service.repo_map:
-                    if entity_type not in service.repo_map:
-                        raise ValidationError(f"不支持的实体类型: {entity_type}，可用类型: {', '.join(sorted(service.repo_map.keys()))}")
-                else:
-                    # 最后的兜底方案
-                    fallback_types = ["epic", "story", "task", "label", "template"]
-                    if entity_type not in fallback_types:
-                        raise ValidationError(f"不支持的实体类型: {entity_type}，可用类型: {', '.join(sorted(fallback_types))}")
-
         if output_format not in self.VALID_FORMATS:
             raise ValidationError(f"不支持的输出格式: {output_format}")
-
+        # Simplified validation: type validation now happens in list_db_cli
         return True
 
     def handle(self, **kwargs: Dict[str, Any]) -> int:
@@ -118,7 +83,7 @@ class ListHandler(ClickBaseHandler):
 
             # 如果没有提供实体类型，则显示所有可用的实体类型
             if not entity_type:
-                return self._display_available_types(service, output_format)
+                return self._display_available_types(output_format)
 
             if verbose:
                 console.print(f"列出所有 {entity_type}")
@@ -134,7 +99,7 @@ class ListHandler(ClickBaseHandler):
                     return 0
 
             # 获取并显示实体列表
-            entities = service.get_entities(entity_type)
+            entities = service.get_entities(service.session, entity_type=entity_type)
             return self._format_and_display_entities(entities, entity_type, output_format)
         except Exception as e:
             if entity_type:
@@ -143,50 +108,27 @@ class ListHandler(ClickBaseHandler):
                 error_msg = f"列出实体类型失败: {str(e)}"
             raise DatabaseError(error_msg)
 
-    def _display_available_types(self, service, output_format: str) -> int:
-        """
-        显示所有可用的实体类型
-
-        Args:
-            service: 数据库服务
-            output_format: 输出格式
-
-        Returns:
-            int: 0表示成功，1表示失败
-        """
+    def _display_available_types(self, output_format: str, available_types: List[str]) -> int:
+        """显示所有可用的实体类型 (从传入列表)"""
         try:
-            # 获取所有可用的实体类型
-            available_types = []
+            # Use the passed list directly
+            types_to_display = available_types
 
-            try:
-                # 优先使用新的实体映射函数获取，不包含表
-                available_types = get_valid_entity_types(service.session, include_tables=False)
-
-                # 如果service有repo_map属性，与其交集取有真实实现的实体类型
-                if hasattr(service, "repo_map") and service.repo_map:
-                    repo_entities = set(service.repo_map.keys())
-                    # 只保留在repo_map中实际存在的实体类型
-                    available_types = sorted(list(set(available_types).intersection(repo_entities)))
-            except Exception as e:
-                logger.warning(f"获取有效实体类型失败: {str(e)}")
-                # 如果新方法失败，直接使用repo_map
-                if hasattr(service, "repo_map") and service.repo_map:
-                    available_types = list(service.repo_map.keys())
-                else:
-                    # 最后的兜底方案
-                    available_types = ["epic", "story", "task", "label", "template"]
+            if not types_to_display:
+                console.print("[yellow]未找到可查询的实体类型。[/yellow]")
+                return 0
 
             # 根据输出格式显示可用的实体类型
             if output_format == "json":
-                print(json.dumps({"entity_types": available_types}, indent=2, ensure_ascii=False))
+                print(json.dumps({"entity_types": sorted(types_to_display)}, indent=2, ensure_ascii=False))
             elif output_format == "yaml":
-                print(yaml.dump({"entity_types": available_types}, allow_unicode=True, sort_keys=False))
+                print(yaml.dump({"entity_types": sorted(types_to_display)}, allow_unicode=True, sort_keys=False))
             else:
                 # 表格展示
                 table = Table(title="可查询的实体类型", show_header=True)
                 table.add_column("类型", style="cyan")
 
-                for type_name in sorted(available_types):
+                for type_name in sorted(types_to_display):
                     table.add_row(type_name)
 
                 console.print(table)
@@ -195,7 +137,8 @@ class ListHandler(ClickBaseHandler):
 
             return 0
         except Exception as e:
-            console.print(f"[red]获取可用实体类型失败: {str(e)}[/red]")
+            console.print(f"[red]格式化可用实体类型失败: {str(e)}[/red]")
+            logger.error(f"格式化可用实体类型失败: {e}", exc_info=True)
             return 1
 
     def _format_and_display_entities(self, entities: List[Dict], entity_type: str, output_format: str) -> int:
@@ -298,11 +241,13 @@ class ListHandler(ClickBaseHandler):
         if isinstance(error, (ValidationError, DatabaseError)):
             console.print(f"[red]{str(error)}[/red]")
         else:
-            super().error_handler(error)
+            # Let the friendly_error_handling decorator handle unexpected errors
+            # console.print(f"[red]未知错误: {str(error)}[/red]")
+            pass
 
 
 @click.command(name="list", help="列出数据库内容")
-@click.option("--type", required=False, help="实体类型(epic/story/task/label/template)，不指定则列出所有可用类型")
+@click.option("--type", required=False, help="要列出的实体类型 (如 epic, story, task 等)，不指定则列出所有可用类型")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
 @click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
 @pass_service(service_type="db")
@@ -317,8 +262,85 @@ def list_db_cli(service, type: Optional[str] = None, verbose: bool = False, form
         format: 输出格式
     """
     handler = ListHandler()
+    session = None
+    exit_code = 0
     try:
-        result = handler.execute(service=service, type=type, verbose=verbose, format=format)
-        return result
-    except Exception:
-        return 1
+        # --- Basic format validation ---
+        if format not in handler.VALID_FORMATS:
+            raise ValidationError(f"不支持的输出格式: {format}")
+
+        session = get_session()
+
+        if type:
+            # --- Type specified: Validate, Get Entities, Display ---
+            entity_type_input = type
+            final_entity_type = entity_type_input  # Assume input is correct initially
+
+            # --- Validation requiring session ---
+            valid_types = get_valid_entity_types(session)  # Get all valid types from DB models
+
+            if entity_type_input not in valid_types:
+                # Try mapping table name to entity type
+                temp_mapped = map_table_to_entity(entity_type_input)
+                if temp_mapped != entity_type_input and temp_mapped in valid_types:
+                    final_entity_type = temp_mapped
+                    logger.info(f"将表名/输入 {entity_type_input} 映射为实体类型 {final_entity_type}")
+                # Check if it's a type known directly by the service (even if not a primary mapped entity)
+                elif hasattr(service, "repo_map") and entity_type_input in service.repo_map:
+                    final_entity_type = entity_type_input
+                else:
+                    # Invalid type
+                    console.print(f"[red]不支持的实体类型: {entity_type_input}，可用类型: {', '.join(sorted(valid_types))}[/red]")
+                    exit_code = 1
+                    raise click.Abort()  # Abort execution
+
+            # --- Check if type exists in service repo_map before querying (optional but good practice) ---
+            if hasattr(service, "repo_map") and service.repo_map:
+                if final_entity_type not in service.repo_map:
+                    # This type might be valid in the DB but not queryable via this service directly
+                    table_name = map_entity_to_table(final_entity_type)
+                    console.print(f"[yellow]警告: {final_entity_type} 不是此服务可直接查询的实体类型[/yellow]")
+                    console.print(f"[yellow]服务支持的类型: {', '.join(sorted(service.repo_map.keys()))}[/yellow]")
+                    entities = []  # Return empty list for display
+                else:
+                    # --- Get Entities (using session and correct entity type) ---
+                    if verbose:
+                        console.print(f"列出所有 {final_entity_type}")
+                    # Use positional arguments for service.get_entities
+                    entities = service.get_entities(session, final_entity_type)
+            else:
+                # Should not happen if service is initialized correctly
+                logger.error("DatabaseService 未正确初始化 repo_map")
+                console.print("[red]内部错误: 数据库服务配置不完整[/red]")
+                exit_code = 1
+                raise click.Abort()
+
+            # --- Display Entities ---
+            handler._format_and_display_entities(entities, final_entity_type, format)
+
+        else:
+            # --- No type specified: Display Available Types ---
+            available_types = get_valid_entity_types(session, include_tables=False)
+            # Intersect with service repo_map if available for more accuracy on what list command supports
+            if hasattr(service, "repo_map") and service.repo_map:
+                repo_entities = set(service.repo_map.keys())
+                available_types = sorted(list(set(available_types).intersection(repo_entities)))
+
+            handler._display_available_types(format, available_types=available_types)
+
+    except Exception as e:
+        # Let friendly_error_handling decorator manage user output for Abort/other exceptions
+        if not isinstance(e, (ValidationError, DatabaseError, click.Abort)):
+            logger.error(f"执行 list 命令时出错: {e}", exc_info=True)
+        if not isinstance(e, click.Abort):
+            console.print(f"[red]执行 list 命令时发生错误: {str(e)}[/red]")
+        exit_code = 1
+        # Re-raise Abort or allow decorator to handle it
+        raise click.Abort()
+    finally:
+        if session:
+            session.close()
+        # Exit code is mainly handled by click.Abort now
+        # if exit_code != 0:
+        #    ctx = click.get_current_context()
+        #    ctx.exit(exit_code)

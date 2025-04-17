@@ -31,19 +31,6 @@ related_items: [command-system]
 - 执行方式：转换为`vibecopilot roadmap [subcommand] [args]`并通过终端执行
 - 适用场景：创建/更新路线图、同步外部数据和持久化操作
 
-## 子命令详解
-
-| 子命令 | 说明 | 示例 |
-|-------|------|------|
-| `list` | 列出所有路线图 | `/roadmap list [--verbose]` |
-| `show` | 查看路线图详情 | `/roadmap show <id>` |
-| `create` | 创建新路线图 | `//roadmap create --name=<name>` |
-| `update` | 更新路线图 | `//roadmap update <id> [--name=<name>]` |
-| `delete` | 删除路线图 | `//roadmap delete <id> [--force]` |
-| `sync` | 同步路线图数据 | `//roadmap sync [--source=<source>]` |
-| `switch` | 切换活动路线图 | `//roadmap switch <id>` |
-| `status` | 查看路线图状态 | `/roadmap status <id>` |
-
 ## 路线图组成元素
 
 路线图由以下核心元素组成：
@@ -84,34 +71,6 @@ related_items: [command-system]
 4. 估算开发时间和资源需求
 5. 生成初始路线图草案
 
-## 使用示例
-
-```
-# 列出所有路线图
-/roadmap list
-
-# 查看当前活动路线图
-/roadmap show active
-
-# 创建新路线图
-//roadmap create --name="V2版本开发计划"
-
-# 查看路线图时间线
-/roadmap show v2 --view=timeline
-
-# 更新路线图信息
-//roadmap update v2 --desc="包含支付功能的版本"
-
-# 同步外部任务系统数据
-//roadmap sync --source=github
-
-# 切换活动路线图
-//roadmap switch v2
-
-# 生成路线图规划
-//roadmap plan --scope="支付功能"
-```
-
 ## 路线图最佳实践
 
 1. 路线图应定期更新以反映最新状态
@@ -127,182 +86,110 @@ related_items: [command-system]
 ```yaml
 commands:
   roadmap sync: # 从GitHub同步路线图数据 (用法: roadmap sync [OPTIONS] REPOSITORY)
-    subcommands:
+    arguments:
+      repository: # GitHub仓库 (格式: owner/repo)
+    options:
       --theme: # GitHub项目主题标签
-        type: string
       --operation: # 同步操作类型
-        values:
-        - push
-        - pull
       --roadmap: # 指定路线图ID
-        type: string
       --force: # 强制同步，忽略冲突
-        type: flag
       --verbose: # 显示详细输出
-        type: flag
   roadmap switch: # 切换活动路线图
-    subcommands:
+    arguments:
       roadmap_id: # 路线图ID
-        type: string
+    options:
       --show: # 只显示当前活动路线图
-        type: flag
       --clear: # 清除当前活动路线图设置
-        type: flag
   roadmap list: # 列出路线图元素或所有路线图
-    subcommands:
+    options:
       --all: # 列出所有路线图而非当前路线图中的元素
-        type: flag
       --type: # 元素类型
-        values:
-        - all
-        - milestone
-        - story
-        - task
       --status: # 按状态筛选
-        type: string
       --assignee: # 按负责人筛选
-        type: string
       --labels: # 按标签筛选，多个标签用逗号分隔
-        type: string
       --detail: # 显示详细信息
-        type: flag
       --format: # 输出格式
-        values:
-        - text
-        - json
-        - table
       --verbose: # 显示详细信息
-        type: flag
   roadmap create: # 创建新的路线图元素 (用法: roadmap create [OPTIONS] {milestone|epic|story} TITLE)
-    subcommands:
+    arguments:
+      element_type: # 要创建的元素类型
+      title: # 元素标题
+    options:
       --epic: # 所属史诗ID (用于story)
-        type: string
       --desc: # 详细描述
-        type: string
       --assignee: # 指派给用户
-        type: string
       --labels: # 标签列表，用逗号分隔
-        type: string
       --priority: # 优先级
-        values:
-        - high
-        - medium
-        - low
   roadmap update: # 更新路线图元素状态 (用法: roadmap update [OPTIONS] {milestone|story|task} ID STATUS)
-    subcommands:
+    arguments:
+      element_type: # 要更新的元素类型
+      element_id: # 元素ID
+      status: # 新的状态
+    options:
       --sync: # 同步到GitHub
-        type: flag
       --comment: # 更新说明
-        type: string
       --assignee: # 更新指派人
-        type: string
       --labels: # 更新标签（用逗号分隔）
-        type: string
   roadmap story: # 管理路线图故事
-    subcommands:
-      story_id: # 故事ID
-        type: string
+    arguments:
+      story_id: # 故事ID (可选，不提供则可能列出所有故事或基于上下文)
+    options:
       --title: # 故事标题
-        type: string
       --milestone: # 所属里程碑ID
-        type: string
       --desc: # 故事描述
-        type: string
       --priority: # 优先级
-        values:
-        - P0
-        - P1
-        - P2
-        - P3
       --assignee: # 指派给用户
-        type: string
       --labels: # 标签列表，用逗号分隔
-        type: string
       --status: # 更新状态
-        values:
-        - not_started
-        - in_progress
-        - completed
-        - blocked
       --comment: # 状态变更说明
-        type: string
       --format: # 输出格式
-        values:
-        - json
-        - text
-        - table
       --delete: # 删除故事
-        type: flag
       --force: # 强制删除，不请求确认
-        type: flag
   roadmap validate: # 验证路线图YAML文件
-    subcommands:
-      source: # 源文件路径
-        type: string
+    arguments:
+      source_file: # 源文件路径
+    options:
       --fix: # 自动修复格式问题
-        type: flag
       --output: # 修复后输出的文件路径
-        type: string
       --template: # 使用自定义模板验证
-        type: string
       --verbose: # 显示详细信息
-        type: flag
       --import: # 验证通过后导入路线图
-        type: flag
       --roadmap-id: # 导入时指定路线图ID
-        type: string
   roadmap import: # 导入路线图YAML文件
-    subcommands:
-      source: # 源文件路径
-        type: string
+    arguments:
+      source_file: # 源文件路径
+    options:
       --roadmap-id: # 现有路线图ID
-        type: string
       --fix: # 自动修复格式问题
-        type: flag
       --activate: # 导入后设为当前活动路线图
-        type: flag
       --verbose: # 显示详细信息
-        type: flag
   roadmap show: # 查看路线图详情
-    subcommands:
+    options:
       --id: # 路线图ID
-        type: string
       --milestone: # 里程碑ID
-        type: string
       --task: # 任务ID
-        type: string
       --health: # 显示健康状态检查
-        type: flag
       --format: # 输出格式
-        values:
-        - json
-        - text
-        - table
   roadmap export: # 导出路线图为YAML
-    subcommands:
-      --id: # 路线图ID
-        type: string
+    arguments:
+      roadmap_id: # 要导出的路线图ID (可选，也可用 --id)
+    options:
+      --id: # 要导出的路线图ID
       --output: # 输出文件路径
-        type: string
       --milestone: # 只导出特定里程碑及其任务
-        type: string
       --template: # 使用特定模板格式
-        type: string
   roadmap delete: # 删除路线图或元素 (用法: roadmap delete [OPTIONS] {roadmap|milestone|task} ID)
-    subcommands:
+    arguments:
+      element_type: # 要删除的元素类型
+      element_id: # 元素ID
+    options:
       --force: # 强制删除，不请求确认
-        type: flag
       --cascade: # 级联删除关联元素
-        type: flag
   roadmap plan: # 互动式路线图规划
-    subcommands:
+    options:
       --id: # 要修改的路线图ID
-        type: string
       --template: # 使用特定模板开始
-        type: string
       --from: # 从YAML文件开始
-        type: string
       --interactive: # 始终使用交互式模式
-        type: flag
 ```
 <!-- END_COMMAND_YAML -->

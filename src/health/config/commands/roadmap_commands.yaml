@@ -3,113 +3,172 @@
 commands:
   "roadmap sync":
     description: "从GitHub同步路线图数据 (用法: roadmap sync [OPTIONS] REPOSITORY)"
-    subcommands:
+    arguments:
+      - name: "repository"
+        description: "GitHub仓库 (格式: owner/repo)"
+        required: true
+        type: "string"
+    options:
       "--theme":
         description: "GitHub项目主题标签"
+        required: false
         type: "string"
       "--operation":
         description: "同步操作类型"
         values: ["push", "pull"]
         default: "pull"
+        required: false
+        type: "string"
       "--roadmap":
         description: "指定路线图ID"
+        required: false
         type: "string"
       "--force":
         description: "强制同步，忽略冲突"
         type: "flag"
+        required: false
       "--verbose":
         description: "显示详细输出"
         type: "flag"
+        required: false
     expected_output: ["同步完成"]
     timeout: 30
     critical: true
 
   "roadmap switch":
     description: "切换活动路线图"
-    subcommands:
-      "roadmap_id":
+    arguments:
+      - name: "roadmap_id"
         description: "路线图ID"
+        required: false # Can be omitted to show current or clear
         type: "string"
-        required: false
+    options:
       "--show":
         description: "只显示当前活动路线图"
         type: "flag"
+        required: false
       "--clear":
         description: "清除当前活动路线图设置"
         type: "flag"
+        required: false
     expected_output: ["已切换路线图", "当前活动路线图"]
     timeout: 5
     critical: true
 
   "roadmap list":
     description: "列出路线图元素或所有路线图"
-    subcommands:
+    # No positional arguments
+    options:
       "--all":
         description: "列出所有路线图而非当前路线图中的元素"
         type: "flag"
+        required: false
       "--type":
         description: "元素类型"
         values: ["all", "milestone", "story", "task"]
         default: "all"
+        required: false
+        type: "string"
       "--status":
         description: "按状态筛选"
+        required: false
         type: "string"
       "--assignee":
         description: "按负责人筛选"
+        required: false
         type: "string"
       "--labels":
         description: "按标签筛选，多个标签用逗号分隔"
+        required: false
         type: "string"
       "--detail":
         description: "显示详细信息"
         type: "flag"
+        required: false
       "--format":
         description: "输出格式"
         values: ["text", "json", "table"]
         default: "text"
+        required: false
+        type: "string"
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["路线图列表"]
     timeout: 10
     critical: true
 
   "roadmap create":
     description: "创建新的路线图元素 (用法: roadmap create [OPTIONS] {milestone|epic|story} TITLE)"
-    subcommands:
+    arguments:
+      - name: "element_type"
+        description: "要创建的元素类型"
+        required: true
+        values: ["milestone", "epic", "story"]
+        type: "string"
+      - name: "title"
+        description: "元素标题"
+        required: true
+        type: "string"
+    options:
       "--epic":
         description: "所属史诗ID (用于story)"
+        required: false
         type: "string"
       "--desc":
         description: "详细描述"
+        required: false
         type: "string"
       "--assignee":
         description: "指派给用户"
+        required: false
         type: "string"
       "--labels":
         description: "标签列表，用逗号分隔"
+        required: false
         type: "string"
       "--priority":
         description: "优先级"
         values: ["high", "medium", "low"]
+        required: false
+        type: "string"
     expected_output: ["创建成功"]
     timeout: 10
     critical: true
 
   "roadmap update":
     description: "更新路线图元素状态 (用法: roadmap update [OPTIONS] {milestone|story|task} ID STATUS)"
-    subcommands:
+    arguments:
+      - name: "element_type"
+        description: "要更新的元素类型"
+        required: true
+        values: ["milestone", "story", "task"]
+        type: "string"
+      - name: "element_id"
+        description: "元素ID"
+        required: true
+        type: "string"
+      - name: "status"
+        description: "新的状态"
+        required: true
+        type: "string" # Define specific values if needed
+    options:
       "--sync":
         description: "同步到GitHub"
         type: "flag"
+        required: false
       "--comment":
         description: "更新说明"
+        required: false
         type: "string"
       "--assignee":
         description: "更新指派人"
+        required: false
         type: "string"
       "--labels":
         description: "更新标签（用逗号分隔）"
+        required: false
         type: "string"
     expected_output: ["更新成功"]
     timeout: 10
@@ -117,73 +176,95 @@ commands:
 
   "roadmap story":
     description: "管理路线图故事"
-    subcommands:
-      "story_id":
-        description: "故事ID"
-        type: "string"
+    arguments:
+      - name: "story_id"
+        description: "故事ID (可选，不提供则可能列出所有故事或基于上下文)"
         required: false
+        type: "string"
+    options:
       "--title":
         description: "故事标题"
+        required: false
         type: "string"
       "--milestone":
         description: "所属里程碑ID"
+        required: false
         type: "string"
       "--desc":
         description: "故事描述"
+        required: false
         type: "string"
       "--priority":
         description: "优先级"
         values: ["P0", "P1", "P2", "P3"]
+        required: false
+        type: "string"
       "--assignee":
         description: "指派给用户"
+        required: false
         type: "string"
       "--labels":
         description: "标签列表，用逗号分隔"
+        required: false
         type: "string"
       "--status":
         description: "更新状态"
         values: ["not_started", "in_progress", "completed", "blocked"]
+        required: false
+        type: "string"
       "--comment":
         description: "状态变更说明"
+        required: false
         type: "string"
       "--format":
         description: "输出格式"
         values: ["json", "text", "table"]
         default: "text"
+        required: false
+        type: "string"
       "--delete":
         description: "删除故事"
         type: "flag"
+        required: false
       "--force":
         description: "强制删除，不请求确认"
         type: "flag"
+        required: false
     expected_output: ["故事详情", "更新成功", "删除成功"]
     timeout: 10
     critical: true
 
   "roadmap validate":
     description: "验证路线图YAML文件"
-    subcommands:
-      "source":
+    arguments:
+      - name: "source_file"
         description: "源文件路径"
-        type: "string"
         required: true
+        type: "string"
+    options:
       "--fix":
         description: "自动修复格式问题"
         type: "flag"
+        required: false
       "--output":
         description: "修复后输出的文件路径"
+        required: false
         type: "string"
       "--template":
         description: "使用自定义模板验证"
+        required: false
         type: "string"
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
       "--import":
         description: "验证通过后导入路线图"
         type: "flag"
+        required: false
       "--roadmap-id":
         description: "导入时指定路线图ID"
+        required: false
         type: "string"
     expected_output: ["验证通过", "验证失败"]
     timeout: 15
@@ -191,65 +272,88 @@ commands:
 
   "roadmap import":
     description: "导入路线图YAML文件"
-    subcommands:
-      "source":
+    arguments:
+      - name: "source_file"
         description: "源文件路径"
-        type: "string"
         required: true
+        type: "string"
+    options:
       "--roadmap-id":
         description: "现有路线图ID"
+        required: false
         type: "string"
       "--fix":
         description: "自动修复格式问题"
         type: "flag"
+        required: false
       "--activate":
         description: "导入后设为当前活动路线图"
         type: "flag"
+        required: false
       "--verbose":
         description: "显示详细信息"
         type: "flag"
+        required: false
     expected_output: ["导入成功"]
     timeout: 20
     critical: true
 
   "roadmap show":
     description: "查看路线图详情"
-    subcommands:
+    # Optional positional argument? Or only options?
+    # Assuming only options for now based on lack of explicit args in desc.
+    arguments: [] # Explicitly empty
+    options:
       "--id":
         description: "路线图ID"
+        required: false
         type: "string"
       "--milestone":
         description: "里程碑ID"
+        required: false
         type: "string"
       "--task":
         description: "任务ID"
+        required: false
         type: "string"
       "--health":
         description: "显示健康状态检查"
         type: "flag"
+        required: false
       "--format":
         description: "输出格式"
         values: ["json", "text", "table"]
         default: "table"
+        required: false
+        type: "string"
     expected_output: ["路线图详情"]
     timeout: 10
     critical: true
 
   "roadmap export":
     description: "导出路线图为YAML"
-    subcommands:
-      "--id":
-        description: "路线图ID"
+    # Optional positional argument for roadmap ID?
+    arguments:
+      - name: "roadmap_id" # Assuming ID can be positional or via --id
+        description: "要导出的路线图ID (可选，也可用 --id)"
+        required: false
+        type: "string"
+    options:
+      "--id": # Allow specifying via option too
+        description: "要导出的路线图ID"
+        required: false
         type: "string"
       "--output":
         description: "输出文件路径"
-        type: "string"
         required: true
+        type: "string"
       "--milestone":
         description: "只导出特定里程碑及其任务"
+        required: false
         type: "string"
       "--template":
         description: "使用特定模板格式"
+        required: false
         type: "string"
     expected_output: ["导出成功"]
     timeout: 15
@@ -257,32 +361,49 @@ commands:
 
   "roadmap delete":
     description: "删除路线图或元素 (用法: roadmap delete [OPTIONS] {roadmap|milestone|task} ID)"
-    subcommands:
+    arguments:
+      - name: "element_type"
+        description: "要删除的元素类型"
+        required: true
+        values: ["roadmap", "milestone", "task"]
+        type: "string"
+      - name: "element_id"
+        description: "元素ID"
+        required: true
+        type: "string"
+    options:
       "--force":
         description: "强制删除，不请求确认"
         type: "flag"
+        required: false
       "--cascade":
         description: "级联删除关联元素"
         type: "flag"
+        required: false
     expected_output: ["删除成功"]
     timeout: 10
     critical: true
 
   "roadmap plan":
     description: "互动式路线图规划"
-    subcommands:
+    arguments: [] # Assuming interactive mode doesn't use positional args
+    options:
       "--id":
         description: "要修改的路线图ID"
+        required: false
         type: "string"
       "--template":
         description: "使用特定模板开始"
+        required: false
         type: "string"
       "--from":
         description: "从YAML文件开始"
+        required: false
         type: "string"
       "--interactive":
         description: "始终使用交互式模式"
         type: "flag"
+        required: false
     expected_output: ["规划完成"]
     timeout: 30
     critical: true

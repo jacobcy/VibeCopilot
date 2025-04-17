@@ -7,6 +7,10 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+from loguru import logger
+
+from src.db import get_session_factory
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,24 +39,22 @@ class TaskSessionService:
             是否设置成功
         """
         try:
-            success = self._db_service.task_repo.set_current_task(task_id)
+            # 使用会话工厂获取数据库会话
+            with get_session_factory()() as db_session:
+                # 将 db_session 传递给 repository 方法
+                success = self._db_service.task_repo.set_current_task(db_session, task_id)
 
-            # 获取任务的关联会话ID，并确保其为当前会话
-            if success:
-                # 获取更新后的任务
-                task = self._db_service.task_repo.get_by_id(task_id)
-                if task:
-                    # 通过状态服务更新当前任务
-                    self._status_service.update_project_state("current_task", {"id": task_id, "title": task.title, "status": task.status})
+                # 获取任务的关联会话ID，并确保其为当前会话
+                if success:
+                    # 获取更新后的任务
+                    task = self._db_service.task_repo.get_by_id(db_session, task_id)
+                    if task:
+                        # 通过状态服务更新当前任务
+                        self._status_service.update_project_state("current_task", {"id": task_id, "title": task.title, "status": task.status})
 
-                    if task.current_session_id:
-                        # 使用已有的会话管理器确保会话是当前会话
-                        try:
-                            # 获取会话工厂
-                            from src.db import get_session_factory
-
-                            # 使用with语句确保会话自动关闭
-                            with get_session_factory()() as db_session:
+                        if task.current_session_id:
+                            # 使用已有的会话管理器确保会话是当前会话
+                            try:
                                 from src.flow_session.manager import FlowSessionManager
 
                                 # 创建会话管理器
@@ -60,7 +62,7 @@ class TaskSessionService:
                                 try:
                                     # 切换会话并自动提交
                                     session_manager.switch_session(task.current_session_id)
-                                    db_session.commit()
+                                    db_session.commit()  # Commit after successful switch
 
                                     # 通过状态服务更新当前工作流会话
                                     self._status_service.update_status(
@@ -70,12 +72,12 @@ class TaskSessionService:
                                     # 回滚并记录错误
                                     db_session.rollback()
                                     logger.error(f"切换到关联会话失败: {e}")
-                        except Exception as e:
-                            logger.error(f"获取数据库会话失败: {e}")
+                            except Exception as e:
+                                logger.error(f"创建 FlowSessionManager 或切换会话时出错: {e}")
 
-            return success
+                return success
         except Exception as e:
-            logger.error(f"设置当前任务失败: {e}")
+            logger.error(f"设置当前任务失败: {e}", exc_info=True)  # Log traceback
             return False
 
     def link_to_flow_session(self, task_id: str, flow_type: str = None, session_id: str = None) -> Optional[Dict[str, Any]]:

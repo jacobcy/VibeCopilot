@@ -14,6 +14,8 @@ from rich.console import Console
 from rich.table import Table
 
 from src.cli.decorators import pass_service
+from src.db import get_session
+from src.db.utils.entity_mapping import get_valid_entity_types, map_entity_to_table
 from src.db.utils.schema import get_all_tables, get_db_stats, get_table_schema, get_table_stats
 
 from .base_handler import ClickBaseHandler
@@ -51,47 +53,11 @@ class StatusHandler(ClickBaseHandler):
 
         return True
 
-    def handle(self, **kwargs: Dict[str, Any]) -> int:
-        """
-        处理查询命令
-
-        Args:
-            **kwargs: 命令参数
-
-        Returns:
-            int: 0表示成功，1表示失败
-
-        Raises:
-            DatabaseError: 数据库操作失败时抛出
-        """
-        entity_type = kwargs.get("type", "all")
-        detail = kwargs.get("detail", False)
-        output_format = kwargs.get("format", "table")
-        service = kwargs.get("service")
-
-        if not service:
-            raise DatabaseError("数据库服务未初始化")
-
-        try:
-            self.validate(**kwargs)
-
-            # 根据不同的查询类型执行不同的操作
-            if entity_type == "all":
-                # 将detail传递给_display_db_stats，使其可以选择显示详情
-                return self._display_db_stats(service, output_format, detail)
-            else:
-                # 将detail传递给_display_table_stats
-                return self._display_table_stats(service, entity_type, output_format, detail)
-
-        except Exception as e:
-            logger.error(f"查询数据库表状态或结构信息失败: {str(e)}", exc_info=True)
-            raise DatabaseError(f"查询失败: {str(e)}")
-
-    def _display_db_stats(self, service, output_format: str, show_detail: bool = False) -> int:
+    def _display_db_stats(self, stats: Dict[str, int], output_format: str, show_detail: bool = False) -> int:
         """显示数据库所有表的统计信息
 
         Args:
-            service: 数据库服务
+            stats: 从 get_db_stats 获取的统计字典
             output_format: 输出格式
             show_detail: 是否显示详细信息
 
@@ -99,8 +65,6 @@ class StatusHandler(ClickBaseHandler):
             int: 0表示成功，1表示失败
         """
         try:
-            stats = get_db_stats(service.session)
-
             # 创建简化版本和详细版本的信息结构
             simplified_stats = {"database_stats": {"total_tables": len(stats), "total_records": sum(stats.values())}}
 
@@ -148,15 +112,17 @@ class StatusHandler(ClickBaseHandler):
 
             return 0
         except Exception as e:
-            console.print(f"[red]获取数据库统计信息失败: {str(e)}[/red]")
-            return 1
+            console.print(f"[red]格式化数据库统计信息失败: {str(e)}[/red]")
+            # Log the error as well
+            logger.error(f"格式化数据库统计信息失败: {e}", exc_info=True)
+            return 1  # Indicate failure
 
-    def _display_table_stats(self, service, table_name: str, output_format: str, show_examples: bool = False) -> int:
+    def _display_table_stats(self, schema_info: Dict[str, Any], table_stats: Dict[str, Any], output_format: str, show_examples: bool = False) -> int:
         """显示指定表的统计和结构信息
 
         Args:
-            service: 数据库服务
-            table_name: 表名
+            schema_info: 从 get_table_schema 获取的结构信息
+            table_stats: 从 get_table_stats 获取的统计信息
             output_format: 输出格式
             show_examples: 是否显示示例数据
 
@@ -164,15 +130,9 @@ class StatusHandler(ClickBaseHandler):
             int: 0表示成功，1表示失败
         """
         try:
-            # 直接获取表的完整信息
-            schema_info = get_table_schema(service.session, table_name)
-
             if "error" in schema_info:
                 console.print(f"[red]{schema_info['error']}[/red]")
                 return 1
-
-            # 获取表的基本统计信息
-            stats = get_table_stats(service.session, table_name)
 
             # 创建基础版本的表信息（包含列结构但不包含示例数据）
             basic_info = {
@@ -182,8 +142,8 @@ class StatusHandler(ClickBaseHandler):
             }
 
             # 添加状态分布（如果有）
-            if stats.get("status_distribution") and len(stats["status_distribution"]) > 0:
-                basic_info["status_distribution"] = stats["status_distribution"]
+            if table_stats.get("status_distribution") and len(table_stats["status_distribution"]) > 0:
+                basic_info["status_distribution"] = table_stats["status_distribution"]
 
             if output_format == "json":
                 if show_examples:
@@ -193,6 +153,7 @@ class StatusHandler(ClickBaseHandler):
                     # 输出基础信息（包含结构但无示例）
                     print(json.dumps(basic_info, indent=2, ensure_ascii=False))
             elif output_format == "yaml":
+                table_name = schema_info.get("table_name", "unknown")  # Get table name for context
                 if show_examples:
                     # 完整信息 - 根据需要优化示例数据
                     if table_name.lower() == "rules" and "examples" in schema_info:
@@ -238,41 +199,41 @@ class StatusHandler(ClickBaseHandler):
                 console.print(columns_table)
 
                 # 显示状态分布（如果有）
-                if stats.get("status_distribution") and len(stats["status_distribution"]) > 0:
+                if table_stats.get("status_distribution") and len(table_stats["status_distribution"]) > 0:
                     status_table = Table(title="状态分布", show_header=True)
                     status_table.add_column("状态", style="cyan")
                     status_table.add_column("数量", justify="right")
                     status_table.add_column("占比", justify="right")
 
-                    total = stats["total_count"]
-                    for status, count in stats["status_distribution"].items():
+                    total = table_stats.get("total_count", schema_info.get("count", 0))
+                    for status, count in table_stats["status_distribution"].items():
                         percentage = (count / total * 100) if total > 0 else 0
                         status_table.add_row(str(status), str(count), f"{percentage:.1f}%")
 
                     console.print(status_table)
 
-                # 仅在detail模式下显示示例数据
-                if show_examples and schema_info["examples"] and len(schema_info["examples"]) > 0:
-                    console.print("\n[bold]示例数据:[/bold]")
+                # 显示示例数据（如果请求）
+                if show_examples and schema_info.get("examples"):
+                    examples_table = Table(title="示例数据 (最多 3 条)", show_header=True)
+                    col_names = [col["name"] for col in schema_info["columns"]]
+                    for name in col_names:
+                        examples_table.add_column(name)
 
-                    examples_table = Table(show_header=True)
-
-                    # 动态创建列
-                    example_columns = list(schema_info["examples"][0].keys())
-                    for col_name in example_columns:
-                        examples_table.add_column(col_name)
-
-                    # 添加行数据
-                    for example in schema_info["examples"]:
-                        row_data = [str(example.get(col, "")) for col in example_columns]
+                    for example_row in schema_info["examples"]:
+                        row_data = [str(example_row.get(name, "")) for name in col_names]
                         examples_table.add_row(*row_data)
 
                     console.print(examples_table)
+                elif show_examples:
+                    console.print("[yellow]未找到示例数据.[/yellow]")
 
             return 0
         except Exception as e:
-            console.print(f"[red]获取表信息失败: {str(e)}[/red]")
-            return 1
+            # Log the error
+            table_name_ctx = schema_info.get("table_name", "未知表") if "schema_info" in locals() else "未知表"
+            logger.error(f"格式化表 {table_name_ctx} 信息失败: {e}", exc_info=True)
+            console.print(f"[red]格式化表 {table_name_ctx} 信息失败: {str(e)}[/red]")
+            return 1  # Indicate failure
 
     def error_handler(self, error: Exception) -> None:
         """
@@ -288,15 +249,78 @@ class StatusHandler(ClickBaseHandler):
 
 
 @click.command(name="status", help="查询数据库表状态和结构信息")
-@click.option("--type", default="all", help="表名称，默认为所有表")
+@click.option("--type", default="all", help="表名称或实体类型，默认为所有表")
 @click.option("--detail", is_flag=True, help="是否显示示例数据（仅适用于单表查询）")
 @click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
 @pass_service(service_type="db")
 def status_db(service, type: str = "all", detail: bool = False, format: str = "table") -> None:
     """查询数据库表状态和结构信息"""
-    # 如果查询的是rules表且未指定格式，则默认使用yaml格式
+    # Adjust format for rules table
     if type.lower() == "rules" and format == "table":
         format = "yaml"
 
     handler = StatusHandler()
-    handler.handle(service=service, type=type, detail=detail, format=format)
+    session = None
+    exit_code = 0
+    try:
+        # --- Validation (doesn't need session) ---
+        if format not in handler.VALID_FORMATS:
+            raise ValidationError(f"不支持的输出格式: {format}")
+
+        session = get_session()
+
+        if type == "all":
+            # --- Get All Stats ---
+            db_stats_data = get_db_stats(session)
+            handler._display_db_stats(db_stats_data, format, detail)
+        else:
+            # --- Get Single Table Stats & Schema ---
+            entity_type_or_table_name = type  # User input
+
+            # Attempt to map entity type to table name
+            mapped_table_name = map_entity_to_table(entity_type_or_table_name)
+
+            # Use mapped name if it's different and potentially valid, otherwise use original input
+            table_name = mapped_table_name if mapped_table_name != entity_type_or_table_name else entity_type_or_table_name
+            logger.info(f"Input type '{entity_type_or_table_name}' resolved to table name '{table_name}'")
+
+            # Validate the final table name
+            all_tables = get_all_tables(session)
+            if table_name not in all_tables:
+                # Provide better error message including valid entity types if input was likely an entity type
+                valid_entities = get_valid_entity_types(session, include_tables=False)  # Get only entity names
+                error_msg = f"未知的表名或实体类型: {entity_type_or_table_name}。"
+                error_msg += f"\n可用表: {', '.join(sorted(all_tables))}"
+                if entity_type_or_table_name in valid_entities:
+                    # If the input was a valid entity type, suggest the correct table name
+                    correct_table = map_entity_to_table(entity_type_or_table_name)
+                    error_msg += f"\n提示: 您可能想查询表 '{correct_table}'。"
+                elif entity_type_or_table_name not in valid_entities:
+                    # Also list valid entity types if the input wasn't one
+                    error_msg += f"\n可用实体类型: {', '.join(sorted(valid_entities))}"
+                raise ValidationError(error_msg)
+
+            schema_data = get_table_schema(session, table_name)  # Use potentially mapped table_name
+            if "error" in schema_data:
+                console.print(f"[red]获取表 '{table_name}' 结构失败: {schema_data['error']}[/red]")
+                exit_code = 1
+                raise click.Abort()
+
+            table_stats_data = get_table_stats(session, table_name)  # Use potentially mapped table_name
+            handler._display_table_stats(schema_data, table_stats_data, format, detail)
+
+    except Exception as e:
+        # Let friendly_error_handling decorator manage user output for Abort/other exceptions
+        if not isinstance(e, (ValidationError, DatabaseError, click.Abort)):
+            logger.error(f"执行 status 命令时出错: {e}", exc_info=True)
+        if not isinstance(e, click.Abort):
+            console.print(f"[red]执行 status 命令时发生错误: {str(e)}[/red]")
+        exit_code = 1
+        raise click.Abort()
+    finally:
+        if session:
+            session.close()
+        # Exit with the determined code if needed, though Abort handles non-zero exit
+        # if exit_code != 0:
+        #    ctx = click.get_current_context()
+        #    ctx.exit(exit_code)

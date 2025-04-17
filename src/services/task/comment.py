@@ -5,8 +5,9 @@
 """
 
 import logging
-import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from src.db.service import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class TaskCommentService:
     """任务评论服务类，负责任务评论的添加和查询操作"""
 
-    def __init__(self, db_service):
+    def __init__(self, db_service: DatabaseService):
         """初始化任务评论服务
 
         Args:
@@ -28,43 +29,50 @@ class TaskCommentService:
         Args:
             task_id: 任务ID
             comment: 评论内容
-            author: 评论作者
+            author: 评论作者（可选）
 
         Returns:
-            添加的评论信息，失败返回None
+            评论数据字典，如果失败则返回None
         """
         try:
-            # 先检查任务是否存在
-            task = self._db_service.get_task(task_id)
-            if not task:
-                raise ValueError(f"任务 {task_id} 不存在")
+            # 创建评论数据
+            comment_data = {"task_id": task_id, "content": comment, "author": author or "AI Agent"}
 
-            # 假设有一个添加评论的方法
-            # 注意：这里简化处理，实际实现可能需要调用特定的评论仓库或方法
-            comment_data = {"id": f"comment_{uuid.uuid4().hex[:8]}", "task_id": task_id, "content": comment, "author": author or "系统"}
-
-            # 这里需要根据实际的数据库服务接口调整
-            # 假设有一个create_task_comment方法
-            result = self._db_service.create_entity("task_comment", comment_data)
-            return result
+            # 创建评论
+            comment = self._db_service.task_comment_repo.create(comment_data)
+            return comment.to_dict() if comment else None
         except Exception as e:
-            logger.error(f"为任务 {task_id} 添加评论失败: {e}")
+            logger.error(f"添加任务评论失败: {e}")
             return None
 
-    def get_task_comments(self, task_id: str, limit: Optional[int] = None, offset: Optional[int] = None):
-        """获取任务的评论列表
+    def get_task_comments(self, task_id: str) -> List[Dict[str, Any]]:
+        """获取任务的所有评论
 
         Args:
             task_id: 任务ID
-            limit: 返回结果数量限制
-            offset: 结果偏移量
 
         Returns:
-            评论列表
+            评论数据字典列表
         """
         try:
-            # 这个方法需要在数据库服务中实现
-            return self._db_service.get_task_comments(task_id, limit, offset)
+            # 获取评论列表
+            comments = self._db_service.task_comment_repo.get_by_task_id(task_id)
+            return [comment.to_dict() for comment in comments] if comments else []
         except Exception as e:
-            logger.error(f"获取任务 {task_id} 的评论失败: {e}")
+            logger.error(f"获取任务评论失败: {e}")
             return []
+
+    def delete_task_comment(self, comment_id: str) -> bool:
+        """删除任务评论
+
+        Args:
+            comment_id: 评论ID
+
+        Returns:
+            是否删除成功
+        """
+        try:
+            return self._db_service.task_comment_repo.delete(comment_id)
+        except Exception as e:
+            logger.error(f"删除任务评论失败: {e}")
+            return False

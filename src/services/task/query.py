@@ -7,6 +7,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+from src.db import get_session_factory
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,6 +45,35 @@ class TaskQueryService:
             return self._db_service.get_task(task_id)
         except Exception as e:
             logger.error(f"获取任务 {task_id} 失败: {e}")
+            return None
+
+    def get_task_by_identifier(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """通过ID或名称查找任务
+
+        先按ID精确查找，如果找不到，则按名称（不区分大小写）查找。
+
+        Args:
+            identifier: 任务ID或任务名称
+
+        Returns:
+            任务信息字典，如果找不到则返回None
+        """
+        try:
+            # 首先尝试通过ID查找
+            task = self.get_task(identifier)
+            if task:
+                return task
+
+            # 如果找不到，尝试通过名称查找（不区分大小写）
+            tasks = self.list_tasks()
+            for task in tasks:
+                if task.get("title", "").lower() == identifier.lower():
+                    return task
+
+            # 都找不到，返回None
+            return None
+        except Exception as e:
+            logger.error(f"通过标识符 {identifier} 查找任务失败: {e}")
             return None
 
     def list_tasks(
@@ -113,6 +144,56 @@ class TaskQueryService:
 
         except Exception as e:
             logger.error(f"获取任务列表失败: {e}")
+            return []
+
+    def search_tasks(
+        self,
+        status: Optional[List[str]] = None,
+        assignee: Optional[str] = None,
+        labels: Optional[List[str]] = None,
+        roadmap_item_id: Optional[str] = None,
+        is_independent: Optional[bool] = None,
+        is_temporary: Optional[bool] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """搜索和过滤任务
+
+        与list_tasks类似，但支持更多过滤条件和参数名称与TaskService一致
+
+        Args:
+            status: 状态列表
+            assignee: 负责人
+            labels: 标签列表
+            roadmap_item_id: 关联的故事ID
+            is_independent: 是否为独立任务
+            is_temporary: 是否为临时任务
+            limit: 限制数量
+            offset: 偏移量
+
+        Returns:
+            符合条件的任务列表
+        """
+        try:
+            # 获取数据库会话
+            with get_session_factory()() as session:
+                # 调用仓库层的search_tasks方法，并传递 session
+                tasks = self._db_service.task_repo.search_tasks(
+                    session,
+                    status=status,
+                    assignee=assignee,
+                    labels=labels,
+                    roadmap_item_id=roadmap_item_id,
+                    is_independent=is_independent,
+                    is_temporary=is_temporary,
+                    limit=limit,
+                    offset=offset,
+                )
+
+                # 转换为字典列表
+                return [task.to_dict() if hasattr(task, "to_dict") else task for task in tasks]
+        except Exception as e:
+            logger.error(f"搜索任务失败: {e}", exc_info=True)
             return []
 
     def delete_task(self, task_id: str) -> bool:

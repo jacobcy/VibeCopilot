@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from src.db import get_session_factory
-from src.db.repositories.task_repository import TaskCommentRepository, TaskRepository
+from src.db.session_manager import session_scope
+from src.services.task.core import TaskService
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -87,33 +87,38 @@ def execute_comment_task(
         return results
 
     try:
-        session_factory = get_session_factory()
-        with session_factory() as session:
-            task_repo = TaskRepository(session)
-            comment_repo = TaskCommentRepository(session)
+        # --- Database Operations within session_scope ---
+        with session_scope() as session:
+            task_service = TaskService()
 
-            # 检查任务是否存在
-            task = task_repo.get_by_id(task_id)
+            # Check if task exists (read operation)
+            task = task_service.get_task(session, task_id)
             if not task:
                 results["status"] = "error"
                 results["code"] = 404
                 results["message"] = f"添加评论失败：未找到 Task ID: {task_id}"
-                console.print(f"[bold red]错误:[/bold red] 未找到 Task ID: {task_id}")
+                # No console print here, handled by caller
                 return results
 
-            # 添加评论
-            new_comment = comment_repo.add_comment(task_id=task_id, content=content, author=author)
-            session.commit()
-
-            comment_dict = new_comment.to_dict()
-            results["data"] = comment_dict
-            results["message"] = f"成功为任务 {task_id} 添加评论 (ID: {new_comment.id})"
+            # Add comment
+            comment_dict = task_service.add_task_comment(session, task_id=task_id, comment=content, author=author)
+            if comment_dict:
+                results["data"] = comment_dict
+                results["message"] = f"成功为任务 {task_id} 添加评论 (ID: {comment_dict.get('id')})"
+            else:
+                # If add_task_comment returns None/False, implies failure
+                results["status"] = "error"
+                results["code"] = 500
+                results["message"] = "添加评论失败 (服务层返回失败)"
+                # Optionally raise an exception here to ensure rollback
+                # raise Exception(f"add_task_comment service call failed for {task_id}")
 
     except Exception as e:
-        logger.error(f"添加评论时出错: {e}", exc_info=True)
+        # Errors within session_scope or during service calls will trigger rollback
+        logger.error(f"添加评论数据库操作期间出错: {e}", exc_info=True)
         results["status"] = "error"
         results["code"] = 500
         results["message"] = f"添加评论时出错: {e}"
-        console.print(f"[bold red]错误:[/bold red] {e}")
+        # Error message printing is handled by the caller command
 
     return results

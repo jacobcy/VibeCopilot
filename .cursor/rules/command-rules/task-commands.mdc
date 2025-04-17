@@ -31,18 +31,6 @@ related_items: [command-system]
 - 执行方式：转换为`vibecopilot task [subcommand] [args]`并通过终端执行
 - 适用场景：复杂任务管理、批量操作和任务关联
 
-## 子命令详解
-
-| 子命令 | 说明 | 示例 |
-|-------|------|------|
-| `list` | 列出所有任务 | `/task list [--status=<status>]` |
-| `show` | 查看任务详情 | `/task show <id>` |
-| `create` | 创建新任务 | `/task create --title="<title>"` |
-| `update` | 更新任务 | `/task update <id> [--status=<status>]` |
-| `delete` | 删除任务 | `//task delete <id> [--force]` |
-| `link` | 关联任务到其他实体 | `//task link <id> --target=<target_id>` |
-| `comment` | 添加任务评论 | `/task comment <id> --content="<content>"` |
-
 ## 任务状态定义
 
 任务可以具有以下状态：
@@ -70,69 +58,13 @@ VibeCopilot支持多种任务类型：
 | `research` | 研究和调研任务 | RES |
 | `design` | 设计相关任务 | DSG |
 
-## 任务关联关系
-
-任务可以与其他实体建立关联关系：
-
-| 关系类型 | 说明 | 示例 |
-|---------|------|------|
-| `parent` | 父任务关系 | `//task link 102 --target=101 --type=parent` |
-| `depends_on` | 依赖关系 | `//task link 102 --target=103 --type=depends_on` |
-| `blocks` | 阻塞关系 | `//task link 102 --target=104 --type=blocks` |
-| `related` | 相关关系 | `//task link 102 --target=105 --type=related` |
-| `story` | 所属故事 | `//task link 102 --target=S101 --type=story` |
-| `commit` | 关联提交 | `//task link 102 --target=commit:abc123 --type=commit` |
-
 ## 任务标签和分类
 
 任务可以附加标签进行分类和筛选：
 
 ```
-/task create --title="修复登录问题" --tags="frontend,security,urgent"
-/task list --tags="urgent"
-```
-
-## 批量任务操作
-
-可以使用批量操作处理多个任务：
-
-```
-//task update --query="status:blocked" --set-status=in_progress
-//task delete --query="status:cancelled" --older-than=30d --force
-```
-
-## 任务模板
-
-VibeCopilot提供预定义任务模板，简化创建过程：
-
-```
-/task create --template=bug --title="登录页面崩溃"
-/task create --template=feature --title="添加支付功能"
-```
-
-## 使用示例
-
-```
-# 列出所有进行中的任务
-/task list --status=in_progress
-
-# 创建新功能任务
-/task create --title="实现用户注册功能" --type=feature --priority=high
-
-# 更新任务状态
-/task update 123 --status=in_progress --assignee=john
-
-# 查看任务详情
-/task show 123
-
-# 添加任务评论
-/task comment 123 --content="已完成初步设计"
-
-# 关联任务到故事
-//task link 123 --target=S45 --type=story
-
-# 标记任务为阻塞状态
-/task update 123 --status=blocked --reason="等待API完成"
+/task create --title="修复登录问题" --labels="frontend,security,urgent"
+/task list --labels="urgent"
 ```
 
 ## 与其他系统集成
@@ -149,84 +81,65 @@ VibeCopilot提供预定义任务模板，简化创建过程：
 ```yaml
 commands:
   task list: # 列出项目中的任务
-    subcommands:
+    options:
       --status: # 按状态过滤
       --assignee: # 按负责人过滤
       --label: # 按标签过滤
       --roadmap: # 按关联的 Story ID 过滤
       --independent: # 仅显示独立任务
-        type: flag
       --limit: # 限制返回数量
-        type: integer
       --offset: # 跳过指定数量的结果
-        type: integer
       --verbose: # 显示更详细的信息
-        type: flag
       --format: # 输出格式
-        values:
-        - yaml
-        - json
   task show: # 显示任务详情
-    subcommands:
+    arguments:
+      task_id: # 任务ID
+    options:
       --verbose: # 显示更详细的信息
-        type: flag
       --format: # 输出格式
-        values:
-        - yaml
-        - json
+      --log: # (假设) 显示相关日志
+      --ref: # (假设) 显示引用信息
+      --comments: # (假设) 显示评论
   task create: # 创建新任务
-    subcommands:
+    arguments:
+      title: # 任务标题
+    options:
       --desc: # 任务描述
       --priority: # 任务优先级
-        values:
-        - low
-        - medium
-        - high
       --status: # 任务状态
-        values:
-        - todo
-        - in_progress
-        - done
       --due: # 任务截止日期 (格式: YYYY-MM-DD，默认为创建日期后3天)
       --link-story: # 关联到Story
       --link-github: # 关联到GitHub Issue (格式: owner/repo#number)
       --flow: # 创建并关联工作流会话
-        values:
-        - dev
-        - review
-        - deploy
       --verbose: # 显示详细信息
-        type: flag
   task update: # 更新任务信息
-    subcommands:
+    arguments:
+      task_id: # 任务ID
+    options:
       --title: # 新的任务标题
       --desc: # 新的任务描述
       --status: # 新的状态
       --assignee: # 新的负责人
-      --label: # 设置新的标签列表
-      --add-label: # 添加标签
-      --remove-label: # 移除标签
+      --labels: # 设置新的标签列表
       --due: # 任务截止日期 (格式: YYYY-MM-DD，设置为'clear'可清除截止日期)
       --link-story: # 关联到Story
       --link-github: # 关联到GitHub Issue (格式: owner/repo#number)
       --unlink: # 取消关联
-        values:
-        - story
-        - github
   task delete: # 删除指定的任务
-    subcommands:
+    arguments:
+      task_id: # 任务ID
+    options:
       --force: # 强制删除
-        type: flag
   task comment: # 添加任务评论
-    subcommands:
+    arguments:
+      task_id: # 任务ID
+    options:
       --comment: # 评论内容
   task link: # 管理任务的工作流会话
-    subcommands:
+    arguments:
+      task_id: # 任务ID，不指定则使用当前任务
+    options:
       --flow: # 创建新的工作流会话
-        values:
-        - dev
-        - review
-        - deploy
       --session: # 关联到已存在的会话
 ```
 <!-- END_COMMAND_YAML -->

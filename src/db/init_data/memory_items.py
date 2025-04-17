@@ -21,27 +21,28 @@ def init_memory_items():
     refresh_config()
 
     session = get_session()
-    repo = MemoryItemRepository(session)
+    # Initialize repo without session
+    repo = MemoryItemRepository()
 
     # 添加一些示例记忆项
     items = [
         {
             "title": "项目初始化记录",
-            "content": "VibeCopilot项目于2025年4月12日初始化，采用Python+React技术栈。",
+            "summary": "VibeCopilot项目于2025年4月12日初始化，采用Python+React技术栈。",
             "content_type": "note",
             "tags": ["项目", "初始化", "技术栈"],
             "source": "系统初始化",
         },
         {
             "title": "数据库设计文档",
-            "content": "数据库采用SQLite作为存储引擎，主要包含规则、模板、工作流等核心表。",
+            "summary": "数据库采用SQLite作为存储引擎，主要包含规则、模板、工作流等核心表。",
             "content_type": "document",
             "tags": ["数据库", "设计", "文档"],
             "source": "技术文档",
         },
         {
             "title": "开发规范说明",
-            "content": "项目遵循PEP8规范，使用black进行代码格式化，所有函数必须有文档字符串。",
+            "summary": "项目遵循PEP8规范，使用black进行代码格式化，所有函数必须有文档字符串。",
             "content_type": "document",
             "tags": ["规范", "开发", "文档"],
             "source": "开发文档",
@@ -52,9 +53,11 @@ def init_memory_items():
     for item in items:
         try:
             # 使用专用的create_item方法创建记忆项
+            # Pass session to create_item method
             repo.create_item(
+                session,  # Pass session as the first argument
                 title=item["title"],
-                content=item["content"],
+                content=item["summary"],
                 content_type=item["content_type"],
                 tags=",".join(item["tags"]) if item["tags"] else None,
                 source=item["source"],

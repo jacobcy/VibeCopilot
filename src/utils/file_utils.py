@@ -112,3 +112,24 @@ def write_text_file(file_path: str, content: str) -> None:
     """
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
+
+
+def get_relative_path(path: str, base_path: Optional[str] = None) -> str:
+    """
+    获取相对于基准路径的相对路径
+
+    Args:
+        path: 要转换的路径
+        base_path: 基准路径，如果不提供则使用当前工作目录
+
+    Returns:
+        str: 相对路径
+    """
+    if base_path is None:
+        base_path = os.getcwd()
+
+    try:
+        return os.path.relpath(path, base_path)
+    except ValueError:
+        # 如果路径在不同的驱动器上，返回原始路径
+        return path

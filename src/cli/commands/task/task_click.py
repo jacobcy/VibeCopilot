@@ -17,7 +17,7 @@ from src.models.db.task import Task
 from src.services.task import TaskService
 
 # 导入Click命令
-from .core import comment_task, create_task, delete_task, link_task, list_tasks, show_task, update_task
+from .core import comment_task, create_task, delete_task, link_task, list_tasks, show, update_task
 from .core.comment import comment_task
 
 console = Console()
@@ -112,29 +112,6 @@ def format_output(data: Union[Dict, List], format: str = "yaml", verbose: bool =
     return yaml.dump(formatted_data, allow_unicode=True, sort_keys=False)
 
 
-def find_task_by_id_or_name(service: TaskService, id_or_name: str) -> Optional[Dict]:
-    """通过ID或名称查找任务
-
-    Args:
-        service: 任务服务实例
-        id_or_name: 任务ID或名称
-
-    Returns:
-        任务信息或None
-    """
-    # 首先尝试通过ID查找
-    task = service.get_task(id_or_name)
-    if task:
-        return task
-
-    # 如果找不到，尝试通过名称查找
-    tasks = service.list_tasks()
-    for t in tasks:
-        if t["title"].lower() == id_or_name.lower():
-            return t
-    return None
-
-
 @click.group(help="任务管理命令 (类似 GitHub issue)")
 def task():
     """任务管理命令组"""
@@ -144,7 +121,7 @@ def task():
 # 注册所有Click命令
 task.add_command(list_tasks)
 task.add_command(create_task)
-task.add_command(show_task)
+task.add_command(show)
 task.add_command(update_task)
 task.add_command(delete_task)
 task.add_command(comment_task)

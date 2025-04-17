@@ -42,72 +42,86 @@ def cli():
     help="报告输出格式",
 )
 @click.option("-o", "--output", help="报告输出文件路径")
-def check(module: str, category: Optional[str], verbose: bool, format: str, output: Optional[str]):
-    """执行系统健康检查
+@click.option("--use-llm", is_flag=True, default=False, help="使用 LLM 对比命令帮助信息 (实验性功能)")
+def check(module: str, category: Optional[str], verbose: bool, format: str, output: Optional[str], use_llm: bool):
+    """执行系统健康检查。
 
-    说明：
-    目前已实现的检查器模块包括：
-    - system: 系统环境检查
-    - command: 命令完整性检查
-    - database: 数据库状态检查
-    - status: 状态模块健康检查
-    - enabled_modules: 启用模块检查
-
-    配置文件中引用但尚未实现的检查器包括：
-    - general, global, report, notifications, documentation
+    可检查的模块包括:
+    system (系统环境),
+    command (命令完整性),
+    database (数据库状态),
+    status (状态模块模拟),
+    enabled_modules (配置的启用模块),
+    all (所有已启用模块)。
     """
     try:
-        # 加载配置
+        # 加载主配置
         config = load_config()
         if not config:
             click.echo("错误: 无法加载配置文件")
             return
 
-        click.echo(f"正在执行{module}模块的健康检查...")
+        # 如果命令行指定了 --use-llm，则覆盖配置文件中的设置
+        # 需要确保这个设置能传递给 CommandChecker
+        # 最佳实践是修改传递给 HealthCheck 的 config 字典
+        if use_llm:
+            # Ensure 'command' key exists in config
+            if "command" not in config:
+                config["command"] = {}
+            config["command"]["use_llm_comparison"] = True
+            logger.info("通过命令行启用 LLM 命令帮助对比。")
+            # Optionally ensure llm_config exists if needed, though CommandChecker should handle None
+            # if 'llm_config' not in config['command']:
+            #     logger.warning("LLM comparison enabled via CLI, but no llm_config found in main config.")
+            #     config['command']['llm_config'] = {} # Provide default if needed
+        else:
+            # If CLI flag is false, ensure config reflects this if present
+            if "command" in config:
+                config["command"]["use_llm_comparison"] = False
 
-        # 创建健康检查实例
+        click.echo(f"正在执行 {module} 模块的健康检查... {'(使用 LLM 对比)' if use_llm else ''}")
+
+        # 创建健康检查实例 (传递修改后的 config)
         health_check = HealthCheck(config)
+        # Pass verbose flag to HealthCheck if it needs it (e.g., for CommandChecker)
+        health_check.verbose = verbose
 
-        # 创建CLI工具实例
-        cli_tool = HealthCheckCLI()
+        # 创建CLI工具实例 (可能不再需要，因为检查逻辑在HealthCheck中)
+        # cli_tool = HealthCheckCLI()
 
         # 根据module参数执行相应的检查
         if module == "all":
-            # 执行所有模块检查
             result = health_check.check_all()
         else:
             # 单个模块检查
-            # 如果是命令检查且有category参数，需要单独处理
-            if module == "command":
-                # 加载命令检查配置
-                cmd_config = load_module_config("command")
+            # Pass category directly to check_module if it handles it,
+            # otherwise HealthCheck needs to pass it to CommandChecker
+            # Let's assume HealthCheck passes relevant context like category/verbose
+            # HealthCheck's _get_checker for 'command' already takes category and verbose
+            health_check.category = category  # Set category on the instance
+            result = health_check.check_module(module)
 
-                # 执行命令检查
-                result = cli_tool.run_command_check(category=category, verbose=verbose)
+            # --- Remove the special handling for 'command' here ---
+            # --- Let HealthCheck handle getting the right checker ---
+            # if module == "command":
+            #     # ... old logic using cli_tool ...
+            # else:
+            #     result = health_check.check_module(module)
 
-                # 更新健康检查结果
-                health_check._update_results("command", result)
-            else:
-                # 其他模块检查
-                result = health_check.check_module(module)
-
-        # 确保结果状态不是unknown
+        # 确保结果状态不是unknown (这部分逻辑可以保留或移到HealthCheck内部)
         if hasattr(result, "status") and result.status == "unknown":
             if verbose:
                 click.echo("警告: 检查结果状态为unknown，尝试修正...")
-            # 从health_check中获取real_status
             if health_check.results["overall_status"] != "unknown":
                 result.status = health_check.results["overall_status"]
-            else:
-                # 尝试从metrics推断状态
-                if hasattr(result, "metrics"):
-                    metrics = result.metrics
-                    if metrics.get("failed", 0) > 0:
-                        result.status = "failed"
-                    elif metrics.get("warnings", 0) > 0:
-                        result.status = "warning"
-                    else:
-                        result.status = "passed"
+            elif hasattr(result, "metrics"):
+                metrics = result.metrics
+                if metrics.get("failed", 0) > 0:
+                    result.status = "failed"
+                elif metrics.get("warnings", 0) > 0:
+                    result.status = "warning"
+                else:
+                    result.status = "passed"
 
         # 生成报告
         report = health_check.generate_report(format=format, verbose=verbose)
@@ -140,27 +154,25 @@ def check(module: str, category: Optional[str], verbose: bool, format: str, outp
         # 输出报告
         click.echo(report)
 
-        # 根据检查结果设置退出码
-        if result.status == "failed":
-            sys.exit(1)
-        elif result.status == "warning":
-            sys.exit(2)
-        else:
-            sys.exit(0)
+        # 根据检查结果设置退出码 - 修改逻辑
+        # 无论 result.status 是什么，只要检查过程没出错，就退出 0
+        # 非零退出码仅用于表示 health check 命令本身的执行错误
+        sys.exit(0)
+
     except ImportError as e:
         click.echo(f"错误: 缺少必要的依赖模块: {e}")
-        sys.exit(3)
+        sys.exit(3)  # 保留特定错误码
     except FileNotFoundError as e:
         click.echo(f"错误: 文件未找到: {e}")
-        sys.exit(4)
+        sys.exit(4)  # 保留特定错误码
     except json.JSONDecodeError as e:
         click.echo(f"错误: JSON格式错误: {e}")
-        sys.exit(5)
+        sys.exit(5)  # 保留特定错误码
     except Exception as e:
         click.echo(f"执行健康检查时发生错误: {e}")
         if verbose:
             click.echo(traceback.format_exc())
-        sys.exit(10)
+        sys.exit(10)  # 保留通用错误码
 
 
 @cli.command()

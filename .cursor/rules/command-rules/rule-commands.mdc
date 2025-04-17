@@ -31,20 +31,6 @@ related_items: [command-system]
 - 执行方式：转换为`vibecopilot rule [subcommand] [args]`并通过终端执行
 - 适用场景：规则创建、更新、验证和批量操作
 
-## 子命令详解
-
-| 子命令 | 说明 | 示例 |
-|-------|------|------|
-| `list` | 列出所有规则 | `/rule list [--type=<rule_type>]` |
-| `show` | 显示规则详情 | `/rule show <id>` |
-| `create` | 创建新规则 | `//rule create <template_type> <name>` |
-| `update` | 更新规则 | `//rule update <id> [--vars=<json>]` |
-| `delete` | 删除规则 | `//rule delete <id> [--force]` |
-| `validate` | 验证规则 | `//rule validate <id>` |
-| `export` | 导出规则 | `//rule export <id> [--output=<path>]` |
-| `import` | 导入规则 | `//rule import <file_path> [--overwrite]` |
-| `apply` | 应用规则到指定上下文 | `/rule apply <id> [--context=<context>]` |
-
 ## 规则类型定义
 
 VibeCopilot支持多种规则类型：
@@ -101,44 +87,6 @@ VibeCopilot使用新的规则源文件体系：
 2. 次版本号变更（1.0 -> 1.1）表示向后兼容的功能增强
 3. 修订版本号变更（1.0.0 -> 1.0.1）表示错误修复
 
-## 规则搜索与检索
-
-规则系统支持多种检索方式：
-
-```
-/rule search --query="代码风格" --semantic  # 语义搜索
-/rule search --tags=frontend,typescript     # 标签搜索
-/rule list --type=tech                      # 按类型列出
-```
-
-## 使用示例
-
-```
-# 列出所有技术规则
-/rule list --type=tech
-
-# 显示特定规则
-/rule show frontend-react
-
-# 创建新规则
-//rule create coding --name="Python代码规范" --vars='{"language":"python"}'
-
-# 更新规则内容
-//rule update frontend-react --vars='{"framework_version":"18.0"}'
-
-# 验证规则有效性
-//rule validate frontend-react
-
-# 应用规则
-/rule apply frontend-react --context="组件开发"
-
-# 导出规则
-//rule export frontend-react --format=md --output=./docs/rules/
-
-# 导入规则
-//rule import ./imported_rules/backend-java.yml
-```
-
 ## 新旧规则系统过渡
 
 VibeCopilot正在过渡到新的规则系统：
@@ -162,77 +110,43 @@ VibeCopilot正在过渡到新的规则系统：
 ```yaml
 commands:
   rule list: # 列出所有规则或指定类型的规则
-    subcommands:
+    options:
       --type: # 按类型筛选规则
-        values:
-        - core
-        - dev
-        - tech
-        - tool
-        - role
-        - command
-        - test
       --format: # 输出格式
-        values:
-        - table
-        - json
-        - yaml
   rule show: # 显示规则详细信息
-    subcommands:
+    arguments:
+      rule_name: # 规则名称（格式：类型/名称，如 core-rules/config）
+    options:
       --format: # 输出格式
-        values:
-        - markdown
-        - json
-        - yaml
   rule create: # 创建新规则
-    subcommands:
+    arguments:
+      name: # 规则名称（遵循命名规范）
+    options:
       --type: # 规则类型
-        values:
-        - core
-        - dev
-        - tech
-        - tool
-        - role
-        - command
-        - test
       --desc: # 规则描述
-        type: string
       --priority: # 规则优先级 (1-100)
-        type: integer
       --template: # 使用预定义模板
-        values:
-        - agent
-        - auto
-        - best_practices
-        - command
-        - role
-        - workflow
   rule delete: # 删除规则
-    subcommands:
+    arguments:
+      rule_name: # 规则名称
+    options:
       --force: # 强制删除（跳过确认）
-        type: flag
   rule import: # 从文件导入规则
-    subcommands:
+    arguments:
+      file_path: # 规则文件路径（支持.md/.yaml/.json）
+    options:
       --parser: # 解析器类型
-        values:
-        - markdown
-        - yaml
-        - json
       --model: # 模型名称（用于AI增强）
-        type: string
       --validate: # 是否验证规则
-        type: flag
       --overwrite: # 是否覆盖已存在的规则
-        type: flag
   rule export: # 导出规则
-    subcommands:
+    arguments:
+      rule_name: # 规则名称
+    options:
       --format: # 导出格式
-        values:
-        - markdown
-        - yaml
-        - json
       --output: # 输出路径
-        type: string
   rule validate: # 验证规则
+    arguments:
+      rule_name: # 规则名称
 ```
 <!-- END_COMMAND_YAML -->

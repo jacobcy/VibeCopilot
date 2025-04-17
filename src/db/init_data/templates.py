@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 def init_templates():
     """初始化模板数据"""
     session = get_session()
-    repo = TemplateRepository(session)
+    # Initialize repo without session
+    repo = TemplateRepository()
 
     # 添加一些示例模板
     templates = [
@@ -50,7 +51,8 @@ export const {{ComponentName}}: React.FC<{{ComponentName}}Props> = (props) => {
     success_count = 0
     for template in templates:
         try:
-            repo.create(data=template)
+            # Pass session to create method
+            repo.create(session, data=template)
             success_count += 1
         except Exception as e:
             logger.error(f"创建模板失败: {template['name']}", exc_info=True)
