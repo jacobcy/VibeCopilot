@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from src.db import get_session_factory
 from src.db.repositories.memory_item_repository import MemoryItemRepository
-from src.db.vector.chroma_vector_store import ChromaVectorStore
+from src.memory.chroma_vector_store import ChromaVectorStore
 from src.memory.entity_manager import EntityManager
 from src.memory.memory_formatter import MemoryFormatter
 from src.memory.memory_retrieval import MemoryRetrieval
@@ -56,7 +56,7 @@ class MemoryManager:
         # 获取数据库会话工厂并创建会话
         session_factory = get_session_factory()
         self.session = session_factory()
-        self.memory_item_repo = MemoryItemRepository(self.session)
+        self.memory_item_repo = MemoryItemRepository()
 
         # 默认文件夹和标签
         self.default_folder = self.config.get("default_folder", "knowledge")

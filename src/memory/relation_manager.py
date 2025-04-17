@@ -6,7 +6,7 @@
 
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from src.db.vector.memory_adapter import BasicMemoryAdapter
+from src.memory.memory_adapter import BasicMemoryAdapter
 
 
 class RelationManager:

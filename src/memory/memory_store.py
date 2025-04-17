@@ -8,7 +8,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from src.db.repositories.memory_item_repository import MemoryItemRepository
-from src.db.vector.chroma_vector_store import ChromaVectorStore
+from src.memory.chroma_vector_store import ChromaVectorStore
 from src.memory.entity_manager import EntityManager
 from src.memory.memory_formatter import MemoryFormatter
 from src.memory.memory_utils import create_enhanced_text, create_memory_metadata, format_error_response, format_success_response
