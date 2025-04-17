@@ -13,9 +13,8 @@ from typing import Optional, Tuple
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from ..config import get_db_path
+from src.core.config import get_config
 
-# 在helpers自身的工具文件中，通过相对导入单独导入需要的函数，避免循环导入
 from .path_helpers import ensure_dir_exists, resolve_path
 
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ def init_db_engine(db_path: Optional[str] = None) -> Tuple[object, str]:
         Tuple[Engine, str]: SQLAlchemy引擎对象和规范化后的数据库路径
     """
     if db_path is None:
-        db_path = get_db_path()
+        db_path = get_config().get("database.url")
 
     # 确保路径规范化并处理用户路径（如~）
     db_path = resolve_path(db_path)

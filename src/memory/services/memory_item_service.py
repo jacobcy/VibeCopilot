@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # 导入 DatabaseService
 from src.db.service import DatabaseService
-from src.models.db.memory_item import MemoryItem, SyncStatus
+from src.models.db.memory_item import MemoryItem
 
 # 移除直接导入 MemoryItemRepository
 # from src.db.repositories.memory_item_repository import MemoryItemRepository
@@ -134,9 +134,9 @@ class MemoryItemService:
             Optional[MemoryItem]: 更新后的记忆项，如果不存在或失败则返回None
         """
         try:
-            # 传递 sync_status=SyncStatus.NOT_SYNCED （如果未指定）
+            # 使用字符串而不是枚举，避免循环导入
             if "sync_status" not in kwargs:
-                kwargs["sync_status"] = SyncStatus.NOT_SYNCED
+                kwargs["sync_status"] = "NOT_SYNCED"
             return self.db_service.memory_item_repo.update_item(item_id, **kwargs)
         except Exception as e:
             # Repository层已记录错误并回滚

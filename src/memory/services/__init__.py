@@ -11,8 +11,15 @@ VibeCopilot 记忆服务模块
 """
 
 from .memory_item_service import MemoryItemService
+from .memory_service import MemoryService
 from .note_service import NoteService
 from .search_service import SearchService
 from .sync_service import SyncService
 
-__all__ = ["NoteService", "SearchService", "SyncService", "MemoryItemService"]
+__all__ = [
+    "NoteService",
+    "SearchService",
+    "SyncService",
+    "MemoryItemService",
+    "MemoryService",
+]

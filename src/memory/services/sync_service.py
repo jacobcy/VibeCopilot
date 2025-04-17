@@ -52,7 +52,7 @@ class SyncService:
             rule_files.extend(glob.glob(os.path.join(rules_path, "**/*.mdc"), recursive=True))
 
             if not rule_files:
-                return True, "没有找到规则文件", {"synced": 0, "failed": 0}
+                return True, "没有找到规则文件", {"SYNCED": 0, "failed": 0}
 
             # 使用sync_files函数同步文件
             results = sync_files(rule_files, folder="rules", project=self.project)
@@ -70,7 +70,7 @@ class SyncService:
             # 更新最后同步时间
             update_last_sync_time()
 
-            return True, message, {"synced": success_count, "failed": fail_count, "details": results}
+            return True, message, {"SYNCED": success_count, "failed": fail_count, "details": results}
 
         except Exception as e:
             error_message = f"同步规则失败: {str(e)}"
@@ -97,7 +97,7 @@ class SyncService:
             else:
                 # 如果指定了文件，使用sync_files函数
                 if not files:
-                    return True, "没有找到文档文件", {"synced": 0, "failed": 0}
+                    return True, "没有找到文档文件", {"SYNCED": 0, "failed": 0}
                 results = sync_files(files, folder="docs", project=self.project)
 
             # 统计结果
@@ -113,7 +113,7 @@ class SyncService:
             # 更新最后同步时间
             update_last_sync_time()
 
-            return True, message, {"synced": success_count, "failed": fail_count, "details": results}
+            return True, message, {"SYNCED": success_count, "failed": fail_count, "details": results}
 
         except Exception as e:
             error_message = f"同步文档失败: {str(e)}"
@@ -137,14 +137,14 @@ class SyncService:
             docs_success, docs_message, docs_result = self.sync_documents()
 
             # 合并结果
-            synced_count = rules_result.get("synced", 0) + docs_result.get("synced", 0)
+            synced_count = rules_result.get("SYNCED", 0) + docs_result.get("SYNCED", 0)
             failed_count = rules_result.get("failed", 0) + docs_result.get("failed", 0)
 
             message = f"全部同步完成: 成功 {synced_count} 个，失败 {failed_count} 个\n"
             message += f"- 规则: {rules_result.get('synced', 0)} 成功，{rules_result.get('failed', 0)} 失败\n"
             message += f"- 文档: {docs_result.get('synced', 0)} 成功，{docs_result.get('failed', 0)} 失败"
 
-            return True, message, {"synced": synced_count, "failed": failed_count, "rules": rules_result, "docs": docs_result}
+            return True, message, {"SYNCED": synced_count, "failed": failed_count, "rules": rules_result, "docs": docs_result}
 
         except Exception as e:
             error_message = f"同步所有内容失败: {str(e)}"

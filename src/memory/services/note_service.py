@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 # 导入统一的DatabaseService
 from src.db.service import DatabaseService
-from src.models.db.memory_item import MemoryItem, SyncStatus
 
 # 导入工具函数
 from ..helpers import is_permalink, normalize_path, path_to_permalink  # 移除数据库工具; init_db_engine, create_tables, get_session,; 路径和URL工具
@@ -171,7 +170,7 @@ class NoteService:
                         tags = ",".join(tags)
 
                     repo.create_item(
-                        title=title, content=content, folder=folder, tags=tags, permalink=permalink, sync_status=SyncStatus.SYNCED  # 从远程获取的，视为已同步
+                        title=title, content=content, folder=folder, tags=tags, permalink=permalink, sync_status="SYNCED"  # 从远程获取的，视为已同步
                     )
                     logger.info(f"已将远程内容缓存到本地: {path}")
             except Exception as e:
@@ -212,7 +211,7 @@ class NoteService:
 
                 if item:
                     # 更新本地记录
-                    repo.update_item(item.id, content=content, tags=tags, sync_status=SyncStatus.SYNCED)
+                    repo.update_item(item.id, content=content, tags=tags, sync_status="SYNCED")
                     message += "\n同时已更新本地数据库"
                 else:
                     # 如果本地不存在，则创建
@@ -220,7 +219,7 @@ class NoteService:
                     folder = result.get("folder", "notes")
 
                     repo.create_item(
-                        title=title, content=content, folder=folder, tags=tags, permalink=permalink, sync_status=SyncStatus.SYNCED  # 从远程更新的，视为已同步
+                        title=title, content=content, folder=folder, tags=tags, permalink=permalink, sync_status="SYNCED"  # 从远程更新的，视为已同步
                     )
                     message += "\n已创建本地缓存"
             except Exception as e:
@@ -232,7 +231,7 @@ class NoteService:
 
     def delete_note(self, path: str, force: bool = False) -> Tuple[bool, str, Dict[str, Any]]:
         """
-        删除笔记，同时删除远程和本地
+        删除笔记，删除本地文件和数据库记录
 
         Args:
             path: 笔记路径或标识符
@@ -243,40 +242,35 @@ class NoteService:
         """
         logger.info(f"删除笔记: {path}, 强制: {force}")
 
-        # 首先从远程删除，利用note_utils中的delete_note方法
+        # 1. 先尝试删除本地文件
+        # 确保路径有.md后缀
+        file_path = path
+        if not file_path.endswith(".md"):
+            file_path = file_path + ".md"
+
+        # 删除本地文件
         success, message, result = delete_note(path, self.memory_root, force, self.project)
 
-        # 如果远程删除成功，标记本地数据库中的记录为已删除
-        if success:
-            try:
-                # 通过DatabaseService访问MemoryItemRepository
-                repo = self.db_service.memory_item_repo
+        # 2. 删除数据库记录
+        try:
+            # 通过DatabaseService访问MemoryItemRepository
+            repo = self.db_service.memory_item_repo
 
-                # 尝试获取本地记录
-                item = repo.get_by_permalink(path)
+            # 尝试获取本地记录
+            # 如果路径以.md结尾，移除后缀再查询
+            db_path = path
+            if db_path.endswith(".md"):
+                db_path = db_path[:-3]
 
-                if item:
-                    # 软删除本地记录
-                    repo.delete_item(item.id, soft_delete=True)
-                    message += "\n同时已在本地数据库中标记为删除"
+            item = repo.get_by_permalink(db_path)
 
-                # 如果找不到permalink匹配的记录，尝试通过标题查找
-                elif "/" in path:
-                    title = path.split("/")[-1]
-                    if "." in title:
-                        title = title.split(".")[0]
-
-                    # 将下划线转换为空格，可能更符合标题格式
-                    title = title.replace("_", " ")
-                    item = repo.get_by_title(title)
-
-                    if item:
-                        repo.delete_item(item.id, soft_delete=True)
-                        message += f"\n通过标题({title})在本地数据库中标记为删除"
-            except Exception as e:
-                logger.error(f"更新本地数据库删除状态失败: {str(e)}")
-                message += f"\n警告: 已从远程删除，但更新本地状态失败: {str(e)}"
-                # DatabaseService/Repository内部会处理回滚
+            if item:
+                # 软删除本地记录
+                repo.delete_item(item.id, soft_delete=True)
+                message += "\n同时已在本地数据库中标记为删除"
+        except Exception as e:
+            logger.error(f"更新本地数据库删除状态失败: {str(e)}")
+            message += f"\n警告: 已删除文件，但更新本地状态失败: {str(e)}"
 
         return success, message, result
 
