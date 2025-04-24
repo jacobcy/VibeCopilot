@@ -4,19 +4,21 @@
 提供工作流系统的日志管理功能，集成core.logger和flow_session的日志需求。
 """
 
+import logging  # Added import
 import os
 from typing import Any, Dict, Optional
 
 import yaml
 
-from src.core.logger import WorkflowLoggerAdapter, setup_workflow_logger
+# Removed import from src.core.logger
+# from src.core.log_init import get_workflow_logger as get_core_workflow_logger # Renamed to avoid conflict # Removed this line
 
 
 class WorkflowLogger:
     """工作流日志管理器"""
 
     _instance = None
-    _loggers: Dict[str, WorkflowLoggerAdapter] = {}
+    _loggers: Dict[str, logging.LoggerAdapter] = {}  # Use standard LoggerAdapter
 
     def __new__(cls):
         """单例模式实现"""
@@ -41,7 +43,7 @@ class WorkflowLogger:
 
     def get_logger(
         self, name: str, workflow_id: Optional[str] = None, session_id: Optional[str] = None, stage_id: Optional[str] = None
-    ) -> WorkflowLoggerAdapter:
+    ) -> logging.LoggerAdapter:
         """
         获取工作流日志记录器
 
@@ -52,18 +54,30 @@ class WorkflowLogger:
             stage_id: 阶段ID
 
         Returns:
-            WorkflowLoggerAdapter: 工作流日志适配器
+            logging.LoggerAdapter: 工作流日志适配器
         """
         logger_key = f"{name}:{workflow_id}:{session_id}:{stage_id}"
 
         if logger_key not in self._loggers:
-            logger = setup_workflow_logger(name=name, workflow_id=workflow_id, session_id=session_id, stage_id=stage_id)
-            self._loggers[logger_key] = logger
+            # Use standard logging.getLogger and create adapter manually
+            logger = logging.getLogger(f"vibecopilot.workflow.{name}")  # Use a consistent base name
+
+            # Add default context
+            extra = {"workflow_id": "unknown", "session_id": "unknown", "stage_id": "unknown"}
+            if workflow_id:
+                extra["workflow_id"] = workflow_id
+            if session_id:
+                extra["session_id"] = session_id
+            if stage_id:
+                extra["stage_id"] = stage_id
+
+            adapter = logging.LoggerAdapter(logger, extra)
+            self._loggers[logger_key] = adapter
 
         return self._loggers[logger_key]
 
     def update_context(
-        self, logger: WorkflowLoggerAdapter, workflow_id: Optional[str] = None, session_id: Optional[str] = None, stage_id: Optional[str] = None
+        self, logger: logging.LoggerAdapter, workflow_id: Optional[str] = None, session_id: Optional[str] = None, stage_id: Optional[str] = None
     ):
         """
         更新日志上下文

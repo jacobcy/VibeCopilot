@@ -140,13 +140,13 @@ class SessionCRUDMixin:
         """
         sessions = []
         if status and workflow_id:
-            sessions = self.session_repo.get_by_workflow_and_status(workflow_id, status)
+            sessions = self.session_repo.get_by_workflow_and_status(self.session, workflow_id, status)
         elif status:
-            sessions = self.session_repo.get_by_status(status)
+            sessions = self.session_repo.get_by_status(self.session, status)
         elif workflow_id:
-            sessions = self.session_repo.get_by_workflow_id(workflow_id)
+            sessions = self.session_repo.get_by_workflow_id(self.session, workflow_id)
         else:
-            sessions = self.session_repo.get_all()
+            sessions = self.session_repo.get_all(self.session)
 
         return sessions
 

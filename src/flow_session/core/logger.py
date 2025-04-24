@@ -23,7 +23,7 @@ class FlowSessionLogger:
             session_id: 会话ID
         """
         self.session_id = session_id
-        self.logger = get_logger(f"flow_session.{session_id}", is_workflow=True)
+        self.logger = get_logger(f"vibecopilot.flow_session.{session_id}")
 
     def log_session_created(self, workflow_id: str, context: Dict[str, Any]) -> None:
         """记录会话创建

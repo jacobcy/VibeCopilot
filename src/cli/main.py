@@ -24,8 +24,12 @@ logging.basicConfig(
 # 立即导入帮助命令
 from src.cli.commands.help.help_click import help as help_command
 
+# Import console utils
+from src.utils.console_utils import print_error, print_info
+
 logger = logging.getLogger(__name__)
-console = Console()
+# Remove direct console instance, rely on console_utils
+# console = Console()
 
 # 命令分组（用于帮助显示）
 COMMAND_GROUPS = {"基础命令": ["help", "status"], "开发工具": ["rule", "flow", "template"], "数据管理": ["db", "memory"], "项目管理": ["roadmap", "task"]}
@@ -162,7 +166,8 @@ def set_log_level(verbose: bool):
     logging.getLogger().setLevel(log_level)
 
     if verbose:
-        console.print("[dim]已启用详细日志模式[/dim]")
+        # Use logger for internal debug messages
+        logger.debug("已启用详细日志模式")
 
 
 def print_version(ctx, param, value):
@@ -171,7 +176,8 @@ def print_version(ctx, param, value):
         return
     from src import __version__
 
-    console.print(f"[bold]VibeCopilot[/bold] version: [bold blue]{__version__}[/bold blue]")
+    # Use print_info for user-facing version info
+    print_info(f"VibeCopilot version: {__version__}", title="Version")
     ctx.exit()
 
 
@@ -237,6 +243,7 @@ def get_cli_app():
 
         # 如果没有子命令，显示帮助信息
         if ctx.invoked_subcommand is None:
+            # click.echo is standard for help output, keep it
             click.echo(ctx.get_help())
 
     # 首先注册预加载的命令
@@ -265,7 +272,12 @@ def get_cli_app():
 
 def print_error_message(command: str):
     """打印错误信息"""
-    console.print(f"\n[bold red]错误:[/bold red] 未知命令: {command}")
+    # Use print_error for error message
+    print_error(f"未知命令: {command}", title="命令错误")
+
+    # Keep direct console print for structured help for now
+    # Consider using print_table or formatted print_info later
+    console = Console()  # Re-create console instance locally if needed for specific formatting
     console.print("\n可用命令:")
 
     for group, commands in COMMAND_GROUPS.items():
@@ -301,19 +313,22 @@ def main():
         cli()
         return 0  # 成功执行返回 0
     except click.exceptions.NoSuchOption as e:
-        console.print(f"\n[bold red]错误:[/bold red] 无效的选项: {e.option_name}")
-        console.print(f"使用 [bold]vibecopilot {e.ctx.command.name} --help[/bold] 查看有效的选项")
+        # Use print_error for invalid option message
+        error_msg = f"无效的选项: {e.option_name}\n使用 'vibecopilot {e.ctx.command.name} --help' 查看有效的选项"
+        print_error(error_msg, title="选项错误")
         return 1
     except click.exceptions.UsageError as e:
         if "No such command" in str(e):
             command = str(e).split('"')[1]
-            print_error_message(command)
+            print_error_message(command)  # This already uses print_error
         else:
-            console.print(f"\n[bold red]错误:[/bold red] {str(e)}")
+            # Use print_error for other usage errors
+            print_error(str(e), title="使用错误")
         return 1
     except Exception as e:
         logger.exception("命令执行出错")
-        console.print(f"\n[bold red]错误:[/bold red] {str(e)}")
+        # Use print_error for general execution errors
+        print_error(str(e), title="执行错误")
         return 1
 
 

@@ -17,7 +17,7 @@ import yaml
 from src.validation.roadmap_validation import RoadmapValidator
 
 from .importers import EpicImporter, MilestoneImporter, RoadmapImporter, TaskImporter
-from .utils import colorize, print_error, print_success
+from .utils import print_error, print_success
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class RoadmapImportService:
             if source_file != file_path:
                 logger.info(f"使用修复后的文件进行导入: {source_file}")
                 if verbose:
-                    print(colorize(f"使用修复后的文件进行导入: {source_file}", "cyan"))
+                    logger.debug(f"使用修复后的文件进行导入: {source_file}")
 
             # 初始化导入器
             stop_on_error = not verbose  # 非详细模式下遇到错误就停止
@@ -138,7 +138,7 @@ class RoadmapImportService:
             if "epics" in yaml_data:
                 logger.info(f"检测到Epic结构，优先导入Epic-Story-Task")
                 if verbose:
-                    print(colorize(f"检测到Epic结构，优先导入Epic-Story-Task", "cyan"))
+                    logger.debug(f"检测到Epic结构，优先导入Epic-Story-Task")
                 # Epic导入器会自动导入其下的stories和tasks
                 epic_importer.import_epics(yaml_data, roadmap_id, import_stats)
 
@@ -146,7 +146,7 @@ class RoadmapImportService:
             elif "milestones" in yaml_data:
                 logger.info(f"检测到Milestone结构，导入Milestone-Task")
                 if verbose:
-                    print(colorize(f"检测到Milestone结构，导入Milestone-Task", "cyan"))
+                    logger.debug(f"检测到Milestone结构，导入Milestone-Task")
                 milestone_importer.import_milestones(yaml_data, roadmap_id, import_stats)
 
                 # 导入根级任务 - 如果存在，关联到里程碑
@@ -164,7 +164,7 @@ class RoadmapImportService:
             elif "tasks" in yaml_data:
                 logger.info(f"仅检测到根级任务，直接导入Task")
                 if verbose:
-                    print(colorize(f"仅检测到根级任务，直接导入Task", "cyan"))
+                    logger.debug(f"仅检测到根级任务，直接导入Task")
                 task_importer.import_tasks(yaml_data["tasks"], None, roadmap_id, import_stats)
 
             # 生成导入结果
@@ -216,11 +216,11 @@ class RoadmapImportService:
             if force_llm:
                 logger.info(f"开始使用RoadmapProcessor强制LLM解析文件: {file_path}")
                 if verbose:
-                    print(colorize(f"开始强制LLM解析文件: {file_path}", "cyan"))
+                    logger.debug(f"开始强制LLM解析文件: {file_path}")
             else:
                 logger.info(f"开始使用RoadmapProcessor解析文件: {file_path}")
                 if verbose:
-                    print(colorize(f"开始解析文件: {file_path}", "cyan"))
+                    logger.debug(f"开始解析文件: {file_path}")
 
             # 使用parse_roadmap方法处理YAML内容
             processed_data = processor.parse_roadmap(content)
@@ -228,7 +228,7 @@ class RoadmapImportService:
             if not processed_data or not isinstance(processed_data, dict):
                 logger.error("RoadmapProcessor返回的数据无效或不是字典类型")
                 if verbose:
-                    print(colorize("❌ 解析失败: 返回了无效数据", "red"))
+                    logger.debug("❌ 解析失败: 返回了无效数据")
                 return file_path, None
 
             # 创建临时文件存储处理后的数据
@@ -242,13 +242,13 @@ class RoadmapImportService:
 
                 logger.info(f"已将处理后的数据保存到: {temp_path}")
                 if verbose:
-                    print(colorize(f"✅ 已将处理后的数据保存到: {temp_path}", "green"))
+                    logger.debug(f"✅ 已将处理后的数据保存到: {temp_path}")
 
                 return temp_path, processed_data
             except Exception as e:
                 logger.error(f"保存处理后的数据失败: {str(e)}")
                 if verbose:
-                    print(colorize(f"❌ 保存处理后的数据失败: {str(e)}", "red"))
+                    logger.debug(f"❌ 保存处理后的数据失败: {str(e)}")
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)  # 删除临时文件
                 return file_path, processed_data
@@ -256,7 +256,7 @@ class RoadmapImportService:
         except Exception as e:
             logger.error(f"处理文件失败: {str(e)}")
             if verbose:
-                print(colorize(f"❌ 处理文件失败: {str(e)}", "red"))
+                logger.debug(f"❌ 处理文件失败: {str(e)}")
             return file_path, None
 
     def _read_yaml_file(self, file_path: str, verbose: bool, force_llm: bool = False) -> Optional[Dict[str, Any]]:
@@ -279,7 +279,7 @@ class RoadmapImportService:
                 error_msg = f"文件不存在: {file_path}"
                 logger.error(error_msg)
                 if verbose:
-                    print(colorize(error_msg, "red"))
+                    logger.debug(error_msg)
                 return None
 
             # 调用_validate_and_fix_yaml处理文件，传递force_llm参数
@@ -290,7 +290,7 @@ class RoadmapImportService:
             error_msg = f"读取文件失败: {file_path}"
             logger.error(f"{error_msg}: {str(e)}")
             if verbose:
-                print(colorize(f"{error_msg}: {str(e)}", "red"))
+                logger.debug(f"{error_msg}: {str(e)}")
             return None
 
     def _generate_import_result(self, file_path: str, roadmap_id: str, import_stats: Dict[str, Dict[str, int]], verbose: bool) -> Dict[str, Any]:
@@ -317,7 +317,7 @@ class RoadmapImportService:
         # 如果有失败项但在详细模式下继续，添加警告信息
         if has_failures and verbose:
             result["warning"] = "部分项目导入失败，请查看日志了解详情"
-            print(f"\n{colorize('⚠️ 警告', 'yellow', 'bold')}: {colorize('部分项目导入失败，但因为处于详细模式，仍然继续导入', 'yellow')}")
+            logger.debug(f"\n{logger.debug('⚠️ 警告', 'yellow', 'bold')}: {logger.debug('部分项目导入失败，但因为处于详细模式，仍然继续导入', 'yellow')}")
 
         # 打印导入统计信息
         self._print_import_stats(import_stats)
@@ -326,16 +326,16 @@ class RoadmapImportService:
 
     def _print_import_stats(self, import_stats: Dict[str, Dict[str, int]]) -> None:
         """打印导入统计信息"""
-        print(f"\n{colorize('📊 导入统计:', 'blue', 'bold')}")
-        print(
-            f"{colorize('•', 'green')} 里程碑: {colorize(str(import_stats['milestones']['success']), 'green')}成功, {colorize(str(import_stats['milestones']['failed']), 'red' if import_stats['milestones']['failed'] > 0 else 'green')}失败"
+        logger.debug(f"\n{logger.debug('📊 导入统计:', 'blue', 'bold')}")
+        logger.debug(
+            f"{logger.debug('•', 'green')} 里程碑: {logger.debug(str(import_stats['milestones']['success']), 'green')}成功, {logger.debug(str(import_stats['milestones']['failed']), 'red' if import_stats['milestones']['failed'] > 0 else 'green')}失败"
         )
-        print(
-            f"{colorize('•', 'green')} 史诗: {colorize(str(import_stats['epics']['success']), 'green')}成功, {colorize(str(import_stats['epics']['failed']), 'red' if import_stats['epics']['failed'] > 0 else 'green')}失败"
+        logger.debug(
+            f"{logger.debug('•', 'green')} 史诗: {logger.debug(str(import_stats['epics']['success']), 'green')}成功, {logger.debug(str(import_stats['epics']['failed']), 'red' if import_stats['epics']['failed'] > 0 else 'green')}失败"
         )
-        print(
-            f"{colorize('•', 'green')} 故事: {colorize(str(import_stats['stories']['success']), 'green')}成功, {colorize(str(import_stats['stories']['failed']), 'red' if import_stats['stories']['failed'] > 0 else 'green')}失败"
+        logger.debug(
+            f"{logger.debug('•', 'green')} 故事: {logger.debug(str(import_stats['stories']['success']), 'green')}成功, {logger.debug(str(import_stats['stories']['failed']), 'red' if import_stats['stories']['failed'] > 0 else 'green')}失败"
         )
-        print(
-            f"{colorize('•', 'green')} 任务: {colorize(str(import_stats['tasks']['success']), 'green')}成功, {colorize(str(import_stats['tasks']['failed']), 'red' if import_stats['tasks']['failed'] > 0 else 'green')}失败"
+        logger.debug(
+            f"{logger.debug('•', 'green')} 任务: {logger.debug(str(import_stats['tasks']['success']), 'green')}成功, {logger.debug(str(import_stats['tasks']['failed']), 'red' if import_stats['tasks']['failed'] > 0 else 'green')}失败"
         )

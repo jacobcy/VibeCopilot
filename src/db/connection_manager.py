@@ -16,10 +16,11 @@ from sqlalchemy.pool import QueuePool
 
 # 引入 get_config
 from src.core.config.manager import get_config
-from src.core.logger import setup_logger
+
+# Removed import of setup_logger
 from src.models.db.base import Base
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class DBConnectionManager:

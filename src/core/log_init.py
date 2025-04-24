@@ -11,8 +11,8 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from src.core.logger import setup_logger, setup_workflow_logger
-from src.workflow.logger import workflow_logger
+# Removed imports from src.core.logger
+# from src.workflow.logger import workflow_logger # Assuming this is still needed, otherwise remove
 
 
 def init_logging(config_path: Optional[str] = None) -> None:
@@ -50,7 +50,7 @@ def _setup_default_logging() -> None:
         "disable_existing_loggers": False,
         "formatters": {
             "standard": {"format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"},
-            "workflow": {"format": "%(asctime)s [%(levelname)s] [%(workflow_id)s] %(name)s: %(message)s"},
+            "workflow": {"format": "%(asctime)s [%(levelname)s] [%(name)s] [W:%(workflow_id)s|S:%(session_id)s|ST:%(stage_id)s] %(message)s"},
         },
         "handlers": {
             "workflow_file": {
@@ -123,24 +123,25 @@ def get_workflow_logger(module_name: str, **context: Any) -> logging.Logger:
     extra = {"workflow_id": "unknown", "session_id": "unknown", "stage_id": "unknown"}
     extra.update(context)
 
-    # 创建适配器添加上下文
-    logger = logging.LoggerAdapter(logger, extra)
+    # Create adapter to add context
+    # Ensure the logger itself is configured via dictConfig
+    adapter = logging.LoggerAdapter(logger, extra)
+    return adapter
 
-    return logger
 
-
-def get_logger(name: str, is_workflow: bool = False) -> logging.Logger:
+def get_logger(name: str) -> logging.Logger:
     """
-    获取日志记录器的统一接口
+    获取一个日志记录器。
+
+    日志记录器的配置应通过 init_logging 完成。
+    此函数仅用于获取已配置或将由根记录器配置处理的记录器实例。
 
     Args:
         name: 日志记录器名称
-        is_workflow: 是否是工作流日志
 
     Returns:
-        logging.Logger: 配置好的日志记录器
+        logging.Logger: 日志记录器实例
     """
-    if is_workflow:
-        return workflow_logger.get_logger(name)
-    else:
-        return setup_logger(name)
+    # Configuration is handled by init_logging using dictConfig.
+    # This function simply returns the logger instance.
+    return logging.getLogger(name)

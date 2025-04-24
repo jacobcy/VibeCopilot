@@ -11,8 +11,11 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from src.core.config import get_config
-from src.roadmap.core.roadmap_models import Milestone, Roadmap, Story
-from src.utils.file_utils import ensure_dir_exists
+from src.models.db.milestone import Milestone
+from src.models.db.roadmap import Roadmap
+from src.models.db.story import Story
+from src.models.db.task import Task
+from src.utils.file_utils import ensure_directory_exists
 
 from .utils import print_error, print_success
 
@@ -38,7 +41,7 @@ class RoadmapExportService:
         """获取默认导出路径"""
         # 使用 agent_work_dir 构建路径
         export_dir = os.path.join(self.project_root, self.agent_work_dir, "roadmap", "exports")
-        ensure_dir_exists(export_dir)
+        ensure_directory_exists(export_dir)
         return os.path.join(export_dir, f"{roadmap_id}.yaml")
 
     def export_to_yaml(self, roadmap_id: Optional[str] = None, output_path: Optional[str] = None) -> Dict[str, Any]:
@@ -105,4 +108,4 @@ class RoadmapExportService:
         """确保导出目录存在"""
         # 这个逻辑似乎可以合并到 _get_default_export_path 中
         export_dir = os.path.join(self.project_root, self.agent_work_dir, "roadmap", "exports")
-        ensure_dir_exists(export_dir)
+        ensure_directory_exists(export_dir)

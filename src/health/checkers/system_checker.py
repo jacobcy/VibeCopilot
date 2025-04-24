@@ -1,5 +1,6 @@
 """系统状态检查器"""
 import json
+import logging  # Added import
 import os
 import platform
 import sys
@@ -9,12 +10,13 @@ from typing import Any, Dict, List, Tuple
 from sqlalchemy import text
 
 from src.core.config import get_config
-from src.core.logger import setup_logger
+
+# Removed import of setup_logger
 from src.db.connection_manager import get_engine
 
 from .base_checker import BaseChecker, CheckResult
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class SystemChecker(BaseChecker):

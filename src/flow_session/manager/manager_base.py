@@ -34,9 +34,9 @@ class FlowSessionManagerBase:
         # from src.db import FlowSessionRepository, StageInstanceRepository, WorkflowDefinitionRepository
 
         self.session = session
-        self.workflow_repo = WorkflowDefinitionRepository(session)
-        self.session_repo = FlowSessionRepository(session)
-        self.stage_repo = StageInstanceRepository(session)
+        self.workflow_repo = WorkflowDefinitionRepository()
+        self.session_repo = FlowSessionRepository()
+        self.stage_repo = StageInstanceRepository()
         self._logger = logger
 
         # 确保存储当前会话ID的目录存在

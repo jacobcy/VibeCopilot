@@ -1,16 +1,17 @@
 """数据库健康检查器"""
+import logging  # Added import
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import inspect, text
 
-from src.core.logger import setup_logger
+# Removed import of setup_logger
 from src.db.connection_manager import get_engine, get_session
 
 from .base_checker import BaseChecker, CheckResult
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class DatabaseChecker(BaseChecker):

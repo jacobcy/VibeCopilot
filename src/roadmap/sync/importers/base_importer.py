@@ -7,7 +7,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from ..utils import colorize, print_error, print_success
+from ..utils import print_error, print_success
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class BaseImporter:
         """记录信息日志"""
         logger.info(message)
         if self.verbose:
-            print(colorize(message, "cyan"))
+            logger.debug(message)
 
     def log_success(self, message: str):
         """记录成功日志"""

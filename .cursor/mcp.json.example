@@ -5,7 +5,7 @@
         "args": [
           "-y",
           "@modelcontextprotocol/server-filesystem",
-          "/Users/chenyi/Public/VibeCopilot"
+          "${workspaceRoot}"
         ]
       },
       "sequential-thinking": {
@@ -37,25 +37,6 @@
           "--repository",
           "${workspaceRoot}"
         ]
-      },
-      "vibe-copilot": {
-        "command": "python",
-        "env": {
-          "PYTHONPATH": "/Users/chenyi/Public/VibeCopilot"
-        },
-        "args": [
-          "/Users/chenyi/Public/VibeCopilot/src/cursor/server.py",
-          "--workspace",
-          "/Users/chenyi/Public/VibeCopilot",
-          "--verbose"
-        ],
-        "capabilities": {
-          "prompts": true,
-          "resources": true,
-          "tools": true,
-          "logging": true,
-          "completion": true
-        }
       }
     },
     "version": "1.0.0",

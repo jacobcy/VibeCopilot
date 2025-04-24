@@ -8,7 +8,6 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from ..utils import colorize
 from .base_importer import BaseImporter
 from .task_importer import TaskImporter
 
@@ -83,7 +82,7 @@ class MilestoneImporter(BaseImporter):
         milestone_id = existing_milestone.id
 
         if self.verbose:
-            print(colorize(f"里程碑已存在，进行更新: {milestone_title} (ID: {milestone_id})", "cyan"))
+            logger.debug(f"里程碑已存在，进行更新: {milestone_title} (ID: {milestone_id})")
 
         # 更新现有里程碑
         update_data = {

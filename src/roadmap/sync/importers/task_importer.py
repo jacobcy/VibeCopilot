@@ -8,7 +8,6 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from ..utils import colorize
 from .base_importer import BaseImporter
 
 logger = logging.getLogger(__name__)
@@ -42,7 +41,7 @@ class TaskImporter(BaseImporter):
         if self.verbose:
             parent_type = "故事" if story_id else "里程碑" if milestone_id else "路线图"
             parent_id = story_id or milestone_id or roadmap_id
-            print(colorize(f"开始导入 {len(tasks_data)} 个任务到{parent_type} ID: {parent_id}", "cyan"))
+            logger.debug(f"开始导入 {len(tasks_data)} 个任务到{parent_type} ID: {parent_id}")
 
         logger.info(f"导入 {len(tasks_data)} 个任务，story_id={story_id}, milestone_id={milestone_id}, roadmap_id={roadmap_id}")
 
@@ -128,7 +127,7 @@ class TaskImporter(BaseImporter):
         task_id = existing_task.id
 
         if self.verbose:
-            print(colorize(f"任务已存在，进行更新: {task_title} (ID: {task_id})", "cyan"))
+            logger.debug(f"任务已存在，进行更新: {task_title} (ID: {task_id})")
 
         # 更新现有任务
         update_data = {

@@ -8,7 +8,6 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from ..utils import colorize
 from .base_importer import BaseImporter
 from .story_importer import StoryImporter
 
@@ -81,7 +80,7 @@ class EpicImporter(BaseImporter):
         epic_id = existing_epic.id
 
         if self.verbose:
-            print(colorize(f"史诗已存在，进行更新: {epic_title} (ID: {epic_id})", "cyan"))
+            logger.info(f"史诗已存在，进行更新: {epic_title} (ID: {epic_id})")
 
         # 更新现有史诗
         update_data = {

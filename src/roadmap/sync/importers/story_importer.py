@@ -8,7 +8,6 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from ..utils import colorize
 from .base_importer import BaseImporter
 from .task_importer import TaskImporter
 
@@ -41,7 +40,7 @@ class StoryImporter(BaseImporter):
                 if story_id and "tasks" in story_data and isinstance(story_data["tasks"], list):
                     logger.info(f"为故事 '{story_title}' 导入 {len(story_data['tasks'])} 个任务")
                     if self.verbose:
-                        print(colorize(f"为故事 '{story_title}' 导入 {len(story_data['tasks'])} 个任务", "cyan"))
+                        logger.debug(f"为故事 '{story_title}' 导入 {len(story_data['tasks'])} 个任务")
 
                     # 使用任务导入器导入任务，story_id作为任务的关联ID，不需要milestone_id
                     task_importer.import_tasks(
@@ -89,7 +88,7 @@ class StoryImporter(BaseImporter):
         story_id = existing_story.id
 
         if self.verbose:
-            print(colorize(f"故事已存在，进行更新: {story_title} (ID: {story_id})", "cyan"))
+            logger.debug(f"故事已存在，进行更新: {story_title} (ID: {story_id})")
 
         # 更新现有故事
         update_data = {

@@ -10,7 +10,6 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from ..utils import colorize
 from .base_importer import BaseImporter
 
 logger = logging.getLogger(__name__)
@@ -64,7 +63,7 @@ class RoadmapImporter(BaseImporter):
             roadmap_description = metadata.get("description", "")
             roadmap_version = metadata.get("version", "1.0")
             if self.verbose:
-                print(colorize(f"从metadata中提取, 标题: {roadmap_name}, 描述: {roadmap_description}, 版本: {roadmap_version}", "cyan"))
+                logger.debug(f"从metadata中提取, 标题: {roadmap_name}, 描述: {roadmap_description}, 版本: {roadmap_version}")
 
         # 如果YAML中没有路线图名称，尝试从文件名推断
         if not roadmap_name and file_path:
@@ -73,7 +72,7 @@ class RoadmapImporter(BaseImporter):
                 roadmap_name = os.path.splitext(roadmap_name)[0]  # 移除文件扩展名
                 roadmap_name = roadmap_name.replace("_", " ").replace("-", " ").title()
                 if self.verbose:
-                    print(colorize(f"从文件名推断路线图名称: {roadmap_name}", "cyan"))
+                    logger.debug(f"从文件名推断路线图名称: {roadmap_name}")
             except Exception as e:
                 logger.warning(f"从文件名推断路线图名称失败: {str(e)}")
 
@@ -131,7 +130,7 @@ class RoadmapImporter(BaseImporter):
         unique_id = f"roadmap-{roadmap_slug}"
 
         if self.verbose:
-            print(colorize(f"创建路线图: 标题={name}, ID={unique_id}", "cyan"))
+            logger.debug(f"创建路线图: 标题={name}, ID={unique_id}")
 
         # 调用服务创建路线图
         result = self.service.create_roadmap(title=name, description=description, version=version, roadmap_id=unique_id)

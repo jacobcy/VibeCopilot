@@ -9,6 +9,7 @@
 import logging
 from typing import Any, Dict, Optional, Tuple, Union
 
+import click
 from rich.console import Console
 from rich.table import Table
 from sqlalchemy.orm import Session as SQLAlchemySession
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session as SQLAlchemySession
 from src.db import init_db
 from src.flow_session.core import handle_list_sessions, handle_show_session
 from src.flow_session.manager import FlowSessionManager
+from src.roadmap.sync.utils.console import print_error
 
 logger = logging.getLogger(__name__)
 console = Console()
