@@ -13,7 +13,6 @@ from rich.table import Table
 
 from src.cli.commands.db.handlers.init_handler import init_db
 from src.cli.commands.db.handlers.list_handler import list_db_cli
-from src.cli.commands.db.handlers.show_handler import show_db
 from src.cli.commands.db.handlers.status_handler import status_db
 from src.cli.decorators import pass_service
 
@@ -81,16 +80,15 @@ def list_db(service, type: Optional[str] = None, verbose: bool = False, format: 
         return 1
 
 
-@db.command(name="show", help="显示数据库条目")
-@click.option("--type", required=True, help="实体类型(epic/story/task/label/template)")
-@click.option("--id", required=True, help="实体ID")
+@db.command(name="show", help="根据ID显示数据库条目")
+@click.argument("id", required=True)
 @click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
 @pass_service(service_type="db")
-def show_db(service, type: str, id: str, format: str) -> int:
-    """显示数据库条目"""
+def show_db(service, id: str, format: str) -> int:
+    """根据ID显示数据库条目"""
     try:
         # 创建参数字典，与ShowHandler兼容
-        args_dict = {"type": type, "id": id, "format": format, "service": service}
+        args_dict = {"id": id, "format": format, "service": service}
 
         # 实例化并执行ShowHandler
         from src.cli.commands.db.handlers.show_handler import ShowHandler

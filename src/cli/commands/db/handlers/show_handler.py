@@ -14,6 +14,8 @@ from rich.console import Console
 from rich.table import Table
 
 from src.cli.decorators import pass_service
+from src.db.connection_manager import get_session
+from src.utils.id_generator import EntityType, IdGenerator
 
 from .base_handler import ClickBaseHandler
 from .exceptions import DatabaseError, ValidationError
@@ -26,7 +28,6 @@ console = Console()
 class ShowHandler(ClickBaseHandler):
     """数据库条目显示命令处理器"""
 
-    VALID_TYPES = {"epic", "story", "task", "label", "template"}
     VALID_FORMATS = {"table", "json", "yaml"}
 
     def __init__(self):
@@ -37,7 +38,7 @@ class ShowHandler(ClickBaseHandler):
         验证显示命令参数
 
         Args:
-            **kwargs: 命令参数
+            **kwargs: 命令参数 (只需要 id 和 format)
 
         Returns:
             bool: 验证是否通过
@@ -45,18 +46,18 @@ class ShowHandler(ClickBaseHandler):
         Raises:
             ValidationError: 验证失败时抛出
         """
-        entity_type = kwargs.get("type")
         entity_id = kwargs.get("id")
         output_format = kwargs.get("format", "table")
-
-        if not entity_type:
-            raise ValidationError("实体类型不能为空")
 
         if not entity_id:
             raise ValidationError("实体ID不能为空")
 
-        if entity_type not in self.VALID_TYPES:
-            raise ValidationError(f"不支持的实体类型: {entity_type}")
+        try:
+            entity_type_enum = IdGenerator.get_entity_type_from_id(entity_id)
+            if entity_type_enum is None:
+                raise ValidationError(f"无法从ID '{entity_id}' 推断出有效的实体类型")
+        except ValueError as e:
+            raise ValidationError(f"无效的实体ID格式: {entity_id}. {str(e)}")
 
         if output_format not in self.VALID_FORMATS:
             raise ValidationError(f"不支持的输出格式: {output_format}")
@@ -68,7 +69,7 @@ class ShowHandler(ClickBaseHandler):
         处理显示命令
 
         Args:
-            **kwargs: 命令参数
+            **kwargs: 命令参数 (只需要 id, format, service)
 
         Returns:
             int: 0表示成功，1表示失败
@@ -76,7 +77,6 @@ class ShowHandler(ClickBaseHandler):
         Raises:
             DatabaseError: 数据库操作失败时抛出
         """
-        entity_type = kwargs.get("type")
         entity_id = kwargs.get("id")
         output_format = kwargs.get("format", "table")
         service = kwargs.get("service")
@@ -85,15 +85,33 @@ class ShowHandler(ClickBaseHandler):
             raise DatabaseError("数据库服务未初始化")
 
         try:
-            entity = service.get_entity(entity_type, entity_id)
-
-            if not entity:
-                console.print(f"[yellow]未找到 {entity_type} 类型，ID为 {entity_id} 的条目[/yellow]")
+            entity_type_enum = IdGenerator.get_entity_type_from_id(entity_id)
+            if entity_type_enum is None:
+                console.print(f"[red]错误: 无法从ID '{entity_id}' 推断出有效的实体类型[/red]")
                 return 1
 
-            return self._display_entity(entity, entity_type, entity_id, output_format)
+            entity_type_str = entity_type_enum.name.lower()
+
+            with get_session() as session:
+                entity = service.get_entity(session, entity_type_str, entity_id)
+
+            if not entity:
+                console.print(f"[yellow]未找到 {entity_type_str} 类型，ID为 {entity_id} 的条目[/yellow]")
+                return 1
+
+            return self._display_entity(entity, entity_type_str, entity_id, output_format)
+        except ValueError as e:
+            console.print(f"[red]错误: 无效的实体ID格式 '{entity_id}': {str(e)}[/red]")
+            return 1
         except Exception as e:
-            raise DatabaseError(f"显示 {entity_type} {entity_id} 失败: {str(e)}")
+            inferred_type = "未知类型"
+            try:
+                inferred_enum = IdGenerator.get_entity_type_from_id(entity_id)
+                if inferred_enum:
+                    inferred_type = inferred_enum.name.lower()
+            except ValueError:
+                pass
+            raise DatabaseError(f"显示 {inferred_type} {entity_id} 失败: {str(e)}")
 
     def _display_entity(self, entity: Dict, entity_type: str, entity_id: str, output_format: str) -> int:
         """显示实体详情"""
@@ -249,26 +267,3 @@ class ShowHandler(ClickBaseHandler):
             console.print(f"[red]{str(error)}[/red]")
         else:
             super().error_handler(error)
-
-
-@click.command(name="show", help="显示数据库条目")
-@click.option("--type", required=True, help="实体类型(epic/story/task/label/template)")
-@click.option("--id", required=True, help="实体ID")
-@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
-@pass_service(service_type="db")
-def show_db(service, type: str, id: str, format: str) -> None:
-    """
-    显示数据库条目命令
-
-    Args:
-        service: 数据库服务实例
-        type: 实体类型
-        id: 实体ID
-        format: 输出格式
-    """
-    handler = ShowHandler()
-    try:
-        result = handler.execute(service=service, type=type, id=id, format=format)
-        return result
-    except Exception:
-        return 1

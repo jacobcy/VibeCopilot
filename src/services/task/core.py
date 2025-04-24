@@ -100,6 +100,16 @@ class TaskService:
             # 创建任务
             task_orm = self._db_service.task_repo.create_task(session, **data)
 
+            # 设置为当前任务
+            try:
+                # 从状态服务获取TaskStatusProvider
+                task_provider = self._status_service.provider_manager.get_provider("task")
+                if task_provider and hasattr(task_provider, "set_current_task"):
+                    task_provider.set_current_task(task_orm.id)
+                    logger.info(f"已将任务 {task_orm.id} 设置为当前任务")
+            except Exception as e:
+                logger.warning(f"设置当前任务失败: {e}")
+
             # 记录任务创建
             logger.info(f"创建任务成功: {task_orm.id}")
 

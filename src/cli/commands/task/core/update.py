@@ -61,7 +61,7 @@ def parse_github_url(url: str) -> Tuple[str, int]:
 
 
 @click.command(name="update", help="更新现有任务的信息")
-@click.argument("task_id")
+@click.argument("task_id", required=False)
 @click.option("--title", "-t", help="任务标题")
 @click.option("--desc", "--description", "-d", help="任务描述")
 @click.option("--status", "-s", help="任务状态")
@@ -71,8 +71,9 @@ def parse_github_url(url: str) -> Tuple[str, int]:
 @click.option("--link-github", "-g", help="关联的 GitHub Issue URL")
 @click.option("--link-story", "-s", help="关联的故事 ID")
 @click.option("--unlink", type=click.Choice(["story", "github"]), help="取消关联 (story 或 github)")
+@click.option("--current", is_flag=True, help="将此任务设置为当前活动任务")
 def update_task(
-    task_id: str,
+    task_id: Optional[str],
     title: Optional[str] = None,
     desc: Optional[str] = None,
     status: Optional[str] = None,
@@ -82,14 +83,16 @@ def update_task(
     link_github: Optional[str] = None,
     link_story: Optional[str] = None,
     unlink: Optional[str] = None,
+    current: bool = False,
 ) -> int:
     """
     更新现有任务的信息。
 
-    提供需要更新的字段，未提供的字段将保持不变。
+    如果未提供 TASK_ID，则更新当前活动任务。
+    可以使用 --current 标志将指定或当前任务设置为活动任务。
 
     参数:
-        task_id: 要更新的任务ID
+        task_id: 要更新的任务ID (可选，默认为当前任务)
         title: 新的任务标题
         desc: 新的任务描述
         status: 新的任务状态
@@ -99,12 +102,13 @@ def update_task(
         link_github: 关联 GitHub Issue URL
         link_story: 关联故事 ID
         unlink: 取消关联 (story 或 github)
+        current: 是否将此任务设为当前任务
     """
     try:
-        # 检查是否提供了至少一个更新参数
+        # 检查是否提供了至少一个更新参数或 --current 标志
         update_args = [title, desc, status, assignee, labels, due, link_github, link_story, unlink]
-        if not any(arg is not None and arg != () for arg in update_args):
-            console.print("[bold yellow]警告:[/bold yellow] 未提供任何需要更新的字段。使用 --help 查看可用选项。")
+        if not any(arg is not None and arg != () for arg in update_args) and not current:
+            console.print("[bold yellow]警告:[/bold yellow] 未提供任何需要更新的字段或设置当前任务。使用 --help 查看可用选项。")
             return 1
 
         # 调用执行逻辑
@@ -119,6 +123,7 @@ def update_task(
             github_url=link_github,
             link_story=link_story,
             unlink=unlink,
+            set_current=current,
         )
 
         # 处理执行结果
@@ -140,7 +145,7 @@ def update_task(
 
 
 def execute_update_task(
-    task_id: str,
+    task_id: Optional[str],
     title: Optional[str] = None,
     description: Optional[str] = None,
     status: Optional[str] = None,
@@ -150,9 +155,10 @@ def execute_update_task(
     github_url: Optional[str] = None,
     link_story: Optional[str] = None,
     unlink: Optional[str] = None,
+    set_current: bool = False,
 ) -> Dict[str, Any]:
     """执行更新任务的核心逻辑"""
-    logger.info(f"执行更新任务命令: task_id={task_id}")
+    logger.info(f"执行更新任务命令: task_id={task_id}, set_current={set_current}")
 
     results = {
         "status": "success",
@@ -166,7 +172,37 @@ def execute_update_task(
         "warnings": [],
     }
 
-    # Prepare log updates dictionary (can be passed to TaskService.log_task_activity)
+    effective_task_id = task_id
+    is_updating_current = False
+
+    task_provider = None
+    try:
+        from src.status.service import StatusService
+
+        status_service = StatusService.get_instance()
+        task_provider = status_service.provider_manager.get_provider("task")
+    except Exception as e:
+        logger.warning(f"获取 Task Provider 失败: {e}. 设置当前任务功能将不可用。")
+        results["warnings"].append("状态服务异常，设置当前任务功能可能受影响。")
+
+    if effective_task_id is None:
+        is_updating_current = True
+        if task_provider and hasattr(task_provider, "get_current_task_id"):
+            effective_task_id = task_provider.get_current_task_id()
+            if effective_task_id:
+                logger.info(f"未提供任务ID，将更新当前任务: {effective_task_id}")
+                console.print(f"[dim]正在更新当前任务: {effective_task_id}...[/dim]")
+            else:
+                results["status"] = "error"
+                results["code"] = 404
+                results["message"] = "未提供任务ID，且当前没有活动任务。请使用 'vc task update <ID> --current' 设置或提供一个任务ID。"
+                return results
+        else:
+            results["status"] = "error"
+            results["code"] = 500
+            results["message"] = "无法获取当前任务信息（状态服务不可用）。请提供任务ID。"
+            return results
+
     log_updates = {}
     update_data = {}
 
@@ -217,39 +253,56 @@ def execute_update_task(
         results["message"] = f"无效的任务状态: {status}。有效状态值为: {valid_statuses}"
         return results
 
+    task_updated_successfully = False
+    current_set_successfully = False
+
     try:
         with session_scope() as session:
             task_service = TaskService()
             memory_service = get_memory_service()
 
-            task = task_service.get_task(session, task_id)
+            task = task_service.get_task(session, effective_task_id)
             if not task:
                 results["status"] = "error"
                 results["code"] = 404
-                results["message"] = f"更新失败: 未找到任务 {task_id}"
+                results["message"] = f"更新失败: 未找到任务 {effective_task_id}"
                 return results
 
             original_task_data_for_log = task.copy()
-            has_updates = False
+            has_updates = bool(update_data)
 
-            if update_data:
-                logger.info(f"准备更新任务 {task_id} 使用数据: {update_data}")
-                updated_task_dict = task_service.update_task(session, task_id, update_data)
+            if has_updates:
+                logger.info(f"准备更新任务 {effective_task_id} 使用数据: {update_data}")
+                updated_task_dict = task_service.update_task(session, effective_task_id, update_data)
 
                 if updated_task_dict:
-                    has_updates = True
+                    task_updated_successfully = True
                     results["data"] = updated_task_dict
-                    logger.info(f"任务 {task_id} 更新成功")
+                    logger.info(f"任务 {effective_task_id} 更新成功")
                 else:
-                    raise Exception(f"TaskService.update_task 未能成功更新任务 {task_id}")
-            else:
-                logger.info(f"没有提供需要更新的任务字段 (除了参考文档，已单独处理或警告)")
-                if results["warnings"]:
-                    results["status"] = "warning"
-                results["message"] = "没有提供需要更新的任务字段"
+                    raise Exception(f"TaskService.update_task 未能成功更新任务 {effective_task_id}")
+            elif not set_current:
+                logger.info(f"没有提供需要更新的任务字段，也没有设置 --current 标志。")
+                results["message"] = "没有提供需要更新的任务字段。"
                 return results
 
-            if has_updates and log_updates:
+            if set_current:
+                logger.debug(f"检查 Task Provider: {task_provider}")
+                if task_provider and hasattr(task_provider, "set_current_task"):
+                    logger.debug(f"调用 Task Provider 的 set_current_task 方法，任务 ID: {effective_task_id}")
+                    success = task_provider.set_current_task(effective_task_id)
+                    logger.debug(f"Task Provider set_current_task 返回: {success}")
+                    if success:
+                        current_set_successfully = True
+                        logger.info(f"任务 {effective_task_id} 已设置为当前任务。")
+                    else:
+                        logger.error(f"Task Provider set_current_task 方法返回 False。")
+                        results["warnings"].append(f"设置任务 {effective_task_id} 为当前任务失败 (Provider 返回 False)。")
+                else:
+                    logger.warning("Task Provider 无效或缺少 set_current_task 方法。")
+                    results["warnings"].append("无法设置当前任务（状态服务不可用或Provider无效）。")
+
+            if task_updated_successfully and log_updates:
                 try:
                     changes_for_log = {}
                     for k, v in log_updates.items():
@@ -265,7 +318,7 @@ def execute_update_task(
 
                     if changes_for_log:
                         if hasattr(task_service, "log_task_activity") and callable(getattr(task_service, "log_task_activity")):
-                            task_service.log_task_activity(session, task_id, "任务更新", details=changes_for_log)
+                            task_service.log_task_activity(session, effective_task_id, "任务更新", details=changes_for_log)
                         else:
                             logger.warning("TaskService does not have log_task_activity method. Skipping log.")
                             results["warnings"].append("无法记录任务更新日志 (TaskService 功能缺失)")
@@ -273,7 +326,24 @@ def execute_update_task(
                     logger.error(f"记录任务更新日志时出错: {log_e}", exc_info=True)
                     results["warnings"].append(f"记录任务更新日志时出错: {log_e}")
 
-            results["message"] = f"任务 {task_id} 更新成功。"
+            message_parts = []
+            if task_updated_successfully:
+                message_parts.append(f"任务 {effective_task_id} 更新成功。")
+            if current_set_successfully:
+                message_parts.append(f"任务 {effective_task_id} 已设为当前任务。")
+
+            if not message_parts:
+                if set_current and not current_set_successfully:
+                    results["status"] = "warning"
+                    message_parts.append(f"尝试设置任务 {effective_task_id} 为当前任务失败。")
+                else:
+                    message_parts.append("未执行任何操作。")
+
+            results["message"] = " ".join(message_parts)
+            if not task_updated_successfully and not current_set_successfully and set_current:
+                results["status"] = "error"
+            elif results["warnings"] and results["status"] == "success":
+                results["status"] = "warning"
 
     except Exception as e:
         logger.error(f"更新任务数据库操作期间出错: {e}", exc_info=True)

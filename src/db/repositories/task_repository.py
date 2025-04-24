@@ -322,38 +322,6 @@ class TaskRepository(Repository[Task]):
             self.logger.error(f"获取路线图任务时出错: {e}")
             return []
 
-    def get_current_task(self, session: Session) -> Optional[Task]:
-        """获取当前任务"""
-        return session.query(Task).filter(Task.is_current == True).first()
-
-    def set_current_task(self, session: Session, task_id: str) -> bool:
-        """设置当前任务"""
-        try:
-            # 清除其他任务的当前状态
-            session.query(Task).filter(Task.is_current == True).update({"is_current": False})
-            # 设置新的当前任务
-            task = self.get_by_id(session, task_id)
-            if task:
-                task.is_current = True
-
-                # 如果任务有关联会话，设置该会话为当前会话
-                if task.current_session_id:
-                    try:
-                        from src.db.repositories.flow_session_repository import FlowSessionRepository
-
-                        session_repo = FlowSessionRepository(session)
-                        session_repo.set_current_session(task.current_session_id)
-                    except Exception as e:
-                        logger.error(f"设置关联会话为当前会话失败: {e}")
-
-                session.commit()
-                return True
-            return False
-        except Exception as e:
-            session.rollback()
-            logger.error(f"设置当前任务失败: {e}")
-            return False
-
     def add_memory_reference(self, session: Session, task_id: str, permalink: str, title: str, added_at: Optional[str] = None) -> Optional[Task]:
         """添加Memory引用到任务
 

@@ -12,7 +12,7 @@ from src.status.core.project_state import ProjectState
 from src.status.core.provider_manager import ProviderManager
 from src.status.core.subscriber_manager import SubscriberManager
 from src.status.interfaces import IStatusProvider
-from src.status.providers.task_provider import get_task_status_summary
+from src.status.providers.task_provider import TaskStatusProvider
 from src.status.providers.workflow_provider import WorkflowStatusProvider
 from src.status.subscribers.log_subscriber import LogSubscriber
 
@@ -92,8 +92,20 @@ def register_default_providers(provider_manager, health_calculator, project_stat
     logger.info("项目状态提供者注册成功")
 
     # 注册任务状态提供者
-    provider_manager.register_provider("task", get_task_status_summary)
-    logger.info("任务状态提供者注册成功")
+    try:
+        task_provider = TaskStatusProvider()
+        provider_manager.register_provider("task", task_provider)
+        logger.info("任务状态提供者注册成功")
+    except Exception as e:
+        logger.error(f"注册任务状态提供者失败: {e}")
+        provider_manager.register_provider(
+            "task",
+            lambda: {
+                "status": "error",
+                "error": f"任务状态提供者初始化失败: {e}",
+                "code": "PROVIDER_INIT_ERROR",
+            },
+        )
 
     # 注册路线图状态提供者
     register_roadmap_provider(provider_manager)

@@ -10,6 +10,7 @@ import yaml
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.table import Table
 
 from src.cli.commands.task.utils.format import format_task_output
 from src.cli.commands.task.utils.show_log import show_task_log
@@ -139,7 +140,15 @@ def execute_show_task(
 
         # --- Process and display results outside the session ---
         if task:
-            format_task_output(task, format, verbose)
+            # 调用格式化函数
+            output_content = format_task_output(task, format, verbose)
+
+            # 根据返回类型打印
+            if isinstance(output_content, Table):
+                console.print(output_content)
+            else:  # 假设是字符串 (JSON/YAML)
+                console.print(output_content)
+
             results["data"] = task
 
             # Display log if requested

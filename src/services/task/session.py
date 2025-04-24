@@ -31,6 +31,7 @@ class TaskSessionService:
         """设置当前任务
 
         设置指定任务为当前任务，同时如果任务有关联的会话，将该会话设置为当前会话。
+        现在使用 Provider 模式，不再直接操作数据库的 is_current 字段。
 
         Args:
             task_id: 任务ID
@@ -39,43 +40,41 @@ class TaskSessionService:
             是否设置成功
         """
         try:
-            # 使用会话工厂获取数据库会话
-            with get_session_factory()() as db_session:
-                # 将 db_session 传递给 repository 方法
-                success = self._db_service.task_repo.set_current_task(db_session, task_id)
+            # 使用 Provider 设置当前任务
+            task_provider = self._status_service.provider_manager.get_provider("task")
 
-                # 获取任务的关联会话ID，并确保其为当前会话
-                if success:
-                    # 获取更新后的任务
+            if task_provider and hasattr(task_provider, "set_current_task"):
+                # 设置当前任务
+                task_provider.set_current_task(task_id)
+
+                # 使用会话工厂获取数据库会话获取任务详情并更新项目状态
+                with get_session_factory()() as db_session:
+                    # 获取任务详情
                     task = self._db_service.task_repo.get_by_id(db_session, task_id)
                     if task:
                         # 通过状态服务更新当前任务
                         self._status_service.update_project_state("current_task", {"id": task_id, "title": task.title, "status": task.status})
 
+                        # 如果任务有关联的会话，也将该会话设置为当前会话
                         if task.current_session_id:
-                            # 使用已有的会话管理器确保会话是当前会话
                             try:
-                                from src.flow_session.manager import FlowSessionManager
-
-                                # 创建会话管理器
-                                session_manager = FlowSessionManager(db_session)
-                                try:
-                                    # 切换会话并自动提交
-                                    session_manager.switch_session(task.current_session_id)
-                                    db_session.commit()  # Commit after successful switch
+                                # 使用 Provider 设置当前会话
+                                session_provider = self._status_service.provider_manager.get_provider("flow_session")
+                                if session_provider and hasattr(session_provider, "set_current_session"):
+                                    session_provider.set_current_session(task.current_session_id)
 
                                     # 通过状态服务更新当前工作流会话
                                     self._status_service.update_status(
                                         domain="workflow", entity_id=f"flow-{task.current_session_id}", status="IN_PROGRESS"
                                     )
-                                except Exception as e:
-                                    # 回滚并记录错误
-                                    db_session.rollback()
-                                    logger.error(f"切换到关联会话失败: {e}")
                             except Exception as e:
-                                logger.error(f"创建 FlowSessionManager 或切换会话时出错: {e}")
+                                logger.error(f"设置关联会话为当前会话失败: {e}")
 
-                return success
+                return True
+            else:
+                logger.error("找不到 TaskStatusProvider 或 set_current_task 方法")
+                return False
+
         except Exception as e:
             logger.error(f"设置当前任务失败: {e}", exc_info=True)  # Log traceback
             return False
@@ -294,43 +293,50 @@ class TaskSessionService:
     def get_current_task_session(self) -> Optional[Dict[str, Any]]:
         """获取当前任务的当前工作流会话
 
+        现在使用 Provider 模式获取当前任务 ID。
+
         Returns:
             当前工作流会话信息，如果不存在则返回None
         """
         try:
-            # 尝试从状态服务获取当前任务信息
-            task_status = self._status_service.get_domain_status("task")
-            current_task = task_status.get("current_task")
+            # 首先使用 Provider 获取当前任务 ID
+            task_provider = self._status_service.provider_manager.get_provider("task")
+            current_task_id = None
 
-            if not current_task:
-                # 回退到直接获取当前任务
-                from src.db import get_session_factory
+            if task_provider and hasattr(task_provider, "get_current_task_id"):
+                # 使用 Provider 获取当前任务 ID
+                current_task_id = task_provider.get_current_task_id()
 
-                # 使用with语句确保会话自动关闭
-                with get_session_factory()() as db_session:
-                    task_repo = self._db_service.task_repo
-                    task = task_repo.get_current_task()
-                    current_task = task.to_dict() if task else None
+            # 如果使用 Provider 获取失败，尝试从状态服务获取当前任务信息
+            if not current_task_id:
+                task_status = self._status_service.get_domain_status("task")
+                current_task = task_status.get("current_task")
 
-                if not current_task:
-                    return None
+                if current_task:
+                    current_task_id = current_task.get("id")
 
-            # 获取当前任务的current_session_id
-            session_id = current_task.get("current_session_id")
-            if not session_id:
+            # 如果还是没有找到当前任务 ID，返回 None
+            if not current_task_id:
                 return None
 
-            # 尝试从状态服务获取工作流会话
-            workflow_status = self._status_service.get_domain_status("workflow", f"flow-{session_id}")
-            if workflow_status and "error" not in workflow_status:
-                return workflow_status
-
-            # 回退到直接获取会话
-            from src.db import get_session_factory
-
-            # 使用with语句确保会话自动关闭
+            # 获取任务详情
             with get_session_factory()() as db_session:
-                # 创建FlowSessionManager实例
+                task = self._db_service.task_repo.get_by_id(db_session, current_task_id)
+
+                if not task:
+                    return None
+
+                # 获取任务的 current_session_id
+                session_id = task.current_session_id
+                if not session_id:
+                    return None
+
+                # 尝试从状态服务获取工作流会话
+                workflow_status = self._status_service.get_domain_status("workflow", f"flow-{session_id}")
+                if workflow_status and "error" not in workflow_status:
+                    return workflow_status
+
+                # 获取会话详情
                 from src.flow_session.manager import FlowSessionManager
 
                 session_manager = FlowSessionManager(db_session)
@@ -346,6 +352,8 @@ class TaskSessionService:
     def set_current_task_session(self, session_id: str) -> bool:
         """设置当前任务的当前工作流会话
 
+        现在使用 Provider 模式设置当前会话和获取当前任务。
+
         Args:
             session_id: 会话ID
 
@@ -354,72 +362,67 @@ class TaskSessionService:
         """
         try:
             # 获取当前任务
-            task_status = self._status_service.get_domain_status("task")
-            current_task = task_status.get("current_task")
+            current_task_id = None
 
-            # 没有找到当前任务，尝试从数据库获取
-            if not current_task:
-                # 回退到直接获取当前任务
-                from src.db import get_session_factory
+            # 首先使用 Provider 获取当前任务 ID
+            task_provider = self._status_service.provider_manager.get_provider("task")
+            if task_provider and hasattr(task_provider, "get_current_task_id"):
+                current_task_id = task_provider.get_current_task_id()
 
-                # 使用with语句确保会话自动关闭
-                with get_session_factory()() as db_session:
-                    task_repo = self._db_service.task_repo
-                    task = task_repo.get_current_task()
-                    if not task:
-                        logger.error("设置当前工作流会话失败: 当前没有活动任务")
-                        return False
-                    current_task = {"id": task.id}
+            # 如果使用 Provider 获取失败，尝试从状态服务获取当前任务信息
+            if not current_task_id:
+                task_status = self._status_service.get_domain_status("task")
+                current_task = task_status.get("current_task")
+
+                if current_task:
+                    current_task_id = current_task.get("id")
+
+            # 如果还是没有找到当前任务 ID，返回失败
+            if not current_task_id:
+                logger.error("设置当前工作流会话失败: 当前没有活动任务")
+                return False
 
             # 获取数据库会话
-            from src.db import get_session_factory
-
-            # 使用with语句确保会话自动关闭和异常处理
             with get_session_factory()() as db_session:
                 # 验证会话是否存在
                 from src.flow_session.manager import FlowSessionManager
 
                 session_manager = FlowSessionManager(db_session)
 
-                try:
-                    # 获取会话
-                    session = session_manager.get_session(session_id)
+                # 获取会话
+                session = session_manager.get_session(session_id)
 
-                    if not session:
-                        logger.error(f"设置当前工作流会话失败: 会话 {session_id} 不存在")
-                        return False
-
-                    # 验证会话是否属于当前任务
-                    if session.task_id != current_task["id"]:
-                        logger.error(f"设置当前工作流会话失败: 会话 {session_id} 不属于当前任务")
-                        return False
-
-                    # 更新任务的current_session_id
-                    task_id = current_task["id"]
-                    from src.db.repositories.task_repository import TaskRepository
-
-                    task_repo = TaskRepository(db_session)
-                    task = task_repo.get_by_id(task_id)
-                    if not task:
-                        logger.error(f"设置当前工作流会话失败: 任务 {task_id} 不存在")
-                        return False
-
-                    task.current_session_id = session_id
-                    task_repo.update(task)
-                    db_session.commit()
-
-                    # 更新任务状态
-                    self._status_service.update_status(domain="task", entity_id=task_id, status=task.status, current_session_id=session_id)
-
-                    # 同时更新工作流状态
-                    self._status_service.update_status(domain="workflow", entity_id=f"flow-{session_id}", status="IN_PROGRESS")
-
-                    return True
-                except Exception as e:
-                    # 确保发生异常时回滚
-                    db_session.rollback()
-                    logger.error(f"设置当前工作流会话失败: {e}")
+                if not session:
+                    logger.error(f"设置当前工作流会话失败: 会话 {session_id} 不存在")
                     return False
+
+                # 验证会话是否属于当前任务
+                if session.task_id != current_task_id:
+                    logger.error(f"设置当前工作流会话失败: 会话 {session_id} 不属于当前任务 {current_task_id}")
+                    return False
+
+                # 更新任务的 current_session_id
+                task = self._db_service.task_repo.get_by_id(db_session, current_task_id)
+                if not task:
+                    logger.error(f"设置当前工作流会话失败: 任务 {current_task_id} 不存在")
+                    return False
+
+                task.current_session_id = session_id
+                self._db_service.task_repo.update(db_session, task)
+                db_session.commit()
+
+                # 使用 Provider 设置当前会话
+                session_provider = self._status_service.provider_manager.get_provider("flow_session")
+                if session_provider and hasattr(session_provider, "set_current_session"):
+                    session_provider.set_current_session(session_id)
+
+                # 更新任务状态
+                self._status_service.update_status(domain="task", entity_id=current_task_id, status=task.status, current_session_id=session_id)
+
+                # 同时更新工作流状态
+                self._status_service.update_status(domain="workflow", entity_id=f"flow-{session_id}", status="IN_PROGRESS")
+
+                return True
 
         except Exception as e:
             logger.error(f"设置当前工作流会话失败: {e}")

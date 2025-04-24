@@ -65,13 +65,13 @@ class FlowSessionRepository(Repository[FlowSession]):
             "task_id": task_id,
             "flow_type": flow_type,
             "context": context or {},
-            "is_current": True,
+            # "is_current": True,  # 移除is_current字段
         }
 
-        # 清除其他当前会话状态
-        current_sessions = session.query(FlowSession).filter(FlowSession.is_current == True).all()
-        for current in current_sessions:
-            current.is_current = False
+        # 移除清除其他当前会话状态的代码
+        # current_sessions = session.query(FlowSession).filter(FlowSession.is_current == True).all()
+        # for current in current_sessions:
+        #     current.is_current = False
 
         # 创建新会话
         try:
@@ -329,27 +329,28 @@ class FlowSessionRepository(Repository[FlowSession]):
         """
         return session.query(FlowSession).filter(FlowSession.task_id == task_id).all()
 
-    def set_current_session(self, session: Session, session_id: str) -> bool:
-        """设置当前会话
-
-        Args:
-            session: SQLAlchemy 会话对象
-            session_id: 会话ID
-
-        Returns:
-            是否成功设置
-        """
-        try:
-            # Clear other current sessions
-            session.query(FlowSession).filter(FlowSession.is_current == True).update({"is_current": False})
-            # Set the new current session
-            flow_session_obj = self.get_by_id(session, session_id)
-            if flow_session_obj:
-                flow_session_obj.is_current = True
-                # session.commit() # Remove commit
-                return True
-            return False
-        except Exception as e:
-            # session.rollback() # Let caller handle rollback
-            logger.error(f"设置当前会话失败: {e}")
-            return False
+    # 注释掉 set_current_session 方法
+    # def set_current_session(self, session: Session, session_id: str) -> bool:
+    #    """设置当前会话
+    #
+    #    Args:
+    #        session: SQLAlchemy 会话对象
+    #        session_id: 会话ID
+    #
+    #    Returns:
+    #        是否成功设置
+    #    """
+    #    try:
+    #        # Clear other current sessions
+    #        session.query(FlowSession).filter(FlowSession.is_current == True).update({"is_current": False})
+    #        # Set the new current session
+    #        flow_session_obj = self.get_by_id(session, session_id)
+    #        if flow_session_obj:
+    #            flow_session_obj.is_current = True
+    #            # session.commit() # Remove commit
+    #            return True
+    #        return False
+    #    except Exception as e:
+    #        # session.rollback() # Let caller handle rollback
+    #        logger.error(f"设置当前会话失败: {e}")
+    #        return False

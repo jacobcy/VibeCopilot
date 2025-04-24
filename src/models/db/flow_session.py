@@ -31,7 +31,6 @@ class FlowSession(Base):
     context = Column(JSON, nullable=True)  # 会话上下文，JSON格式
     task_id = Column(String, ForeignKey("tasks.id"), nullable=True)  # 关联的任务ID
     flow_type = Column(String)
-    is_current = Column(Boolean, default=False)
 
     # 关系
     workflow_definition = relationship("WorkflowDefinition", back_populates="sessions")
@@ -52,7 +51,6 @@ class FlowSession(Base):
             "context": self.context,
             "task_id": self.task_id,
             "flow_type": self.flow_type,
-            "is_current": self.is_current,
         }
 
     @classmethod
@@ -68,7 +66,6 @@ class FlowSession(Base):
             context=data.get("context", {}),
             task_id=data.get("task_id"),
             flow_type=data.get("flow_type"),
-            is_current=data.get("is_current", False),
         )
 
 

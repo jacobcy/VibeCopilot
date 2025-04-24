@@ -75,6 +75,7 @@ pnpm-lock.yaml
 .cursor/.DS_Store
 .cursor/rules/.DS_Store
 .cursor/rules/*/.DS_Store
+.cursor/mcp.json
 
 # App specific
 external/

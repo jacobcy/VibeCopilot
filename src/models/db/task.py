@@ -36,7 +36,6 @@ class Task(Base):
     due_date = Column(String(50), nullable=True)  # 任务截止日期，格式为ISO日期字符串
     github_issue = Column(String, nullable=True)
     current_session_id = Column(String, nullable=True)
-    is_current = Column(Boolean, default=False)
     memory_references = Column(
         JSON, nullable=True
     )  # 存储为 JSON 对象列表: [{"permalink": "memory://...", "title": "文档名", "added_at": "2023-01-01T00:00:00"}]
@@ -90,7 +89,6 @@ class Task(Base):
             "due_date": self.due_date,
             "github_issue": self.github_issue,
             "current_session_id": self.current_session_id,
-            "is_current": self.is_current,
             "memory_references": self.memory_references,
         }
 
