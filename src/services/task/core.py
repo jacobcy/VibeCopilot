@@ -269,7 +269,7 @@ class TaskService:
         """搜索和过滤任务
 
         Args:
-            session: 数据库会话 (注意: 此参数当前未传递给下一层)
+            session: 数据库会话
             status: 状态列表
             assignee: 负责人
             labels: 标签列表
@@ -282,8 +282,9 @@ class TaskService:
         Returns:
             符合条件的任务列表
         """
-        # 移除作为位置参数传递的 session，所有参数都通过关键字传递
+        # Pass session and other arguments to the query service
         return self._query_service.search_tasks(
+            session=session,
             status=status,
             assignee=assignee,
             labels=labels,
