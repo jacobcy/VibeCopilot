@@ -15,7 +15,7 @@ from src.roadmap.sync.import_service import RoadmapImportService, get_temp_dir
 logging.basicConfig(level=logging.INFO)
 
 # 项目根目录和临时目录常量定义
-PROJECT_ROOT = "/Users/jacobcy/Public/VibeCopilot"
+PROJECT_ROOT = "/Volumes/Cube/Public/VibeCopilot"
 TEMP_ROOT = os.path.join(PROJECT_ROOT, "temp")
 
 

@@ -38,7 +38,7 @@ class NoteService:
             config: 可选配置参数
         """
         self.config = config or {}
-        self.memory_root = os.path.expanduser(self.config.get("memory_root", "~/Public/VibeCopilot/.ai/memory"))
+        self.memory_root = os.path.expanduser(self.config.get("memory_root", "/Volumes/Cube/VibeCopilot/.ai/memory"))
         self.project = self.config.get("project", "vibecopilot")
 
         # 获取DatabaseService单例实例

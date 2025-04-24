@@ -136,7 +136,7 @@ def main():
     args = parser.parse_args()
 
     # 创建配置
-    config = {"project": args.project, "memory_root": "~/Public/VibeCopilot/.ai/memory", "rules_dir": "rules", "docs_dir": "docs"}
+    config = {"project": args.project, "memory_root": "/Volumes/Cube/VibeCopilot/.ai/memory", "rules_dir": "rules", "docs_dir": "docs"}
 
     # 创建同步服务
     service = SyncService(config)

@@ -52,7 +52,7 @@
 
 2. **运行迁移脚本**：
    ```bash
-   cd /Users/jacobcy/Public/VibeCopilot
+   cd /Volumes/Cube/Public/VibeCopilot
    python src/scripts/migrate_workflow_structure.py
    ```
 

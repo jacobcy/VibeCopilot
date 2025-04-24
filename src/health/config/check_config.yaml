@@ -129,7 +129,7 @@ general:
 
 # 全局配置
 global:
-  workspace_root: "/Users/jacobcy/Public/VibeCopilot"
+  workspace_root: "/Volumes/Cube/Public/VibeCopilot"
   report_dir: "reports/health_checks"
   log_level: "INFO"
 

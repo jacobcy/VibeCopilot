@@ -183,7 +183,7 @@ def main():
     args = parser.parse_args()
 
     # 创建配置
-    config = {"project": args.project, "memory_root": os.path.expanduser("~/Public/VibeCopilot/.ai/memory")}
+    config = {"project": args.project, "memory_root": os.path.expanduser("/Volumes/Cube/VibeCopilot/.ai/memory")}
 
     # 创建服务
     service = NoteService(config)

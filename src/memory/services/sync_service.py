@@ -32,7 +32,7 @@ class SyncService:
         """
         self.config = config or {}
         self.project = self.config.get("project", "vibecopilot")
-        self.memory_root = os.path.expanduser(self.config.get("memory_root", "~/Public/VibeCopilot/.ai/memory"))
+        self.memory_root = os.path.expanduser(self.config.get("memory_root", "/Volumes/Cube/VibeCopilot/.ai/memory"))
         self.rules_dir = self.config.get("rules_dir", "rules")
         self.docs_dir = self.config.get("docs_dir", "docs")
 
