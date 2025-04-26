@@ -42,16 +42,22 @@ async def create_workflow_from_rule(rule_path: str) -> Optional[Dict[str, Any]]:
 
         # 使用WorkflowProcessor解析工作流结构
         processor = WorkflowProcessor()
-        workflow_structure = await processor.parse_workflow_rule(rule_content)
+        parsed_result = await processor.parse_workflow_rule(rule_content)
 
-        if not workflow_structure:
-            error_msg = "规则解析失败: 无法从规则内容中提取工作流结构"
-            logger.error(error_msg)
+        # Check if parsing was successful and content exists
+        if not parsed_result.get("success") or not parsed_result.get("content"):
+            error_msg = parsed_result.get("error", "规则解析失败: 无法从规则内容中提取工作流结构")
+            logger.error(f"{error_msg} - Rule Path: {rule_path}")
             console.print(f"\n[bold red]✗[/bold red] {error_msg}")
             return None
 
+        # Get the actual workflow structure from the 'content' field
+        workflow_structure = parsed_result["content"]
+
         # 生成工作流ID
-        workflow_structure["id"] = str(uuid.uuid4())
+        # Ensure ID is generated only if structure is valid and doesn't already have one
+        if "id" not in workflow_structure:
+            workflow_structure["id"] = str(uuid.uuid4())
 
         # 确保工作流结构包含必要字段
         if "name" not in workflow_structure:

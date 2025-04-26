@@ -8,6 +8,5 @@
 from src.models.db import Milestone, Roadmap, Story, Task
 
 from .service import RoadmapService
-from .service.roadmap_status import RoadmapStatus
 
-__all__ = ["Roadmap", "Milestone", "Story", "Task", "RoadmapService", "RoadmapStatus"]
+__all__ = ["Roadmap", "Milestone", "Story", "Task", "RoadmapService"]

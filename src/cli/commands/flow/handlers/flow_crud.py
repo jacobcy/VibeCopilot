@@ -13,6 +13,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
 
+# Import the import handler
+from src.cli.commands.flow.handlers.flow_io import handle_import_subcommand
 from src.utils.file_utils import file_exists, read_json_file, read_text_file
 from src.workflow.service import create_workflow, delete_workflow, get_workflows_directory, update_workflow
 from src.workflow.utils import create_workflow_from_rule, create_workflow_from_template_with_vars, get_workflow_fuzzy
@@ -29,8 +31,9 @@ async def handle_create_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
         args: 命令参数
             - source: 源文件路径
             - template: 工作流模板路径
+            - import_path: 导入文件路径 (与 source/template 互斥)
             - name: 工作流名称（可选）
-            - output: 输出文件路径（可选）
+            - output: 输出文件路径（可选, 仅创建时）
             - verbose: 是否显示详细信息
 
     Returns:
@@ -38,10 +41,25 @@ async def handle_create_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
     """
     try:
         source_path = args.get("source")
+        import_path = args.get("import_path")
         template_path = args.get("template", "templates/flow/default_flow.json")
         workflow_name = args.get("name")
         output_path = args.get("output")
         verbose = args.get("verbose", False)
+
+        # --- Logic to handle import mode ---
+        if import_path:
+            # Call the import handler directly
+            import_args = {"file_path": import_path, "name": workflow_name, "verbose": verbose, "_agent_mode": args.get("_agent_mode", False)}
+            # Note: handle_import_subcommand is synchronous, no need for asyncio.run here
+            return handle_import_subcommand(import_args)
+        # --- End of import mode logic ---
+
+        # --- Original creation logic (only runs if import_path is None) ---
+        # Ensure source_path is provided when not importing
+        if not source_path:
+            # This case should ideally be caught by click option validation, but good to double-check
+            return _create_error_response("在创建模式下必须提供 --source 选项", 400, args, "flow create")
 
         # 检查源文件
         if not file_exists(source_path):

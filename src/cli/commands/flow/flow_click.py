@@ -11,31 +11,21 @@ from rich.console import Console
 
 # 导入子命令模块和命令
 from src.cli.commands.flow.flow_commands import register_basic_commands
-from src.cli.commands.flow.flow_crud_commands import create, delete, export, import_flow, update
+from src.cli.commands.flow.flow_crud_commands import create, delete, export, update
 from src.cli.commands.flow.session_commands import session
+from src.cli.core.groups import FormattedHelpGroup  # Import the custom group class
 
 console = Console()
 logger = logging.getLogger(__name__)
 
 
-@click.group(help="管理和执行工作流")
+@click.group(cls=FormattedHelpGroup)  # Use the custom group class
 def flow():
     """
-    工作流管理命令组
+    管理和执行 VibeCopilot 工作流。
 
-    此命令组用于管理工作流定义和执行工作流会话。
-
-    主要子命令:
-
-    - flow create: 创建工作流定义
-      用法: flow create --source <文件路径>
-
-    - flow session create: 创建并启动工作会话
-      用法: flow session create --flow <工作流ID>
-
-    - flow session list: 列出工作会话
-    - flow session show: 查看会话详情
-    - flow session pause/resume: 暂停/恢复会话
+    提供工作流定义管理和工作流会话执行相关的功能。
+    使用下面的命令可以查看不同分组的具体操作。
     """
     pass
 
@@ -48,10 +38,14 @@ flow.add_command(create)
 flow.add_command(update)
 flow.add_command(delete)
 flow.add_command(export)
-flow.add_command(import_flow)
 
 # 注册基本命令
 register_basic_commands(flow)
+
+# 注册别名命令 - run 作为 session create 的别名
+from src.cli.commands.flow.session_commands import create_session
+
+flow.add_command(create_session, name="run")
 
 # 导出
 __all__ = ["flow"]

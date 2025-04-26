@@ -58,7 +58,9 @@ class RoadmapSyncHandlers:
     def handle_github_pull(repo_name: str, roadmap_id: Optional[str], force: bool, theme: Optional[str], service) -> Dict[str, Any]:
         """处理从GitHub拉取更新"""
         try:
-            result = service.sync_from_github(repo_name, roadmap_id=roadmap_id, force=force, theme=theme)
+            from src.roadmap.service.roadmap_operations import sync_from_github
+
+            result = sync_from_github(service, repo_name, roadmap_id=roadmap_id, force=force, theme=theme)
             if result.get("success", False):
                 return {"status": "success", "summary": f"成功从GitHub仓库拉取更新: {repo_name}", "details": result}
             else:
@@ -70,7 +72,9 @@ class RoadmapSyncHandlers:
     def handle_github_push(repo_name: str, roadmap_id: Optional[str], force: bool, theme: Optional[str], service) -> Dict[str, Any]:
         """处理推送更新到GitHub"""
         try:
-            result = service.sync_to_github(repo_name, roadmap_id=roadmap_id, force=force, theme=theme)
+            from src.roadmap.service.roadmap_operations import sync_to_github
+
+            result = sync_to_github(service, repo_name, roadmap_id=roadmap_id, force=force, theme=theme)
             if result.get("success", False):
                 return {"status": "success", "summary": f"成功推送更新到GitHub仓库: {repo_name}", "details": result}
             else:

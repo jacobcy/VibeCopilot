@@ -12,7 +12,7 @@ import click
 import yaml
 from rich.console import Console
 
-from src.cli.decorators import pass_service
+from src.cli.core.decorators import pass_service
 from src.models.db.task import Task
 from src.services.task import TaskService
 

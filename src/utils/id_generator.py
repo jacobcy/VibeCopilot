@@ -22,6 +22,10 @@ class EntityType(Enum):
     PROJECT = "pj"
     RULE = "rl"
     MEMORY_ITEM = "mi"
+    ROADMAP = "rm"
+    EPIC = "ep"
+    STORY = "sy"
+    MILESTONE = "ms"
     GENERIC = "id"  # 通用类型
 
 
@@ -78,6 +82,26 @@ class IdGenerator:
     def generate_transition_id(prefix: Optional[str] = None) -> str:
         """生成转换ID"""
         return IdGenerator.generate_id(EntityType.TRANSITION, prefix)
+
+    @staticmethod
+    def generate_roadmap_id(prefix: Optional[str] = None) -> str:
+        """生成路线图ID"""
+        return IdGenerator.generate_id(EntityType.ROADMAP, prefix)
+
+    @staticmethod
+    def generate_epic_id(prefix: Optional[str] = None) -> str:
+        """生成史诗ID"""
+        return IdGenerator.generate_id(EntityType.EPIC, prefix)
+
+    @staticmethod
+    def generate_story_id(prefix: Optional[str] = None) -> str:
+        """生成故事ID"""
+        return IdGenerator.generate_id(EntityType.STORY, prefix)
+
+    @staticmethod
+    def generate_milestone_id(prefix: Optional[str] = None) -> str:
+        """生成里程碑ID"""
+        return IdGenerator.generate_id(EntityType.MILESTONE, prefix)
 
     @staticmethod
     def get_entity_type_from_id(entity_id: str) -> Optional[EntityType]:

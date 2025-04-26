@@ -8,37 +8,40 @@ from typing import Any, Dict
 import click
 from rich.console import Console
 
-from src.db.session_manager import session_scope
+# 移除不再需要的 session_scope
+# from src.db.session_manager import session_scope
 from src.services.task.core import TaskService
 
 logger = logging.getLogger(__name__)
 console = Console()
 
 
-@click.command(name="delete", help="删除指定的任务")
-@click.argument("task_id")
+@click.command(name="delete", help="删除指定的任务 (可通过ID或标题)")
+@click.argument("identifier")
 @click.option("--force", "-f", is_flag=True, help="强制删除，不需要确认")
-def delete_task(task_id: str, force: bool = False) -> int:
+def delete_task(identifier: str, force: bool = False) -> int:
     """
     删除指定的任务。
 
+    可以通过任务ID或任务标题来指定要删除的任务。
     默认情况下，该命令会要求确认删除操作。
     使用--force选项可以跳过确认步骤直接删除。
 
     参数:
-        task_id: 要删除的任务ID
+        identifier: 要删除的任务ID或标题
         force: 是否强制删除，不需要确认 (默认为False)
     """
     try:
         # 如果不是强制模式，需要用户确认
         if not force:
-            confirm = click.confirm(f"确定要删除任务 {task_id} 吗?", default=False)
+            # 使用 identifier 显示给用户
+            confirm = click.confirm(f"确定要删除任务 {identifier} 吗?", default=False)
             if not confirm:
                 console.print("[yellow]操作已取消[/yellow]")
                 return 0
 
-        # 调用核心逻辑执行删除
-        result = execute_delete_task(task_id=task_id)
+        # 调用核心逻辑执行删除，传递 identifier
+        result = execute_delete_task(identifier=identifier)
 
         # 处理执行结果
         if result["status"] == "success":
@@ -54,9 +57,9 @@ def delete_task(task_id: str, force: bool = False) -> int:
         return 1
 
 
-def execute_delete_task(task_id: str) -> Dict[str, Any]:
+def execute_delete_task(identifier: str) -> Dict[str, Any]:
     """执行删除任务的核心逻辑"""
-    logger.info(f"执行删除任务命令: task_id={task_id}")
+    logger.info(f"执行删除任务命令: identifier={identifier}")
 
     results = {
         "status": "success",
@@ -65,45 +68,36 @@ def execute_delete_task(task_id: str) -> Dict[str, Any]:
         "data": None,
         "meta": {
             "command": "task delete",
-            "args": {"task_id": task_id},
+            "args": {"identifier": identifier},
         },
     }
 
     try:
-        # --- Database Operations within session_scope ---
-        with session_scope() as session:
-            task_service = TaskService()
+        # --- 不再需要 session_scope 和手动检查存在性 ---
+        # with session_scope() as session:
+        #     task_service = TaskService()
+        #     task = task_service.get_task(session, task_id)
+        #     if not task:
+        #         ...
 
-            # Check if task exists (read operation)
-            task = task_service.get_task(session, task_id)
-            if not task:
-                results["status"] = "error"
-                results["code"] = 404
-                results["message"] = f"删除失败：未找到 Task ID: {task_id}"
-                # Return early, no rollback needed for read fail
-                return results
+        # 直接调用 TaskService 的 delete_task
+        task_service = TaskService()
+        deleted = task_service.delete_task(identifier=identifier)
 
-            # Perform delete operation
-            deleted = task_service.delete_task(session, task_id)
-            if deleted:
-                results["message"] = f"成功删除任务 {task_id}"
-            else:
-                # If delete_task returns False, it means deletion failed within the service
-                # session_scope will handle rollback if an exception was raised there.
-                # If it returned False without exception, set error status here.
-                results["status"] = "error"
-                results["code"] = 500
-                results["message"] = f"删除任务 {task_id} 失败 (服务层返回失败)"
-                # Optionally raise an exception here to ensure rollback if delete_task
-                # returning False implies a state inconsistency.
-                # raise Exception(f"delete_task service call failed for {task_id}")
+        if deleted:
+            results["message"] = f"成功删除任务 {identifier}"
+        else:
+            # delete_task 内部应已记录错误，这里设置失败状态
+            results["status"] = "error"
+            results["code"] = 404  # 假设主要是未找到
+            results["message"] = f"删除任务 {identifier} 失败 (未找到或删除时出错)"
 
     except Exception as e:
-        # Errors within session_scope or during service calls will trigger rollback
-        logger.error(f"删除任务数据库操作期间出错: {e}", exc_info=True)
+        # TaskService.delete_task 内部的异常应已被捕获并记录
+        # 这里捕获调用过程本身的异常
+        logger.error(f"删除任务执行期间出错: {e}", exc_info=True)
         results["status"] = "error"
         results["code"] = 500
-        results["message"] = f"删除任务时出错: {e}"
-        # Error message printing is handled by the caller command
+        results["message"] = f"删除任务时发生意外错误: {e}"
 
     return results

@@ -8,17 +8,31 @@ import json
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+import uuid
+from typing import Any, Dict, List, Optional, Tuple
+
+# Get the logger instance at the module level
+logger = logging.getLogger(__name__)
+
+# Import json_repair
+try:
+    import json_repair
+
+    # Test if it has the loads method
+    if not hasattr(json_repair, "loads"):
+        raise ImportError("json_repair found but 'loads' function is missing.")
+    logger.info("json-repair library loaded successfully.")
+except ImportError:
+    json_repair = None
+    logger.warning("json-repair library not found or invalid. Falling back to standard json parsing for structured data.")
+
 
 from src.llm.service_factory import create_llm_service
 from src.parsing.base_parser import BaseParser
 from src.parsing.prompt_templates import get_prompt_template, get_system_prompt
 
-logger = logging.getLogger(__name__)
-
-# 定义项目根目录和临时目录常量
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-TEMP_ROOT = os.path.join(PROJECT_ROOT, "temp")
+# Import the new utility function
+from src.utils.file_utils import ConfigError, get_data_path
 
 
 class LLMParser(BaseParser):
@@ -44,270 +58,183 @@ class LLMParser(BaseParser):
             # 创建LLM服务实例
             self.llm_service = create_llm_service(self.provider, self.config)
         except Exception as e:
-            raise
+            logger.error(f"Failed to create LLM service for provider '{self.provider}': {e}", exc_info=True)
+            raise  # Re-raise the exception
 
-        # 初始化缓存
+        # 初始化缓存 (You might want to implement actual caching later)
         self._cache = {}
 
-    def get_temp_dir(self, sub_dir=None, use_timestamp=True):
-        """获取项目临时目录路径
+    def _get_temp_dir(self, sub_dir: Optional[str] = None) -> str:
+        """获取用于LLM日志的临时目录，确保其唯一性。
 
         Args:
-            sub_dir: 可选的子目录名
-            use_timestamp: 是否使用时间戳创建子目录，默认为True
+            sub_dir: 可选的子目录名称。
 
         Returns:
-            str: 临时目录的绝对路径
+            临时目录的绝对路径。
+
+        Raises:
+            ValueError: 如果无法通过 get_data_path 确定数据目录。
         """
-        # 获取当前时间戳作为目录名
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        try:
+            # Generate a unique directory path using timestamp/UUID
+            timestamp_dir = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+            final_sub_dir = os.path.join(sub_dir or "llm_logs", timestamp_dir)
 
-        # 如果提供了子目录名，则在temp下创建特定类型的子目录
-        if sub_dir:
-            # 首先创建类型子目录
-            type_dir = os.path.join(TEMP_ROOT, sub_dir)
-            os.makedirs(type_dir, exist_ok=True)
+            # Use get_data_path to construct the full path within the configured data/temp area
+            base_temp_path = get_data_path("temp", final_sub_dir)
 
-            # 如果需要时间戳子目录
-            if use_timestamp:
-                # 在类型子目录下创建时间戳子目录
-                timestamped_dir = os.path.join(type_dir, timestamp)
-                os.makedirs(timestamped_dir, exist_ok=True)
-                return timestamped_dir
+            if not base_temp_path:
+                raise ValueError("`get_data_path` failed to return a valid path for the temporary directory.")
 
-            return type_dir
+            # Ensure the directory exists
+            os.makedirs(base_temp_path, exist_ok=True)
+            logger.debug(f"Ensured temporary directory exists: {base_temp_path}")
+            return base_temp_path
 
-        # 如果没有提供子目录名，则直接返回基础temp目录
-        os.makedirs(TEMP_ROOT, exist_ok=True)
-        return TEMP_ROOT
+        except Exception as e:
+            logger.error(f"创建或获取LLM临时日志目录失败: {e}", exc_info=True)
+            # Re-raise the exception to make the error visible
+            raise ValueError(f"Failed to create or access temporary LLM log directory: {e}") from e
 
-    async def parse_text(self, content: str, content_type: Optional[str] = None) -> Dict[str, Any]:
-        """
-        使用LLM服务解析文本内容
+    def _save_log_file(self, directory: str, prefix: str, timestamp: int, content: str) -> None:
+        """安全地保存日志文件 (directory is now absolute path from _get_temp_dir)"""
+        try:
+            # directory is already the absolute path including timestamp
+            # Ensure it exists one last time before writing (in case fallback was used)
+            # Although _get_temp_dir tries to create it, double-check
+            os.makedirs(directory, exist_ok=True)
+            filepath = os.path.join(directory, f"{prefix}_{timestamp}.txt")
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(content)
+            logger.info(f"📝 已保存日志文件到: {filepath}")
+        except OSError as e:
+            # Log which specific directory failed if possible
+            logger.warning(f"⚠️ 无法写入日志文件 {prefix} 到 {directory}: {e}")
+        except Exception as e:
+            logger.warning(f"⚠️ 无法保存日志文件 {prefix}: {e}")
 
-        Args:
-            content: 待解析的文本内容
-            content_type: 内容类型，如'rule'、'document'等
-
-        Returns:
-            解析结果
-        """
-        # 如果未指定内容类型，默认为通用类型
-        content_type = content_type or "generic"
-
-        # 获取对应的提示模板
+    def _prepare_request(self, content: str, content_type: str) -> Tuple[List[Dict[str, str]], str]:
+        """准备LLM请求所需的消息和日志内容"""
+        logger.debug(f"Preparing request for content_type: {content_type}")
         prompt_template = get_prompt_template(content_type)
-
-        # 获取系统提示
         system_prompt = get_system_prompt(content_type)
+        try:
+            prompt = prompt_template.format(content=content)
+        except KeyError as e:
+            logger.error(f"提示模板 '{content_type}' 格式化错误，缺少键: {e}. Content: {content[:100]}...")
+            raise ValueError(f"Prompt template formatting error for type '{content_type}': Missing key {e}") from e
 
-        # 格式化提示
-        prompt = prompt_template.format(content=content)
-
-        # 准备消息
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ]
 
-        logger.info(f"使用 {content_type} 提示模板进行解析")
+        request_log_content = (
+            f"Content Type: {content_type}\n\n"
+            f"System Prompt:\n{system_prompt}\n\n"
+            f"User Prompt:\n{prompt}\n\n"
+            f"Original Content Snippet:\n{content[:500]}...\n"  # Log only a snippet
+        )
 
-        # 创建临时文件来保存请求内容
-        # 获取当前时间戳
-        timestamp = int(time.time())
+        return messages, request_log_content
 
-        # 创建时间戳子目录
-        timestamp_dir = self.get_temp_dir("llm_logs")
-
-        # 保存请求内容
-        request_file = os.path.join(timestamp_dir, f"request_{timestamp}.txt")
-        with open(request_file, "w", encoding="utf-8") as f:
-            # 保存详细请求内容，包括系统提示和用户提示
-            f.write(f"内容类型: {content_type}\n\n")
-            f.write(f"系统提示:\n{system_prompt}\n\n")
-            f.write(f"用户提示:\n{prompt}\n\n")
-            f.write(f"原始内容:\n{content}")
-        logger.info(f"📝 已保存LLM请求内容到: {request_file}")
-
-        # 用于存储原始响应文本，即使发生异常也能保存
-        result_text = ""
-
-        # 调用LLM服务
+    async def _execute_llm_call(self, messages: List[Dict[str, str]]) -> str:
+        """执行LLM调用并提取原始响应文本"""
+        logger.info("🚀 开始调用LLM服务...")
         try:
-            logger.info("🚀 开始调用LLM服务...")
             response = await self.llm_service.chat_completion(messages)
             logger.info("✅ LLM服务调用成功")
+        except Exception as e:
+            logger.error(f"LLM服务调用失败: {e}", exc_info=True)
+            raise  # Re-raise to be caught by the main parse_text method
 
-            # 根据不同的LLM服务提供者处理响应
-            if hasattr(response, "choices") and hasattr(response.choices[0], "message"):
-                # OpenAI API的原生对象格式
-                result_text = response.choices[0].message.content
+        # Extract raw text based on provider response structure
+        result_text = ""
+        try:
+            if hasattr(response, "choices") and response.choices and hasattr(response.choices[0], "message"):
+                result_text = response.choices[0].message.content or ""  # Handle potential None
+            elif isinstance(response, dict) and "choices" in response and len(response["choices"]) > 0:
+                message_content = response["choices"][0].get("message", {}).get("content", "")
+                result_text = message_content if isinstance(message_content, str) else ""
             else:
-                # 字典格式的响应
-                result_text = response["choices"][0]["message"]["content"]
+                logger.warning(f"无法识别的LLM响应格式: {type(response)}。尝试将其转换为字符串。")
+                result_text = str(response)
+        except (IndexError, KeyError, AttributeError, TypeError) as e:
+            logger.warning(f"从LLM响应中提取文本时出错: {e}. Response: {str(response)[:200]}...")
+            result_text = str(response)  # Fallback to string representation
 
-            logger.info("📥 获取到LLM响应，开始处理")
+        logger.info(f"📥 获取到LLM响应，原始文本长度: {len(result_text)}")
+        logger.debug(f"Raw LLM Response Snippet: {result_text[:200]}...")
+        return result_text
 
-            # 保存原始LLM响应 - 对所有内容类型都记录
+    def _parse_structured_response(self, result_text: str, content_type: str) -> Dict[str, Any]:
+        """使用json-repair (优先) 或标准库解析结构化响应 (workflow/roadmap)"""
+
+        # 1. 尝试使用 json-repair (如果可用)
+        if json_repair:
+            logger.debug(f"Attempting to parse with json_repair for {content_type}...")
             try:
-                # 使用与请求相同的时间戳目录
-                response_file = os.path.join(timestamp_dir, f"response_{timestamp}.txt")
-                with open(response_file, "w", encoding="utf-8") as f:
-                    f.write(result_text)
-                logger.info(f"📝 已保存LLM原始响应到: {response_file}")
-            except Exception as e:
-                logger.warning(f"⚠️ 无法保存LLM原始响应: {str(e)}")
+                # Use json_repair.loads which attempts to fix and parse
+                parsed_data = json_repair.loads(result_text)
 
-            logger.debug(f"LLM原始响应内容: {result_text[:200]}...")
-
-            # 尝试解析JSON响应
-            if content_type == "roadmap" or content_type == "workflow":
-                try:
-                    import json
-
-                    # 尝试直接解析为JSON
-                    try:
-                        json_result = json.loads(result_text)
-                        logger.info("成功解析为JSON对象")
-                        # 对于路线图专门处理
-                        if content_type == "roadmap":
-                            return {"success": True, "content_type": "roadmap", "content": json_result, "raw_response": result_text}  # 添加原始响应
-                    except json.JSONDecodeError as je:
-                        # 尝试从非标准格式中提取JSON
-                        logger.warning(f"直接JSON解析失败: {str(je)}，尝试从文本提取JSON部分")
-                        # 查找可能的JSON部分标记
-                        json_start_markers = ["{", "{\n", "```json\n{", "```\n{", "```json\n"]
-                        json_end_markers = ["}", "\n}", "}\n```", "}\n", "\n}\n```"]
-
-                        json_extracted = False
-                        for start_marker in json_start_markers:
-                            if start_marker in result_text:
-                                start_index = result_text.find(start_marker)
-                                if start_marker not in ["{", "{\n"]:
-                                    start_index += len(start_marker) - 1  # 减去1是为了保留{
-
-                                # 查找结束标记
-                                end_index = -1
-                                for end_marker in json_end_markers:
-                                    if end_marker in result_text[start_index:]:
-                                        # 这里+1是为了包含结束的}
-                                        end_index = result_text.find(end_marker, start_index) + 1
-                                        break
-
-                                if end_index > start_index:
-                                    json_text = result_text[start_index:end_index]
-                                    try:
-                                        json_result = json.loads(json_text)
-                                        logger.info(f"成功从部分文本中提取JSON对象: 从{start_index}到{end_index}")
-                                        # 对于路线图专门处理
-                                        if content_type == "roadmap":
-                                            return {
-                                                "success": True,
-                                                "content_type": "roadmap",
-                                                "content": json_result,
-                                                "raw_response": result_text,  # 添加原始响应
-                                            }
-                                        json_extracted = True
-                                        break
-                                    except json.JSONDecodeError as e:
-                                        logger.warning(f"提取的JSON部分解析失败: {str(e)}, 文本: {json_text[:50]}...")
-
-                        # 如果未能提取JSON，把原始响应作为YAML处理
-                        if not json_extracted:
-                            logger.warning("无法从响应中提取JSON，尝试作为YAML处理")
-                            try:
-                                import yaml
-
-                                yaml_data = yaml.safe_load(result_text)
-                                if isinstance(yaml_data, dict):
-                                    logger.info("成功将响应解析为YAML")
-                                    return {"success": True, "content_type": "roadmap", "content": yaml_data, "raw_response": result_text}  # 添加原始响应
-                            except yaml.YAMLError as ye:
-                                logger.warning(f"YAML解析也失败: {str(ye)}")
-
-                            # 返回原始文本，作为内容预览
-                            return {
-                                "success": False,
-                                "error": f"无法解析LLM响应为JSON或YAML",
-                                "content_type": content_type,
-                                "content_preview": result_text[:300] + "..." if len(result_text) > 300 else result_text,
-                                "raw_response": result_text,
-                            }
-
-                except Exception as e:
-                    logger.error(f"处理JSON响应时出错: {str(e)}")
+                if isinstance(parsed_data, dict):
+                    logger.info(f"✅ 成功使用 json_repair 解析响应为字典对象 ({content_type})")
                     return {
-                        "success": False,
-                        "error": f"处理JSON响应出错: {str(e)}",
+                        "success": True,
                         "content_type": content_type,
-                        "content_preview": result_text[:300] + "..." if len(result_text) > 300 else result_text,
+                        "content": parsed_data,
                         "raw_response": result_text,
                     }
+                else:
+                    # Handle case where repair succeeds but result isn't a dict
+                    logger.warning(f"json_repair 解析成功，但结果不是字典类型: {type(parsed_data)}. Snippet: {str(parsed_data)[:100]}...")
+                    # Fall through to standard JSON parsing or failure
 
-            # 根据内容类型处理结果
-            content_processors = {
-                "workflow": self._process_workflow_response,
-                "rule": self._process_rule_response,
-                "document": self._process_document_response,
-                "generic": self._process_generic_response,
-            }
+            except ValueError as e:  # json_repair raises ValueError on failure
+                logger.warning(f"⚠️ json_repair 无法修复或解析响应 ({content_type}). Error: {e}. 将尝试标准 JSON 解析。")
+            except Exception as e:  # Catch any other unexpected errors from json_repair
+                logger.warning(f"⚠️ 使用 json_repair 解析时发生意外错误 ({content_type}): {e}. 将尝试标准 JSON 解析。", exc_info=True)
 
-            processor = content_processors.get(content_type, self._process_generic_response)
-            return processor(content, result_text)
-
-        except Exception as e:
-            logger.error(f"LLM服务调用或响应处理失败: {str(e)}")
-
-            # 即使发生异常，也创建一个调试文件，标明解析出错
-            if content_type == "roadmap":
-                try:
-                    # 使用项目目录下的临时目录
-                    llm_log_dir = self.get_temp_dir("llm_logs")
-
-                    error_response_file = os.path.join(llm_log_dir, f"llm_error_response_{int(time.time())}.txt")
-                    with open(error_response_file, "w", encoding="utf-8") as f:
-                        error_msg = f"LLM解析过程中出现异常: {str(e)}\n\n"
-                        if result_text:
-                            error_msg += f"获取到的部分响应:\n{result_text}"
-                        else:
-                            error_msg += "未能获取任何响应。"
-                        f.write(error_msg)
-                    logger.info(f"📝 已保存LLM错误信息到: {error_response_file}")
-                except Exception as write_err:
-                    logger.warning(f"⚠️ 无法保存错误信息: {str(write_err)}")
-
-            return {
-                "success": False,
-                "error": str(e),
-                "content_type": content_type,
-                "content_preview": content[:100] + "..." if len(content) > 100 else content,
-                "raw_response": result_text if result_text else "解析过程中发生异常，未能获取响应",
-            }
-
-    def _process_workflow_response(self, content: str, result_text: str) -> Dict[str, Any]:
-        """处理工作流响应"""
+        # 2. 如果 json-repair 不可用或失败，尝试标准 json.loads
+        logger.debug(f"Attempting standard JSON parse for {content_type}...")
         try:
-            # 尝试解析JSON响应
-            workflow_data = json.loads(result_text)
-
-            return {"success": True, "content_type": "workflow", "content": workflow_data}
-        except json.JSONDecodeError as e:
+            parsed_data = json.loads(result_text)
+            logger.info("✅ 成功使用标准 json.loads 解析响应为JSON对象")
             return {
-                "success": False,
-                "error": f"Failed to parse JSON response: {str(e)}",
-                "content_type": "workflow",
-                "content_preview": result_text[:100] + "...",
+                "success": True,
+                "content_type": content_type,
+                "content": parsed_data,
+                "raw_response": result_text,
             }
+        except json.JSONDecodeError as e:
+            error_msg = f"无法将LLM响应解析为JSON ({content_type}). 标准库错误: {e}"
+            logger.error(error_msg)
+            # Fall through to return failure
+
+        # 3. 如果所有方法都失败
+        final_error_message = f"无法将LLM响应解析为JSON ({content_type})，已尝试 json_repair (如果可用) 和标准库。"
+        logger.error(final_error_message)
+        return {
+            "success": False,
+            "error": final_error_message,
+            "content_type": content_type,
+            "content_preview": result_text[:300] + "...",
+            "raw_response": result_text,
+        }
+
+    # --- Specific Processors (Kept for simple non-JSON types, could be refactored further) ---
+    # These typically operate on the *original* content, not the LLM response usually.
+    # Pass result_text if they need to analyze the LLM output instead/as well.
 
     def _process_rule_response(self, content: str, result_text: str) -> Dict[str, Any]:
-        """处理规则响应"""
-        # 直接通过基本的方法提取Front Matter和标题
+        """处理规则响应 (Simple extraction from original content)"""
+        logger.debug("Processing rule response (simple extraction)...")
         front_matter = {}
         markdown_content = content
-
-        # 简单解析Front Matter
-        if content.startswith("---"):
-            try:
+        title = ""
+        try:
+            if content.startswith("---"):
                 end_index = content.find("---", 3)
                 if end_index != -1:
                     front_matter_text = content[3:end_index].strip()
@@ -315,18 +242,19 @@ class LLMParser(BaseParser):
                         if ":" in line:
                             key, value = line.split(":", 1)
                             front_matter[key.strip()] = value.strip()
-
                     markdown_content = content[end_index + 3 :].strip()
-            except Exception:
-                pass
 
-        # 提取标题
-        title = ""
-        lines = markdown_content.split("\n")
-        for line in lines:
-            if line.startswith("# "):
-                title = line[2:].strip()
-                break
+            lines = markdown_content.split("\n")
+            for line in lines:
+                if line.startswith("# "):
+                    title = line[2:].strip()
+                    break
+        except Exception as e:
+            logger.warning(f"Simple rule processing failed: {e}")
+            # Return basic structure even if parsing fails
+            markdown_content = content  # Reset to original if parsing failed
+            title = "Unknown Title"
+            front_matter = {}
 
         return {
             "success": True,
@@ -340,31 +268,35 @@ class LLMParser(BaseParser):
                 "description": front_matter.get("description", ""),
                 "tags": front_matter.get("tags", "").split(",") if front_matter.get("tags") else [],
             },
+            "raw_response": result_text,  # Include raw LLM response
         }
 
     def _process_document_response(self, content: str, result_text: str) -> Dict[str, Any]:
-        """处理文档响应"""
-        # 提取标题和目录结构
+        """处理文档响应 (Simple extraction from original content)"""
+        logger.debug("Processing document response (simple extraction)...")
         title = ""
-        lines = content.split("\n")
-        for line in lines:
-            if line.startswith("# "):
-                title = line[2:].strip()
-                break
-
-        # 简单解析目录结构
         headings = []
-        for line in lines:
-            if line.startswith("#"):
-                level = 0
-                for char in line:
-                    if char == "#":
-                        level += 1
+        lines = content.split("\n")
+        try:
+            for line in lines:
+                if line.startswith("# "):
+                    title = line[2:].strip()
+                    break
+            for line in lines:
+                if line.startswith("#"):
+                    level = 0
+                    for char in line:  # Safer way to count leading '#'
+                        if char == "#":
+                            level += 1
                     else:
                         break
-
+            if line[level:].startswith(" "):  # Ensure space after #
                 heading_text = line[level:].strip()
                 headings.append({"level": level, "text": heading_text})
+        except Exception as e:
+            logger.warning(f"Simple document processing failed: {e}")
+            title = "Unknown Title"
+            headings = []
 
         return {
             "success": True,
@@ -377,114 +309,130 @@ class LLMParser(BaseParser):
                 "word_count": len(content.split()),
                 "line_count": len(lines),
             },
+            "raw_response": result_text,
         }
 
     def _process_generic_response(self, content: str, result_text: str) -> Dict[str, Any]:
-        """处理通用响应"""
-        lines = content.split("\n")
-
+        """处理通用响应 (Returns raw LLM result)"""
+        logger.debug("Processing generic response...")
         return {
             "success": True,
             "content_type": "generic",
-            "content": content,
-            "result": result_text,
+            "content": content,  # Original input content
+            "result": result_text,  # Raw LLM output
             "metadata": {
-                "line_count": len(lines),
+                "line_count": len(content.split("\n")),
                 "word_count": len(content.split()),
                 "char_count": len(content),
             },
+            "raw_response": result_text,
         }
 
+    # --- Main Orchestration Method ---
+    async def parse_text(self, content: str, content_type: Optional[str] = None) -> Dict[str, Any]:
+        """
+        使用LLM服务解析文本内容 (Orchestration Method)
+
+        Args:
+            content: 待解析的文本内容
+            content_type: 内容类型，如\'rule\'、\'document\'等
+
+        Returns:
+            解析结果
+        """
+        content_type = content_type or "generic"
+        timestamp = int(time.time())
+        # Use microseconds for log dir uniqueness if many requests happen in one second
+        timestamp_dir = self._get_temp_dir(f"llm_logs/{content_type}")
+        result_text = ""  # Initialize for potential use in exception handlers
+
+        try:
+            # 1. Prepare Request
+            messages, request_log_content = self._prepare_request(content, content_type)
+            self._save_log_file(timestamp_dir, "request", timestamp, request_log_content)
+
+            # 2. Execute LLM Call
+            result_text = await self._execute_llm_call(messages)
+            self._save_log_file(timestamp_dir, "response", timestamp, result_text)
+
+            # 3. Parse/Process Response based on type
+            if content_type in ["workflow", "roadmap"]:
+                # Use the dedicated parsing method with json-repair
+                return self._parse_structured_response(result_text, content_type)
+            else:
+                # Fallback to specific simple processors or generic one
+                logger.debug(f"Using simple/generic processor for content type: {content_type}")
+                content_processors = {
+                    "rule": self._process_rule_response,
+                    "document": self._process_document_response,
+                    # Add other specific processors if they exist
+                }
+                # Use generic processor if no specific one is found
+                processor = content_processors.get(content_type, self._process_generic_response)
+                return processor(content, result_text)
+
+        except Exception as e:
+            # General exception handling for call or parsing logic errors
+            error_msg = f"LLM解析流程失败 ({content_type}): {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            # Save error log
+            error_log_content = f"LLM解析过程中出现异常: {e}\n\n"
+            error_log_content += f"Content Type: {content_type}\n\n"
+            if result_text:
+                error_log_content += f"获取到的响应 (可能不完整):\n{result_text}"
+            else:
+                error_log_content += "未能获取任何响应或在获取响应前发生错误。"
+            self._save_log_file(timestamp_dir, f"llm_error", timestamp, error_log_content)
+
+            return {
+                "success": False,
+                "error": error_msg,
+                "content_type": content_type,
+                "content_preview": content[:100] + "...",
+                "raw_response": result_text if result_text else "解析过程中发生异常，未能获取响应",
+            }
+
+    # --- Sync Wrapper (Kept for compatibility) ---
     def parse(self, content: str, content_type: Optional[str] = None) -> Dict[str, Any]:
         """
         同步方法，解析文本内容
 
         这是一个适配方法，允许在同步上下文中使用LLM解析器。
-        LLMParser总是使用LLM服务进行解析，保持职责单一。
-
-        Args:
-            content: 待解析的文本内容
-            content_type: 内容类型，如'rule'、'document'等
-
-        Returns:
-            解析结果
         """
         import asyncio
 
-        import nest_asyncio
-
-        # 尝试安装和启用nest_asyncio，允许在同步上下文中运行异步代码
+        # Correct way to run async from sync: use asyncio.run() if possible,
+        # or manage event loop if running inside another loop.
+        # Assuming this parse() is called from a top-level sync context.
         try:
-            nest_asyncio.apply()
-        except Exception as e:
-            logger.error(f"无法启用nest_asyncio: {str(e)}，LLM解析可能无法在同步上下文中工作")
-            return {
-                "success": False,
-                "error": f"环境配置错误，无法启用nest_asyncio: {str(e)}",
-                "content_type": content_type or "generic",
-                "content_preview": content[:100] + "..." if len(content) > 100 else content,
-            }
-
-        try:
-            logger.info("使用LLM服务进行解析")
-
-            # 生成时间戳
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            timestamp_unix = int(time.time())
-
-            # 使用项目目录下的临时目录
-            timestamp_dir = self.get_temp_dir("llm_logs")
-
-            # 保存请求内容
-            request_file = os.path.join(timestamp_dir, f"request_{timestamp_unix}.txt")
-            try:
-                with open(request_file, "w", encoding="utf-8") as f:
-                    # 保存详细请求内容，包括内容类型和原始内容
-                    f.write(f"内容类型: {content_type}\n\n")
-                    f.write(f"原始内容:\n{content}")
-                logger.info(f"📝 已保存LLM请求内容到: {request_file}")
-            except Exception as e:
-                logger.warning(f"⚠️ 无法保存LLM请求内容: {str(e)}")
-
-            # 使用asyncio运行异步函数
-            loop = asyncio.get_event_loop()
-            result = loop.run_until_complete(self.parse_text(content, content_type))
-
-            # 保存响应内容
-            response_file = os.path.join(timestamp_dir, f"response_{timestamp_unix}.txt")
-            try:
-                with open(response_file, "w", encoding="utf-8") as f:
-                    if "raw_response" in result:
-                        f.write(result["raw_response"])
-                    else:
-                        import json
-
-                        f.write(json.dumps(result, indent=2, ensure_ascii=False))
-                logger.info(f"📝 已保存LLM响应内容到: {response_file}")
-            except Exception as e:
-                logger.warning(f"⚠️ 无法保存LLM响应内容: {str(e)}")
-
+            # Use asyncio.run() for simplicity if possible.
+            # If this needs to integrate with an existing loop (e.g., FastAPI),
+            # the calling code needs to handle the await differently.
+            logger.info("运行异步 LLM 解析 (Sync Wrapper)...")
+            result = asyncio.run(self.parse_text(content, content_type))
             return result
+        except RuntimeError as e:
+            # Handle cases where asyncio.run() can't be used (e.g., nested loops)
+            if "cannot be called from a running event loop" in str(e):
+                logger.error("同步 `parse` 方法不能从正在运行的事件循环中调用。请直接 `await parse_text`。")
+                return {"success": False, "error": "Async context error: Cannot run nested event loops."}
+            else:
+                logger.error(f"❌ LLM解析失败 (Sync Wrapper - Runtime Error): {str(e)}", exc_info=True)
+                # ... (log error to file?) ...
+                return {
+                    "success": False,
+                    "error": f"LLM解析失败 (Runtime Error): {str(e)}",
+                    "content_type": content_type or "generic",
+                    "content_preview": content[:100] + "...",
+                }
         except Exception as e:
-            logger.error(f"❌ LLM解析失败: {str(e)}")
-
-            error_result = {
+            logger.error(f"❌ LLM解析失败 (Sync Wrapper - General Error): {str(e)}", exc_info=True)
+            # ... (log error to file?) ...
+            # ... (error return structure) ...
+            return {
                 "success": False,
                 "error": f"LLM解析失败: {str(e)}",
                 "content_type": content_type or "generic",
-                "content_preview": content[:100] + "..." if len(content) > 100 else content,
+                "content_preview": content[:100] + "...",
                 "original_error": str(e),
             }
-
-            # 保存错误信息
-            try:
-                # 使用项目目录下的临时目录
-                timestamp_dir = self.get_temp_dir("llm_logs")
-                error_file = os.path.join(timestamp_dir, f"llm_parser_error_{timestamp_unix}.json")
-                with open(error_file, "w", encoding="utf-8") as f:
-                    json.dump(error_result, f, indent=2, ensure_ascii=False)
-                logger.info(f"📝 已保存解析错误信息到: {error_file}")
-            except Exception as write_err:
-                logger.warning(f"⚠️ 无法保存解析错误文件: {str(write_err)}")
-
-            return error_result

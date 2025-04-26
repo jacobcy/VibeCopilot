@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 import click
 from rich.console import Console
 
-from src.cli.decorators import pass_service
+from src.cli.core.decorators import pass_service
 from src.models.db.init_db import get_db_path
 
 from .base_handler import ClickBaseHandler

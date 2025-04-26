@@ -13,6 +13,9 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+# Import get_config
+from src.core.config import get_config
+
 # 移除了 sqlalchemy 和 MemoryItem 的导入，因为数据库操作已移走
 # from sqlalchemy import and_
 # from sqlalchemy.orm import Session
@@ -100,27 +103,41 @@ def get_sync_config(config_path: Optional[str] = None) -> Dict[str, Any]:
 
     Returns:
         Dict[str, Any]: 同步配置
+
+    Raises:
+        ValueError: 如果无法通过配置确定 sync_config.json 的路径。
+        FileNotFoundError: 如果配置文件路径确定后文件不存在。
+        json.JSONDecodeError: 如果配置文件内容无效。
     """
     if config_path is None:
-        # 使用默认配置路径
-        home_dir = os.path.expanduser("~")
-        config_path = os.path.join(home_dir, ".vibecopilot", "sync_config.json")
+        # 使用配置获取默认路径
+        try:
+            config_obj = get_config()
+            data_dir = config_obj.get("paths.data_dir")
+            if not data_dir:
+                raise ValueError("Configuration key 'paths.data_dir' is not set or invalid.")
+            config_path = os.path.join(data_dir, "sync_config.json")
+        except Exception as e:
+            logger.error(f"无法从配置获取数据目录以确定同步配置路径: {e}", exc_info=True)
+            # Re-raise the exception to make the error visible
+            raise ValueError(f"Failed to determine sync config path from configuration: {e}") from e
 
-    # 如果配置文件不存在，返回默认配置
+    # 如果配置文件不存在，抛出错误
     if not os.path.exists(config_path):
-        logger.warning(f"同步配置文件不存在: {config_path}，使用默认配置")
-        return {"auto_sync": False, "sync_interval": 3600, "default_project": "vibecopilot", "default_folder": "Notes", "last_sync": None}  # 1小时
+        logger.error(f"同步配置文件不存在: {config_path}")
+        raise FileNotFoundError(f"Sync configuration file not found at: {config_path}")
 
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
-
         logger.debug(f"加载了同步配置: {config_path}")
         return config
-
+    except json.JSONDecodeError as e:
+        logger.error(f"加载同步配置失败，文件内容无效: {config_path}, Error: {e}")
+        raise  # Re-raise the JSONDecodeError
     except Exception as e:
-        logger.error(f"加载同步配置失败: {str(e)}")
-        return {"auto_sync": False, "sync_interval": 3600, "default_project": "vibecopilot", "default_folder": "Notes", "last_sync": None}
+        logger.error(f"加载同步配置时发生未知错误: {config_path}, Error: {e}")
+        raise ValueError(f"Unknown error loading sync config from {config_path}: {e}") from e
 
 
 def save_sync_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bool:
@@ -132,13 +149,24 @@ def save_sync_config(config: Dict[str, Any], config_path: Optional[str] = None) 
         config_path: 配置文件路径，如果为None则使用默认路径
 
     Returns:
-        bool: 保存成功返回True，失败返回False
+        bool: 保存成功返回True
+
+    Raises:
+        ValueError: 如果无法通过配置确定 sync_config.json 的路径。
+        IOError: 如果保存文件失败。
     """
     if config_path is None:
-        # 使用默认配置路径
-        home_dir = os.path.expanduser("~")
-        config_dir = os.path.join(home_dir, ".vibecopilot")
-        config_path = os.path.join(config_dir, "sync_config.json")
+        # 使用配置获取默认路径
+        try:
+            config_obj = get_config()
+            data_dir = config_obj.get("paths.data_dir")
+            if not data_dir:
+                raise ValueError("Configuration key 'paths.data_dir' is not set or invalid.")
+            config_path = os.path.join(data_dir, "sync_config.json")
+        except Exception as e:
+            logger.error(f"无法从配置获取数据目录以确定同步配置路径: {e}", exc_info=True)
+            # Re-raise the exception to make the error visible
+            raise ValueError(f"Failed to determine sync config path from configuration: {e}") from e
 
     try:
         # 确保目录存在
@@ -154,9 +182,12 @@ def save_sync_config(config: Dict[str, Any], config_path: Optional[str] = None) 
         logger.info(f"同步配置已保存到 {config_path}")
         return True
 
+    except IOError as e:
+        logger.error(f"保存同步配置时发生IO错误: {config_path}, Error: {e}")
+        raise  # Re-raise the IOError
     except Exception as e:
-        logger.error(f"保存同步配置失败: {str(e)}")
-        return False
+        logger.error(f"保存同步配置时发生未知错误: {config_path}, Error: {e}")
+        raise IOError(f"Unknown error saving sync config to {config_path}: {e}") from e
 
 
 def update_last_sync_time(config_path: Optional[str] = None) -> bool:

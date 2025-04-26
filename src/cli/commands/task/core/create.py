@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import click
-from loguru import logger
 from rich.console import Console
 
 from src.core.config import get_config
@@ -16,6 +15,7 @@ from src.memory import get_memory_service
 from src.services.task import TaskService
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 @click.command(name="create", help="创建一个新的任务")

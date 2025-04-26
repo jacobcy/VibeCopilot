@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import sys
-import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -15,7 +14,10 @@ from rich.console import Console
 from rich.panel import Panel
 
 from src.core.config import get_config
+from src.db import get_session_factory
+from src.db.repositories.workflow_definition_repository import WorkflowDefinitionRepository
 from src.utils.file_utils import ensure_directory_exists, file_exists, read_json_file, write_json_file
+from src.utils.id_generator import EntityType, IdGenerator
 from src.validation.core.workflow_validator import WorkflowValidator
 from src.workflow.service import get_workflow, get_workflows_directory, list_workflows
 from src.workflow.utils import JsonExporter, MermaidExporter
@@ -171,9 +173,10 @@ def handle_import_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
                 existing_workflow = workflow
                 break
 
-        # 生成新的工作流ID
-        new_workflow_id = str(uuid.uuid4())[:8]  # 使用UUID的前8位作为ID
+        # 生成新的工作流ID - 使用 IdGenerator
+        new_workflow_id = IdGenerator.generate_workflow_id()
         workflow_data["id"] = new_workflow_id
+        logger.info(f"使用标准 ID 生成器生成新工作流 ID: {new_workflow_id}")
 
         # 导入工作流
         workflows_dir = get_workflows_directory()
@@ -198,55 +201,96 @@ def handle_import_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
 
             # 删除旧的工作流文件
             old_file = os.path.join(workflows_dir, f"{existing_workflow['id']}.json")
-            if os.path.exists(old_file):
-                os.remove(old_file)
-            logger.info(f"替换已存在的同名工作流: {workflow_name}")
-            if verbose:
-                console.print(f"[yellow]替换已存在的同名工作流: {workflow_name}[/yellow]")
+            if file_exists(old_file):
+                try:
+                    os.remove(old_file)
+                    logger.info(f"已删除旧的工作流文件: {old_file}")
+                except OSError as e:
+                    logger.warning(f"无法删除旧的工作流文件 {old_file}: {e}")
         else:
+            # 如果是全新工作流
             workflow_data["metadata"]["created_at"] = current_time
             workflow_data["metadata"]["updated_at"] = current_time
 
-        # 保存工作流
-        if write_json_file(target_path, workflow_data):
-            name_change_info = f" (原名称: {original_name})" if new_name else ""
-            success_msg = f"成功导入工作流: {workflow_name}{name_change_info} (ID: {new_workflow_id})"
-            logger.info(success_msg)
+        # 写入新的工作流文件
+        success_write = write_json_file(target_path, workflow_data)
 
-            if verbose:
-                console.print(f"[bold green]✓[/bold green] {success_msg}")
+        if not success_write:
+            logger.error(f"无法写入工作流文件: {target_path}")
+            return _create_error_response(f"无法写入工作流文件: {target_path}", 500, args, "flow import")
 
-                # 显示工作流信息
-                console.print("\n[bold cyan]工作流信息:[/bold cyan]")
-                console.print(
-                    Panel(
-                        f"ID: {new_workflow_id}\n"
-                        f"名称: {workflow_name}\n"
-                        f"描述: {workflow_data.get('description', '无描述')}\n"
-                        f"版本: {workflow_data.get('version', '1.0.0')}\n"
-                        f"阶段数: {len(workflow_data.get('stages', []))}\n"
-                        f"转换数: {len(workflow_data.get('transitions', []))}\n",
-                        title="导入的工作流",
-                        border_style="cyan",
-                    )
-                )
+        # 添加数据库保存逻辑
+        try:
+            with get_session_factory()() as db_session:
+                repo = WorkflowDefinitionRepository()
+                # Prepare data for the repository's create method
+                # 确保stages_data包含stages和transitions
+                stages = workflow_data.get("stages", [])
+                transitions = workflow_data.get("transitions", [])
 
-            return {
-                "status": "success",
-                "code": 200,
-                "message": success_msg,
-                "data": workflow_data,
-                "meta": {"command": "flow import", "args": args},
-            }
-        else:
-            error_msg = f"保存工作流文件失败: {target_path}"
-            logger.error(error_msg)
-            return _create_error_response(error_msg, 500, args, "flow import")
+                # 创建stages_data字典
+                stages_data = {"stages": stages, "transitions": transitions}
 
+                db_data = {
+                    "id": new_workflow_id,
+                    "name": workflow_name,
+                    "type": workflow_data.get("type", "unknown"),  # Get type or default
+                    "description": workflow_data.get("description"),
+                    "stages_data": stages_data,  # 使用包含stages和transitions的字典
+                    "metadata": workflow_data.get("metadata"),
+                    # Add other relevant fields expected by the DB model
+                }
+                # Remove None values to avoid DB constraint issues if columns are NOT NULL
+                db_data = {k: v for k, v in db_data.items() if v is not None}
+
+                existing_db_entry = repo.get_by_id(db_session, new_workflow_id)
+                if existing_db_entry:
+                    logger.info(f"更新数据库中的工作流定义: {new_workflow_id}")
+                    # Assuming an update method exists or use delete+create
+                    # repo.update(db_session, new_workflow_id, db_data) # If update exists
+                    # Or delete and recreate if update is complex/not implemented
+                    repo.delete(db_session, new_workflow_id)
+                    repo.create(db_session, db_data)  # Use the prepared db_data
+                else:
+                    logger.info(f"向数据库插入新的工作流定义: {new_workflow_id}")
+                    repo.create(db_session, db_data)  # Use the prepared db_data
+
+                db_session.commit()
+                logger.info(f"工作流定义 {workflow_name} (ID: {new_workflow_id}) 已成功保存到数据库")
+        except Exception as db_e:
+            logger.error(f"将工作流定义保存到数据库时出错: {db_e}", exc_info=True)
+            # Optionally: Clean up the created JSON file if DB save fails?
+            # os.remove(target_path)
+            return _create_error_response(f"成功写入文件但保存到数据库失败: {db_e}", 500, args, "flow import")
+        # 数据库保存逻辑结束
+
+        logger.info(f"工作流 {workflow_name} (ID: {new_workflow_id}) 已成功导入到 {target_path} 并保存到数据库")
+
+        # 返回成功信息
+        return {
+            "status": "success",
+            "code": 0,
+            "message": f"成功导入工作流: {workflow_name} (ID: {new_workflow_id})",
+            "data": {
+                "workflow_id": new_workflow_id,
+                "workflow_name": workflow_name,
+                "file_path": target_path,
+            },
+            "meta": {"command": "flow import", "args": args},
+        }
+
+    except FileNotFoundError:
+        logger.error(f"工作流文件未找到: {file_path}")
+        return _create_error_response(f"工作流文件未找到: {file_path}", 404, args, "flow import")
+    except json.JSONDecodeError:
+        logger.error(f"工作流文件格式错误: {file_path}")
+        return _create_error_response(f"工作流文件格式错误 (非 JSON): {file_path}", 400, args, "flow import")
+    except ValidationError as ve:
+        logger.error(f"工作流验证失败: {ve}")
+        return _create_error_response(f"工作流验证失败: {ve}", 400, args, "flow import")
     except Exception as e:
-        error_msg = f"导入工作流时出错: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        return _create_error_response(error_msg, 500, args, "flow import")
+        logger.error(f"导入工作流时出错: {str(e)}", exc_info=True)
+        return _create_error_response(f"导入工作流时发生意外错误: {str(e)}", 500, args, "flow import")
 
 
 def _export_to_file(content: str, file_path: str, format_name: str, args: Dict[str, Any]) -> Dict[str, Any]:

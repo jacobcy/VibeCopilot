@@ -12,50 +12,43 @@ _PROMPT_TEMPLATES = {
 
 {content}
 
-请提取以下信息并以JSON格式返回：
-1. 工作流的各个阶段（stages）：
-   - 每个阶段的ID、名称和描述
-   - 每个阶段的检查项（checklist）
-   - 每个阶段的交付物（deliverables）
+请提取工作流的阶段（stages）和转换关系（transitions）信息，并严格按照以下有效的JSON结构返回。**你的回答必须只包含一个JSON对象，不包含任何注释、标记、代码块指示符（例如 ```json）或任何其他解释性文本。**
 
-2. 阶段之间的转换关系（transitions）：
-   - 转换的源阶段和目标阶段
-   - 转换的触发条件
-   - 转换的描述
-
-请严格按照以下JSON结构返回：
+JSON结构模板：
 {{
     "stages": [
         {{
-            "id": "stage_id",            // 阶段唯一标识
-            "name": "阶段名称",           // 阶段名称
-            "description": "阶段描述",    // 阶段详细描述
-            "checklist": [               // 检查项列表
+            "id": "stage_id",
+            "name": "阶段名称",
+            "description": "阶段详细描述",
+            "checklist": [
                 "检查项1",
                 "检查项2"
             ],
-            "deliverables": [           // 交付物列表
+            "deliverables": [
                 "交付物1",
                 "交付物2"
             ]
         }}
+        // 可以有更多 stages 对象
     ],
     "transitions": [
         {{
-            "id": "transition_id",       // 转换唯一标识
-            "from_stage": "源阶段id",     // 源阶段ID
-            "to_stage": "目标阶段id",     // 目标阶段ID
-            "condition": "转换条件",      // 触发条件
-            "description": "转换描述"     // 转换的详细描述
+            "id": "transition_id",
+            "from_stage": "源阶段id",
+            "to_stage": "目标阶段id",
+            "condition": "转换条件",
+            "description": "转换的详细描述"
         }}
+        // 可以有更多 transitions 对象
     ]
 }}
 
-注意：
-1. 确保所有ID都是唯一的
-2. 阶段之间的转换关系要完整且合理
-3. 检查项和交付物要具体且可操作
-4. 所有字段都必须填写，不要省略任何必要信息
+请确保：
+1. 所有ID都是唯一的。
+2. 阶段之间的转换关系完整且合理。
+3. 检查项和交付物具体且可操作。
+4. 最终输出是一个语法完全正确的JSON对象。
 """,
     "rule": """
 Parse the following rule content and extract its structured information.
@@ -136,17 +129,17 @@ Code:
     {{
       "title": "史诗标题",
       "description": "史诗描述",
-      "status": "状态(planned/in_progress/completed)",
+      "status": "状态(只能是 'todo', 'in_progress', 'done', 或 'completed')",
       "stories": [
         {{
           "title": "故事标题",
           "description": "故事描述",
-          "status": "状态(planned/in_progress/completed)",
+          "status": "状态(只能是 'todo', 'in_progress', 'done', 或 'completed')",
           "tasks": [
             {{
               "title": "任务标题",
               "description": "任务描述",
-              "status": "状态(planned/in_progress/completed)",
+              "status": "状态(只能是 'todo', 'in_progress', 'done', 或 'completed')",
               "priority": "优先级(low/medium/high/critical)",
               "assignees": ["负责人"],
               "due_date": "截止日期(YYYY-MM-DD)"
@@ -177,12 +170,7 @@ Input Data:
 
 # 系统提示字典
 _SYSTEM_PROMPTS = {
-    "workflow": """你是一个专业的工作流分析专家。你的任务是：
-1. 仔细分析规则文档中定义的流程
-2. 根据提供的模板结构，识别流程中的各个阶段、检查项和交付物
-3. 理解阶段之间的转换关系和条件
-4. 将分析结果转换为结构化的JSON格式
-5. 确保输出的JSON格式完全符合模板要求的结构""",
+    "workflow": """你是一个专业的工作流分析专家，任务是将规则文档转换为结构化的JSON。请严格遵循用户提示中要求的JSON格式，只输出JSON对象，不包含任何额外的文本、注释或标记。""",
     "roadmap": """你是一个专业的路线图结构化专家。你的任务是：
 1. 仔细分析提供的路线图YAML内容
 2. 将内容转换为标准的epic-story-task结构

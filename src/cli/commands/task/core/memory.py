@@ -12,7 +12,6 @@ import os
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from loguru import logger
 from rich.console import Console
 
 # 引入 get_config

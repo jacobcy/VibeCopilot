@@ -116,7 +116,7 @@ def execute_show_task(
                 else:
                     results["status"] = "error"
                     results["code"] = 404
-                    results["message"] = "未提供任务ID，且当前没有活动任务。请使用 'vc task set <TASK_ID>' 设置或提供一个任务ID。"
+                    results["message"] = "未提供任务ID，且当前没有活动任务。请使用 'vc task update --current <TASK_ID>' 设置或提供一个任务ID。"
                     return results
 
             # 验证 current_task_id 是否有效 (确保非 None)

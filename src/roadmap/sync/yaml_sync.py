@@ -31,6 +31,8 @@ class YamlSyncService:
         """
         导出路线图到YAML文件
 
+        直接调用export_service.export_to_yaml
+
         Args:
             roadmap_id: 路线图ID，不提供则使用活跃路线图
             output_path: 输出文件路径，不提供则使用默认路径
@@ -38,9 +40,10 @@ class YamlSyncService:
         Returns:
             Dict[str, Any]: 导出结果
         """
+        # 直接调用export_service的方法
         return self.export_service.export_to_yaml(roadmap_id, output_path)
 
-    def import_from_yaml(self, file_path: str, roadmap_id: Optional[str] = None, verbose: bool = False) -> Dict[str, Any]:
+    async def import_from_yaml(self, file_path: str, roadmap_id: Optional[str] = None, verbose: bool = False) -> Dict[str, Any]:
         """
         从YAML文件导入路线图数据
 
@@ -52,4 +55,5 @@ class YamlSyncService:
         Returns:
             Dict[str, Any]: 导入结果
         """
-        return self.import_service.import_from_yaml(file_path, roadmap_id, verbose)
+        # 使用await调用异步方法
+        return await self.import_service.import_from_yaml(file_path, roadmap_id, verbose)

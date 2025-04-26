@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 import click
 from rich.console import Console
 
-from src.cli.decorators import pass_service
+from src.cli.core.decorators import pass_service
 
 from .base_handler import ClickBaseHandler
 from .exceptions import DatabaseError, ValidationError

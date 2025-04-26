@@ -1,0 +1,236 @@
+metadata:
+  title: VibeCopilot 工作流系统重构
+  description: 按照 workflow-refactor.md中定义的目标架构，对工作流系统进行数据库结构规范化和代码重构，以提高系统的健壮性、可维护性和可扩展性。
+  version: '1.0'
+  last_updated: '2023-10-01'
+epics:
+- title: 设计与规划 (Design & Planning)
+  description: 确定最终的数据库模型细节，规划迁移策略。
+  status: todo
+  stories:
+  - title: 数据库模型设计
+    description: 最终确定数据库表的详细字段、类型、约束和关系。
+    status: todo
+    tasks:
+    - title: 确定表结构
+      description: 确定 workflow_definitions, workflow_versions, stages, transitions, flow_sessions, stage_instances 等表的详细字段、类型、约束和关系。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2023-10-15'
+    - title: 制定数据迁移计划
+      description: 明确如何从现有的 stages_data JSON迁移到新表结构。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2023-10-15'
+    - title: 处理现有运行中的 flow_sessions
+      description: 确定如何处理现有的flow_sessions（标记为legacy、尝试回填 stage_instances或其他方案）。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-10-15'
+    - title: 评估数据迁移工具
+      description: 评估并选择数据迁移工具（推荐 Alembic），并设置好初始配置。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-10-15'
+    - title: 规划重构过程中的分支策略
+      description: 规划重构过程中的分支策略和代码合并计划。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-10-15'
+- title: 数据库迁移实施 (Database Migration)
+  description: 创建新的数据库结构，并将现有定义数据迁移至新结构。
+  status: todo
+  stories:
+  - title: 执行数据库迁移
+    description: 编写及执行 Alembic 迁移脚本。
+    status: todo
+    tasks:
+    - title: 编写 Alembic 迁移脚本
+      description: 创建 workflow_versions, stages, transitions, stage_instances 表并添加相关逻辑。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2023-10-30'
+    - title: 测试迁移脚本
+      description: 在开发/测试环境中执行并反复测试迁移脚本，确保数据完整性和正确性。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2023-10-30'
+    - title: 准备生产环境迁移步骤
+      description: 准备生产环境的迁移步骤（可能需要停机窗口）。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-10-30'
+    - title: 编写移除列的迁移脚本
+      description: 迁移完成后编写移除 workflow_definitions.stages_data 列的迁移脚本。
+      status: todo
+      priority: low
+      assignees: []
+      due_date: '2023-10-30'
+- title: 核心逻辑层重构 (Core Logic Refactoring)
+  description: 更新数据访问层和核心服务层，使其适应新的数据库模型。
+  status: todo
+  stories:
+  - title: 重构数据访问层
+    description: 更新 SQLAlchemy Repositories 以操作新表。
+    status: todo
+    tasks:
+    - title: 重写 SQLAlchemy Repositories
+      description: 重写或更新 WorkflowDefinitionRepository, StageRepository, TransitionRepository, FlowSessionRepository 以操作新表。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2023-11-15'
+    - title: 实现 StageInstanceRepository
+      description: 创建并实现 StageInstanceRepository。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-11-15'
+    - title: 实现 WorkflowVersionRepository
+      description: 创建并实现 WorkflowVersionRepository。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-11-15'
+    - title: 重构 FlowSessionManager
+      description: 重构 FlowSessionManager 的核心方法。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2023-11-15'
+    - title: 确保数据库交互
+      description: 确保所有数据库交互都通过新的 Repositories 进行。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2023-11-15'
+- title: 命令接口层重构 (Command Interface Refactoring)
+  description: 更新 CLI 命令处理程序以反映新的数据模型和逻辑。
+  status: todo
+  stories:
+  - title: 重构 CLI 命令
+    description: 更新 CLI 命令处理程序以适应新的数据模型。
+    status: todo
+    tasks:
+    - title: 重构 flow_info.py
+      description: 重构 flow_info.py 以查询 flow_sessions 和 stage_instances。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-11-30'
+    - title: 更新其他 CLI 子命令
+      description: 检查并更新其他可能受影响的 vc flow 子命令。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-11-30'
+- title: 工作流定义管理 (Definition Management)
+  description: 提供创建和更新规范化工作流定义的方式。
+  status: todo
+  stories:
+  - title: 实现工作流定义管理
+    description: 设计并实现创建/更新工作流定义的机制。
+    status: todo
+    tasks:
+    - title: 创建/更新工作流定义机制
+      description: 设计并实现创建/更新工作流定义的机制。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-12-15'
+    - title: 实现版本管理逻辑
+      description: 实现工作流定义的版本管理逻辑。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-12-15'
+    - title: 确保原子性和一致性
+      description: 确保定义创建/更新操作的原子性和一致性。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-12-15'
+- title: 全面测试与验证 (Testing & Validation)
+  description: 确保重构后的系统功能正确、性能达标且稳定。
+  status: todo
+  stories:
+  - title: 执行全面测试
+    description: 编写和执行全面的单元测试、集成测试和端到端测试。
+    status: todo
+    tasks:
+    - title: 编写单元和集成测试
+      description: 编写和执行全面的单元测试、集成测试和端到端测试。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2023-12-31'
+    - title: 测试边界条件
+      description: 测试各种边界条件和异常情况。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-12-31'
+    - title: 验证历史数据准确性
+      description: 验证历史数据的准确性（如果进行了回填）。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-12-31'
+    - title: 进行性能测试
+      description: 进行性能测试，特别是涉及大量 stage_instances 的查询。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-12-31'
+    - title: 用户验收测试
+      description: 进行用户验收测试 (UAT)。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2023-12-31'
+- title: 文档与清理 (Documentation & Cleanup)
+  description: 更新文档，清理旧代码，完成收尾工作。
+  status: todo
+  stories:
+  - title: 更新文档和代码清理
+    description: 更新文档，清理旧代码。
+    status: todo
+    tasks:
+    - title: 更新开发者和用户文档
+      description: 更新所有相关的开发者文档和用户文档。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2024-01-15'
+    - title: 移除列的迁移脚本
+      description: 确认并执行移除 workflow_definitions.stages_data 列的数据库迁移脚本。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2024-01-15'
+    - title: 移除旧逻辑和注释
+      description: 移除代码中所有与旧 stages_data 相关的逻辑和注释。
+      status: todo
+      priority: low
+      assignees: []
+      due_date: '2024-01-15'
+    - title: 进行代码审查
+      description: 进行最终的代码审查和质量检查。
+      status: todo
+      priority: medium
+      assignees: []
+      due_date: '2024-01-15'
+    - title: 合并和部署代码
+      description: 合并代码到主分支并部署。
+      status: todo
+      priority: high
+      assignees: []
+      due_date: '2024-01-15'

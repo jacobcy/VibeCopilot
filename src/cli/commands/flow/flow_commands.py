@@ -1,8 +1,7 @@
 """
-工作流基本命令模块
+工作流命令模块
 
-提供工作流基本命令的实现，如列表、显示、运行等。
-不包含CRUD操作，这些命令在flow_crud_commands.py中定义。
+提供工作流创建、管理和执行的命令接口。
 """
 
 import logging
@@ -11,6 +10,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import click
 from rich.console import Console
 
+# 从flow_crud_commands模块导入CRUD命令
+from src.cli.commands.flow.flow_crud_commands import create, delete, export, update
+
 # 从flow_info模块导入处理函数
 from src.cli.commands.flow.handlers.flow_info import handle_context_subcommand, handle_next_subcommand
 
@@ -18,10 +20,22 @@ from src.cli.commands.flow.handlers.flow_info import handle_context_subcommand, 
 from src.cli.commands.flow.handlers.list import handle_list_subcommand
 from src.cli.commands.flow.handlers.session_utils import get_active_session
 from src.cli.commands.flow.handlers.show import handle_show_subcommand
-from src.cli.commands.flow.handlers.visualize import handle_visualize_subcommand
+
+# 从session_commands模块导入session命令
+from src.cli.commands.flow.session_commands import session
 
 console = Console()
 logger = logging.getLogger(__name__)
+
+
+@click.group(name="flow", help="工作流管理命令")
+def flow():
+    """
+    工作流管理命令组
+
+    提供工作流定义和会话的管理功能。
+    """
+    pass
 
 
 def register_basic_commands(flow_group):
@@ -50,62 +64,6 @@ def register_basic_commands(flow_group):
 
         except Exception as e:
             logger.error(f"列出工作流失败: {e}", exc_info=True)
-            console.print(f"[red]错误: {str(e)}[/red]")
-
-    @flow_group.command(name="show", help="查看会话或工作流定义详情")
-    @click.argument("id", required=False)
-    @click.option("--flow", "-w", is_flag=True, help="查看工作流定义而非会话信息")
-    @click.option("--format", "-f", type=click.Choice(["json", "text", "mermaid"]), default="text", help="输出格式")
-    @click.option("--diagram", is_flag=True, help="在文本或JSON输出中包含Mermaid图表")
-    @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-    def show_flow(id: Optional[str], flow: bool, format: str, diagram: bool, verbose: bool) -> None:
-        """
-        查看会话或工作流定义详情
-
-        默认显示当前会话信息。
-        直接指定ID参数时查看指定会话信息。
-        使用--flow选项时查看工作流定义。
-
-        示例:
-          vc flow show                # 显示当前会话信息
-          vc flow show session123     # 显示ID为session123的会话信息
-          vc flow show --flow dev # 显示ID为dev的工作流定义
-          vc flow show dev --flow # 显示ID为dev的工作流定义
-        """
-        try:
-            target_id = id
-            is_workflow = flow
-
-            # 如果未提供ID
-            if not target_id:
-                if is_workflow:
-                    # 请求查看工作流但未提供ID
-                    console.print("[red]错误: 使用--flow选项时必须提供工作流ID[/red]")
-                    return
-                else:
-                    # 获取当前会话ID
-                    # 直接使用session_utils.py中的get_active_session函数
-                    _, target_id, _, _ = get_active_session(session_id=None, verbose=verbose)
-                    if not target_id:
-                        return
-
-            if verbose:
-                console.print(f"正在获取{'工作流' if is_workflow else '会话'} {target_id} 的详情...")
-
-            # 调用整合后的处理函数
-            result: Dict[str, Any] = handle_show_subcommand(
-                {"id": target_id, "is_workflow": is_workflow, "format": format, "diagram": diagram, "verbose": verbose, "_agent_mode": False}
-            )
-
-            if result["status"] == "success":
-                if verbose:
-                    console.print("[green]成功获取详情[/green]")
-                console.print(result["message"])
-            else:
-                console.print(f"[red]错误: {result['message']}[/red]")
-
-        except Exception as e:
-            logger.error(f"获取详情失败: {e}", exc_info=True)
             console.print(f"[red]错误: {str(e)}[/red]")
 
     @flow_group.command(name="context", help="获取并解释工作流阶段上下文")
@@ -220,49 +178,71 @@ def register_basic_commands(flow_group):
                 console.print(f"[red]错误: {result['message']}[/red]")
 
         except Exception as e:
-            logger.exception("获取下一阶段建议失败")
+            logger.error(f"获取下一阶段建议失败: {e}", exc_info=True)
             console.print(f"[red]错误: {str(e)}[/red]")
 
-    @flow_group.command(name="visualize", help="可视化工作流结构和进度")
+    @flow_group.command(name="show", help="查看会话或工作流定义详情")
     @click.argument("id", required=False)
-    @click.option("--session", "-s", is_flag=True, help="目标是会话ID而非工作流ID")
-    @click.option("--format", "-f", type=click.Choice(["mermaid", "text"]), default="mermaid", help="可视化格式")
-    @click.option("--output", "-o", help="输出文件路径")
+    @click.option("--format", "-f", type=click.Choice(["json", "text", "mermaid", "yaml"]), default="yaml", help="输出格式 (yaml格式用于显示阶段和转换)")
+    @click.option("--diagram", is_flag=True, help="在文本或JSON输出中包含Mermaid图表 (仅工作流定义)")
     @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-    # 通过pass_service装饰器注入FlowService类型的服务实例
-    def visualize_flow(id: Optional[str], session: bool, format: str, output: Optional[str], verbose: bool) -> None:
-        """可视化工作流结构和执行进度
+    def show(id: Optional[str], format: str, diagram: bool, verbose: bool) -> None:
+        """
+        查看会话或工作流定义详情
 
-        如果不提供ID参数，则显示当前活跃会话。
-        如果提供ID且使用--session选项，则显示指定会话。
-        如果提供ID但不使用--session选项，则显示指定工作流定义。
+        根据提供的ID前缀 (如 'wf_', 'ss_') 自动判断是查看工作流还是会话。
+        如果未提供ID，则显示当前活动会话信息。
+        如果ID没有标准前缀，则假定为会话ID或名称。
 
-        ID: 工作流ID或会话ID（可选）
+        示例:
+          vc flow show                # 显示当前会话信息
+          vc flow show ss_xxxx        # 显示ID为ss_xxxx的会话信息
+          vc flow show wf_yyyy        # 显示ID为wf_yyyy的工作流定义
+          vc flow show my-session-name # 显示名称为my-session-name的会话信息
         """
         try:
-            # 如果没有提供ID，则获取当前会话
-            target_id = id
-            is_session = session
+            target_id_or_name = id
 
-            if not target_id:
-                # 获取当前会话ID
-                _, target_id, _, _ = get_active_session(session_id=None, verbose=verbose)
-                if not target_id:
+            # If no ID provided, default to showing current session
+            if not target_id_or_name:
+                _, active_session_id, _, _ = get_active_session(session_id=None, verbose=verbose)
+                if not active_session_id:
+                    # get_active_session already prints error, just return
                     return
-                is_session = True
+                target_id_or_name = active_session_id
+                if verbose:
+                    console.print(f"未提供ID，将显示当前活动会话: {target_id_or_name}")
 
-            # 调用处理函数
-            result: Dict[str, Any] = handle_visualize_subcommand(
-                {"id": target_id, "session": is_session, "format": format, "output": output, "verbose": verbose, "_agent_mode": False}
+            if verbose:
+                # Type determination happens in handler, log is generic here
+                console.print(f"正在获取 {target_id_or_name} 的详情...")
+
+            # Call the handler
+            result = handle_show_subcommand(
+                {
+                    "id": target_id_or_name,
+                    "format": format,
+                    "diagram": diagram,
+                    "verbose": verbose,
+                    "_agent_mode": False,
+                }
             )
 
             if result["status"] == "success":
                 if verbose:
-                    console.print("[green]成功生成可视化结果[/green]")
+                    console.print("[green]成功获取详情[/green]")
                 console.print(result["message"])
             else:
                 console.print(f"[red]错误: {result['message']}[/red]")
 
         except Exception as e:
-            logger.error(f"可视化工作流失败: {e}", exc_info=True)
             console.print(f"[red]错误: {str(e)}[/red]")
+
+
+# 注册命令
+register_basic_commands(flow)
+flow.add_command(session)
+flow.add_command(create)
+flow.add_command(update)
+flow.add_command(delete)
+flow.add_command(export)

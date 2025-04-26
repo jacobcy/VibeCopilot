@@ -6,7 +6,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from src.db.repository import Repository
 from src.models.db import WorkflowDefinition
@@ -29,7 +29,6 @@ class WorkflowDefinitionRepository(Repository[WorkflowDefinition]):
         workflow_type: str,
         description: Optional[str] = None,
         stages_data: Optional[List[Dict[str, Any]]] = None,
-        source_rule: Optional[str] = None,
     ) -> WorkflowDefinition:
         """创建工作流定义
 
@@ -39,7 +38,6 @@ class WorkflowDefinitionRepository(Repository[WorkflowDefinition]):
             workflow_type: 工作流类型
             description: 工作流描述
             stages_data: 阶段数据
-            source_rule: 源规则文件
 
         Returns:
             新创建的工作流定义
@@ -51,12 +49,11 @@ class WorkflowDefinitionRepository(Repository[WorkflowDefinition]):
             "type": workflow_type,
             "description": description or "",
             "stages_data": stages_data or [],
-            "source_rule": source_rule,
         }
         return super().create(session, workflow_data)
 
     def get_by_id(self, session: Session, workflow_id: str) -> Optional[WorkflowDefinition]:
-        """根据ID获取工作流定义
+        """根据ID获取工作流定义，并预加载 transitions
 
         Args:
             session: SQLAlchemy 会话对象
@@ -65,10 +62,10 @@ class WorkflowDefinitionRepository(Repository[WorkflowDefinition]):
         Returns:
             工作流定义对象或None
         """
-        return super().get_by_id(session, workflow_id)
+        return session.query(WorkflowDefinition).options(selectinload(WorkflowDefinition.transitions)).get(workflow_id)
 
     def get_by_name(self, session: Session, name: str) -> Optional[WorkflowDefinition]:
-        """根据名称获取工作流定义
+        """根据名称获取工作流定义，并预加载 transitions
 
         Args:
             session: SQLAlchemy 会话对象
@@ -77,10 +74,10 @@ class WorkflowDefinitionRepository(Repository[WorkflowDefinition]):
         Returns:
             工作流定义对象或None
         """
-        return session.query(WorkflowDefinition).filter(WorkflowDefinition.name == name).first()
+        return session.query(WorkflowDefinition).options(selectinload(WorkflowDefinition.transitions)).filter(WorkflowDefinition.name == name).first()
 
     def get_by_type(self, session: Session, type_name: str) -> List[WorkflowDefinition]:
-        """根据类型获取工作流定义列表
+        """根据类型获取工作流定义列表，并预加载 transitions
 
         Args:
             session: SQLAlchemy 会话对象
@@ -89,4 +86,6 @@ class WorkflowDefinitionRepository(Repository[WorkflowDefinition]):
         Returns:
             工作流定义对象列表
         """
-        return session.query(WorkflowDefinition).filter(WorkflowDefinition.type == type_name).all()
+        return (
+            session.query(WorkflowDefinition).options(selectinload(WorkflowDefinition.transitions)).filter(WorkflowDefinition.type == type_name).all()
+        )

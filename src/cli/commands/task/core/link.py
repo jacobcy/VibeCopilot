@@ -6,7 +6,6 @@ import logging
 from typing import Any, Dict, Optional
 
 import click
-from loguru import logger
 from rich.console import Console
 
 from src.db.session_manager import session_scope

@@ -5,18 +5,11 @@
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-
-from src.db import get_session_factory
+from src.core.config import get_config
 from src.db.repositories.roadmap_repository import EpicRepository, MilestoneRepository, RoadmapRepository, StoryRepository
-from src.db.repositories.system_config_repository import SystemConfigRepository
 from src.db.repositories.task_repository import TaskRepository
-from src.models.db import Epic, Milestone, Roadmap, Story, SystemConfig, Task
-from src.parsing.processors.roadmap_processor import RoadmapProcessor
-from src.roadmap.core import RoadmapManager, RoadmapStatus, RoadmapUpdater
 from src.roadmap.service.roadmap_data import (
     get_epics,
     get_milestone_tasks,
@@ -27,16 +20,7 @@ from src.roadmap.service.roadmap_data import (
     get_stories,
     get_tasks,
 )
-from src.roadmap.service.roadmap_operations import (
-    create_roadmap,
-    delete_roadmap,
-    export_to_yaml,
-    import_from_yaml,
-    sync_from_github,
-    sync_to_github,
-    update_roadmap,
-    update_roadmap_status,
-)
+from src.validation.roadmap_validation import RoadmapValidator
 
 # 移除循环导入
 # from src.roadmap.sync import GitHubSyncService, YamlSyncService
@@ -51,27 +35,29 @@ class RoadmapService:
     整合了核心功能和同步能力，为外部系统提供统一接口
     """
 
-    def __init__(self):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         """初始化路线图服务"""
-        # 使用全局会话工厂
-        self.session_factory = get_session_factory()
-        self._active_roadmap_id = None
+        self.config = config or get_config()
+        self.github_token = self.config.get("adapters", {}).get("github", {}).get("token")
+        # 移除冗余的 github_client 初始化，让 GitHubSyncService 自己处理
+        # self.github_client = Github(self.github_token) if self.github_token else None
 
-        # 从数据库加载活动路线图ID
-        with self.session_factory() as session:
-            self.config_repo = SystemConfigRepository(session)
-            config = self.config_repo.get_by_key("active_roadmap_id")
-            if config and config.value:
-                # 验证路线图存在
-                roadmap_repo = RoadmapRepository(session)
-                roadmap = roadmap_repo.get_by_id(config.value)
-                if roadmap:
-                    self._active_roadmap_id = config.value
-                    logger.info(f"从数据库加载活动路线图ID: {config.value}")
-                else:
-                    logger.warning(f"数据库中的活动路线图ID {config.value} 不存在，将清除")
-                    # 删除无效的配置
-                    self.config_repo.delete_config("active_roadmap_id")
+        # 初始化仓库 (无状态)
+        self.roadmap_repo = RoadmapRepository()
+        self.epic_repo = EpicRepository()
+        self.milestone_repo = MilestoneRepository()
+        self.story_repo = StoryRepository()
+        # 添加 TaskRepository 初始化
+        self.task_repo = TaskRepository()
+        # 初始化验证器
+        self.validator = RoadmapValidator()
+
+        # 在 __init__ 内部导入并实例化 Status Provider
+        from src.status.providers.roadmap_provider import RoadmapStatusProvider
+
+        self.status_provider = RoadmapStatusProvider()
+        self.status_provider.set_service(self)
+        logger.info("RoadmapService 初始化完成，并已注入到 RoadmapStatusProvider。")
 
         # 使用懒加载模式初始化其他组件
         self._github_sync = None
@@ -82,8 +68,9 @@ class RoadmapService:
 
     @property
     def active_roadmap_id(self) -> Optional[str]:
-        """获取当前活跃的路线图ID"""
-        return self._active_roadmap_id
+        """获取当前活动的路线图ID (通过 Status Provider)"""
+        # 从 status_provider 获取活动 ID
+        return self.status_provider.get_active_roadmap_id()
 
     # 使用属性懒加载其他组件
     @property
@@ -106,67 +93,22 @@ class RoadmapService:
             self._yaml_sync = YamlSyncService(self)
         return self._yaml_sync
 
-    @property
-    def manager(self):
-        """获取路线图管理器（懒加载）"""
-        if self._manager is None:
-            from src.roadmap.core import RoadmapManager
-
-            self._manager = RoadmapManager(self)
-        return self._manager
-
-    @property
-    def status(self):
-        """获取路线图状态管理器（懒加载）"""
-        if self._status is None:
-            from src.roadmap.core import RoadmapStatus
-
-            self._status = RoadmapStatus(self)
-        return self._status
-
-    @property
-    def updater(self):
-        """获取路线图更新器（懒加载）"""
-        if self._updater is None:
-            from src.roadmap.core import RoadmapUpdater
-
-            self._updater = RoadmapUpdater(self)
-        return self._updater
-
-    def set_active_roadmap(self, roadmap_id: str) -> bool:
-        """设置当前活跃的路线图
+    def set_active_roadmap(self, roadmap_id: Optional[str]) -> bool:
+        """设置活动路线图ID (通过 Status Provider)
 
         Args:
-            roadmap_id: 路线图ID
+            roadmap_id: 路线图ID，或None来清除
 
         Returns:
             bool: 操作是否成功
         """
-        try:
-            with self.session_factory() as session:
-                # 验证路线图存在
-                roadmap_repo = RoadmapRepository(session)
-                roadmap = roadmap_repo.get_by_id(roadmap_id)
-                if not roadmap:
-                    logger.error(f"路线图不存在: {roadmap_id}")
-                    return False
-
-                # 更新内存中的活动路线图ID
-                self._active_roadmap_id = roadmap_id
-
-                # 更新或创建系统配置记录
-                config_repo = SystemConfigRepository(session)
-                config_repo.set_value(key="active_roadmap_id", value=str(roadmap_id), description="当前活动的路线图ID")
-
-                # 确保提交事务
-                session.commit()
-
-                logger.info(f"设置活跃路线图并持久化: {roadmap_id}")
-                return True
-
-        except Exception as e:
-            logger.error(f"设置活动路线图失败: {e}")
-            return False
+        # 直接委托给 Status Provider 处理持久化和验证
+        success = self.status_provider.set_active_roadmap_id(roadmap_id)
+        if success:
+            logger.info(f"通过 Status Provider 设置活动路线图 ID: {roadmap_id}")
+        else:
+            logger.error(f"通过 Status Provider 设置活动路线图 ID 失败: {roadmap_id}")
+        return success
 
     def switch_roadmap(self, roadmap_id: str) -> Dict[str, Any]:
         """
@@ -180,8 +122,8 @@ class RoadmapService:
         """
         try:
             # 检查路线图是否存在
-            roadmap = get_roadmap(self, roadmap_id)
-            if not roadmap:
+            roadmap_dict = get_roadmap(self, roadmap_id)
+            if not roadmap_dict:
                 return {"success": False, "error": f"未找到路线图: {roadmap_id}"}
 
             # 调用set_active_roadmap持久化设置
@@ -190,7 +132,7 @@ class RoadmapService:
                 return {"success": False, "error": f"切换路线图失败: {roadmap_id}"}
 
             # 优先使用title字段，然后是name字段
-            roadmap_name = roadmap.get("title") or roadmap.get("name") or "[未命名路线图]"
+            roadmap_name = roadmap_dict.get("title") or roadmap_dict.get("name") or "[未命名路线图]"
             logger.info(f"切换到路线图: {roadmap_name} (ID: {roadmap_id})")
             return {"success": True, "roadmap_id": roadmap_id, "roadmap_name": roadmap_name}
 
@@ -213,51 +155,32 @@ class RoadmapService:
     def check_roadmap_status(
         self,
         check_type: str = "entire",
-        element_id: Optional[str] = None,
         roadmap_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        检查路线图状态
-
-        Args:
-            check_type: 检查类型，可选值：entire, milestone, task
-            element_id: 元素ID，仅当check_type为milestone或task时需要
-            roadmap_id: 路线图ID，不提供则使用活跃路线图
-
-        Returns:
-            Dict[str, Any]: 状态信息
+        检查路线图状态 (现在直接处理或委托给 provider/repo)
         """
         roadmap_id = roadmap_id or self.active_roadmap_id
+        if not roadmap_id:
+            return {"success": False, "error": "未指定路线图ID且无活动路线图"}
 
-        # 检查状态
-        result = self.manager.check_roadmap(check_type, element_id, roadmap_id)
+        # TODO: Implement status checking logic here or delegate
+        # Example: Fetch data using self.get_roadmap_info(roadmap_id)
+        #          Calculate health based on stats/progress from repos
+        logger.warning("RoadmapService.check_roadmap_status 需要重新实现，不再依赖 RoadmapManager")
+        # Placeholder implementation:
+        roadmap_info = self.get_roadmap_info(roadmap_id)
+        if not roadmap_info.get("success"):
+            return roadmap_info  # Return error from get_roadmap_info
 
+        # Basic status based on roadmap info
         return {
             "success": True,
-            "check_type": check_type,
+            "check_type": check_type,  # Keep the requested type
             "roadmap_id": roadmap_id,
-            "status": result,
+            "status": roadmap_info.get("stats", {}),  # Return stats as basic status for now
+            "message": "状态检查逻辑需要进一步实现",
         }
-
-    # 数据操作方法，委托给roadmap_data模块
-    get_roadmap = get_roadmap
-    get_roadmaps = get_roadmaps
-    get_epics = get_epics
-    get_stories = get_stories
-    get_milestones = get_milestones
-    get_milestone_tasks = get_milestone_tasks
-    get_tasks = get_tasks
-    get_roadmap_info = get_roadmap_info
-
-    # 操作方法，委托给roadmap_operations模块
-    create_roadmap = create_roadmap
-    delete_roadmap = delete_roadmap
-    update_roadmap_status = update_roadmap_status
-    update_roadmap = update_roadmap
-    sync_to_github = sync_to_github
-    sync_from_github = sync_from_github
-    export_to_yaml = export_to_yaml
-    import_from_yaml = import_from_yaml
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         """将对象转换为字典
@@ -326,9 +249,15 @@ class RoadmapService:
             elements = []
             if type == "all" or type == "milestone":
                 # 使用数据层方法获取里程碑
-                milestones = self.milestone_repo.get_by_roadmap_id(roadmap_id)
+                from src.db.session_manager import session_scope
+
+                milestones = []
+                with session_scope() as session:
+                    milestones = self.milestone_repo.get_by_roadmap_id(session, roadmap_id)
                 for milestone in milestones:
-                    if status != "all" and milestone.status != status:
+                    # 使用字符串值比较而不是直接比较Column对象
+                    milestone_status = str(milestone.status) if milestone.status is not None else ""
+                    if status != "all" and milestone_status != status:
                         continue
                     elements.append(
                         {
@@ -345,11 +274,18 @@ class RoadmapService:
 
             if type == "all" or type == "story":
                 # 使用数据层方法获取故事
-                stories = self.story_repo.get_by_roadmap_id(roadmap_id)
+                from src.db.session_manager import session_scope
+
+                stories = []
+                with session_scope() as session:
+                    stories = self.story_repo.get_by_roadmap_id(session, roadmap_id)
                 for story in stories:
-                    if status != "all" and story.status != status:
+                    # 使用字符串值比较而不是直接比较Column对象
+                    story_status = str(story.status) if story.status is not None else ""
+                    if status != "all" and story_status != status:
                         continue
-                    if assignee and story.assignee != assignee:
+                    story_assignee = str(story.assignee) if story.assignee is not None else ""
+                    if assignee and story_assignee != assignee:
                         continue
                     story_labels = story.labels.split(",") if story.labels else []
                     if labels and not any(label in story_labels for label in labels):
@@ -369,19 +305,27 @@ class RoadmapService:
 
             if type == "all" or type == "task":
                 # 使用数据层方法获取任务
-                tasks = self.task_repo.get_by_roadmap_id(roadmap_id)
+                from src.db.session_manager import session_scope
+
+                tasks = []
+                with session_scope() as session:
+                    tasks = self.task_repo.get_by_roadmap_id(session, roadmap_id)
                 for task in tasks:
-                    if status != "all" and task.status != status:
+                    # 使用字符串值比较而不是直接比较Column对象
+                    task_status = str(task.status) if task.status is not None else ""
+                    if status != "all" and task_status != status:
                         continue
-                    if assignee and task.assignee != assignee:
+                    task_assignee = str(task.assignee) if task.assignee is not None else ""
+                    if assignee and task_assignee != assignee:
                         continue
-                    task_labels = (
-                        task.labels
-                        if isinstance(task.labels, list)
-                        else task.labels.split(",")
-                        if isinstance(task.labels, str) and task.labels
-                        else []
-                    )
+
+                    # 安全处理标签
+                    task_labels_value = task.labels
+                    if isinstance(task_labels_value, list):
+                        task_labels = task_labels_value
+                    else:
+                        task_labels_str = str(task_labels_value) if task_labels_value is not None else ""
+                        task_labels = task_labels_str.split(",") if task_labels_str else []
                     if labels and not any(label in task_labels for label in labels):
                         continue
                     elements.append(
@@ -413,113 +357,118 @@ class RoadmapService:
             logger.exception(f"获取元素列表时出错: {e}")
             return {"success": False, "message": f"获取元素列表失败: {str(e)}", "data": [], "total": 0}
 
-    async def import_from_yaml(self, file_path: str, roadmap_id: Optional[str] = None, verbose: bool = False) -> Dict[str, Any]:
+    async def import_from_yaml(
+        self, file_path: str, roadmap_id: Optional[str] = None, activate: bool = False, verbose: bool = False
+    ) -> Dict[str, Any]:
         """从YAML文件导入路线图
 
         Args:
             file_path: YAML文件路径
             roadmap_id: 可选的路线图ID，不提供则创建新路线图
+            activate: 导入后是否设为活动路线图
             verbose: 是否显示详细信息
 
         Returns:
             Dict[str, Any]: 导入结果
         """
         try:
-            # 创建处理器
-            processor = RoadmapProcessor()
+            # Lazy load import_service
+            from ..sync.import_service import RoadmapImportService
 
-            # 读取文件内容
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+            import_service = RoadmapImportService(self)
 
-            # 解析路线图内容
-            data = await processor.parse_roadmap(content)
+            # Call the async method using await, remove force_llm
+            result = await import_service.import_from_yaml(file_path, roadmap_id, verbose)  # <-- Remove force_llm
 
-            if not data:
-                return {"success": False, "error": "解析路线图内容失败"}
+            # Handle activation if import was successful and activate=True
+            if result.get("success") and activate:
+                imported_id = result.get("roadmap_id")
+                if imported_id:
+                    if self.set_active_roadmap(imported_id):
+                        result["activated"] = True
+                        logger.info(f"导入成功后已激活路线图: {imported_id}")
+                    else:
+                        result["activated"] = False
+                        result["warning"] = result.get("warning", "") + "导入成功，但激活失败。"
+                        logger.warning(f"导入成功，但激活路线图 {imported_id} 失败")
+                else:
+                    result["activated"] = False
+                    result["warning"] = result.get("warning", "") + "导入成功但未返回ID，无法激活。"
+                    logger.warning("导入成功但未返回路线图ID，无法激活")
+            elif "activated" not in result:  # Ensure 'activated' key exists
+                result["activated"] = False
 
-            field_warnings = []
-            # 检查并记录字段类型问题
-            for field in ["title", "description", "status"]:
-                if field in data and isinstance(data[field], dict):
-                    field_warnings.append(f"字段'{field}'期望字符串类型，实际收到字典类型: {data[field]}")
-
-            # 如果提供了roadmap_id，更新现有路线图
-            if roadmap_id:
-                # 检查路线图是否存在
-                roadmap = self.roadmap_repo.get_by_id(roadmap_id)
-                if not roadmap:
-                    return {"success": False, "error": f"路线图不存在: {roadmap_id}"}
-
-                # 更新路线图
-                try:
-                    self.update_roadmap(roadmap_id, data)
-                    return {"success": True, "roadmap_id": roadmap_id, "field_warnings": field_warnings}
-                except Exception as e:
-                    return {"success": False, "error": f"更新路线图失败: {str(e)}"}
-
-            # 创建新路线图
-            try:
-                new_roadmap_id = self.create_roadmap(data)
-                if not new_roadmap_id:
-                    return {"success": False, "error": "创建路线图失败：未返回ID"}
-                return {"success": True, "roadmap_id": new_roadmap_id, "field_warnings": field_warnings}
-            except Exception as e:
-                return {"success": False, "error": f"创建路线图失败: {str(e)}"}
+            return result
 
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            logger.error(f"调用 YAML 导入服务时出错: {e}", exc_info=True)
+            return {"success": False, "error": f"导入时发生内部错误: {e}"}
 
-    async def fix_yaml_file(self, file_path: str, output_path: Optional[str] = None, verbose: bool = False) -> Dict[str, Any]:
-        """修复YAML文件格式
+    # 删除重复的 delete_roadmap_operation 方法，保留下面的实现
 
-        Args:
-            file_path: YAML文件路径
-            output_path: 可选的输出文件路径
-            verbose: 是否显示详细信息
+    # 移除 export_to_yaml_operation 方法，直接使用 export_to_yaml 方法
 
-        Returns:
-            Dict[str, Any]: 修复结果
-        """
-        try:
-            # 创建处理器
-            processor = RoadmapProcessor()
+    # Add similar wrapper methods for sync_to_github, sync_from_github if needed
+    # Or the CLI handlers can import directly from roadmap_operations.py
 
-            # 调用处理器的fix_file方法
-            success, result = await processor.fix_file(file_path, output_path)
+    # Remove the internal create_roadmap and update_roadmap if they were defined here previously
 
-            if success:
-                return {"success": True, "fixed_path": result, "message": f"文件已修复并保存到: {result}"}
-            else:
-                return {"success": False, "error": result}
+    def get_roadmap(self, roadmap_id: str) -> Optional[Dict[str, Any]]:
+        """获取指定路线图详情"""
+        return get_roadmap(self, roadmap_id)
 
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+    def get_roadmaps(self) -> List[Dict[str, Any]]:
+        """获取所有路线图列表"""
+        return get_roadmaps(self)
 
-    def create_roadmap(self, data: Dict[str, Any]) -> Optional[str]:
-        """创建新的路线图
+    def get_epics(self, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """获取史诗列表"""
+        return get_epics(self, roadmap_id)
 
-        Args:
-            data: 路线图数据
+    def get_milestones(self, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """获取里程碑列表"""
+        return get_milestones(self, roadmap_id)
 
-        Returns:
-            Optional[str]: 路线图ID，失败则返回None
-        """
-        with self.session_factory() as session:
-            try:
-                roadmap_repo = RoadmapRepository(session)
-                roadmap = Roadmap(
-                    title=data.get("title", ""),
-                    description=data.get("description", ""),
-                    version=data.get("version", "1.0"),
-                    status=data.get("status", "active"),
-                    created_at=self.get_now(),
-                    updated_at=self.get_now(),
-                )
-                session.add(roadmap)
-                session.commit()
-                return str(roadmap.id)
-            except Exception as e:
-                logger.error(f"创建路线图失败: {e}")
-                session.rollback()
-                return None
+    def get_stories(self, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """获取故事列表"""
+        return get_stories(self, roadmap_id)
+
+    def get_tasks(self, roadmap_id: Optional[str] = None, milestone_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """获取任务列表"""
+        return get_tasks(self, roadmap_id, milestone_id)
+
+    def get_milestone_tasks(self, milestone_id: str, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """获取里程碑任务（如果模型支持）"""
+        return get_milestone_tasks(self, milestone_id, roadmap_id)
+
+    def get_roadmap_info(self, roadmap_id: Optional[str] = None) -> Dict[str, Any]:
+        """获取路线图详细信息和统计"""
+        return get_roadmap_info(self, roadmap_id)
+
+    # --- Sync Operations --- #
+
+    def sync_to_github(self, roadmap_id: Optional[str] = None) -> Dict[str, Any]:
+        """将路线图同步到GitHub"""
+        return self.github_sync.sync_roadmap_to_github(roadmap_id)
+
+    def sync_status_from_github(self, roadmap_id: Optional[str] = None) -> Dict[str, Any]:
+        """从GitHub同步状态"""
+        return self.github_sync.sync_status_from_github(roadmap_id)
+
+    def sync_from_github(self, repo_name: str, branch: str = "main", theme: Optional[str] = None, roadmap_id: Optional[str] = None) -> Dict[str, Any]:
+        """从GitHub仓库导入"""
+        return self.github_sync.sync_from_github(repo_name, branch, theme, roadmap_id)
+
+    def export_to_yaml(self, roadmap_id: Optional[str] = None, output_path: Optional[str] = None) -> Dict[str, Any]:
+        """导出路线图到YAML"""
+        return self.yaml_sync.export_to_yaml(roadmap_id, output_path)
+
+    # --- Operation Passthrough --- #
+    # These methods call functions from roadmap_operations.py
+
+    def delete_roadmap_operation(self, roadmap_id: str) -> Dict[str, Any]:
+        from . import roadmap_operations  # Lazy import
+
+        return roadmap_operations.delete_roadmap(self, roadmap_id)
+
+    # 其他操作方法可以根据需要添加

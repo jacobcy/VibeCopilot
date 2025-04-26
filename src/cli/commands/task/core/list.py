@@ -1,10 +1,13 @@
 # src/cli/commands/task/core/list.py
 
 import logging
+import re  # 导入 re 模块
 from typing import Any, Dict, List, Optional
 
 import click
+import yaml
 from rich.console import Console
+from rich.syntax import Syntax
 from rich.table import Table
 
 from src.db.session_manager import session_scope
@@ -41,13 +44,14 @@ def list_tasks(
 
     用于列出和过滤项目中的任务。支持按状态、负责人、标签等条件过滤，
     并可以通过 --verbose 选项显示更详细的任务信息。
+    输出格式为带状态高亮的类 YAML 格式。
     """
     try:
         result = execute_list_tasks(
             status=list(status) if status else None,
             assignee=assignee,
             label=list(label) if label else None,
-            roadmap_item_id=roadmap,
+            story_id=roadmap,
             independent=independent,
             temp=temp,
             limit=limit,
@@ -61,30 +65,77 @@ def list_tasks(
                 console.print("[yellow]未找到符合条件的任务。[/yellow]")
                 return
 
-            if format.lower() == "json":
-                import json
+            # --- 移除旧的 JSON/YAML 批量输出逻辑 ---
+            # if format.lower() == "json": ...
+            # else: ...
 
-                print(json.dumps(result["data"], ensure_ascii=False, indent=2))
-            else:
-                import yaml
+            # --- 新的逐条处理和状态高亮逻辑 ---
+            status_colors = {
+                "todo": "yellow",
+                "backlog": "bright_black",
+                "in_progress": "blue",
+                "review": "cyan",
+                "done": "green",
+                "closed": "bright_green",  # 假设有 closed 状态
+                "blocked": "red",
+            }
+            default_color = "white"  # 未知状态的颜色
 
-                print(yaml.safe_dump(result["data"], allow_unicode=True, sort_keys=False))
-            return
+            tasks_data = result["data"]
+            for i, task_dict in enumerate(tasks_data):
+                if i > 0:
+                    # 在任务之间打印分隔符
+                    console.print("--- -", style="dim")
+
+                # 获取状态和对应颜色
+                status_value = task_dict.get("status", "unknown")
+                color = status_colors.get(status_value, default_color)
+
+                # 将单个任务字典转为 YAML 字符串 (块状风格，增加缩进以便区分)
+                try:
+                    yaml_string = yaml.safe_dump(
+                        task_dict, allow_unicode=True, sort_keys=False, default_flow_style=False, indent=2, width=1000  # 使用缩进  # 尽量避免自动换行
+                    )
+                except yaml.YAMLError as e:
+                    logger.error(f"转换任务 {task_dict.get('id')} 为 YAML 时出错: {e}")
+                    # 打印基础信息作为回退
+                    console.print(f"id: {task_dict.get('id')}\nerror: 无法序列化任务数据")
+                    continue  # 处理下一个任务
+
+                # 查找并高亮 status 行
+                highlighted_yaml_lines = []
+                lines = yaml_string.splitlines()
+                for line in lines:
+                    # 匹配以 'status:' 开头的行 (允许前面有空格)
+                    match = re.match(r"^(\s*status:\s*)(.*)$", line)
+                    if match:
+                        prefix = match.group(1)  # 前缀（空格和 'status: '）
+                        value = match.group(2).strip()  # 原始状态值
+                        # 使用 rich markup 包裹状态值
+                        highlighted_line = f"{prefix}[bold {color}]{value}[/bold {color}]"
+                        highlighted_yaml_lines.append(highlighted_line)
+                    else:
+                        highlighted_yaml_lines.append(line)
+
+                # 使用 console.print 打印修改后的、逐行处理的字符串
+                console.print("\n".join(highlighted_yaml_lines))
+
+            return  # 成功完成
         else:
             console.print(f"[bold red]错误:[/bold red] {result['message']}")
-            return 1
+            # return 1 # 由 click 框架处理退出码
 
     except Exception as e:
         logger.error(f"列出任务时出错: {e}", exc_info=True)
         console.print(f"[bold red]错误:[/bold red] {e}")
-        return 1
+        # return 1 # 由 click 框架处理退出码
 
 
 def execute_list_tasks(
     status: Optional[List[str]] = None,
     assignee: Optional[str] = None,
     label: Optional[List[str]] = None,
-    roadmap_item_id: Optional[str] = None,
+    story_id: Optional[str] = None,
     independent: Optional[bool] = None,
     temp: Optional[str] = "all",
     limit: Optional[int] = None,
@@ -95,7 +146,7 @@ def execute_list_tasks(
     """执行列出任务的核心逻辑"""
     logger.info(
         f"执行任务列表命令: status={status}, assignee={assignee}, label={label}, "
-        f"roadmap_item_id={roadmap_item_id}, independent={independent}, temp={temp}, "
+        f"story_id={story_id}, independent={independent}, temp={temp}, "
         f"limit={limit}, offset={offset}, verbose={verbose}, format={format}"
     )
 
@@ -133,7 +184,7 @@ def execute_list_tasks(
                 "status": status,
                 "assignee": assignee,
                 "labels": label,
-                "roadmap_item_id": roadmap_item_id,
+                "story_id": story_id,
                 "is_independent": is_independent_filter,
                 "is_temporary": is_temporary_filter,
                 "limit": limit,
@@ -146,55 +197,33 @@ def execute_list_tasks(
             tasks = task_service.search_tasks(**query_params)
 
             if not tasks:
-                console.print("[yellow]未找到符合条件的任务。[/yellow]")
+                results["message"] = "未找到符合条件的任务。"
                 return results
 
-            # 转换任务列表为字典格式
-            task_dicts = [task for task in tasks]
-            results["data"] = task_dicts
-            results["message"] = f"成功检索到 {len(task_dicts)} 个任务"
-
-            # --- 控制台输出 ---
-            table = Table(title="任务列表")
-            table.add_column("ID", style="dim", width=12)
-            table.add_column("标题", style="bold cyan")
-            table.add_column("状态", style="magenta")
-            table.add_column("负责人", style="green")
-            if verbose:
-                table.add_column("类型", style="dim")
-                table.add_column("关联 Story", style="dim")
-                table.add_column("创建时间", style="dim")
-
+            # 转换任务列表为只包含关键信息的字典格式
+            refined_task_dicts = []
             for task in tasks:
-                row = [
-                    task.get("id", "")[:8] + "..." if not verbose else task.get("id", ""),
-                    task.get("title", ""),
-                    task.get("status", ""),
-                    task.get("assignee", "-"),
-                ]
-                if verbose:
-                    # 添加任务类型：临时任务或正式任务
-                    task_type = "临时任务" if not task.get("story_id") else "正式任务"
-                    row.append(task_type)
-                    # 关联Story
-                    row.append(task.get("story_id", "-"))
-                    # 创建时间
-                    created_time = task.get("created_at", "-")
-                    if created_time != "-":
-                        if hasattr(created_time, "strftime"):
-                            created_time = created_time.strftime("%Y-%m-%d %H:%M")
-                        else:
-                            created_time = str(created_time)
-                    row.append(created_time)
-                table.add_row(*row)
+                refined_dict = {
+                    "id": task.get("id"),
+                    "title": task.get("title"),
+                    "description": task.get("description"),
+                    "status": task.get("status"),
+                    "memory_references": task.get("memory_references", []),  # 确保有默认值
+                }
+                refined_task_dicts.append(refined_dict)
 
-            console.print(table)
+            # results["data"] = [task for task in tasks] # 旧代码
+            results["data"] = refined_task_dicts  # 使用精简后的数据
+            results["message"] = f"成功检索到 {len(refined_task_dicts)} 个任务"
+
+            # --- 移除控制台表格输出 ---
+            # ... (表格代码已移除)
 
     except Exception as e:
         logger.error(f"列出任务时出错: {e}", exc_info=True)
         results["status"] = "error"
         results["code"] = 500
         results["message"] = f"列出任务时出错: {e}"
-        console.print(f"[bold red]错误:[/bold red] {e}")
+        # console.print(f"[bold red]错误:[/bold red] {e}") # 错误信息由调用者处理
 
     return results

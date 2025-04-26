@@ -147,6 +147,10 @@ class FlowSessionRepository(Repository[FlowSession]):
         """
         return session.query(FlowSession).filter(and_(FlowSession.workflow_id == workflow_id, FlowSession.status == status)).all()
 
+    def exists_with_name(self, session: Session, name: str) -> bool:
+        """检查是否存在具有完全相同名称的会话"""
+        return session.query(session.query(FlowSession).filter(FlowSession.name == name).exists()).scalar()
+
     # get_with_stage_instances might be less useful now as StageInstanceRepository exists
     # Consider removing or adjusting if lazy loading isn't sufficient
     def get_with_stage_instances(self, session: Session, session_id: str) -> Optional[FlowSession]:

@@ -6,6 +6,7 @@
 
 import logging
 import os
+import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import yaml
@@ -126,7 +127,13 @@ class RoadmapCoreValidator(Validator):
         if not self.validator:
             return True
 
+        # --- Temporarily increase recursion limit for validation ---
+        old_limit = sys.getrecursionlimit()
         try:
+            new_limit = max(old_limit, 2000)  # Ensure we don't lower it, set to at least 2000
+            logger.debug(f"Temporarily increasing recursion limit from {old_limit} to {new_limit}")
+            sys.setrecursionlimit(new_limit)
+
             errors = list(self.validator.iter_errors(data))
             if errors:
                 for error in errors:
@@ -134,9 +141,21 @@ class RoadmapCoreValidator(Validator):
                     self.errors.append(f"Schema验证错误 - 路径: '{path}', 问题: {error.message}")
                 return False
             return True
-        except Exception as e:
-            self.errors.append(f"Schema验证异常: {str(e)}")
+        except RecursionError as re:
+            # Explicitly catch RecursionError if it still happens even with increased limit
+            self.errors.append(f"Schema验证时发生递归错误 (即使提高限制后): {str(re)}")
+            logger.error(f"RecursionError during schema validation even with limit {new_limit}", exc_info=True)
             return False
+        except Exception as e:
+            # Catch other potential validation exceptions
+            self.errors.append(f"Schema验证异常: {str(e)}")
+            logger.error("Exception during schema validation", exc_info=True)
+            return False
+        finally:
+            # IMPORTANT: Always restore the original limit
+            sys.setrecursionlimit(old_limit)
+            logger.debug(f"Restored recursion limit to {old_limit}")
+        # ---------------------------------------------------------
 
     def _validate_structure(self, data: Dict[str, Any]) -> None:
         """

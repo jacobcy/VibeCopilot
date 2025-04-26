@@ -13,7 +13,7 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.decorators import pass_service
+from src.cli.core.decorators import pass_service
 from src.db import get_session
 from src.db.utils.entity_mapping import get_valid_entity_types, map_entity_to_table, map_table_to_entity
 from src.db.utils.schema import get_all_tables

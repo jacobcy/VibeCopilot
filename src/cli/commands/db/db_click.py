@@ -14,7 +14,7 @@ from rich.table import Table
 from src.cli.commands.db.handlers.init_handler import init_db
 from src.cli.commands.db.handlers.list_handler import list_db_cli
 from src.cli.commands.db.handlers.status_handler import status_db
-from src.cli.decorators import pass_service
+from src.cli.core.decorators import pass_service
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -83,12 +83,11 @@ def list_db(service, type: Optional[str] = None, verbose: bool = False, format: 
 @db.command(name="show", help="根据ID显示数据库条目")
 @click.argument("id", required=True)
 @click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
-@pass_service(service_type="db")
-def show_db(service, id: str, format: str) -> int:
+def show_db(id: str, format: str) -> int:
     """根据ID显示数据库条目"""
     try:
         # 创建参数字典，与ShowHandler兼容
-        args_dict = {"id": id, "format": format, "service": service}
+        args_dict = {"id": id, "format": format}
 
         # 实例化并执行ShowHandler
         from src.cli.commands.db.handlers.show_handler import ShowHandler
@@ -96,7 +95,8 @@ def show_db(service, id: str, format: str) -> int:
         show_handler = ShowHandler()
         return show_handler.handle(**args_dict)
     except Exception as e:
-        console.print(f"[red]错误: {str(e)}[/red]")
+        logger.error(f"执行 db show 命令失败: {e}", exc_info=True)
+        console.print(f"[red]显示数据库条目时发生错误: {str(e)}[/red]")
         return 1
 
 
@@ -127,12 +127,11 @@ def query_db(service, type: str, id: Optional[str] = None, query: Optional[str] 
 @click.option("--type", required=True, help="实体类型(epic/story/task/label/template)")
 @click.option("--data", required=True, help="JSON格式的数据")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
-@pass_service(service_type="db")
-def create_db(service, type: str, data: str, verbose: bool = False) -> int:
+def create_db(type: str, data: str, verbose: bool = False) -> int:
     """创建数据库条目"""
     try:
         # 创建参数字典，与CreateHandler兼容
-        args_dict = {"type": type, "data": data, "verbose": verbose, "service": service}
+        args_dict = {"entity_type": type, "data": data, "verbose": verbose}
 
         # 实例化并执行CreateHandler
         from src.cli.commands.db.handlers.create_handler import CreateHandler
@@ -140,7 +139,8 @@ def create_db(service, type: str, data: str, verbose: bool = False) -> int:
         create_handler = CreateHandler()
         return create_handler.handle(**args_dict)
     except Exception as e:
-        console.print(f"[red]错误: {str(e)}[/red]")
+        logger.error(f"执行 db create 命令失败: {e}", exc_info=True)
+        console.print(f"[red]创建数据库条目时发生错误: {str(e)}[/red]")
         return 1
 
 

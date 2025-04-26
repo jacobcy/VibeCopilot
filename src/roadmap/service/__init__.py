@@ -5,6 +5,5 @@
 """
 
 from src.roadmap.service.roadmap_service import RoadmapService
-from src.roadmap.service.roadmap_status import RoadmapStatus
 
-__all__ = ["RoadmapService", "RoadmapStatus"]
+__all__ = ["RoadmapService"]

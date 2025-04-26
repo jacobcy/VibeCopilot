@@ -43,19 +43,36 @@ class DBConnectionManager:
 
     def _initialize_if_needed(self):
         """如果未初始化，则初始化数据库连接"""
+        # logger.warning("DBConnectionManager: Forcing re-initialization check for debugging...") # Removed force
+        # self._initialized = False # Removed force
+
         if not self._initialized:
+            # <<< Log entry >>>
+            logger.debug("Entering DBConnectionManager._initialize_if_needed")
             import traceback
 
             # 获取调用栈信息
-            caller_info = "".join(traceback.format_stack()[:-1])
-            logger.debug(f"DBConnectionManager._initialize_if_needed 被调用")
-            # logger.debug(f"调用栈信息: \n{caller_info}") # 可能过于冗长
+            # caller_info = "".join(traceback.format_stack()[:-1]) # Commented out, potentially verbose
+            logger.debug("DBConnectionManager._initialize_if_needed 被调用")
 
             try:
+                # <<< Log before config load >>>
+                # print("DEBUG [connection_manager]: Attempting to call get_config()") # Using print again
+                logger.debug("Attempting to call get_config()")  # Reverting to logger
                 config_manager = get_config()
-                # 从 ConfigManager 获取数据库 URL
+                # print(f"DEBUG [connection_manager]: get_config() returned. Type: {type(config_manager)}") # Using print again
+                logger.debug(f"get_config() returned. Type: {type(config_manager)}")  # Reverting to logger
+
+                # <<< Log before getting URL >>>
+                # print("DEBUG [connection_manager]: Attempting to get database.url") # Using print again
+                logger.debug("Attempting to get database.url")  # Reverting to logger
                 database_url = config_manager.get("database.url")
+                # print(f"DEBUG [connection_manager]: database.url retrieved. Type: {type(database_url)}, Value: {database_url}") # Using print again
+                logger.debug(f"Database URL retrieved. Type: {type(database_url)}, Value: {database_url}")  # Reverting to logger
+
                 if not database_url:
+                    # print("ERROR [connection_manager]: database.url is missing or empty!") # Using print again
+                    logger.error("Database URL is missing or empty!")  # Reverting to logger
                     raise ValueError("Database URL not found in configuration.")
 
                 # 检查是否是 SQLite 路径并确保目录存在
@@ -79,6 +96,8 @@ class DBConnectionManager:
                 db_debug = config_manager.get("database.debug", False)
 
                 # 创建数据库引擎
+                # print("DEBUG [connection_manager]: Attempting to create engine...") # Using print again
+                logger.debug("Attempting to create engine...")  # Reverting to logger
                 self._engine = create_engine(
                     database_url,
                     connect_args={"check_same_thread": False} if database_url.startswith("sqlite") else {},
@@ -89,15 +108,28 @@ class DBConnectionManager:
                     pool_recycle=pool_recycle,
                     echo=db_debug,  # 从配置控制是否打印SQL
                 )
+                # <<< Log engine state >>>
+                # print(f"DEBUG [connection_manager]: Engine created. Type: {type(self._engine)}, Value: {self._engine}") # Using print again
+                logger.debug(f"Engine created. Type: {type(self._engine)}, Value: {self._engine}")  # Reverting to logger
 
                 # 创建会话工厂
+                # print("DEBUG [connection_manager]: Attempting to create session factory...") # Using print again
+                logger.debug("Attempting to create session factory...")  # Reverting to logger
                 self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
+                # <<< Log session factory bind state >>>
+                factory_bind = self._session_factory.kw.get("bind")
+                # print(f"DEBUG [connection_manager]: Session factory created. Bind Type: {type(factory_bind)}, Bind Value: {factory_bind}") # Using print again
+                logger.debug(f"Session factory created. Bind Type: {type(factory_bind)}, Bind Value: {factory_bind}")  # Reverting to logger
 
                 self._initialized = True
-                logger.info(f"数据库连接管理器初始化完成: {database_url}")
-                logger.debug(f"连接池配置 - 大小: {pool_size}, 溢出: {max_overflow}, 超时: {pool_timeout}s, 回收: {pool_recycle}s")
+                # print(f"INFO [connection_manager]: Initialization complete. DB: {database_url}") # Using print again
+                logger.info(f"数据库连接管理器初始化完成: {database_url}")  # Reverting to logger
+                # print(f"DEBUG [connection_manager]: Pool config - Size: {pool_size}, Overflow: {max_overflow}, Timeout: {pool_timeout}, Recycle: {pool_recycle}") # Using print again
+                logger.debug(f"连接池配置 - 大小: {pool_size}, 溢出: {max_overflow}, 超时: {pool_timeout}s, 回收: {pool_recycle}s")  # Reverting to logger
             except Exception as e:
-                logger.error(f"初始化数据库连接管理器失败: {e}", exc_info=True)
+                # print(f"ERROR [connection_manager] in _initialize_if_needed: {e}") # Using print again
+                logger.error(f"初始化数据库连接管理器失败: {e}", exc_info=True)  # Reverting to logger
+                # print(traceback.format_exc()) # Using print again - covered by exc_info=True
                 raise
 
     # 移除 _get_db_path 方法，因为 URL 直接从 config 获取

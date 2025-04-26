@@ -8,6 +8,11 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy.orm import Session
+
+from src.db.repositories.roadmap_repository import StoryRepository
+from src.db.session_manager import session_scope
+
 from .base_importer import BaseImporter
 from .task_importer import TaskImporter
 
@@ -53,16 +58,18 @@ class StoryImporter(BaseImporter):
 
     def _process_story(self, story_data: Dict[str, Any], epic_id: str, story_title: str, import_stats: Dict[str, Dict[str, int]]) -> Optional[str]:
         """处理单个故事的导入或更新"""
+        story_id: Optional[str] = None
         try:
-            # 查找是否已存在同名故事
-            existing_story = self._find_existing_story(epic_id, story_title)
+            with session_scope() as session:
+                # 查找是否已存在同名故事
+                existing_story = self.service.story_repo.get_by_title_and_epic_id(session, story_title, epic_id)
 
-            if existing_story:
-                # 更新现有故事
-                story_id = self._update_story(existing_story, story_data, story_title)
-            else:
-                # 创建新故事
-                story_id = self._create_story(story_data, epic_id, story_title, import_stats)
+                if existing_story:
+                    # 更新现有故事
+                    story_id = self._update_story(session, existing_story, story_data, story_title)
+                else:
+                    # 创建新故事
+                    story_id = self._create_story(session, story_data, epic_id, story_title, import_stats)
 
             if story_id:
                 import_stats["stories"]["success"] += 1
@@ -73,61 +80,59 @@ class StoryImporter(BaseImporter):
             self.handle_import_error(f"处理故事失败: {story_title}", e, import_stats, "stories")
             return None
 
-    def _find_existing_story(self, epic_id: str, story_title: str) -> Optional[Any]:
-        """查找是否已存在同名故事"""
-        existing_stories = self.service.story_repo.get_by_epic_id(epic_id)
-
-        for story in existing_stories:
-            if story.title == story_title:
-                return story
-
-        return None
-
-    def _update_story(self, existing_story: Any, story_data: Dict[str, Any], story_title: str) -> str:
+    def _update_story(self, session: Session, existing_story: Any, story_data: Dict[str, Any], story_title: str) -> Optional[str]:
         """更新现有故事"""
         story_id = existing_story.id
-
-        if self.verbose:
-            logger.debug(f"故事已存在，进行更新: {story_title} (ID: {story_id})")
-
-        # 更新现有故事
-        update_data = {
-            "title": story_title,
-            "description": story_data.get("description", ""),
-            "status": story_data.get("status", "todo"),
-            "priority": story_data.get("priority", "medium"),
-            "updated_at": str(self.service.get_now()),
-        }
-
-        self.service.story_repo.update(story_id, update_data)
-
-        if self.verbose:
-            self.log_info(f"更新故事: {story_title} (ID: {story_id})")
-        else:
-            self.log_success(f"更新故事: {story_title}")
-
-        return story_id
-
-    def _create_story(self, story_data: Dict[str, Any], epic_id: str, story_title: str, import_stats: Dict[str, Dict[str, int]]) -> Optional[str]:
-        """创建新故事"""
-        # 创建新故事，使用UUID生成ID
-        story_id = f"story-{uuid.uuid4()}"
-
-        # 准备故事数据
-        story_obj = {
-            "id": story_id,
-            "title": story_title,
-            "description": story_data.get("description", ""),
-            "status": story_data.get("status", "todo"),
-            "priority": story_data.get("priority", "medium"),
-            "epic_id": epic_id,
-            "created_at": str(self.service.get_now()),
-            "updated_at": str(self.service.get_now()),
-        }
-
+        updated_story: Optional[Any] = None
         try:
-            # 创建新故事
-            self.service.story_repo.create(story_obj)
+            if self.verbose:
+                logger.debug(f"故事已存在，进行更新: {story_title} (ID: {story_id})")
+
+            # 更新现有故事
+            update_data = {
+                "description": story_data.get("description", existing_story.description),
+                "status": story_data.get("status", existing_story.status),
+                "priority": story_data.get("priority", existing_story.priority),
+                "updated_at": str(self.service.get_now()),
+            }
+
+            updated_story = self.service.story_repo.update(session, story_id, update_data)
+
+            if not updated_story:
+                self.log_warning(f"尝试更新故事 '{story_title}' (ID: {story_id}) 但仓库未返回更新对象。")
+                return story_id
+
+            if self.verbose:
+                self.log_info(f"更新故事: {story_title} (ID: {story_id})")
+
+            return story_id
+        except Exception as e:
+            self.log_error(f"更新故事 '{story_title}' 时出错: {e}", show_traceback=True)
+            return None
+
+    def _create_story(
+        self, session: Session, story_data: Dict[str, Any], epic_id: str, story_title: str, import_stats: Dict[str, Dict[str, int]]
+    ) -> Optional[str]:
+        """创建新故事"""
+        created_story: Optional[Any] = None
+        try:
+            # 准备故事数据
+            create_data = {
+                "title": story_title,
+                "description": story_data.get("description", ""),
+                "status": story_data.get("status", "todo"),
+                "priority": story_data.get("priority", "medium"),
+                "epic_id": epic_id,
+                "created_at": str(self.service.get_now()),
+                "updated_at": str(self.service.get_now()),
+            }
+
+            created_story = self.service.story_repo.create(session, **create_data)
+
+            if not created_story or not hasattr(created_story, "id"):
+                raise ValueError("创建 Story 后未能获取有效对象或 ID。")
+
+            story_id = created_story.id
 
             if self.verbose:
                 self.log_info(f"导入故事: {story_title} (ID: {story_id})")
@@ -137,7 +142,7 @@ class StoryImporter(BaseImporter):
             return story_id
 
         except Exception as create_error:
-            # 处理创建过程中的错误
             error_msg = f"创建故事失败: {story_title}: {str(create_error)}"
             self.handle_import_error(error_msg, create_error, import_stats, "stories")
-            return None
+            self.log_error(error_msg, show_traceback=True)
+            raise create_error

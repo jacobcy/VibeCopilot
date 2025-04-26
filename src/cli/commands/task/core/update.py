@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
-from loguru import logger
 from rich.console import Console
 
 # 导入任务日志相关函数和Memory存储函数
@@ -21,7 +20,7 @@ from src.memory import get_memory_service
 from src.services.task import TaskService
 
 console = Console()
-
+logger = logging.getLogger(__name__)
 # 定义有效的任务状态
 VALID_TASK_STATUSES = ["todo", "in_progress", "done", "blocked", "review", "backlog"]
 

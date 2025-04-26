@@ -5,6 +5,8 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
+# Import get_config
+from src.core.config import get_config
 from src.db import get_session_factory
 from src.db.repositories.task_repository import TaskRepository
 from src.status.interfaces import IStatusProvider
@@ -15,16 +17,41 @@ logger = logging.getLogger(__name__)
 class TaskStatusProvider(IStatusProvider):
     """任务状态提供者"""
 
-    # 存储当前任务ID的文件路径
-    CURRENT_TASK_FILE = os.path.join(os.path.expanduser("~"), ".vibecopilot", "status", "current_task.json")
+    # 存储当前任务ID的文件路径 - 使用配置
+    # CURRENT_TASK_FILE = os.path.join(os.path.expanduser("~"), ".vibecopilot", "status", "current_task.json") # Old
 
     def __init__(self):
-        """初始化任务状态提供者"""
+        """初始化任务状态提供者
+
+        Raises:
+            ValueError: 如果无法从配置中确定 current_task.json 的路径。
+            OSError: 如果无法创建状态目录。
+        """
         self._db_session = None
         self._current_task_id: Optional[str] = None
 
+        # Get config and construct path
+        try:
+            config = get_config()
+            data_dir = config.get("paths.data_dir")
+            if not data_dir:
+                raise ValueError("Configuration key 'paths.data_dir' is not set or invalid.")
+            self.CURRENT_TASK_FILE = os.path.join(data_dir, "status", "current_task.json")
+            logger.debug(f"当前任务文件路径设置为: {self.CURRENT_TASK_FILE}")
+        except Exception as e:
+            logger.error(f"无法从配置确定 current_task.json 路径: {e}", exc_info=True)
+            # Re-raise the exception to make the error visible
+            raise ValueError(f"Failed to determine current_task.json path from configuration: {e}") from e
+
         # 确保status目录存在
-        os.makedirs(os.path.dirname(self.CURRENT_TASK_FILE), exist_ok=True)
+        try:
+            status_dir = os.path.dirname(self.CURRENT_TASK_FILE)
+            os.makedirs(status_dir, exist_ok=True)
+            logger.debug(f"确保状态目录存在: {status_dir}")
+        except OSError as e:
+            logger.error(f"无法创建状态目录 {status_dir}: {e}")
+            # Re-raise the exception
+            raise
 
         # 从持久化存储加载当前任务ID
         self._load_current_task_id()

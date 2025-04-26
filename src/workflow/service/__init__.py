@@ -10,7 +10,7 @@
 from src.workflow.service.base import get_workflow_file_path, get_workflows_directory
 from src.workflow.service.create import create_workflow
 from src.workflow.service.delete import delete_workflow
-from src.workflow.service.get import get_workflow, get_workflow_by_id, get_workflow_by_name, get_workflow_by_type, view_workflow
+from src.workflow.service.get import get_workflow, get_workflow_by_id, get_workflow_by_name, get_workflow_by_type
 from src.workflow.service.list import list_workflows
 from src.workflow.service.sync import sync_workflow_to_db
 from src.workflow.service.update import update_workflow
@@ -27,7 +27,6 @@ __all__ = [
     "get_workflow_by_id",
     "get_workflow_by_name",
     "get_workflow_by_type",
-    "view_workflow",
     # 修改函数
     "create_workflow",
     "update_workflow",

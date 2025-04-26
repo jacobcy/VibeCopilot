@@ -103,7 +103,9 @@ def _setup_default_logging() -> None:
         },
     }
 
+    # Restore dictConfig call
     logging.config.dictConfig(config)
+    # logger.info("Default logging config prepared, but dictConfig call is temporarily commented out for debugging.")
 
 
 def get_workflow_logger(module_name: str, **context: Any) -> logging.Logger:

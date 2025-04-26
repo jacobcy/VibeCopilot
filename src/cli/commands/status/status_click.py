@@ -11,7 +11,7 @@ import click
 from rich.console import Console
 
 from src.cli.commands.status.output_helpers import output_result
-from src.cli.decorators import pass_service
+from src.cli.core.decorators import pass_service
 
 # 引入 get_config
 from src.core.config import get_config

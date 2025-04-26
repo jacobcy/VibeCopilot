@@ -25,11 +25,15 @@ def format_workflow_summary(workflow: Dict[str, Any]) -> str:
     if not workflow:
         return "无效的工作流"
 
+    # 获取来源信息
+    metadata = workflow.get("metadata", {})
+    source = metadata.get("source_example", workflow.get("source_rule", "未知来源"))
+
     summary = [
         f"工作流: {workflow.get('name', '未命名')}",
         f"ID: {workflow.get('id', '无ID')}",
         f"描述: {workflow.get('description', '无描述')}",
-        f"来源: {workflow.get('source_rule', '未知来源')}",
+        f"来源: {source}",
         f"版本: {workflow.get('version', '1.0.0')}",
         f"阶段数: {len(workflow.get('stages', []))}",
         f"转换数: {len(workflow.get('transitions', []))}",

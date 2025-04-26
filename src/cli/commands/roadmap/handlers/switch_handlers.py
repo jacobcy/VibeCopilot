@@ -18,8 +18,11 @@ def handle_switch_roadmap(service: RoadmapService, roadmap_id: Optional[str] = N
     try:
         # 处理清除操作
         if clear:
-            service.clear_active_roadmap()
-            return {"success": True, "message": "已清除当前活动路线图"}
+            success = service.set_active_roadmap(None)
+            if success:
+                return {"success": True, "message": "已清除当前活动路线图"}
+            else:
+                return {"success": False, "message": "清除活动路线图失败"}
 
         # 处理显示操作
         if show or not roadmap_id:

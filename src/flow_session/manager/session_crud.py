@@ -5,7 +5,10 @@
 """
 
 import json
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy.exc import IntegrityError
@@ -16,6 +19,74 @@ from src.models.db import FlowSession
 
 class SessionCRUDMixin:
     """会话CRUD操作混入类"""
+
+    def _get_workflow_definition(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+        """获取工作流定义
+
+        Args:
+            workflow_id: 工作流ID或名称
+
+        Returns:
+            工作流定义字典或None
+        """
+        from src.workflow.utils.workflow_search import get_workflow_fuzzy
+
+        # 使用模糊匹配查找工作流
+        workflow = get_workflow_fuzzy(workflow_id)
+        return workflow
+
+    def get_session_first_stage_from_workflow(self, workflow_dict: Dict[str, Any]) -> Optional[str]:
+        """从工作流定义中获取第一个阶段ID
+
+        Args:
+            workflow_dict: 工作流定义字典
+
+        Returns:
+            第一个阶段ID或None
+        """
+        # 检查工作流定义是否包含stages_data
+        stages_data = workflow_dict.get("stages_data")
+        if not stages_data:
+            # 尝试从stages字段获取
+            stages_data = workflow_dict.get("stages")
+            if not stages_data:
+                self._log("log_warning", f"工作流 {workflow_dict.get('id')} 没有阶段数据")
+                return None
+
+        # 如果stages_data是字符串，尝试解析为JSON
+        if isinstance(stages_data, str):
+            try:
+                stages_data = json.loads(stages_data)
+            except json.JSONDecodeError:
+                self._log("log_error", f"无法解析工作流 {workflow_dict.get('id')} 的阶段数据")
+                return None
+
+        # 如果stages_data是字典，尝试获取stages字段
+        if isinstance(stages_data, dict):
+            stages = stages_data.get("stages", [])
+        else:
+            # 否则假设stages_data本身就是阶段列表
+            stages = stages_data
+
+        # 确保stages是列表
+        if not isinstance(stages, list):
+            self._log("log_error", f"工作流 {workflow_dict.get('id')} 的阶段数据不是列表")
+            return None
+
+        # 如果没有阶段，返回None
+        if not stages:
+            self._log("log_warning", f"工作流 {workflow_dict.get('id')} 没有阶段")
+            return None
+
+        # 获取第一个阶段的ID
+        first_stage = stages[0]
+        if isinstance(first_stage, dict):
+            first_stage_id = first_stage.get("id")
+            if first_stage_id:
+                return first_stage_id
+
+        self._log("log_warning", f"无法从工作流 {workflow_dict.get('id')} 获取第一个阶段ID")
+        return None
 
     def create_session(
         self,
@@ -28,90 +99,107 @@ class SessionCRUDMixin:
         """创建新的工作流会话
 
         Args:
-            workflow_id: 工作流ID或名称
-            session_name: 会话名称
-            task_id: 关联的任务ID
-            name: 会话名称 (兼容参数)
-            flow_type: 工作流类型
+            workflow_id: 工作流ID
+            session_name: 会话名称（可选）
+            task_id: 关联的任务ID（可选）
+            name: 会话名称（可选，兼容旧接口）
+            flow_type: 工作流类型（可选）
 
         Returns:
             新创建的会话对象
 
         Raises:
-            ValueError: 如果找不到指定ID或名称的工作流
+            ValueError: 如果工作流不存在或创建失败
         """
-        # 检查工作流是否存在
-        self._log("log_info", f"尝试创建工作流会话，workflow_id={workflow_id}")
-
-        # 使用改进的工作流搜索工具来查找工作流
-        from src.workflow.utils.workflow_search import get_workflow_fuzzy
-
-        workflow_dict = get_workflow_fuzzy(workflow_id)
-
+        # Step 1: Get workflow definition
+        workflow_dict = self._get_workflow_definition(workflow_id)
         if not workflow_dict:
-            # 调试信息：列出所有工作流
-            all_workflows = self.workflow_repo.get_all()
-            self._log("log_info", f"数据库中有 {len(all_workflows)} 个工作流定义")
-            for wf in all_workflows:
-                self._log("log_info", f"  - ID: {wf.id}, 名称: {wf.name}")
+            raise ValueError(f"找不到工作流定义 (ID: {workflow_id})")
 
-            self._log("log_error", f"找不到ID或名称为 {workflow_id} 的工作流")
-            raise ValueError(f"找不到ID或名称为 {workflow_id} 的工作流，请确认工作流是否存在")
-
-        # 获取实际的工作流ID
-        actual_workflow_id = workflow_dict["id"]
+        actual_workflow_id = workflow_dict.get("id")
         workflow_name = workflow_dict.get("name", "未命名工作流")
+
         self._log("log_info", f"已找到工作流: {workflow_name} (ID: {actual_workflow_id})")
 
-        # 获取工作流对象
-        workflow = self.workflow_repo.get_by_id(actual_workflow_id)
-        if not workflow:
-            # 尝试通过名称再次查找
-            self._log("log_warning", f"通过ID({actual_workflow_id})找不到工作流对象，尝试通过名称查找")
-            workflow = self.workflow_repo.get_by_name(workflow_name)
+        # Step 2: Determine effective task ID
+        effective_task_id = task_id
 
-        if not workflow:
-            # 如果仍然找不到，使用工作流定义信息继续创建会话
-            self._log("log_warning", f"无法从数据库加载工作流对象，使用工作流定义信息创建会话")
+        # If no task_id provided, try to get current task
+        if not effective_task_id:
+            try:
+                from src.services.task import TaskService
 
-        # 使用提供的名称或生成默认名称
-        effective_name = session_name or name or f"{workflow_name}-会话"
+                task_service = TaskService()
+                current_task = task_service.get_current_task(self.session)
+                if current_task:
+                    effective_task_id = current_task["id"]
+                    self._log("log_info", f"使用当前任务: {effective_task_id}")
+            except Exception as e:
+                self._log("log_warning", f"获取当前任务失败: {e}")
 
-        # 准备上下文数据
+        # Require task_id (either provided or current)
+        if not effective_task_id:
+            raise ValueError("需要提供任务ID (使用 -t 参数) 或先设置当前任务 (使用 vc task update <task_id> --current)")
+
+        # Step 3: Validate the effective_task_id
+        task = self.task_repo.get_by_id(self.session, effective_task_id)
+        if not task:
+            logger.error(f"创建会话失败：找不到关联的任务 (ID: {effective_task_id})")
+            raise ValueError(f"无法创建会话，因为找不到关联的任务 (ID: {effective_task_id})")
+        else:
+            logger.debug(f"验证通过：找到关联任务 {effective_task_id} (标题: {task.title})")
+
+        # Step 4: Prepare context and create session
+        # --- Name handling with uniqueness check ---
+        base_name = session_name or name or f"{workflow_name}-会话"
+        final_name = base_name
+        counter = 1
+        while self.session_repo.exists_with_name(self.session, final_name):
+            logger.warning(f"会话名称 '{final_name}' 已存在，尝试添加后缀。")
+            final_name = f"{base_name} - {counter}"
+            counter += 1
+            if counter > 100:  # Limit attempts
+                raise ValueError(f"尝试为会话名称 '{base_name}' 生成唯一后缀失败")
+        if final_name != base_name:
+            logger.info(f"会话名称已从 '{base_name}' 重命名为 '{final_name}' 以确保唯一性。")
+        # --- End Name handling ---
+
         context = {}
-        if task_id:
-            context["task_id"] = task_id
+        if effective_task_id:
+            context["task_id"] = effective_task_id
 
         try:
-            # 使用Repository的方法创建会话
-            # ID生成逻辑已经移动到Repository层
+            # 获取工作流的第一个阶段作为起始阶段
+            start_stage_id = self.get_session_first_stage_from_workflow(workflow_dict)
+            self._log("log_info", f"工作流 {actual_workflow_id} 的起始阶段ID: {start_stage_id}")
+
+            # 创建会话，并设置当前阶段ID
             new_session = self.session_repo.create_session(
+                session=self.session,
                 workflow_id=actual_workflow_id,
-                name=effective_name,
-                task_id=task_id,
+                name=final_name,  # 使用最终确定的唯一名称
+                task_id=effective_task_id,
                 flow_type=flow_type or workflow_dict.get("type"),
                 context=context,
             )
 
+            # 如果找到了起始阶段，设置为当前阶段
+            if start_stage_id:
+                self._log("log_info", f"设置会话 {new_session.id} 的当前阶段为 {start_stage_id}")
+                self.session_repo.update_current_stage(self.session, new_session.id, start_stage_id)
+
             # 设置为当前会话
             self._set_current_session(new_session.id)
 
-            # 如果有关联任务，设置为当前任务
-            if task_id:
-                try:
-                    # 使用导入的TaskService来保持松耦合
-                    from src.services.task import TaskService
+            # Step 5: Update task status
+            try:
+                task_service = TaskService()
+                task_service.set_current_task(self.session, effective_task_id)
+                task_service.update_task(self.session, effective_task_id, {"current_session_id": new_session.id})
+            except Exception as e:
+                self._log("log_session_error", f"设置任务关联失败 (任务ID: {effective_task_id}): {e}")
 
-                    task_service = TaskService()
-                    task_service.set_current_task(task_id)
-                    # 更新任务的current_session_id
-                    task_service.update_task(task_id, {"current_session_id": new_session.id})
-                except Exception as e:
-                    self._log("log_session_error", f"设置任务关联失败: {e}")
-
-            # 记录日志
             self._log("log_session_created", actual_workflow_id, context)
-
             return new_session
         except Exception as e:
             self._log("log_session_error", e)
@@ -126,7 +214,7 @@ class SessionCRUDMixin:
         Returns:
             会话对象或None
         """
-        return self.session_repo.find_session_by_id_or_name(id_or_name)
+        return self.session_repo.find_session_by_id_or_name(self.session, id_or_name)
 
     def list_sessions(self, status: Optional[str] = None, workflow_id: Optional[str] = None) -> List[FlowSession]:
         """列出会话，可按状态和工作流ID过滤

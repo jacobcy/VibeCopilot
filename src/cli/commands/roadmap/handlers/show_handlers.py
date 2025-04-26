@@ -5,6 +5,7 @@
 """
 
 import json
+import logging
 from typing import Dict, Optional
 
 from rich.console import Console
@@ -13,6 +14,7 @@ from tabulate import tabulate
 from src.roadmap import RoadmapService
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 def handle_show_roadmap(
@@ -54,6 +56,7 @@ def handle_show_roadmap_details(service: RoadmapService, roadmap_id: str, format
         # 获取里程碑和任务数据
         milestones = service.get_milestones(roadmap_id)
         tasks = service.get_tasks(roadmap_id)
+        logger.debug(f"[handle_show_roadmap_details] Received {len(tasks)} tasks from service.get_tasks for roadmap {roadmap_id}.")
 
         # 将里程碑和任务添加到路线图数据中
         roadmap_data = {**roadmap, "milestones": milestones, "tasks": tasks}
@@ -98,12 +101,14 @@ def handle_show_roadmap_details(service: RoadmapService, roadmap_id: str, format
 
             # 任务表格
             if tasks:
+                logger.debug(f"[handle_show_roadmap_details] Generating task table for {len(tasks)} tasks.")
                 output.append("\n## 任务")
-                output.append("| ID | 名称 | 里程碑 | 状态 | 优先级 |")
-                output.append("| --- | --- | --- | --- | --- |")
+                output.append("| ID | 任务标题 | Story 标题 | 里程碑 | 状态 | 优先级 |")
+                output.append("| --- | --- | --- | --- | --- | --- |")
                 for task in tasks:
                     output.append(
-                        f"| {task.get('id', '')} | {task.get('name', '')} | "
+                        f"| {task.get('id', '')} | {task.get('title', '')} | "
+                        f"{task.get('story_title', 'N/A')} | "
                         f"{task.get('milestone_id', '')} | {task.get('status', '')} | "
                         f"{task.get('priority', '')} |"
                     )

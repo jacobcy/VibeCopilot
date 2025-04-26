@@ -32,12 +32,11 @@ dependencies = [
     "python-frontmatter>=1.0.0",
     # Database
     "sqlalchemy>=2.0.20",
-
     # Date and time handling
     "python-dateutil>=2.9.0",
-
     # Logging
     "loguru>=0.7.3",
+    "json-repair>=0.42.0",
 ]
 requires-python = ">=3.10"
 

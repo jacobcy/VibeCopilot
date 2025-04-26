@@ -11,7 +11,59 @@ import logging
 import os
 from typing import Any, Dict, Optional, Union
 
+# Import config getter
+from src.core.config import ConfigError, get_config
+
 logger = logging.getLogger(__name__)
+
+
+def get_data_path(*subdirs: str, filename: Optional[str] = None) -> str:
+    """获取数据目录下指定子目录和文件的绝对路径。
+
+    Args:
+        *subdirs: 任意数量的子目录名。
+        filename: 可选的文件名。
+
+    Returns:
+        str: 构造的绝对路径。
+
+    Raises:
+        ConfigError: 如果无法获取'paths.data_dir'配置。
+        OSError: 如果创建目录失败。
+    """
+    try:
+        config = get_config()
+        # 获取已解析为绝对路径的data_dir
+        data_dir = config.get("paths.data_dir")
+        if not data_dir:
+            raise ConfigError("无法从配置中获取 'paths.data_dir'")
+
+        # 构造路径
+        path_parts = [data_dir] + list(subdirs)
+        if filename:
+            target_path = os.path.join(*path_parts, filename)
+            # 确保父目录存在
+            target_dir = os.path.dirname(target_path)
+        else:
+            # 如果没有文件名，则目标是目录本身
+            target_path = os.path.join(*path_parts)
+            target_dir = target_path
+
+        # 创建目录（如果不存在）
+        os.makedirs(target_dir, exist_ok=True)
+        logger.debug(f"确保数据路径存在: {target_dir}")
+
+        return target_path
+
+    except ConfigError as ce:
+        logger.error(f"配置错误: {ce}")
+        raise
+    except OSError as oe:
+        logger.error(f"创建数据目录或文件路径失败: {oe}")
+        raise
+    except Exception as e:
+        logger.error(f"获取数据路径时发生意外错误: {e}", exc_info=True)
+        raise ConfigError(f"获取数据路径时发生意外错误: {e}")
 
 
 def ensure_directory_exists(directory_path: str) -> bool:

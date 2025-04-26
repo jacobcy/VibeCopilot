@@ -4,6 +4,7 @@
 处理路线图YAML文件的导入操作
 """
 
+import asyncio
 import os
 from typing import Dict, Optional
 
@@ -80,22 +81,29 @@ async def handle_import(
         if not imported_id:
             return {"success": False, "error": "导入成功但未返回路线图ID", "warnings": warnings if warnings else []}
 
-        # 激活路线图
-        if activate:
-            service.set_active_roadmap(imported_id)
-
         # 添加字段类型警告（如果有）
         if result.get("field_warnings"):
             warnings = warnings or []
             warnings.extend(result.get("field_warnings"))
 
+        # Handle activation separately if needed after successful import
+        activated_status = False
+        if activate:
+            if service.set_active_roadmap(imported_id):
+                activated_status = True
+                console.print(f"[green]路线图 {imported_id} 已激活.[/green]")
+            else:
+                warnings = warnings or []
+                warnings.append(f"导入成功，但激活路线图 {imported_id} 失败。")
+
         return {
             "success": True,
             "roadmap_id": imported_id,
-            "activated": activate,
+            "activated": activated_status,
             "message": f"导入成功，路线图ID: {imported_id}",
             "warnings": warnings if warnings else [],
         }
 
     except Exception as e:
+        console.print_exception(show_locals=True)
         return {"success": False, "error": str(e)}

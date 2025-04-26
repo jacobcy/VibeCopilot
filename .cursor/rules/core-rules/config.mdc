@@ -23,6 +23,16 @@ alwaysApply: true
 - **版本控制**：Git (GitHub)
 - **CI/CD**：GitHub Actions
 
+## VibeCopilot日志与控制台系统
+
+- **核心库:** 基于 Python 标准 `logging` 模块。
+- **配置方式:** 通过 `config/logging.yaml` 文件集中管理，支持不同的格式化器 (formatters) 和处理器 (handlers)。
+- **初始化:** 由 `src/core/log_init.py` 模块负责加载配置并初始化。
+- **控制台输出:**
+    - 使用 `rich` 库 (`rich.logging.RichHandler`) 提供格式化的日志输出到控制台。
+    - 标准化的用户交互信息（成功、失败、警告等）通过 `src/utils/console_utils.py` 中的函数处理。
+- **自定义处理器:** 支持扩展自定义 Handler (如 `src/logger/handlers.py` 中的 `DatabaseLogHandler`) 将日志路由到不同目标。
+
 ## VibeCopilot专用工具链
 
 - **前端开发**：

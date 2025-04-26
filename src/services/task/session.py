@@ -7,9 +7,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from loguru import logger
-
-from src.db import get_session_factory
+from src.db.repositories.task_repository import TaskRepository
+from src.db.session_manager import session_scope
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +16,13 @@ logger = logging.getLogger(__name__)
 class TaskSessionService:
     """任务会话服务类，负责任务与工作流会话的关联管理"""
 
-    def __init__(self, db_service, status_service):
+    def __init__(self, status_service):
         """初始化任务会话服务
 
         Args:
-            db_service: 数据库服务实例
             status_service: 状态服务实例
         """
-        self._db_service = db_service
+        self._task_repo = TaskRepository()
         self._status_service = status_service
 
     def set_current_task(self, task_id: str) -> bool:
@@ -47,10 +45,10 @@ class TaskSessionService:
                 # 设置当前任务
                 task_provider.set_current_task(task_id)
 
-                # 使用会话工厂获取数据库会话获取任务详情并更新项目状态
-                with get_session_factory()() as db_session:
+                # 使用 session_scope 获取数据库会话获取任务详情并更新项目状态
+                with session_scope() as db_session:
                     # 获取任务详情
-                    task = self._db_service.task_repo.get_by_id(db_session, task_id)
+                    task = self._task_repo.get_by_id(db_session, task_id)
                     if task:
                         # 通过状态服务更新当前任务
                         self._status_service.update_project_state("current_task", {"id": task_id, "title": task.title, "status": task.status})
@@ -94,11 +92,17 @@ class TaskSessionService:
             ValueError: 当找不到指定的工作流或会话时
         """
         try:
-            # 获取数据库会话
-            from src.db import get_session_factory
+            # 使用 session_scope 获取数据库会话
+            with session_scope() as db_session:
+                # 添加任务验证
+                task = self._task_repo.get_by_id(db_session, task_id)
+                if not task:
+                    error_msg = f"无法关联工作流会话，因为找不到任务 (ID: {task_id})"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+                else:
+                    logger.debug(f"验证通过：找到任务 {task_id} (标题: {task.title})，可以继续关联会话")
 
-            session_factory = get_session_factory()
-            with session_factory() as db_session:
                 # 创建FlowSessionManager实例
                 from src.flow_session.manager import FlowSessionManager
 
@@ -130,24 +134,41 @@ class TaskSessionService:
                         raise ValueError(error_msg)
                 elif session_id:
                     # 关联到已有会话
-                    session = session_manager.get_session(session_id)
-                    if session:
+                    session_obj = session_manager.get_session(session_id)
+                    if session_obj:
                         # 更新会话关联到任务
-                        session_manager.update_session(session.id, {"task_id": task_id})
-                        # 设置为当前会话
-                        session_manager.switch_session(session.id)
+                        updated_session = session_manager.update_session(session_obj.id, {"task_id": task_id})
+                        if updated_session:
+                            session = updated_session
+                            # 设置为当前会话
+                            session_manager.switch_session(session.id)
+                        else:
+                            error_msg = f"更新会话 '{session_id}' 失败"
+                            logger.error(error_msg)
+                            raise ValueError(error_msg)
                     else:
                         error_msg = f"找不到会话 '{session_id}'，请确认会话ID是否正确"
                         logger.error(error_msg)
                         raise ValueError(error_msg)
+                else:
+                    # 如果既没有 flow_type 也没有 session_id
+                    error_msg = "必须提供 flow_type (创建新会话) 或 session_id (关联现有会话)"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
 
                 if session:
                     # 更新任务的当前会话
-                    self._db_service.task_repo.update_task(task_id, {"current_session_id": session.id})
+                    updated_task = self._task_repo.update_task(db_session, task_id, {"current_session_id": session.id})
+                    if not updated_task:
+                        error_msg = f"更新任务 {task_id} 的 current_session_id 失败"
+                        logger.error(error_msg)
+                        # Consider rolling back or raising a different error
+                        raise ValueError(error_msg)
                     # 设置当前任务
                     self.set_current_task(task_id)
                     return session.to_dict()
                 else:
+                    # 这段逻辑理论上不应该被执行，因为前面已经处理了失败情况
                     error_msg = "未能创建或关联工作流会话"
                     logger.error(error_msg)
                     raise ValueError(error_msg)
@@ -156,7 +177,7 @@ class TaskSessionService:
             raise e
         except Exception as e:
             error_msg = f"关联任务到工作流会话失败: {e}"
-            logger.error(error_msg)
+            logger.error(error_msg, exc_info=True)  # 添加 exc_info
             raise ValueError(error_msg)
 
     def create_task_with_flow(self, task_service, task_data: Dict[str, Any], workflow_id: str) -> Optional[Dict[str, Any]]:
@@ -272,16 +293,14 @@ class TaskSessionService:
             工作流会话列表
         """
         try:
-            # 获取数据库会话
-            from src.db import get_session_factory
-
-            # 使用with语句确保会话自动关闭
-            with get_session_factory()() as db_session:
+            # 使用 session_scope 获取数据库会话
+            with session_scope() as db_session:
                 # 获取所有关联会话
                 from src.db.repositories.flow_session_repository import FlowSessionRepository
 
-                flow_repo = FlowSessionRepository(db_session)
-                sessions = flow_repo.get_by_task_id(task_id)
+                # 直接实例化 FlowSessionRepository
+                flow_repo = FlowSessionRepository()
+                sessions = flow_repo.get_by_task_id(db_session, task_id)
 
                 # 转换为字典格式并返回
                 return [session.to_dict() for session in sessions]
@@ -320,8 +339,8 @@ class TaskSessionService:
                 return None
 
             # 获取任务详情
-            with get_session_factory()() as db_session:
-                task = self._db_service.task_repo.get_by_id(db_session, current_task_id)
+            with session_scope() as db_session:
+                task = self._task_repo.get_by_id(db_session, current_task_id)
 
                 if not task:
                     return None
@@ -339,6 +358,7 @@ class TaskSessionService:
                 # 获取会话详情
                 from src.flow_session.manager import FlowSessionManager
 
+                # FlowSessionManager 需要会话，在 with 块内创建
                 session_manager = FlowSessionManager(db_session)
 
                 # 获取会话
@@ -382,11 +402,12 @@ class TaskSessionService:
                 logger.error("设置当前工作流会话失败: 当前没有活动任务")
                 return False
 
-            # 获取数据库会话
-            with get_session_factory()() as db_session:
+            # 使用 session_scope 获取数据库会话
+            with session_scope() as db_session:
                 # 验证会话是否存在
                 from src.flow_session.manager import FlowSessionManager
 
+                # FlowSessionManager 需要会话，在 with 块内创建
                 session_manager = FlowSessionManager(db_session)
 
                 # 获取会话
@@ -402,14 +423,20 @@ class TaskSessionService:
                     return False
 
                 # 更新任务的 current_session_id
-                task = self._db_service.task_repo.get_by_id(db_session, current_task_id)
-                if not task:
-                    logger.error(f"设置当前工作流会话失败: 任务 {current_task_id} 不存在")
+                # task = self._task_repo.get_by_id(db_session, current_task_id)
+                # if not task:
+                #     logger.error(f"设置当前工作流会话失败: 任务 {current_task_id} 不存在")
+                #     return False
+                # task.current_session_id = session_id
+                # self._task_repo.update(db_session, task) # 基类没有update(session, obj)
+
+                # 使用 update_task 方法
+                updated_task = self._task_repo.update_task(db_session, current_task_id, {"current_session_id": session_id})
+                if not updated_task:
+                    logger.error(f"更新任务 {current_task_id} 的 current_session_id 失败")
                     return False
 
-                task.current_session_id = session_id
-                self._db_service.task_repo.update(db_session, task)
-                db_session.commit()
+                # db_session.commit() # session_scope 会自动处理 commit/rollback
 
                 # 使用 Provider 设置当前会话
                 session_provider = self._status_service.provider_manager.get_provider("flow_session")
@@ -417,7 +444,9 @@ class TaskSessionService:
                     session_provider.set_current_session(session_id)
 
                 # 更新任务状态
-                self._status_service.update_status(domain="task", entity_id=current_task_id, status=task.status, current_session_id=session_id)
+                # 获取更新后的任务状态以传递
+                task_status_val = updated_task.status if updated_task else "unknown"
+                self._status_service.update_status(domain="task", entity_id=current_task_id, status=task_status_val, current_session_id=session_id)
 
                 # 同时更新工作流状态
                 self._status_service.update_status(domain="workflow", entity_id=f"flow-{session_id}", status="IN_PROGRESS")

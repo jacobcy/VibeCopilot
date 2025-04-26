@@ -29,32 +29,22 @@ class ServiceFactory:
         logger = logging.getLogger(__name__)
 
         try:
-            # 如果服务已经存在，直接返回缓存的实例
+            # If service exists, return cached instance
             if service_type in self._services and self._services[service_type] is not None:
                 logger.debug(f"返回缓存的 {service_type} 服务实例 (ID: {id(self._services[service_type])})")
                 return self._services[service_type]
 
-            # 创建新的服务实例
+            # Create new service instance
             logger.debug(f"创建新的 {service_type} 服务实例")
             if service_type == "roadmap":
                 from src.roadmap import RoadmapService
 
                 self._services[service_type] = RoadmapService()
-            elif service_type == "db":
-                # 确保数据库表存在
-                from src.db import ensure_tables_exist
-                from src.db.service import DatabaseService
-
-                ensure_tables_exist()  # 确保数据库表存在但不强制重建
-                # 创建服务实例
-                self._services[service_type] = DatabaseService()
             elif service_type == "task":
-                # 确保数据库表存在
                 from src.db import ensure_tables_exist
-                from src.services.task import TaskService  # 使用新的模块化任务服务
+                from src.services.task import TaskService
 
-                ensure_tables_exist()  # 确保数据库表存在但不强制重建
-                # 创建服务实例
+                ensure_tables_exist()
                 self._services[service_type] = TaskService()
             elif service_type == "flow_session":
                 from src.flow_session.manager import FlowSessionManager
@@ -63,8 +53,15 @@ class ServiceFactory:
             elif service_type == "status":
                 from src.status.service import StatusService
 
-                # 使用单例模式
                 self._services[service_type] = StatusService.get_instance()
+            elif service_type == "memory_item":
+                from src.memory.services.memory_item_service import MemoryItemService
+
+                self._services[service_type] = MemoryItemService(**kwargs)
+            elif service_type == "note":
+                from src.memory.services.note_service import NoteService
+
+                self._services[service_type] = NoteService(**kwargs)
             else:
                 raise ValueError(f"未知的服务类型: {service_type}")
 

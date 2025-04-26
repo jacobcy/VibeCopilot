@@ -163,7 +163,13 @@ def set_log_level(verbose: bool):
         verbose: 是否启用详细日志
     """
     log_level = logging.DEBUG if verbose else logging.WARNING
+    # 设置根 logger 级别
     logging.getLogger().setLevel(log_level)
+
+    # 设置 session_manager 的级别
+    logging.getLogger("src.db.session_manager").setLevel(log_level)
+    # 你也可以考虑为其他关键的顶级命名空间设置，例如 "src"
+    logging.getLogger("src").setLevel(log_level)  # Explicitly set level for 'src' namespace
 
     if verbose:
         # Use logger for internal debug messages

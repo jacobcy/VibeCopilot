@@ -46,8 +46,8 @@ def sync_workflow_to_db(workflow_data: Dict[str, Any], verbose: bool = False) ->
 
         with session_factory() as session:
             # 检查工作流是否已存在
-            repo = WorkflowDefinitionRepository(session)
-            existing = repo.get_by_id(workflow_id)
+            repo = WorkflowDefinitionRepository()
+            existing = repo.get_by_id(session, workflow_id)
 
             if existing:
                 if verbose:
@@ -55,15 +55,23 @@ def sync_workflow_to_db(workflow_data: Dict[str, Any], verbose: bool = False) ->
 
                 # 提取需要的字段
                 stages = workflow_data.get("stages", [])
+                transitions = workflow_data.get("transitions", [])
                 source_rule = workflow_data.get("source_rule")
 
                 # 更新工作流定义
                 existing.name = workflow_data.get("name", existing.name)
                 existing.type = workflow_data.get("type", existing.type)
                 existing.description = workflow_data.get("description", existing.description)
-                existing.stages = stages
-                existing.source_rule = source_rule
-                existing.updated_at = datetime.datetime.utcnow()
+
+                # 确保stages_data包含stages和transitions
+                stages_data = {"stages": stages, "transitions": transitions}
+                # 使用SQLAlchemy的访问方式更新字段
+                setattr(existing, "stages_data", stages_data)
+                setattr(existing, "source_rule", source_rule)
+                setattr(existing, "updated_at", datetime.datetime.now(datetime.timezone.utc))
+
+                if verbose:
+                    logger.info(f"更新工作流定义，包含 {len(stages)} 个阶段和 {len(transitions)} 个转换")
 
                 session.commit()
                 if verbose:
@@ -78,12 +86,19 @@ def sync_workflow_to_db(workflow_data: Dict[str, Any], verbose: bool = False) ->
                 workflow_type = workflow_data.get("type")
                 description = workflow_data.get("description", "")
                 stages = workflow_data.get("stages", [])
+                transitions = workflow_data.get("transitions", [])
                 source_rule = workflow_data.get("source_rule")
+
+                # 确保stages_data包含stages和transitions
+                stages_data = {"stages": stages, "transitions": transitions}
 
                 # 创建工作流定义
                 new_definition = WorkflowDefinition(
-                    id=workflow_id, name=name, type=workflow_type, description=description, stages=stages, source_rule=source_rule
+                    id=workflow_id, name=name, type=workflow_type, description=description, stages_data=stages_data, source_rule=source_rule
                 )
+
+                if verbose:
+                    logger.info(f"创建工作流定义，包含 {len(stages)} 个阶段和 {len(transitions)} 个转换")
 
                 session.add(new_definition)
                 session.commit()

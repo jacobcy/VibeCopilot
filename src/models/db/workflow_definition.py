@@ -24,9 +24,7 @@ class WorkflowDefinition(Base):
     name = Column(String, nullable=False)
     type = Column(String, nullable=True)
     description = Column(Text, nullable=True)
-    roadmap_id = Column(String, nullable=True)  # 关联的路线图ID
     stages_data = Column(JSON, nullable=False)  # 可用阶段列表，JSON格式
-    source_rule = Column(String, nullable=True)  # 来源规则文件
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -42,9 +40,7 @@ class WorkflowDefinition(Base):
             "name": self.name,
             "type": self.type,
             "description": self.description,
-            "roadmap_id": self.roadmap_id,
             "stages_data": self.stages_data,
-            "source_rule": self.source_rule,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -57,7 +53,5 @@ class WorkflowDefinition(Base):
             name=data.get("name", ""),
             type=data.get("type"),
             description=data.get("description", ""),
-            roadmap_id=data.get("roadmap_id"),
             stages_data=data.get("stages_data", []),
-            source_rule=data.get("source_rule"),
         )

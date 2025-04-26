@@ -1,0 +1,154 @@
+{
+    "id": "wf_simple_task_dev",
+    "name": "simple-task-workflow",
+    "description": "A simple development task workflow inferred from examples/simple-task.md",
+    "version": "1.0.0",
+    "metadata": {
+        "source_example": "examples/simple-task.md"
+    },
+    "stages": [
+        {
+            "id": "pre_flow",
+            "name": "PRE-FLOW",
+            "description": "需求分析与文档编写 (spec-flow)",
+            "order": 1,
+            "checklist": [
+                "Analyze requirements",
+                "Write PRD document",
+                "Write Architecture document",
+                "Confirm documents"
+            ],
+            "deliverables": [
+                "Confirmed PRD",
+                "Confirmed Architecture Document"
+            ]
+        },
+        {
+            "id": "planning",
+            "name": "PLANNING",
+            "description": "史诗与故事规划 (story-flow)",
+            "order": 2,
+            "checklist": [
+                "Create Epic structure based on PRD",
+                "Create Story structure based on PRD",
+                "Prioritize stories"
+            ],
+            "deliverables": [
+                "Epic/Story backlog"
+            ]
+        },
+        {
+            "id": "development",
+            "name": "DEVELOPMENT",
+            "description": "代码实现与测试 (flow)",
+            "order": 3,
+            "checklist": [
+                "Follow branch management rules",
+                "Implement features/stories",
+                "Write unit tests",
+                "Follow commit conventions"
+            ],
+            "deliverables": [
+                "Feature code",
+                "Unit tests"
+            ]
+        },
+        {
+            "id": "review",
+            "name": "REVIEW",
+            "description": "代码审查与质量控制",
+            "order": 4,
+            "checklist": [
+                "Perform code review",
+                "Ensure code quality standards",
+                "Verify test coverage"
+            ],
+            "deliverables": [
+                "Code review approvals",
+                "Test coverage report"
+            ]
+        },
+        {
+            "id": "release",
+            "name": "RELEASE",
+            "description": "部署与发布管理",
+            "order": 5,
+            "checklist": [
+                "Prepare release notes",
+                "Deploy to staging/production",
+                "Monitor release"
+            ],
+            "deliverables": [
+                "Release notes",
+                "Deployed application"
+            ]
+        },
+        {
+            "id": "post_flow",
+            "name": "POST-FLOW",
+            "description": "规则优化与知识沉淀 (rule-flow)",
+            "order": 6,
+            "checklist": [
+                "Summarize lessons learned",
+                "Update relevant rules",
+                "Archive project artifacts"
+            ],
+            "deliverables": [
+                "Lessons learned document",
+                "Updated rules"
+            ]
+        },
+        {
+            "id": "complete",
+            "name": "Complete",
+            "description": "Workflow finished",
+            "order": 7,
+            "checklist": [],
+            "deliverables": []
+        }
+    ],
+    "transitions": [
+        {
+            "id": "t_pre_to_plan",
+            "from_stage": "pre_flow",
+            "to_stage": "planning",
+            "condition": "PRD and Arch Docs Confirmed",
+            "description": "Transition from Pre-Flow to Planning"
+        },
+        {
+            "id": "t_plan_to_dev",
+            "from_stage": "planning",
+            "to_stage": "development",
+            "condition": "Epic/Story Structure Created",
+            "description": "Transition from Planning to Development"
+        },
+        {
+            "id": "t_dev_to_review",
+            "from_stage": "development",
+            "to_stage": "review",
+            "condition": "Development and Unit Tests Complete",
+            "description": "Transition from Development to Review"
+        },
+        {
+            "id": "t_review_to_release",
+            "from_stage": "review",
+            "to_stage": "release",
+            "condition": "Code Review Approved and Quality Met",
+            "description": "Transition from Review to Release"
+        },
+        {
+            "id": "t_release_to_post",
+            "from_stage": "release",
+            "to_stage": "post_flow",
+            "condition": "Release Successful",
+            "description": "Transition from Release to Post-Flow"
+        },
+        {
+            "id": "t_post_to_complete",
+            "from_stage": "post_flow",
+            "to_stage": "complete",
+            "condition": "Post-flow activities finished",
+            "description": "Transition from Post-Flow to Complete"
+        }
+    ]
+}

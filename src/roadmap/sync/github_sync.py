@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import TYPE_CHECKING  # For RoadmapService type hint
 from typing import Any, Dict, List, Optional
 
-# Import local services and models (adjust paths if necessary)
-from src.db.service import DatabaseService  # Needed for updating local data
+from src.db.repositories.roadmap_repository import EpicRepository, MilestoneRepository, StoryRepository  # <-- Import Repositories
+from src.db.session_manager import session_scope  # <-- Import session_scope
 
 from .github_api_facade import GitHubApiFacade
 
@@ -24,8 +25,12 @@ from .github_mapper import (
     map_roadmap_to_github_project,
 )
 
-# 修改为字符串类型注解，避免循环导入
-# from src.roadmap.service import RoadmapService  # 导入 RoadmapService
+# Import local services and models (adjust paths if necessary)
+# from src.db.service import DatabaseService  # Needed for updating local data
+
+
+if TYPE_CHECKING:
+    from src.roadmap.service import RoadmapService
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +38,18 @@ logger = logging.getLogger(__name__)
 class GitHubSyncService:
     """GitHub同步服务，协调本地路线图与GitHub的数据同步"""
 
-    def __init__(self, roadmap_service: "RoadmapService", db_service: Optional[DatabaseService] = None):
+    def __init__(self, roadmap_service: "RoadmapService"):
         """
         初始化GitHub同步服务
 
         Args:
             roadmap_service: Roadmap服务实例
-            db_service: 数据库服务实例 (for updating local data)
         """
         self.roadmap_service = roadmap_service
-        self.db_service = db_service  # Store db_service
+        # Remove: self.db_service = db_service
+        self._milestone_repo = MilestoneRepository()
+        self._epic_repo = EpicRepository()
+        self._story_repo = StoryRepository()
 
         # GitHub API配置
         self.github_token = os.environ.get("GITHUB_TOKEN")
@@ -267,52 +274,58 @@ class GitHubSyncService:
                 return result
 
             # 2. Fetch GitHub Milestones and update local ones
-            # This requires local milestones to have a stored link (e.g., github_milestone_number)
             local_milestones = self.roadmap_service.get_milestones(roadmap_id)
-            gh_milestones = self.api_facade.issues_client.get_milestones(self.owner, self.repo)
+            gh_milestones = self.api_facade.issues_client.get_milestones(self.github_owner, self.github_repo)
             gh_milestone_map_by_title = {m.get("title"): m for m in gh_milestones}
 
-            for local_ms in local_milestones:
-                stats["milestones_checked"] += 1
-                gh_ms = gh_milestone_map_by_title.get(local_ms.get("title"))  # Match by title
-                if gh_ms:
-                    update_data = map_github_milestone_to_milestone_update(gh_ms)
-                    # Use db_service to update the local milestone
-                    updated = self.db_service.update_milestone(local_ms["id"], update_data)  # Assuming db_service has update_milestone
-                    if updated:
-                        stats["milestones_updated"] += 1
+            with session_scope() as session:  # <-- Use session_scope for batch updates
+                for local_ms in local_milestones:
+                    stats["milestones_checked"] += 1
+                    gh_ms = gh_milestone_map_by_title.get(local_ms.get("title"))
+                    if gh_ms:
+                        update_data = map_github_milestone_to_milestone_update(gh_ms)
+                        # Use repo to update the local milestone
+                        updated = self._milestone_repo.update(session, local_ms["id"], update_data)  # <-- Use repo & pass session
+                        if updated:
+                            stats["milestones_updated"] += 1
+                        else:
+                            logger.warning(f"无法更新本地里程碑状态: {local_ms.get('title') or local_ms.get('name')}")
+                            stats["errors"] += 1
                     else:
-                        logger.warning(f"无法更新本地里程碑状态: {local_ms.get('title') or local_ms.get('name')}")
-                        stats["errors"] += 1
-                else:
-                    logger.info(f"本地里程碑 '{local_ms.get('title') or local_ms.get('name')}' 在 GitHub 上未找到对应项")
+                        logger.info(f"本地里程碑 '{local_ms.get('title') or local_ms.get('name')}' 在 GitHub 上未找到对应项")
 
             # 3. Fetch GitHub Issues and update local Epics/Stories/Tasks
-            # This requires local items to store the corresponding github_issue_number
             local_items = self.roadmap_service.get_epics(roadmap_id) + self.roadmap_service.get_stories(roadmap_id)
             # TODO: Include Tasks if they are also synced as issues?
 
             for item in local_items:
-                github_issue_number = item.get("github_issue_number")  # Assuming this link exists
+                github_issue_number = item.get("github_issue_number")
                 if github_issue_number:
                     stats["issues_checked"] += 1
                     gh_issue = self.api_facade.get_issue(github_issue_number)
                     if gh_issue:
-                        update_data = map_github_issue_to_task_update(gh_issue)  # Use task mapper for basic status/assignee
+                        update_data = map_github_issue_to_task_update(gh_issue)
                         # Update the correct local entity type (Epic or Story)
-                        update_method = getattr(self.db_service, f"update_{item.get('type', 'item')}", None)
-                        if update_method:
-                            updated = update_method(item["id"], update_data)
+                        repo_to_use = None
+                        item_type = item.get("type", "item")
+                        if item_type == "epic":
+                            repo_to_use = self._epic_repo
+                        elif item_type == "story":
+                            repo_to_use = self._story_repo
+                        # Add elif for task if needed
+
+                        if repo_to_use:
+                            updated = repo_to_use.update(session, item["id"], update_data)  # <-- Use repo & pass session
                             if updated:
                                 stats["items_updated"] += 1
                             else:
-                                logger.warning(f"无法更新本地 {item.get('type')} 状态: {item.get('name')}")
+                                logger.warning(f"无法更新本地 {item_type} 状态: {item.get('name')}")
                                 stats["errors"] += 1
                         else:
-                            logger.error(f"数据库服务缺少更新方法: update_{item.get('type')}")
+                            logger.error(f"仓库未找到用于更新类型: {item_type}")
                             stats["errors"] += 1
                     else:
-                        logger.warning(f"在 GitHub 上未找到本地 {item.get('type')} '{item.get('name')}' 对应的 Issue #{github_issue_number}")
+                        logger.warning(f"在 GitHub 上未找到本地 {item_type} '{item.get('name')}' 对应的 Issue #{github_issue_number}")
                         stats["errors"] += 1
                 # else: logger.debug(f"Local item '{item.get('name')}' not linked to GitHub issue.")
 

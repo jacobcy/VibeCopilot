@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 import click
 from rich.console import Console
 
-from src.cli.decorators import pass_service
+from src.cli.core.decorators import pass_service
 from src.core.config import get_config
 from src.utils.file_utils import ensure_directory_exists
 

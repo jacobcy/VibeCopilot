@@ -9,10 +9,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 from rich.console import Console
-from sqlalchemy.orm import Session as SQLAlchemySession
 
 from src.cli.commands.flow.handlers.session_crud import handle_session_command
-from src.db import init_db
+from src.cli.commands.flow.handlers.session_utils import get_active_session
 
 console = Console()
 logger = logging.getLogger(__name__)

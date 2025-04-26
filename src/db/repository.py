@@ -43,17 +43,16 @@ class Repository(Generic[T]):
             logger.debug(f"输入数据: {data}")
 
             # 仅保留模型类名和数据概要的日志
-            print(f"Repository.create - 模型类: {self.model_class.__name__}")
+            logger.debug(f"Repository.create - 模型类: {self.model_class.__name__}")
 
             # 简化输出数据，避免过长日志
             data_summary = {k: v for k, v in data.items() if isinstance(v, (str, int, float, bool, type(None)))}
-            print(f"Repository.create - 数据摘要: {data_summary}")
+            logger.debug(f"Repository.create - 数据摘要: {data_summary}")
 
             # 创建实例逻辑
             if hasattr(self.model_class, "from_dict"):
                 # 使用from_dict方法创建实例
                 logger.debug("使用from_dict方法创建实例")
-                print(f"Repository.create - 使用from_dict方法创建实例")
                 instance = self.model_class.from_dict(data)
             else:
                 # 使用关键字参数拆包创建实例
@@ -65,7 +64,7 @@ class Repository(Generic[T]):
             instance_attrs = {
                 k: v for k, v in vars(instance).items() if not k.startswith("_") and not isinstance(v, (dict, list)) and k != "_sa_instance_state"
             }
-            print(f"Repository.create - 实例属性: {instance_attrs}")
+            logger.debug(f"Repository.create - 实例属性: {instance_attrs}")
 
             session.add(instance)
             session.flush()
@@ -73,11 +72,10 @@ class Repository(Generic[T]):
             return instance
         except Exception as e:
             logger.error(f"创建实体对象失败: {str(e)}")
-            print(f"Repository.create - 异常: {str(e)}")
             raise e
 
-    def get_by_id(self, session: Session, id: str) -> Optional[T]:
-        """根据ID获取记录
+    def get_by_id(self, session: Session, id: Any) -> Optional[T]:
+        """通用按ID获取实体的方法
 
         Args:
             session: SQLAlchemy 会话对象
@@ -86,7 +84,26 @@ class Repository(Generic[T]):
         Returns:
             实体对象或None
         """
-        return session.query(self.model_class).filter(self.model_class.id == id).first()
+        logger.debug(f"Repository.get_by_id entered for model {self.model_class.__name__}, id: {id}")
+        logger.debug(f"Received session object: type={type(session)}, value={session}")
+        session_bind = getattr(session, "bind", "Attribute Missing")
+        logger.debug(f"Repository.get_by_id: Received session bind. Bind Type: {type(session_bind)}, Value: {session_bind}")
+
+        if not id:
+            logger.debug("ID is None or empty, returning None.")
+            return None
+        try:
+            if not isinstance(session, Session):
+                logger.error(f"Repository get_by_id received invalid session type: {type(session)}")
+                raise TypeError(f"Expected SQLAlchemy Session, got {type(session)}")
+
+            logger.debug(f"Executing query: session.query({self.model_class.__name__}).filter(id == {id}).first()")
+            result = session.query(self.model_class).filter(self.model_class.id == id).first()
+            logger.debug(f"Query result: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"Error getting {self.model_class.__name__} by id {id}: {e}", exc_info=True)
+            raise
 
     def get_all(self, session: Session, as_dict: bool = False) -> List[Any]:
         """获取所有记录

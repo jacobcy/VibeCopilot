@@ -53,14 +53,23 @@ def handle_delete(service: RoadmapService, type: str, id: str, cascade: bool = F
         Dict: 包含操作结果的字典
     """
     try:
-        # 执行删除
+        # --- 修改删除路线图的调用方式 ---
         if type == "roadmap":
-            result = service.delete_roadmap(id, cascade=cascade)
+            # 导入 operations 中的函数
+            from src.roadmap.service.roadmap_operations import delete_roadmap as delete_roadmap_op
+
+            # 调用 operations 函数，传递 service 和 id
+            # 注意：cascade 参数暂时忽略
+            result = delete_roadmap_op(service, id)
+        # -------------------------------
         elif type == "milestone":
+            # TODO: 检查 service 是否有 delete_milestone，或修改为调用 operations
             result = service.delete_milestone(id, cascade=cascade)
         elif type == "story":
+            # TODO: 检查 service 是否有 delete_story，或修改为调用 operations
             result = service.delete_story(id)
         elif type == "task":
+            # TODO: 检查 service 是否有 delete_task，或修改为调用 operations
             result = service.delete_task(id)
         else:
             return {"success": False, "message": f"不支持的类型: {type}"}

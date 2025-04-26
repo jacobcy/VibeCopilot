@@ -6,7 +6,12 @@
 
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
+from sqlalchemy.orm import Session
+
+from src.db.repositories.task_repository import TaskRepository
+from src.db.session_manager import session_scope
 
 from .base_importer import BaseImporter
 
@@ -66,139 +71,143 @@ class TaskImporter(BaseImporter):
         story_id: Optional[str] = None,
     ) -> Optional[str]:
         """处理单个任务的导入或更新"""
+        task_id: Optional[str] = None
         try:
-            # 查找是否已存在同名任务，优先按故事ID查找
-            existing_task = None
-            if story_id:
-                existing_task = self._find_existing_task_by_story(story_id, task_title)
-            elif milestone_id:
-                existing_task = self._find_existing_task(milestone_id, task_title)
+            # --- 使用 session_scope ---
+            with session_scope() as session:
+                existing_task = None
+                # 优先按故事ID查找
+                if story_id:
+                    existing_task = self.service.task_repo.get_by_title_and_story_id(session, task_title, story_id)
+                # Task 模型没有 milestone_id，所以不能按 milestone 查找同名任务
+                # elif milestone_id:
+                #     # Add get_by_title_and_milestone_id to TaskRepository if needed
+                #     # existing_task = self.service.task_repo.get_by_title_and_milestone_id(session, task_title, milestone_id)
+                #     logger.warning(f"Task model does not support milestone_id link. Cannot find existing task '{task_title}' by milestone.")
 
-            if existing_task:
-                # 更新现有任务
-                task_id = self._update_task(existing_task, task_data, task_title)
-            else:
-                # 创建新任务
-                task_id = self._create_task(task_data, milestone_id, roadmap_id, task_title, import_stats, story_id)
+                if existing_task:
+                    # 更新现有任务 (传入 session)
+                    task_id = self._update_task(session, existing_task, task_data, task_title)
+                else:
+                    # 创建新任务 (传入 session)
+                    # 确保 story_id 存在，否则无法创建关联的任务
+                    if not story_id:
+                        logger.warning(f"无法创建任务 '{task_title}'，因为它没有关联的 Story ID 且模型不支持直接关联 Milestone。")
+                        # Increment failure count?
+                        import_stats["tasks"]["failed"] += 1
+                        return None  # Skip creation
 
+                    task_id = self._create_task(session, task_data, roadmap_id, task_title, import_stats, story_id)
+            # ------------------------
+
+            # Update stats based on whether task_id was obtained
             if task_id:
-                import_stats["tasks"]["success"] += 1
+                # Check if the operation actually incremented failure inside create/update
+                # Assuming success if we get an ID back and no exception was re-raised
+                # Success count is handled within _create_task for now
+                if existing_task:  # If it was an update, count success here
+                    import_stats["tasks"]["success"] += 1
+            # else: # Failure count handled by handle_import_error or logic above
+            #     pass
 
             return task_id
 
         except Exception as e:
-            self.handle_import_error(f"处理任务失败: {task_title}", e, import_stats, "tasks")
+            self.handle_import_error(f"处理任务 '{task_title}' 时出错", e, import_stats, "tasks")
             return None
 
-    def _find_existing_task(self, milestone_id: Optional[str], task_title: str) -> Optional[Any]:
-        """查找是否已存在同名任务（按里程碑ID）"""
-        # 使用search_tasks通过milestone_id查询任务
-        if not milestone_id:
-            return None
-
-        existing_tasks = self.service.task_repo.search_tasks(roadmap_item_id=milestone_id)
-
-        for task in existing_tasks:
-            if task.title == task_title:
-                return task
-
-        return None
-
-    def _find_existing_task_by_story(self, story_id: str, task_title: str) -> Optional[Any]:
-        """查找是否已存在同名任务（按故事ID）"""
-        if not story_id:
-            return None
-
-        try:
-            # 使用search_tasks通过story_id查询任务
-            existing_tasks = self.service.task_repo.search_tasks(story_id=story_id)
-
-            for task in existing_tasks:
-                if task.title == task_title:
-                    return task
-        except Exception as e:
-            logger.warning(f"按故事ID查找任务失败: {e}")
-            # 如果search_tasks不支持story_id，则返回None
-
-        return None
-
-    def _update_task(self, existing_task: Any, task_data: Dict[str, Any], task_title: str) -> str:
-        """更新现有任务"""
+    def _update_task(self, session: Session, existing_task: Any, task_data: Dict[str, Any], task_title: str) -> Optional[str]:
+        """更新现有任务 (需要 session 参数)"""
         task_id = existing_task.id
+        updated_task: Optional[Any] = None
+        try:
+            if self.verbose:
+                logger.debug(f"任务 '{task_title}' 已存在，进行更新 (ID: {task_id})")
 
-        if self.verbose:
-            logger.debug(f"任务已存在，进行更新: {task_title} (ID: {task_id})")
+            # 更新现有任务数据准备
+            update_data = {
+                # title 不更新
+                "description": task_data.get("description", existing_task.description),
+                "status": task_data.get("status", existing_task.status),
+                "priority": task_data.get("priority", existing_task.priority),
+                "assignee": task_data.get("assignee", existing_task.assignee),
+                "labels": task_data.get("labels", existing_task.labels),
+                "due_date": task_data.get("due_date", existing_task.due_date),
+                "updated_at": str(self.service.get_now()),
+            }
 
-        # 更新现有任务
-        update_data = {
-            "title": task_title,
-            "description": task_data.get("description", ""),
-            "status": task_data.get("status", "todo"),
-            "priority": task_data.get("priority", "medium"),
-            "updated_at": str(self.service.get_now()),
-        }
+            # --- 在传入的 session 上执行更新 ---
+            # Use update_task which handles specific logic like closed_at
+            updated_task = self.service.task_repo.update_task(session, task_id, update_data)
+            # -----------------------------------
 
-        self.service.task_repo.update(task_id, update_data)
+            if not updated_task:
+                self.log_warning(f"尝试更新任务 '{task_title}' (ID: {task_id}) 但仓库未返回更新对象。")
+                return task_id  # Return ID even if update seems problematic
 
-        if self.verbose:
-            self.log_info(f"更新任务: {task_title} (ID: {task_id})")
-        else:
-            self.log_success(f"更新任务: {task_title}")
+            if self.verbose:
+                self.log_info(f"更新任务: {task_title} (ID: {task_id})")
+            # else:
+            #     self.log_success(f"更新任务: {task_title}") # Only log success in create
 
-        return task_id
+            return task_id
+        except Exception as e:
+            self.log_error(f"更新任务 '{task_title}' 时出错: {e}", show_traceback=True)
+            return None  # Signal failure
 
     def _create_task(
         self,
+        session: Session,
         task_data: Dict[str, Any],
-        milestone_id: Optional[str],
         roadmap_id: Optional[str],
         task_title: str,
         import_stats: Dict[str, Dict[str, int]],
         story_id: Optional[str] = None,
     ) -> Optional[str]:
-        """创建新任务"""
-        # 创建新任务，使用UUID生成ID
-        task_id = f"task-{uuid.uuid4()}"
-
-        # 准备任务数据
-        task_obj = {
-            "id": task_id,
-            "title": task_title,
-            "description": task_data.get("description", ""),
-            "status": task_data.get("status", "todo"),
-            "priority": task_data.get("priority", "medium"),
-            "created_at": str(self.service.get_now()),
-            "updated_at": str(self.service.get_now()),
-        }
-
-        # 设置关联ID，优先级: story_id > milestone_id > roadmap_id
-        if story_id:
-            task_obj["story_id"] = story_id
-            # 记录日志
-            logger.info(f"任务 '{task_title}' 关联到故事 ID: {story_id}")
-        elif milestone_id:
-            task_obj["milestone_id"] = milestone_id
-            task_obj["roadmap_item_id"] = milestone_id  # 兼容旧字段
-            logger.info(f"任务 '{task_title}' 关联到里程碑 ID: {milestone_id}")
-
-        # 无论关联到哪个父对象，都设置roadmap_id
-        if roadmap_id:
-            task_obj["roadmap_id"] = roadmap_id
-
+        """创建新任务 (需要 session 参数)"""
+        created_task: Optional[Any] = None
         try:
-            # 创建新任务
-            self.service.task_repo.create(task_obj)
+            # 准备任务数据 (移除 id，让 repo 处理)
+            create_data = {
+                "title": task_title,
+                "description": task_data.get("description", ""),
+                "status": task_data.get("status", "todo"),
+                "priority": task_data.get("priority", "medium"),
+                "assignee": task_data.get("assignee"),
+                "labels": task_data.get("labels"),  # Repo create sets default [] if None
+                "due_date": task_data.get("due_date"),
+                # --- 关联 ID ---
+                "story_id": story_id,  # Directly pass story_id
+                # Task model does not have roadmap_id directly
+                # "roadmap_id": roadmap_id,
+                # ----------------
+                # Timestamps are handled by repo create
+                # "created_at": str(self.service.get_now()),
+                # "updated_at": str(self.service.get_now()),
+            }
+
+            # --- 在传入的 session 上执行创建 ---
+            created_task = self.service.task_repo.create(session, **create_data)
+            # -----------------------------------
+
+            if not created_task or not hasattr(created_task, "id"):
+                raise ValueError("创建 Task 后未能获取有效对象或 ID。")
+
+            task_id = created_task.id
 
             if self.verbose:
-                parent_info = f"[关联到:{story_id or milestone_id or roadmap_id}]" if story_id or milestone_id or roadmap_id else ""
+                parent_info = f"[关联到 Story:{story_id}]" if story_id else "[无关联父项]"
                 self.log_info(f"导入任务: {task_title} (ID: {task_id}) {parent_info}")
             else:
                 self.log_success(f"导入任务: {task_title}")
 
+            # Increment success count here for create
+            # import_stats["tasks"]["success"] += 1 # Moved out to _process_task
             return task_id
 
         except Exception as create_error:
-            # 处理创建过程中的错误
-            error_msg = f"创建任务失败: {task_title}: {str(create_error)}"
-            self.handle_import_error(error_msg, create_error, import_stats, "tasks")
-            return None
+            error_msg = f"创建任务 '{task_title}' 失败: {str(create_error)}"
+            # self.handle_import_error(error_msg, create_error, import_stats, "tasks") # Called in _process_task
+            self.log_error(error_msg, show_traceback=True)
+            raise create_error  # Re-raise
+            # return None

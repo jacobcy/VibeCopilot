@@ -5,9 +5,12 @@
 """
 
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
 from src.models.db import FlowSession
+
+logger = logging.getLogger(__name__)
 
 
 class SessionContextMixin:
@@ -117,7 +120,7 @@ class SessionContextMixin:
         try:
             from src.flow_session.stage.manager import get_stages_for_session
 
-            return get_stages_for_session(session.id)
+            return get_stages_for_session(self.session, session.id)
         except ImportError:
             # 如果阶段管理器不可用，返回空列表
             self._log("log_warning", "阶段管理器不可用，无法获取阶段列表")
@@ -209,14 +212,14 @@ class SessionContextMixin:
             return False
 
     def get_next_stages(self, id_or_name: str, current_stage_id: Optional[str] = None) -> List[Any]:
-        """获取会话可能的下一阶段
+        """获取会话可能的下一阶段，基于嵌入在 stages_data 字典中的 stages 和 transitions 列表
 
         Args:
             id_or_name: 会话ID或名称
             current_stage_id: 当前阶段ID，如果不提供则使用会话当前阶段
 
         Returns:
-            可能的下一阶段列表
+            可能的下一阶段定义列表 (字典)
 
         Raises:
             ValueError: 如果找不到指定的会话或阶段
@@ -225,62 +228,110 @@ class SessionContextMixin:
         if not session:
             raise ValueError(f"找不到会话: {id_or_name}")
 
-        # 如果没有提供当前阶段ID，使用会话当前阶段
-        if not current_stage_id:
-            context = self.get_session_context(id_or_name)
-            current_stage_id = context.get("current_stage")
-            if not current_stage_id:
-                raise ValueError("无法确定当前阶段")
+        # 确定当前阶段 ID
+        effective_current_stage_id = current_stage_id
+        if not effective_current_stage_id:
+            effective_current_stage_id = session.current_stage_id
+            if not effective_current_stage_id:
+                context = self.get_session_context(id_or_name)
+                effective_current_stage_id = context.get("current_stage")
+                if not effective_current_stage_id:
+                    logger.error(f"无法确定会话 {id_or_name} 的当前阶段ID")  # Use logger
+                    raise ValueError(f"无法确定会话 {id_or_name} 的当前阶段")
+
+        logger.info(f"查找会话 {id_or_name} 从阶段 {effective_current_stage_id} 出发的下一阶段")  # Use logger
 
         # 获取工作流定义
-        workflow = self.workflow_repo.get_by_id(session.workflow_id)
+        workflow = self.workflow_repo.get_by_id(self.session, session.workflow_id)
         if not workflow:
             raise ValueError(f"找不到工作流定义: {session.workflow_id}")
 
-        # 获取当前阶段
-        from src.db.repositories.stage_repository import StageRepository
+        # 解析 stages_data (现在期望它是包含 'stages' 和 'transitions' 的字典)
+        workflow_definition_data = workflow.stages_data
+        if isinstance(workflow_definition_data, str):
+            try:
+                workflow_definition_data = json.loads(workflow_definition_data)
+                logger.debug("Parsed workflow_definition_data from JSON string.")
+            except json.JSONDecodeError:
+                logger.error(f"无法解析工作流 {workflow.id} 的 workflow_definition_data (stages_data) JSON")
+                workflow_definition_data = None
 
-        stage_repo = StageRepository(self.session)
-        current_stage = stage_repo.get_by_id(current_stage_id)
-        if not current_stage:
-            raise ValueError(f"找不到阶段: {current_stage_id}")
+        if not isinstance(workflow_definition_data, dict):
+            logger.error(f"工作流 {workflow.id} 的 workflow_definition_data (stages_data) 不是预期的字典格式。类型: {type(workflow_definition_data)}")
+            return []
 
-        # 获取所有阶段
-        all_stages = stage_repo.get_by_workflow_id(workflow.id)
-        all_stages_dict = {stage.id: stage for stage in all_stages}
+        # --- 添加这行日志 ---
+        logger.debug(f"完整的 workflow_definition_data 内容: {json.dumps(workflow_definition_data, indent=2, ensure_ascii=False)}")
+        # --- 添加结束 ---
 
-        # 计算下一阶段
-        next_stages = []
-        completed_stages = session.completed_stages or []
+        # 从字典中提取 stages 和 transitions 列表
+        stages_list = workflow_definition_data.get("stages", [])
+        transitions_list = workflow_definition_data.get("transitions", [])
 
-        # 遍历所有阶段，找出满足条件的下一阶段
-        for stage_id, stage in all_stages_dict.items():
-            # 跳过当前阶段和已完成阶段
-            if stage_id == current_stage_id or stage_id in completed_stages:
+        if not isinstance(stages_list, list):
+            logger.error(f"从 workflow_definition_data 提取的 'stages' 不是列表。类型: {type(stages_list)}")
+            return []
+        if not isinstance(transitions_list, list):
+            logger.error(f"从 workflow_definition_data 提取的 'transitions' 不是列表。类型: {type(transitions_list)}")
+            # It might be valid to have no transitions, so don't return here, just log.
+            logger.warning(f"工作流 {workflow.id} 的定义中没有找到有效的 transitions 列表。")
+            transitions_list = []  # Ensure it's a list for iteration
+
+        logger.debug(f"提取到 {len(stages_list)} 个阶段定义和 {len(transitions_list)} 个转换规则。")
+
+        # 将 stages_list 转换为 ID 到定义的映射，方便查找目标阶段
+        stage_defs_map = {}
+        for stage_def in stages_list:
+            if isinstance(stage_def, dict):
+                stage_id = stage_def.get("id")
+                if stage_id:
+                    stage_defs_map[stage_id] = stage_def
+            else:
+                logger.warning(f"stages_list 中包含非字典项: {stage_def}")
+
+        # 查找当前阶段是否存在 (主要用于日志记录和健壮性)
+        if effective_current_stage_id not in stage_defs_map:
+            logger.warning(f"当前阶段 {effective_current_stage_id} 未在提取的 stages_list 中找到定义。")
+            # Depending on requirements, might want to raise ValueError here
+
+        next_stages_defs = []
+        # 遍历提取的转换规则列表
+        for transition in transitions_list:
+            if not isinstance(transition, dict):
+                logger.warning(f"transitions_list 中包含非字典项: {transition}")
                 continue
 
-            # 检查依赖关系
-            if stage.depends_on:
-                depends_satisfied = True
-                for dep_id in stage.depends_on:
-                    if dep_id not in completed_stages and dep_id != current_stage_id:
-                        depends_satisfied = False
-                        break
+            # 使用正确的键名 'from_stage' 和 'to_stage'
+            source_id = transition.get("from_stage")
+            target_id = transition.get("to_stage")
 
-                if not depends_satisfied:
-                    continue
+            if source_id == effective_current_stage_id:
+                logger.debug(f"找到匹配的转换规则: from={source_id}, to={target_id}")
+                if target_id:
+                    # (可选) 在这里检查转换条件 transition.get('condition')
+                    # condition_met = self._check_transition_condition(transition.get('condition'), session_context)
+                    # if not condition_met: continue
 
-            # 检查阶段是否可访问（有些阶段可能有额外条件）
-            session_context = self.get_session_context(id_or_name)
-            if stage.prerequisites and not self._check_prerequisites(stage.prerequisites, session_context):
-                continue
+                    # 根据 target_id 查找目标阶段定义
+                    target_stage_def = stage_defs_map.get(target_id)
+                    if target_stage_def:
+                        if target_stage_def not in next_stages_defs:
+                            next_stages_defs.append(target_stage_def)
+                            logger.info(f"找到可能的下一阶段: {target_id} ({target_stage_def.get('name', '?')})")
+                        else:
+                            logger.debug(f"目标阶段 {target_id} 已在列表中")
+                    else:
+                        logger.warning(f"转换规则指向了未在 stages_list 中定义的阶段ID: {target_id}")
+                else:
+                    logger.warning(f"找到从 {source_id} 出发的转换规则，但缺少 'to' 目标ID: {transition}")
 
-            next_stages.append(stage)
+        if not next_stages_defs:
+            logger.info(f"结论: 没有为阶段 {effective_current_stage_id} 找到有效的下一阶段定义。")
 
-        # 根据权重排序
-        next_stages.sort(key=lambda s: s.weight if s.weight is not None else 999)
+        # (可选) 根据权重排序
+        # next_stages_defs.sort(key=lambda s: s.get("weight", 999))
 
-        return next_stages
+        return next_stages_defs
 
     def _check_prerequisites(self, prerequisites: Dict[str, Any], context: Dict[str, Any]) -> bool:
         """检查阶段先决条件是否满足
@@ -327,17 +378,51 @@ class SessionContextMixin:
         self._log("log_info", f"获取会话 {session.id} 的第一个阶段")
 
         # 获取工作流定义
-        workflow = self.workflow_repo.get_by_id(session.workflow_id)
+        workflow = self.workflow_repo.get_by_id(self.session, session.workflow_id)
         if not workflow:
             self._log("log_error", f"找不到工作流定义: {session.workflow_id}")
             return None
 
-        if not workflow.stages or len(workflow.stages) == 0:
+        # 从 stages_data 获取阶段信息
+        stages_data = workflow.stages_data
+        if not stages_data:
+            self._log("log_error", f"工作流定义 {session.workflow_id} 没有阶段数据")
+            return None
+
+        # 确保 stages_data 是列表或字典
+        if isinstance(stages_data, str):
+            try:
+                stages_data = json.loads(stages_data)
+            except json.JSONDecodeError:
+                self._log("log_error", f"无法解析工作流 {workflow.id} 的阶段数据")
+                return None
+
+        # 处理不同格式的 stages_data
+        stages_list = []
+        if isinstance(stages_data, list):
+            stages_list = stages_data
+        elif isinstance(stages_data, dict):
+            stages_list = list(stages_data.values())
+        else:
+            self._log("log_error", f"工作流 {workflow.id} 的阶段数据格式不支持: {type(stages_data)}")
+            return None
+
+        if not stages_list:
             self._log("log_error", f"工作流定义 {session.workflow_id} 没有定义阶段")
             return None
 
         # 获取第一个阶段的ID
-        first_stage_id = workflow.stages[0].get("id")
+        first_stage = None
+        for stage in stages_list:
+            if isinstance(stage, dict):
+                first_stage = stage
+                break
+
+        if not first_stage:
+            self._log("log_error", f"工作流定义 {session.workflow_id} 没有有效的阶段")
+            return None
+
+        first_stage_id = first_stage.get("id")
         if not first_stage_id:
             self._log("log_error", f"工作流定义 {session.workflow_id} 的第一个阶段没有ID")
             return None
@@ -360,7 +445,7 @@ class SessionContextMixin:
                 stage_manager = StageInstanceManager(self.session)
 
                 # 创建阶段实例
-                stage_data = {"stage_id": first_stage_id, "name": workflow.stages[0].get("name", f"阶段-{first_stage_id}")}
+                stage_data = {"stage_id": first_stage_id, "name": first_stage.get("name", f"阶段-{first_stage_id}")}
                 new_instance = stage_manager.create_instance(session.id, stage_data)
                 self._log("log_info", f"为会话 {session.id} 创建了阶段实例 {first_stage_id} -> {new_instance.id if new_instance else 'Failed'}")
             else:

@@ -30,7 +30,7 @@ STORY_SCHEMA = {
     "properties": {
         "title": {"type": "string"},
         "description": {"type": "string"},
-        "status": {"type": "string", "enum": ["draft", "planned", "in_progress", "completed"]},
+        "status": {"type": "string", "enum": ["todo", "in_progress", "done", "completed"]},
         "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
         "assignee": {"type": "string"},
         "tasks": {"type": "array", "items": TASK_SCHEMA},
@@ -45,7 +45,7 @@ EPIC_SCHEMA = {
     "properties": {
         "title": {"type": "string"},
         "description": {"type": "string"},
-        "status": {"type": "string"},
+        "status": {"type": "string", "enum": ["todo", "in_progress", "done", "completed"]},
         "stories": {"type": "array", "items": STORY_SCHEMA},
     },
     "additionalProperties": True,

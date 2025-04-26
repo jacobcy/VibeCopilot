@@ -11,11 +11,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from loguru import logger
 from sqlalchemy.orm import Session
 
 from src.core.config import get_config
-from src.db.service import DatabaseService
+from src.db.repositories.roadmap_repository import TaskRepository
 from src.memory import get_memory_service  # 导入MemoryService获取函数
 from src.models.db.task import Task
 from src.services.task.comment import TaskCommentService
@@ -34,7 +33,7 @@ class TaskService:
     """
 
     def __init__(self):
-        self._db_service = DatabaseService()
+        self._task_repo = TaskRepository()
         # 获取状态服务实例
         from src.status.service import StatusService
 
@@ -44,9 +43,10 @@ class TaskService:
         self._memory_service = get_memory_service()
 
         # 初始化子服务
-        self._comment_service = TaskCommentService(self._db_service)
-        self._query_service = TaskQueryService(self._db_service)
-        self._session_service = TaskSessionService(self._db_service, self._status_service)
+        self._comment_service = TaskCommentService()
+        self._query_service = TaskQueryService()
+        self._session_service = TaskSessionService(self._status_service)
+        logger.info("TaskService and its child services initialized.")
 
         # 获取配置
         self._config = get_config()
@@ -55,6 +55,9 @@ class TaskService:
 
     def get_current_task(self, session: Session) -> Optional[Dict[str, Any]]:
         """获取当前任务"""
+        if not self._query_service:
+            logger.error("TaskQueryService not initialized in TaskService")
+            return None
         return self._query_service.get_current_task()
 
     def set_current_task(self, session: Session, task_id: str) -> bool:
@@ -62,28 +65,41 @@ class TaskService:
 
         设置指定任务为当前任务，同时如果任务有关联的会话，将该会话设置为当前会话。
         """
+        if not self._session_service:
+            logger.error("TaskSessionService not initialized in TaskService")
+            return False
         return self._session_service.set_current_task(task_id)
 
     def create_task(
         self, session: Session, task_data: Union[str, Dict[str, Any]], story_id: Optional[str] = None, github_issue: Optional[Dict[str, Any]] = None
     ) -> Task:
-        """创建任务
-
-        Args:
-            session: 数据库会话
-            task_data: 任务数据，可以是标题字符串或包含完整任务信息的字典
-            story_id: 关联的故事ID
-            github_issue: GitHub Issue 信息
-
-        Returns:
-            Task: 创建的任务
-        """
+        """创建任务，如果标题重复则自动添加后缀"""
         try:
             # 如果 task_data 是字符串，将其作为标题
             if isinstance(task_data, str):
                 data = {"title": task_data}
             else:
                 data = task_data.copy()  # 创建副本以避免修改原始数据
+
+            # 添加标题唯一性检查和重命名逻辑
+            original_title = data.get("title")
+            if not original_title:
+                raise ValueError("任务必须包含标题")
+
+            final_title = original_title
+            counter = 1
+            # 检查原始标题是否存在
+            while self._task_repo.exists_with_title(session, final_title):
+                logger.warning(f"任务标题 '{final_title}' 已存在，尝试添加后缀。")
+                final_title = f"{original_title} - {counter}"
+                counter += 1
+                # 安全起见，可以加一个最大尝试次数限制
+                if counter > 100:  # 防止无限循环
+                    raise ValueError(f"尝试为任务标题 '{original_title}' 生成唯一后缀失败，已尝试 {counter-1} 次")
+
+            if final_title != original_title:
+                logger.info(f"任务标题已从 '{original_title}' 重命名为 '{final_title}' 以确保唯一性。")
+                data["title"] = final_title  # 更新数据字典中的标题
 
             # 添加 story_id（如果提供）
             if story_id:
@@ -93,12 +109,8 @@ class TaskService:
             if github_issue:
                 data["github_issue_number"] = github_issue.get("number")
 
-            # 确保必要的字段存在
-            if "title" not in data:
-                raise ValueError("任务必须包含标题")
-
-            # 创建任务
-            task_orm = self._db_service.task_repo.create_task(session, **data)
+            # 调用仓库的 create 方法
+            task_orm = self._task_repo.create(session=session, **data)  # 调用基类 create 方法
 
             # 设置为当前任务
             try:
@@ -111,12 +123,12 @@ class TaskService:
                 logger.warning(f"设置当前任务失败: {e}")
 
             # 记录任务创建
-            logger.info(f"创建任务成功: {task_orm.id}")
+            logger.info(f"创建任务成功: {task_orm.id} (标题: {task_orm.title})")
 
             return task_orm
 
         except Exception as e:
-            logger.error(f"创建任务失败: {str(e)}")
+            logger.error(f"创建任务失败: {str(e)}", exc_info=True)
             raise
 
     def update_task(self, session: Session, task_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -151,7 +163,7 @@ class TaskService:
                 raise ValueError(f"无效的任务状态值: {data['status']}。有效值为: {valid_statuses}")
 
             # 执行任务更新
-            task_orm = self._db_service.task_repo.update_task(session, task_id, data)
+            task_orm = self._task_repo.update_task(session, task_id, data)
 
             if task_orm:
                 # 转换为字典格式并返回
@@ -193,9 +205,43 @@ class TaskService:
         """
         return self._query_service.get_task_by_identifier(session, identifier)
 
-    def delete_task(self, session: Session, task_id: str) -> bool:
-        """删除任务"""
-        return self._query_service.delete_task(session, task_id)
+    def delete_task(self, identifier: str) -> bool:
+        """删除任务，可以通过ID或标题识别任务"""
+        if not self._query_service:
+            logger.error("TaskQueryService not initialized in TaskService")
+            return False
+        try:
+            # 1. 查找任务以获取实际 ID
+            # 注意：get_task_by_identifier 内部会处理 session
+            task_dict = self._query_service.get_task_by_identifier(identifier)
+
+            # 2. 处理查找结果
+            if not task_dict:
+                logger.error(f"删除失败：未找到 Task ID 或 Title: {identifier}")
+                # 或者可以抛出 ValueError，让调用者处理
+                # raise ValueError(f"未找到任务: {identifier}")
+                return False
+
+            actual_task_id = task_dict.get("id")
+            if not actual_task_id:
+                # 这种情况理论上不应发生，如果 get_task_by_identifier 返回有效字典
+                logger.error(f"找到任务 {identifier} 但无法获取其 ID")
+                return False
+
+            # 3. 执行删除
+            # 注意：_query_service.delete_task 内部会处理 session
+            logger.info(f"准备删除任务: {identifier} (实际 ID: {actual_task_id})")
+            deleted = self._query_service.delete_task(actual_task_id)
+            if deleted:
+                logger.info(f"成功删除任务: {identifier} (ID: {actual_task_id})")
+            else:
+                # delete_task 内部可能已经记录了错误
+                logger.warning(f"删除任务 {identifier} (ID: {actual_task_id}) 的操作返回了 False")
+            return deleted
+
+        except Exception as e:
+            logger.error(f"删除任务 {identifier} 时发生意外错误: {e}", exc_info=True)
+            return False
 
     def link_task(self, session: Session, task_id: str, link_type: str, target_id: str) -> bool:
         """关联任务到其他实体"""
@@ -227,32 +273,53 @@ class TaskService:
     # 任务评论相关方法代理
     def add_task_comment(self, session: Session, task_id: str, comment: str, author: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """添加任务评论"""
-        return self._comment_service.add_task_comment(session, task_id, comment, author)
+        if not self._comment_service:
+            logger.error("TaskCommentService not initialized in TaskService")
+            return None
+        return self._comment_service.add_task_comment(task_id, comment, author)
 
     # 任务会话相关方法代理
     def link_to_flow_session(self, session: Session, task_id: str, flow_type: str = None, session_id: str = None) -> Optional[Dict[str, Any]]:
         """关联任务到工作流会话"""
-        return self._session_service.link_to_flow_session(session, task_id, flow_type, session_id)
+        if not self._session_service:
+            logger.error("TaskSessionService not initialized in TaskService")
+            return None
+        return self._session_service.link_to_flow_session(task_id, flow_type, session_id)
 
     def create_task_with_flow(self, session: Session, task_data: Dict[str, Any], workflow_id: str) -> Optional[Dict[str, Any]]:
         """创建任务并自动关联工作流会话"""
-        return self._session_service.create_task_with_flow(session, self, task_data, workflow_id)
+        if not self._session_service:
+            logger.error("TaskSessionService not initialized in TaskService")
+            return None
+        return self._session_service.create_task_with_flow(self, task_data, workflow_id)
 
     def get_task_sessions(self, session: Session, task_id: str):
         """获取任务关联的所有工作流会话"""
-        return self._session_service.get_task_sessions(session, task_id)
+        if not self._session_service:
+            logger.error("TaskSessionService not initialized in TaskService")
+            return None
+        return self._session_service.get_task_sessions(task_id)
 
     def get_current_task_session(self, session: Session):
         """获取当前任务的当前工作流会话"""
-        return self._session_service.get_current_task_session(session)
+        if not self._session_service:
+            logger.error("TaskSessionService not initialized in TaskService")
+            return None
+        return self._session_service.get_current_task_session()
 
     def set_current_task_session(self, session: Session, session_id: str) -> bool:
         """设置当前任务的当前工作流会话"""
-        return self._session_service.set_current_task_session(session, session_id)
+        if not self._session_service:
+            logger.error("TaskSessionService not initialized in TaskService")
+            return False
+        return self._session_service.set_current_task_session(session_id)
 
     def get_task_comments(self, session: Session, task_id: str) -> List[Dict[str, Any]]:
         """获取任务评论列表"""
-        return self._comment_service.get_task_comments(session, task_id)
+        if not self._comment_service:
+            logger.error("TaskCommentService not initialized in TaskService")
+            return []
+        return self._comment_service.get_task_comments(task_id)
 
     def search_tasks(
         self,
@@ -260,7 +327,7 @@ class TaskService:
         status: Optional[List[str]] = None,
         assignee: Optional[str] = None,
         labels: Optional[List[str]] = None,
-        roadmap_item_id: Optional[str] = None,
+        story_id: Optional[str] = None,
         is_independent: Optional[bool] = None,
         is_temporary: Optional[bool] = None,
         limit: Optional[int] = None,
@@ -273,7 +340,7 @@ class TaskService:
             status: 状态列表
             assignee: 负责人
             labels: 标签列表
-            roadmap_item_id: 关联的故事ID
+            story_id: 关联的故事ID
             is_independent: 是否为独立任务
             is_temporary: 是否为临时任务
             limit: 限制数量
@@ -282,13 +349,15 @@ class TaskService:
         Returns:
             符合条件的任务列表
         """
-        # Pass session and other arguments to the query service
+        if not self._query_service:
+            logger.error("TaskQueryService not initialized in TaskService")
+            return []
         return self._query_service.search_tasks(
             session=session,
             status=status,
             assignee=assignee,
             labels=labels,
-            roadmap_item_id=roadmap_item_id,
+            story_id=story_id,
             is_independent=is_independent,
             is_temporary=is_temporary,
             limit=limit,

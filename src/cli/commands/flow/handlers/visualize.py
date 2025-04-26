@@ -10,7 +10,7 @@ from rich.console import Console
 from sqlalchemy.orm import Session
 
 from src.cli.commands.flow.handlers.formatter import format_stage_summary, format_workflow_summary
-from src.db import get_session_factory
+from src.db.session_manager import session_scope
 from src.flow_session.manager import FlowSessionManager
 from src.models.db import FlowSession, WorkflowDefinition
 from src.utils.file_utils import write_text_file
@@ -45,48 +45,57 @@ def handle_visualize_subcommand(args: Dict[str, Any]) -> Dict[str, Any]:
     if verbose:
         logger.debug(f"可视化参数: id={target_id}, is_session={is_session}, format={output_format}")
 
+    result = None  # Initialize result outside the try block
     try:
-        # 创建数据库会话
-        session_factory = get_session_factory()
-        db_session = session_factory()
+        # Use session_scope for automatic session management
+        with session_scope() as db_session:
+            if is_session:
+                # 可视化会话
+                result = visualize_session(db_session, target_id, output_format)
+            else:
+                # 可视化工作流定义
+                result = visualize_workflow(db_session, target_id, output_format)
+            # Session scope handles commit/rollback/close
 
-        if is_session:
-            # 可视化会话
-            result = visualize_session(db_session, target_id, output_format)
-        else:
-            # 可视化工作流定义
-            result = visualize_workflow(db_session, target_id, output_format)
+        # If result was successfully generated inside the scope
+        if result:
+            # 如果需要输出到文件
+            if output_file:
+                dir_path = os.path.dirname(output_file)
+                if dir_path and not os.path.exists(dir_path):
+                    os.makedirs(dir_path)
 
-        # 释放数据库会话
-        db_session.close()
+                with open(output_file, "w", encoding="utf-8") as f:
+                    f.write(result)
 
-        # 如果需要输出到文件
-        if output_file and result:
-            dir_path = os.path.dirname(output_file)
-            if dir_path and not os.path.exists(dir_path):
-                os.makedirs(dir_path)
+                return {
+                    "status": "success",
+                    "code": 200,
+                    "message": f"已将可视化结果保存到文件: {output_file}",
+                    "data": {"diagram": result},
+                    "meta": {"command": "flow visualize", "args": args},
+                }
 
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write(result)
-
+            # 直接返回可视化结果
             return {
                 "status": "success",
                 "code": 200,
-                "message": f"已将可视化结果保存到文件: {output_file}",
+                "message": result,
                 "data": {"diagram": result},
                 "meta": {"command": "flow visualize", "args": args},
             }
-
-        # 直接返回可视化结果
-        return {
-            "status": "success",
-            "code": 200,
-            "message": result,
-            "data": {"diagram": result},
-            "meta": {"command": "flow visualize", "args": args},
-        }
+        else:
+            # Handle cases where visualization function might return None or empty string
+            return {
+                "status": "error",
+                "code": 500,  # Or appropriate code
+                "message": "生成可视化结果失败或结果为空",
+                "data": None,
+                "meta": {"command": "flow visualize", "args": args},
+            }
 
     except Exception as e:
+        # session_scope handles rollback if exception occurred within the 'with'
         logger.error(f"可视化失败: {str(e)}", exc_info=True)
         return {
             "status": "error",

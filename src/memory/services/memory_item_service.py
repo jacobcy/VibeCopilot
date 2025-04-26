@@ -12,8 +12,9 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-# 导入 DatabaseService
-from src.db.service import DatabaseService
+# Remove: from src.db.service import DatabaseService
+from src.db.repositories.memory_item_repository import MemoryItemRepository  # <-- Import Repository
+from src.db.session_manager import session_scope  # <-- Import session_scope
 from src.models.db.memory_item import MemoryItem
 
 # 移除直接导入 MemoryItemRepository
@@ -30,14 +31,13 @@ class MemoryItemService:
     """记忆项服务类
 
     管理本地存储的记忆项，提供CRUD操作以及与Basic Memory的同步功能。
-    通过 DatabaseService 访问 MemoryItemRepository。
+    通过 MemoryItemRepository 与数据库交互。
     """
 
     def __init__(self):
         """初始化记忆项服务"""
-        # 获取 DatabaseService 单例
-        self.db_service = DatabaseService()
-
+        # Remove: self.db_service = DatabaseService()
+        self._memory_item_repo = MemoryItemRepository()  # <-- Instantiate Repository
         self.logger = logging.getLogger(__name__)
         self.logger.info("初始化记忆项服务")
 
@@ -66,10 +66,18 @@ class MemoryItemService:
             Optional[MemoryItem]: 创建的记忆项，如果失败则返回None
         """
         try:
-            item = self.db_service.memory_item_repo.create_item(
-                title=title, content=content, folder=folder, tags=tags, permalink=permalink, content_type=content_type, source=source
-            )
-            return item
+            with session_scope() as session:  # <-- Use session_scope
+                item = self._memory_item_repo.create_item(
+                    session=session,  # <-- Pass session
+                    title=title,
+                    content=content,
+                    folder=folder,
+                    tags=tags,
+                    permalink=permalink,
+                    content_type=content_type,
+                    source=source,
+                )
+                return item
         except Exception as e:
             # Repository层已记录错误并回滚
             self.logger.error(f"服务层创建记忆项失败: {e}")
@@ -86,7 +94,8 @@ class MemoryItemService:
             Optional[MemoryItem]: 找到的记忆项，如果不存在则返回None
         """
         try:
-            return self.db_service.memory_item_repo.get_by_id(item_id, include_deleted=include_deleted)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.get_by_id(session=session, item_id=item_id, include_deleted=include_deleted)  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层获取记忆项失败 (ID={item_id}): {e}")
             return None
@@ -102,7 +111,10 @@ class MemoryItemService:
             Optional[MemoryItem]: 找到的记忆项，如果不存在则返回None
         """
         try:
-            return self.db_service.memory_item_repo.get_by_permalink(permalink, include_deleted=include_deleted)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.get_by_permalink(
+                    session=session, permalink=permalink, include_deleted=include_deleted
+                )  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层获取记忆项失败 (permalink={permalink}): {e}")
             return None
@@ -118,7 +130,8 @@ class MemoryItemService:
             Optional[MemoryItem]: 找到的记忆项，如果不存在则返回None
         """
         try:
-            return self.db_service.memory_item_repo.get_by_title(title, include_deleted=include_deleted)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.get_by_title(session=session, title=title, include_deleted=include_deleted)  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层获取记忆项失败 (title={title}): {e}")
             return None
@@ -134,10 +147,10 @@ class MemoryItemService:
             Optional[MemoryItem]: 更新后的记忆项，如果不存在或失败则返回None
         """
         try:
-            # 使用字符串而不是枚举，避免循环导入
             if "sync_status" not in kwargs:
                 kwargs["sync_status"] = "NOT_SYNCED"
-            return self.db_service.memory_item_repo.update_item(item_id, **kwargs)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.update_item(session=session, item_id=item_id, **kwargs)  # <-- Pass session
         except Exception as e:
             # Repository层已记录错误并回滚
             self.logger.error(f"服务层更新记忆项失败 (ID={item_id}): {e}")
@@ -154,7 +167,8 @@ class MemoryItemService:
             bool: 删除是否成功
         """
         try:
-            return self.db_service.memory_item_repo.delete_item(item_id, soft_delete=soft_delete)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.delete_item(session=session, item_id=item_id, soft_delete=soft_delete)  # <-- Pass session
         except Exception as e:
             # Repository层已记录错误并回滚
             self.logger.error(f"服务层删除记忆项失败 (ID={item_id}): {e}")
@@ -175,7 +189,10 @@ class MemoryItemService:
             List[MemoryItem]: 符合条件的记忆项列表 (失败时返回空列表)
         """
         try:
-            return self.db_service.memory_item_repo.search_items(query=query, folder=folder, tags=tags, include_deleted=include_deleted)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.search_items(
+                    session=session, query=query, folder=folder, tags=tags, include_deleted=include_deleted
+                )  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层搜索记忆项失败: {e}")
             return []
@@ -187,7 +204,8 @@ class MemoryItemService:
             List[str]: 文件夹名称列表 (失败时返回空列表)
         """
         try:
-            return self.db_service.memory_item_repo.list_folders()
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.list_folders(session=session)  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层获取文件夹列表失败: {e}")
             return []
@@ -202,7 +220,8 @@ class MemoryItemService:
             int: 记忆项数量 (失败时返回0)
         """
         try:
-            return self.db_service.memory_item_repo.get_item_count(include_deleted=include_deleted)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.get_item_count(session=session, include_deleted=include_deleted)  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层获取记忆项数量失败: {e}")
             return 0
@@ -220,7 +239,8 @@ class MemoryItemService:
             Optional[Tuple[MemoryItem, bool]]: 元组，包含同步后的记忆项和是否是新创建的标志；失败时返回None
         """
         try:
-            return self.db_service.memory_item_repo.sync_item_from_remote(note_data)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.sync_item_from_remote(session=session, note_data=note_data)  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层同步记忆项失败: {e}")
             return None
@@ -237,7 +257,10 @@ class MemoryItemService:
             bool: 是否成功
         """
         try:
-            return self.db_service.memory_item_repo.mark_item_synced(item_id=item_id, permalink=permalink, remote_updated_at=remote_updated_at)
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.mark_item_synced(
+                    session=session, item_id=item_id, permalink=permalink, remote_updated_at=remote_updated_at
+                )  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层标记记忆项同步状态失败 (ID={item_id}): {e}")
             return False
@@ -249,7 +272,8 @@ class MemoryItemService:
             List[MemoryItem]: 未同步的记忆项列表
         """
         try:
-            return self.db_service.memory_item_repo.get_unsynced_items()
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.get_unsynced_items(session=session)  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层获取未同步记忆项失败: {e}")
             return []
@@ -261,7 +285,8 @@ class MemoryItemService:
             Dict[str, Any]: 数据库统计信息
         """
         try:
-            return self.db_service.memory_item_repo.get_db_stats()
+            with session_scope() as session:  # <-- Use session_scope
+                return self._memory_item_repo.get_db_stats(session=session)  # <-- Pass session
         except Exception as e:
             self.logger.error(f"服务层获取数据库统计信息失败: {e}")
             # 返回一个最小的默认结构，避免前端出错
