@@ -14,7 +14,7 @@ import click
 from rich.console import Console
 
 from src.cli.core.decorators import pass_service
-from src.models.db.init_db import get_db_path
+from src.db.connection_manager import get_db_path
 
 from .base_handler import ClickBaseHandler
 from .exceptions import DatabaseError, ValidationError
@@ -137,7 +137,8 @@ def backup_db(service, output: Optional[str], verbose: bool):
     """
     handler = BackupHandler()
     try:
-        result = handler.execute(service=service, output=output, verbose=verbose)
+        params: Dict[str, Any] = {"output": output, "verbose": verbose}
+        result = handler.execute(service=service, **params)
         return result
     except Exception:
         return 1

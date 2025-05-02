@@ -1,0 +1,14 @@
+{
+  "bundles": {
+    "copilot-936": {
+      "name": "copilot",
+      "created": "2025-05-01T11:29:59.290Z",
+      "lastUsed": "2025-05-01T11:32:02.518Z",
+      "tags": [],
+      "files": [
+        "src"
+      ],
+      "configPath": ".repomix/config/copilot-repomix.config.json"
+    }
+  }
+}

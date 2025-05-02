@@ -235,6 +235,76 @@ class StatusHandler(ClickBaseHandler):
             console.print(f"[red]格式化表 {table_name_ctx} 信息失败: {str(e)}[/red]")
             return 1  # Indicate failure
 
+    def handle(self, **kwargs: Dict[str, Any]) -> Any:
+        """
+        处理数据库状态查询命令
+
+        Args:
+            **kwargs: 命令参数，包括:
+                - type: 表名称或实体类型，默认为所有表
+                - format: 输出格式 (table, json, yaml)
+
+        Returns:
+            Any: 处理结果
+
+        Raises:
+            ValidationError: 验证失败时抛出
+            DatabaseError: 数据库操作失败时抛出
+        """
+        entity_type = str(kwargs.get("type", "all"))
+        output_format = str(kwargs.get("format", "table"))
+
+        # 验证参数
+        self.validate(**kwargs)
+
+        session = None
+        try:
+            session = get_session()
+
+            if entity_type == "all":
+                # 获取所有表的统计信息
+                db_stats_data = get_db_stats(session)
+                return self._display_db_stats(db_stats_data, output_format, False)  # 不显示示例数据
+            else:
+                # 获取单个表的统计信息和结构
+                # 尝试将实体类型映射到表名
+                mapped_table_name = map_entity_to_table(entity_type)
+
+                # 如果映射结果不同且可能有效，则使用映射后的名称，否则使用原始输入
+                table_name = mapped_table_name if mapped_table_name != entity_type else entity_type
+                logger.info(f"输入类型 '{entity_type}' 解析为表名 '{table_name}'")
+
+                # 验证最终的表名
+                all_tables = get_all_tables(session)
+                if table_name not in all_tables:
+                    # 提供更好的错误消息，如果输入可能是实体类型，则包括有效的实体类型
+                    valid_entities = get_valid_entity_types(session, include_tables=False)  # 仅获取实体名称
+                    error_msg = f"未知的表名或实体类型: {entity_type}。"
+                    error_msg += f"\n可用表: {', '.join(sorted(all_tables))}"
+                    if entity_type in valid_entities:
+                        # 如果输入是有效的实体类型，则建议正确的表名
+                        correct_table = map_entity_to_table(entity_type)
+                        error_msg += f"\n提示: 您可能想查询表 '{correct_table}'。"
+                    elif entity_type not in valid_entities:
+                        # 如果输入不是有效的实体类型，则也列出有效的实体类型
+                        error_msg += f"\n可用实体类型: {', '.join(sorted(valid_entities))}"
+                    raise ValidationError(error_msg)
+
+                schema_data = get_table_schema(session, table_name)
+                if "error" in schema_data:
+                    raise DatabaseError(f"获取表 '{table_name}' 结构失败: {schema_data['error']}")
+
+                table_stats_data = get_table_stats(session, table_name)
+                return self._display_table_stats(schema_data, table_stats_data, output_format, False)  # 不显示示例数据
+
+        except Exception as e:
+            if not isinstance(e, (ValidationError, DatabaseError)):
+                logger.error(f"执行 status 命令时出错: {e}", exc_info=True)
+            raise
+        finally:
+            if session:
+                session.close()
+
     def error_handler(self, error: Exception) -> None:
         """
         处理错误
@@ -249,11 +319,10 @@ class StatusHandler(ClickBaseHandler):
 
 
 @click.command(name="status", help="查询数据库表状态和结构信息")
-@click.option("--type", default="all", help="表名称或实体类型，默认为所有表")
-@click.option("--detail", is_flag=True, help="是否显示示例数据（仅适用于单表查询）")
-@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
+@click.option("-t", "--type", default="all", help="表名称或实体类型，默认为所有表")
+@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="yaml", help="输出格式")
 @pass_service(service_type="db")
-def status_db(service, type: str = "all", detail: bool = False, format: str = "table") -> None:
+def status_db(service, type: str = "all", format: str = "yaml") -> None:
     """查询数据库表状态和结构信息"""
     # Adjust format for rules table
     if type.lower() == "rules" and format == "table":
@@ -272,7 +341,7 @@ def status_db(service, type: str = "all", detail: bool = False, format: str = "t
         if type == "all":
             # --- Get All Stats ---
             db_stats_data = get_db_stats(session)
-            handler._display_db_stats(db_stats_data, format, detail)
+            handler._display_db_stats(db_stats_data, format, False)  # 不显示示例数据
         else:
             # --- Get Single Table Stats & Schema ---
             entity_type_or_table_name = type  # User input
@@ -307,7 +376,7 @@ def status_db(service, type: str = "all", detail: bool = False, format: str = "t
                 raise click.Abort()
 
             table_stats_data = get_table_stats(session, table_name)  # Use potentially mapped table_name
-            handler._display_table_stats(schema_data, table_stats_data, format, detail)
+            handler._display_table_stats(schema_data, table_stats_data, format, False)  # 不显示示例数据
 
     except Exception as e:
         # Let friendly_error_handling decorator manage user output for Abort/other exceptions

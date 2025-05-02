@@ -180,6 +180,130 @@ class TaskSessionService:
             logger.error(error_msg, exc_info=True)  # 添加 exc_info
             raise ValueError(error_msg)
 
+    def link_to_workflow(self, task_id: str, workflow_id: str) -> Optional[Dict[str, Any]]:
+        """直接关联任务到工作流定义（不创建会话）
+
+        Args:
+            task_id: 任务ID
+            workflow_id: 工作流ID或名称
+
+        Returns:
+            关联的工作流信息，失败返回None
+
+        Raises:
+            ValueError: 当找不到指定的工作流或任务时
+        """
+        try:
+            logger.info(f"开始将任务 {task_id} 关联到工作流 {workflow_id}")
+
+            # 使用 session_scope 获取数据库会话
+            with session_scope() as db_session:
+                # 验证任务存在
+                task = self._task_repo.get_by_id(db_session, task_id)
+                if not task:
+                    error_msg = f"无法关联工作流，因为找不到任务 (ID: {task_id})"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+
+                # 使用工作流搜索工具查找工作流
+                from src.workflow.utils.workflow_search import get_workflow_fuzzy
+
+                workflow = get_workflow_fuzzy(workflow_id)
+                if not workflow:
+                    error_msg = f"找不到工作流 '{workflow_id}'，请确认ID或名称是否正确"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+
+                real_workflow_id = workflow["id"]
+                workflow_name = workflow.get("name", "未命名工作流")
+                logger.info(f"已找到工作流: {workflow_name} (ID: {real_workflow_id})")
+
+                # 更新任务的工作流关联
+                try:
+                    updated_task = self._task_repo.update_task(
+                        db_session,
+                        task_id,
+                        {
+                            "workflow_id": real_workflow_id,
+                            # 可以添加其他需要更新的工作流相关字段
+                        },
+                    )
+
+                    if not updated_task:
+                        error_msg = f"更新任务 {task_id} 的工作流关联失败"
+                        logger.error(error_msg)
+                        raise ValueError(error_msg)
+
+                    # 自动创建工作流执行指南 (session)，但对用户透明
+                    try:
+                        logger.info(f"正在为任务 {task_id} 创建工作流执行指南...")
+
+                        # 创建FlowSessionManager实例
+                        from src.flow_session.manager import FlowSessionManager
+
+                        session_manager = FlowSessionManager(db_session)
+
+                        # 获取任务详情用于创建更有意义的会话
+                        task_details = self._task_repo.get_by_id(db_session, task_id)
+                        task_title = task_details.title if task_details else f"Task-{task_id[:8]}"
+
+                        # 创建工作流会话
+                        session_name = f"{workflow_name}-{task_title[:20]}"
+                        session = session_manager.create_session(
+                            workflow_id=real_workflow_id, name=session_name, task_id=task_id, flow_type=workflow.get("type")
+                        )
+
+                        # 更新任务的当前会话
+                        if session:
+                            self._task_repo.update_task(db_session, task_id, {"current_session_id": session.id})
+                            logger.info(f"成功创建工作流执行指南: {session.id}")
+
+                            # 生成执行指南内容 (这里可以调用 LLM 生成更详细的指南)
+                            try:
+                                # 异步触发执行指南生成，不阻塞主流程
+                                import threading
+
+                                from src.flow_session.core.session_context import generate_context_for_session
+
+                                def generate_context_thread():
+                                    try:
+                                        with session_scope() as inner_session:
+                                            generate_context_for_session(inner_session, session.id)
+                                    except Exception as e:
+                                        logger.error(f"生成执行指南内容失败: {e}", exc_info=True)
+
+                                # 启动线程异步生成
+                                threading.Thread(target=generate_context_thread).start()
+                                logger.info(f"已触发执行指南内容生成")
+                            except Exception as e:
+                                logger.warning(f"触发执行指南内容生成失败: {e}")
+                    except Exception as e:
+                        # 这里不要抛出异常，因为工作流关联已成功，执行指南创建是附加功能
+                        logger.warning(f"创建工作流执行指南失败: {e}", exc_info=True)
+
+                    # 设置为当前任务
+                    self.set_current_task(task_id)
+
+                    # 返回工作流信息
+                    return {
+                        "id": real_workflow_id,
+                        "name": workflow_name,
+                        "type": workflow.get("type", "未知类型"),
+                        # 可以添加其他需要返回的工作流信息
+                    }
+                except Exception as e:
+                    error_msg = f"关联任务到工作流失败: {str(e)}"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+
+        except ValueError as e:
+            # 传递验证错误
+            raise e
+        except Exception as e:
+            error_msg = f"关联任务到工作流失败: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise ValueError(error_msg)
+
     def create_task_with_flow(self, task_service, task_data: Dict[str, Any], workflow_id: str) -> Optional[Dict[str, Any]]:
         """创建任务并自动关联工作流会话
 

@@ -20,31 +20,29 @@ def is_agent_mode() -> bool:
     return False
 
 
-@click.command(name="link", help="关联任务到工作流会话")
+@click.command(name="link", help="关联任务到工作流")
 @click.argument("task_id", type=str, required=False)
-@click.option("-f", "--flow", type=str, help="工作流ID或名称")
-@click.option("-s", "--session", type=str, help="会话ID")
-def link_task(task_id: Optional[str] = None, flow: Optional[str] = None, session: Optional[str] = None):
-    """关联任务到工作流会话命令
+@click.option("-f", "--flow", type=str, required=False, help="工作流ID或名称 (如不指定则使用默认工作流)")
+def link_task(task_id: Optional[str] = None, flow: Optional[str] = None):
+    """关联任务到工作流命令
 
-    将任务关联到工作流会话，支持创建新会话或关联到已有会话。
+    将任务关联到指定的工作流定义。如果不指定工作流，则使用默认工作流。
 
     示例:
-        vibecopilot task link abc123 --flow dev   # 创建开发工作流会话并关联
-        vibecopilot task link --flow 测试工作流   # 使用当前任务创建测试工作流会话
-        vibecopilot task link --session sess_id   # 关联当前任务到指定会话
+        vibecopilot task link abc123 --flow wf_dev_process   # 关联任务到开发工作流
+        vibecopilot task link --flow wf_test_process         # 使用当前任务关联到测试工作流
+        vibecopilot task link abc123                         # 使用默认工作流
     """
     try:
-        result = execute_link_flow_task(task_id, flow, session)
+        result = execute_link_flow_task(task_id, flow)
 
         if result["status"] == "success":
             console.print(f"[bold green]成功:[/bold green] {result['message']}")
-            if result.get("session"):
-                session_info = result["session"]
-                console.print(f"会话ID: {session_info.get('id')}")
-                console.print(f"会话名称: {session_info.get('name')}")
-                console.print(f"工作流: {session_info.get('workflow_id')}")
-                console.print(f"工作流类型: {session_info.get('flow_type')}")
+            if result.get("workflow"):
+                workflow_info = result["workflow"]
+                console.print(f"工作流ID: {workflow_info.get('id')}")
+                console.print(f"工作流名称: {workflow_info.get('name')}")
+                console.print(f"工作流类型: {workflow_info.get('type')}")
         else:
             console.print(f"[bold red]错误:[/bold red] {result['message']}")
 
@@ -55,9 +53,9 @@ def link_task(task_id: Optional[str] = None, flow: Optional[str] = None, session
         return {"status": "error", "message": str(e)}
 
 
-def execute_link_flow_task(task_id: Optional[str] = None, flow_type: Optional[str] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
-    """关联任务到工作流会话的核心逻辑"""
-    results = {"status": "success", "message": "", "session": None}
+def execute_link_flow_task(task_id: Optional[str] = None, workflow_id: Optional[str] = None) -> Dict[str, Any]:
+    """关联任务到工作流的核心逻辑"""
+    results = {"status": "success", "message": "", "workflow": None}
 
     try:
         with session_scope() as session:
@@ -73,20 +71,46 @@ def execute_link_flow_task(task_id: Optional[str] = None, flow_type: Optional[st
                 current_task_id = current_task["id"]
                 logger.info(f"未指定task_id，使用当前任务: {current_task_id}")
 
-            if not flow_type and not session_id:
-                results["status"] = "error"
-                results["message"] = "必须指定工作流(--flow)或会话ID(--session)"
-                return results
-            if flow_type and session_id:
-                results["status"] = "error"
-                results["message"] = "不能同时指定工作流和会话ID"
-                return results
+            # 如果没有指定工作流ID，使用默认工作流
+            if not workflow_id:
+                logger.info("未指定工作流ID，将尝试使用默认工作流")
+                try:
+                    # 获取默认工作流 (假设是 wf_general 或 wf_dev_process)
+                    from src.workflow.utils.workflow_search import get_workflow_fuzzy
+
+                    default_workflows = ["wf_general", "wf_dev_process", "wf_basic"]
+
+                    for wf_id in default_workflows:
+                        default_workflow = get_workflow_fuzzy(wf_id)
+                        if default_workflow:
+                            workflow_id = wf_id
+                            logger.info(f"使用默认工作流: {workflow_id}")
+                            break
+
+                    # 如果仍未找到默认工作流，查找任何可用的工作流
+                    if not workflow_id:
+                        from src.workflow.service import list_workflows
+
+                        all_workflows = list_workflows()
+                        if all_workflows:
+                            workflow_id = all_workflows[0].get("id")
+                            logger.info(f"未找到预定义默认工作流，使用首个可用工作流: {workflow_id}")
+                        else:
+                            results["status"] = "error"
+                            results["message"] = "找不到任何可用的工作流，请指定工作流ID或添加工作流定义"
+                            return results
+                except Exception as e:
+                    logger.error(f"获取默认工作流时出错: {e}")
+                    results["status"] = "error"
+                    results["message"] = f"必须指定工作流(--flow): {e}"
+                    return results
 
             try:
-                session_info = task_service.link_to_flow_session(session, current_task_id, flow_type=flow_type, session_id=session_id)
-                if session_info:
-                    results["message"] = f"任务 {current_task_id} 关联成功"
-                    results["session"] = session_info
+                # 注意: 需要修改TaskService中的方法以支持直接关联到工作流，而不是会话
+                workflow_info = task_service.link_to_workflow(session, current_task_id, workflow_id=workflow_id)
+                if workflow_info:
+                    results["message"] = f"任务 {current_task_id} 关联到工作流 {workflow_id} 成功"
+                    results["workflow"] = workflow_info
                 else:
                     results["status"] = "error"
                     results["message"] = "关联任务失败 (服务层返回失败)"

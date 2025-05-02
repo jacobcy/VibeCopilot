@@ -19,11 +19,11 @@ console = Console()
 class RoadmapUpdateHandlers:
     """路线图更新处理器"""
 
-    VALID_TYPES = ["milestone", "story", "task"]
+    VALID_TYPES = ["milestone", "epic", "story"]
     VALID_STATUSES = {
         "milestone": ["planned", "in_progress", "completed", "cancelled"],
+        "epic": ["planned", "in_progress", "completed", "blocked"],
         "story": ["planned", "in_progress", "completed", "blocked"],
-        "task": ["todo", "in_progress", "review", "done", "blocked"],
     }
 
     @staticmethod
@@ -50,10 +50,14 @@ class RoadmapUpdateHandlers:
         update_data = {"status": status}
         if "comment" in args and args["comment"] is not None:
             pass
+        if "desc" in args and args["desc"] is not None:
+            update_data["description"] = args["desc"]
         if "assignee" in args and args["assignee"] is not None:
             update_data["assignee"] = args["assignee"]
         if "labels" in args and args["labels"] is not None:
             update_data["labels"] = args["labels"]
+        if "priority" in args and args["priority"] is not None:
+            update_data["priority"] = args["priority"]
 
         logger.debug(f"Preparing to update {element_type} {element_id} with data: {update_data}")
 
@@ -65,10 +69,10 @@ class RoadmapUpdateHandlers:
                 repo = None
                 if element_type == "milestone":
                     repo = getattr(service, "milestone_repo", None)
+                elif element_type == "epic":
+                    repo = service.epic_repo
                 elif element_type == "story":
                     repo = service.story_repo
-                elif element_type == "task":
-                    repo = service.task_repo
 
                 if not repo:
                     raise AttributeError(f"RoadmapService does not have a repository for type '{element_type}'")
@@ -92,45 +96,21 @@ class RoadmapUpdateHandlers:
                 else:
                     return {"status": "error", "message": f"更新 {element_type} {element_id} 失败，仓库未返回成功信号"}
 
-            # 处理 GitHub 同步
-            sync_success = True
-            sync_error_msg = None
-            if args.get("sync", False):
-                logger.info(f"Initiating GitHub sync for {element_type} {element_id}")
-                try:
-                    from src.roadmap.service.roadmap_operations import sync_to_github
-
-                    sync_result = sync_to_github(service, roadmap_id=None, element_type=element_type, element_id=element_id)
-                    if not sync_result.get("success", False):
-                        sync_success = False
-                        sync_error_msg = sync_result.get("error", "未知同步错误")
-                        logger.warning(f"GitHub sync failed for {element_type} {element_id}: {sync_error_msg}")
-                    else:
-                        logger.info(f"GitHub sync successful for {element_type} {element_id}")
-                except Exception as sync_e:
-                    sync_success = False
-                    sync_error_msg = str(sync_e)
-                    logger.error(f"GitHub sync process raised an exception for {element_type} {element_id}: {sync_e}", exc_info=True)
-            # ------------------------
+            # 不再处理 GitHub 同步，使用单独的 sync 命令
 
             # 构造返回结果
             entity_dict = service._object_to_dict(updated_entity) if updated_entity and hasattr(service, "_object_to_dict") else {"id": element_id}
 
-            response_status = "success" if sync_success else "warning"
             message = f"成功更新 {element_type} {element_id} 的状态为 {status}"
-            if not sync_success:
-                message += "，但 GitHub 同步失败。"
 
             return {
-                "status": response_status,
+                "status": "success",
                 "message": message,
                 "data": {
                     "type": element_type,
                     "id": element_id,
                     "new_status": status,
                     "updated_data": update_data,
-                    "sync_status": "SYNCED" if args.get("sync") and sync_success else ("SYNC_FAILED" if args.get("sync") else "NOT_SYNCED"),
-                    "sync_error": sync_error_msg if not sync_success else None,
                 },
             }
 

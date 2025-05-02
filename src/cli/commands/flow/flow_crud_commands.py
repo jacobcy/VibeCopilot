@@ -18,51 +18,32 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
-@click.command(name="create", help="创建或导入工作流定义")
-@click.option("--source", help="从描述性文本创建时指定源文件路径")
-@click.option("--template", default="templates/flow/default_flow.json", help="从源文件创建时使用的工作流模板路径")
-@click.option("--import_path", help="从文件导入工作流定义，与 --source/--template 互斥")
-@click.option("--name", "-n", help="工作流名称（创建或导入时均可指定）")
-@click.option("--output", "-o", help="输出工作流文件路径（仅在从 source 创建时有效）")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-def create(source: Optional[str], template: str, import_path: Optional[str], name: Optional[str], output: Optional[str], verbose: bool) -> None:
+@click.command(name="create", help="创建工作流定义")
+@click.option("-s", "--source", required=True, help="从描述性文本创建时指定源文件路径")
+@click.option("-t", "--template", default="templates/flow/default_flow.json", help="从源文件创建时使用的工作流模板路径")
+@click.option("-o", "--output", help="输出工作流文件路径")
+@click.option("-v", "--verbose", is_flag=True, help="显示详细信息")
+def create(source: str, template: str, output: Optional[str], verbose: bool) -> None:
     """
-    创建或导入工作流定义。
+    创建工作流定义。
 
-    - **从源文件创建**: 使用 `--source` 指定描述性文本文件，并可选 `--template`。
-    - **从文件导入**: 使用 `--import_path` 指定包含工作流定义的 JSON 文件。
-
-    `--source` 和 `--import_path` 选项是互斥的。
+    从描述性文本文件创建工作流定义，可以指定模板和输出路径。
 
     示例:
-      vc flow create --source story.md                  # 从 story.md 创建
-      vc flow create --import_path existing_flow.json   # 从 existing_flow.json 导入
-      vc flow create --import_path wf.json --name "新流程" # 导入并重命名
+      vc flow create -s story.md                  # 从 story.md 创建
+      vc flow create -s story.md -t custom_template.json  # 使用自定义模板
+      vc flow create -s story.md -o workflow.json  # 指定输出路径
     """
     try:
-        # Check for mutually exclusive options
-        if source and import_path:
-            console.print("[red]错误: --source 和 --import_path 选项不能同时使用。[/red]")
-            return
-        if not source and not import_path:
-            console.print("[red]错误: 必须提供 --source 或 --import_path 中的一个选项。[/red]")
-            return
-        if import_path and output:
-            console.print("[yellow]警告: --output 选项在导入模式下无效，将被忽略。[/yellow]")
-            output = None  # Ensure output is ignored in import mode
-
         if verbose:
-            if import_path:
-                console.print(f"正在从 {import_path} 导入工作流定义...")
-            else:
-                console.print("正在创建工作流定义...")
+            console.print("正在创建工作流定义...")
 
         # Prepare arguments for the handler
         handler_args = {
             "source": source,
             "template": template,
-            "import_path": import_path,
-            "name": name,
+            "import_path": None,  # 不再支持导入模式
+            "name": None,  # 不再支持指定名称
             "output": output,
             "verbose": verbose,
             "_agent_mode": False,
@@ -73,14 +54,13 @@ def create(source: Optional[str], template: str, import_path: Optional[str], nam
 
         if result["status"] == "success":
             if verbose:
-                mode = "导入" if import_path else "创建"
-                console.print(f"[green]成功{mode}工作流定义[/green]")
+                console.print(f"[green]成功创建工作流定义[/green]")
             console.print(result["message"])
         else:
             console.print(f"[red]错误: {result['message']}[/red]")
 
     except Exception as e:
-        logger.error(f"创建或导入工作流定义失败: {e}", exc_info=True)
+        logger.error(f"创建工作流定义失败: {e}", exc_info=True)
         console.print(f"[red]错误: {str(e)}[/red]")
 
 
@@ -189,4 +169,35 @@ def export(workflow_id: str, format: str, output: Optional[str], verbose: bool) 
 
     except Exception as e:
         logger.error(f"导出工作流失败: {e}", exc_info=True)
+        console.print(f"[red]错误: {str(e)}[/red]")
+
+
+@click.command(name="import", help="导入工作流定义")
+@click.argument("file_path")
+@click.option("-v", "--verbose", is_flag=True, help="显示详细信息")
+def import_flow(file_path: str, verbose: bool) -> None:
+    """
+    导入工作流定义
+
+    从JSON文件导入工作流定义。
+
+    示例:
+      vc flow import workflow.json  # 从workflow.json导入工作流
+    """
+    try:
+        if verbose:
+            console.print(f"正在从 {file_path} 导入工作流定义...")
+
+        # 调用处理函数
+        result: Dict[str, Any] = handle_import_subcommand({"file_path": file_path, "verbose": verbose, "_agent_mode": False})
+
+        if result["status"] == "success":
+            if verbose:
+                console.print("[green]成功导入工作流[/green]")
+            console.print(result["message"])
+        else:
+            console.print(f"[red]错误: {result['message']}[/red]")
+
+    except Exception as e:
+        logger.error(f"导入工作流失败: {e}", exc_info=True)
         console.print(f"[red]错误: {str(e)}[/red]")

@@ -1,22 +1,37 @@
 {
-    "id": "wf_simple_task_dev",
-    "name": "simple-task-workflow",
-    "description": "A simple development task workflow inferred from examples/simple-task.md",
-    "version": "1.0.0",
+    "id": "wf_universal_task",
+    "name": "universal-task-workflow",
+    "description": "A universal workflow for task management, starting with planning and including logging and memory storage.",
+    "version": "1.1.0",
     "metadata": {
         "source_example": "examples/simple-task.md"
     },
     "stages": [
         {
-            "id": "pre_flow",
-            "name": "PRE-FLOW",
-            "description": "需求分析与文档编写 (spec-flow)",
+            "id": "planning",
+            "name": "PLANNING",
+            "description": "初始规划阶段，分析需求并定义任务结构",
             "order": 1,
             "checklist": [
                 "Analyze requirements",
+                "Define task structure",
+                "Prioritize tasks"
+            ],
+            "deliverables": [
+                "Task plan document"
+            ]
+        },
+        {
+            "id": "pre_flow",
+            "name": "PRE-FLOW",
+            "description": "需求分析与文档编写",
+            "order": 2,
+            "checklist": [
                 "Write PRD document",
                 "Write Architecture document",
-                "Confirm documents"
+                "Confirm documents",
+                "Complete stage review and comment",
+                "Store records in memory"
             ],
             "deliverables": [
                 "Confirmed PRD",
@@ -24,29 +39,15 @@
             ]
         },
         {
-            "id": "planning",
-            "name": "PLANNING",
-            "description": "史诗与故事规划 (story-flow)",
-            "order": 2,
-            "checklist": [
-                "Create Epic structure based on PRD",
-                "Create Story structure based on PRD",
-                "Prioritize stories"
-            ],
-            "deliverables": [
-                "Epic/Story backlog"
-            ]
-        },
-        {
             "id": "development",
             "name": "DEVELOPMENT",
-            "description": "代码实现与测试 (flow)",
+            "description": "代码实现与测试",
             "order": 3,
             "checklist": [
-                "Follow branch management rules",
-                "Implement features/stories",
+                "Implement features",
                 "Write unit tests",
-                "Follow commit conventions"
+                "Complete stage review and comment",
+                "Store records in memory"
             ],
             "deliverables": [
                 "Feature code",
@@ -60,8 +61,9 @@
             "order": 4,
             "checklist": [
                 "Perform code review",
-                "Ensure code quality standards",
-                "Verify test coverage"
+                "Verify test coverage",
+                "Complete stage review and comment",
+                "Store records in memory"
             ],
             "deliverables": [
                 "Code review approvals",
@@ -75,8 +77,9 @@
             "order": 5,
             "checklist": [
                 "Prepare release notes",
-                "Deploy to staging/production",
-                "Monitor release"
+                "Deploy application",
+                "Complete stage review and comment",
+                "Store records in memory"
             ],
             "deliverables": [
                 "Release notes",
@@ -86,12 +89,13 @@
         {
             "id": "post_flow",
             "name": "POST-FLOW",
-            "description": "规则优化与知识沉淀 (rule-flow)",
+            "description": "规则优化与知识沉淀",
             "order": 6,
             "checklist": [
                 "Summarize lessons learned",
-                "Update relevant rules",
-                "Archive project artifacts"
+                "Update rules",
+                "Complete stage review and comment",
+                "Store records in memory"
             ],
             "deliverables": [
                 "Lessons learned document",

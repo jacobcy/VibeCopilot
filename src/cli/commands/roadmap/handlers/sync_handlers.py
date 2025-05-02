@@ -81,15 +81,3 @@ class RoadmapSyncHandlers:
                 return {"status": "error", "summary": f"推送到GitHub失败: {result.get('error', '未知错误')}", "details": result}
         except Exception as e:
             return {"status": "error", "summary": f"GitHub推送过程出错: {str(e)}", "details": {"error": str(e)}}
-
-    @staticmethod
-    def handle_yaml_sync(file_path: str, roadmap_id: Optional[str], force: bool, service) -> Dict[str, Any]:
-        """处理YAML文件同步"""
-        try:
-            result = service.sync_from_yaml(file_path, roadmap_id=roadmap_id, force=force)
-            if result.get("success", False):
-                return {"status": "success", "summary": f"成功从YAML文件同步: {file_path}", "details": result}
-            else:
-                return {"status": "error", "summary": f"YAML同步失败: {result.get('error', '未知错误')}", "details": result}
-        except Exception as e:
-            return {"status": "error", "summary": f"YAML同步过程出错: {str(e)}", "details": {"error": str(e)}}

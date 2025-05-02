@@ -14,7 +14,7 @@ from rich.console import Console
 from rich.table import Table
 
 from src.cli.core.decorators import pass_service
-from src.db import get_session
+from src.db import DatabaseService, get_session
 from src.db.utils.entity_mapping import get_valid_entity_types, map_entity_to_table, map_table_to_entity
 from src.db.utils.schema import get_all_tables
 
@@ -68,7 +68,7 @@ class ListHandler(ClickBaseHandler):
         """
         entity_type = kwargs.get("type")
         verbose = kwargs.get("verbose", False)
-        output_format = kwargs.get("format", "table")
+        output_format = kwargs.get("format", "yaml")  # 默认使用YAML格式
         service = kwargs.get("service")
 
         if not service:
@@ -83,7 +83,11 @@ class ListHandler(ClickBaseHandler):
 
             # 如果没有提供实体类型，则显示所有可用的实体类型
             if not entity_type:
-                return self._display_available_types(output_format)
+                # 获取有效的实体类型
+                valid_types = []
+                if hasattr(service, "repo_map") and service.repo_map:
+                    valid_types = list(service.repo_map.keys())
+                return self._display_available_types(output_format, valid_types)
 
             if verbose:
                 console.print(f"列出所有 {entity_type}")
@@ -108,11 +112,11 @@ class ListHandler(ClickBaseHandler):
                 error_msg = f"列出实体类型失败: {str(e)}"
             raise DatabaseError(error_msg)
 
-    def _display_available_types(self, output_format: str, available_types: List[str]) -> int:
+    def _display_available_types(self, output_format: str, available_types: Optional[List[str]] = None) -> int:
         """显示所有可用的实体类型 (从传入列表)"""
         try:
-            # Use the passed list directly
-            types_to_display = available_types
+            # Use the passed list or get valid types if None
+            types_to_display = available_types or []
 
             if not types_to_display:
                 console.print("[yellow]未找到可查询的实体类型。[/yellow]")
@@ -141,19 +145,42 @@ class ListHandler(ClickBaseHandler):
             logger.error(f"格式化可用实体类型失败: {e}", exc_info=True)
             return 1
 
+    def _simplify_roadmap_entities(self, entities: List[Dict]) -> List[Dict]:
+        """简化 roadmap 实体，移除关联的 epics, stories 和 tasks"""
+        simplified_entities = []
+        for entity in entities:
+            # 创建一个新的字典，只包含基本字段
+            simplified_entity = {
+                "id": entity.get("id", ""),
+                "title": entity.get("title", ""),
+                "description": entity.get("description", ""),
+                "version": entity.get("version", ""),
+                "status": entity.get("status", ""),
+                "tags": entity.get("tags", []),
+                "created_at": entity.get("created_at", ""),
+                "updated_at": entity.get("updated_at", ""),
+                "epics_count": len(entity.get("epics", [])),
+                "milestones_count": len(entity.get("milestones", [])),
+            }
+            simplified_entities.append(simplified_entity)
+        return simplified_entities
+
     def _format_and_display_entities(self, entities: List[Dict], entity_type: str, output_format: str) -> int:
         """格式化并显示实体列表"""
         if not entities:
             console.print(f"[yellow]未找到 {entity_type} 类型的条目[/yellow]")
             return 0
 
+        # 对于 roadmap 类型，简化输出，不包含所有关联的 tasks
+        if entity_type == "roadmap":
+            entities = self._simplify_roadmap_entities(entities)
+
         if output_format == "json":
+            # 对于 JSON 格式，直接输出简化后的实体列表
             print(json.dumps(entities, indent=2, ensure_ascii=False))
-        elif output_format == "yaml":
-            print(yaml.dump(entities, allow_unicode=True, sort_keys=False))
         else:
-            display_method = getattr(self, f"_display_{entity_type}_table", self._display_generic_table)
-            display_method(entities, entity_type)
+            # 默认使用 YAML 格式，直接输出简化后的实体列表
+            print(yaml.dump(entities, allow_unicode=True, sort_keys=False))
 
         return 0
 
@@ -211,6 +238,32 @@ class ListHandler(ClickBaseHandler):
 
         console.print(table)
 
+    def _display_roadmap_table(self, roadmaps: List[Dict], _: str) -> None:
+        """显示路线图表格"""
+        table = Table(title="路线图列表")
+        table.add_column("ID", style="cyan")
+        table.add_column("标题")
+        table.add_column("状态", style="green")
+        table.add_column("版本")
+        table.add_column("Epics数量")
+        table.add_column("里程碑数量")
+        table.add_column("创建时间")
+        table.add_column("更新时间")
+
+        for roadmap in roadmaps:
+            table.add_row(
+                str(roadmap.get("id", "")),
+                str(roadmap.get("title", "")),
+                str(roadmap.get("status", "")),
+                str(roadmap.get("version", "")),
+                str(roadmap.get("epics_count", 0)),
+                str(roadmap.get("milestones_count", 0)),
+                str(roadmap.get("created_at", "")),
+                str(roadmap.get("updated_at", "")),
+            )
+
+        console.print(table)
+
     def _display_generic_table(self, entities: List[Dict], entity_type: str) -> None:
         """显示通用表格"""
         table = Table(title=f"{entity_type} 列表")
@@ -249,9 +302,8 @@ class ListHandler(ClickBaseHandler):
 @click.command(name="list", help="列出数据库内容")
 @click.option("--type", required=False, help="要列出的实体类型 (如 epic, story, task 等)，不指定则列出所有可用类型")
 @click.option("--verbose", is_flag=True, help="显示详细信息")
-@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="table", help="输出格式")
 @pass_service(service_type="db")
-def list_db_cli(service, type: Optional[str] = None, verbose: bool = False, format: str = "table") -> None:
+def list_db_cli(service, type: Optional[str] = None, verbose: bool = False) -> None:
     """
     列出数据库内容命令
 
@@ -259,15 +311,13 @@ def list_db_cli(service, type: Optional[str] = None, verbose: bool = False, form
         service: 数据库服务实例
         type: 实体类型，不指定则列出所有可用类型
         verbose: 是否显示详细信息
-        format: 输出格式
     """
     handler = ListHandler()
     session = None
     exit_code = 0
     try:
-        # --- Basic format validation ---
-        if format not in handler.VALID_FORMATS:
-            raise ValidationError(f"不支持的输出格式: {format}")
+        # 始终使用YAML格式
+        format = "yaml"
 
         session = get_session()
 
@@ -306,8 +356,13 @@ def list_db_cli(service, type: Optional[str] = None, verbose: bool = False, form
                     # --- Get Entities (using session and correct entity type) ---
                     if verbose:
                         console.print(f"列出所有 {final_entity_type}")
-                    # Use positional arguments for service.get_entities
-                    entities = service.get_entities(session, final_entity_type)
+
+                    # 对于 roadmap 类型，使用简化方法获取实体
+                    if final_entity_type == "roadmap":
+                        entities = service.get_entities_simplified(session, final_entity_type)
+                    else:
+                        # 对于其他类型，使用普通方法获取实体
+                        entities = service.get_entities(session, final_entity_type)
             else:
                 # Should not happen if service is initialized correctly
                 logger.error("DatabaseService 未正确初始化 repo_map")
@@ -344,3 +399,42 @@ def list_db_cli(service, type: Optional[str] = None, verbose: bool = False, form
         # if exit_code != 0:
         #    ctx = click.get_current_context()
         #    ctx.exit(exit_code)
+
+
+def handle_db_list(entity_type: str, verbose: bool):
+    """处理数据库列出实体的命令
+
+    Args:
+        entity_type (str): 要列出的实体类型
+        verbose (bool): 是否显示详细日志
+    """
+    if verbose:
+        click.echo(f"正在列出 '{entity_type}' 类型的实体...")
+
+    try:
+        # 创建数据库服务实例
+        db_service = DatabaseService(verbose=verbose)
+
+        with db_service.get_session() as session:
+            # 对于 roadmap 类型，使用简化方法获取实体
+            if entity_type == "roadmap":
+                entities = db_service.get_entities_simplified(session, entity_type)
+            else:
+                entities = db_service.get_entities(session, entity_type)
+
+        if not entities:
+            click.echo(f"未找到类型为 '{entity_type}' 的实体。")
+            return
+
+        # 始终使用YAML格式输出
+        print(yaml.dump(entities, allow_unicode=True, sort_keys=False))
+
+    except ValueError as e:
+        # 处理未知的实体类型错误
+        click.echo(click.style(f"❌ 错误: {e}", fg="red"))
+    except Exception as e:
+        error_msg = f"列出实体时出错: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        click.echo(click.style(f"❌ {error_msg}", fg="red"))
+        if verbose:
+            click.echo(f"详细错误: {e}")

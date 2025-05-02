@@ -1,0 +1,205 @@
+metadata:
+  title: VibeCopilot 工作流系统重构
+  description: 按照 workflow-refactor.md（或 PRD）中定义的目标架构，对工作流系统进行数据库结构规范化和代码重构，以提高系统的健壮性、可维护性和可扩展性，使其成为Agent高效利用的后端工具。
+  version: '1.1'
+  last_updated: '2025-05-01'
+epics:
+  - title: 阶段一：简化 CLI 入口 (聚焦 vc guide show)
+    description: 清理废弃的 CLI 命令，将 vc guide 命令精简为只显示当前任务指南的单一入口，移除所有本地复杂解析。
+    status: todo
+    stories:
+      - title: 移除 flow_session 命令
+        description: 删除过时且不符合新架构的 flow_session 命令入口。
+        status: todo
+        tasks:
+          - title: 移除 flow_session CLI 命令及相关验证。
+            description: |
+              完成以下步骤：
+              1. 打开文件 `src/cli/cli.py`。
+              2. 找到并删除使用 `@cli.command("flow_session")` 装饰器的函数及其下方代码块。
+              3. 确认代码库中没有其他关键部分直接依赖于调用这个特定的 `flow_session` 函数。
+              4. **无需**删除 `src/db` 中与 Session 相关的数据结构或代码，它们被保留用于其他目的。
+              5. **验证：** 在命令行运行 `vibecopilot --help` 和 `vibecopilot flow_session`，确认 `flow_session` 命令不再出现或提示不存在。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+      - title: 重构 vc guide 命令为简单的 show 功能
+        description: 将 vc guide 命令的行为固定为显示当前任务的指南，不再接受复杂的参数或子命令，仅支持显示当前任务指南。
+        status: todo
+        tasks:
+          - title: 修改 vc guide CLI 命令处理函数并更新帮助文本。
+            description: |
+              完成以下步骤：
+              1. 打开文件 `src/cli/cli.py`。
+              2. 找到使用 `@cli.command("guide")` 装饰器的函数。
+              3. 修改此函数，使其不接受任何必须的位置参数或复杂的子命令逻辑。用户输入 `vibecopilot guide` 就应直接触发显示指南的行为。
+              4. 更新 `guide` 命令的帮助文本，清晰说明其唯一功能是显示当前任务的指南。
+              5. 此函数后续将调用获取和格式化指南数据的逻辑（在阶段三实现），当前仅需确保其结构精简。
+              6. **验证：** 在命令行运行 `vibecopilot guide`，不带任何额外参数。确认命令能够执行（即使初始输出可能为空或错误，因为依赖的后端逻辑尚未完全实现），且不因缺少参数而报错。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+      - title: 删除所有本地复杂解析和规则执行代码
+        description: 移除系统内部进行自然语言理解、意图判断或复杂规则执行的任何代码，将此职责完全交给 Agent。
+        status: todo
+        tasks:
+          - title: 识别并移除本地复杂解析和规则执行逻辑。
+            description: |
+              完成以下步骤：
+              1. 仔细审查 `src/cli`、`src/guide`、`src/rule_engine` 以及任何其他可能包含此类逻辑的模块。
+              2. 识别并删除使用 NLP 库（如 NLTK, spaCy - 如果有的话）的代码，或任何尝试解析复杂句子结构、进行意图分类、或解释并执行业务规则的代码。
+              3. `src/rule_engine` 模块应只负责加载、存储和提供规则定义，不应包含规则匹配或执行引擎。如果包含，移除执行部分。
+              4. **保留** `src/parsing` 模块，因为它用于生成文本摘要，这是需要的辅助功能。
+              5. **验证：** 代码审查确认移除，且系统核心流程不依赖于这些被移除的复杂解析能力。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+      - title: 确认 vc task comment 命令的简洁性
+        description: 确保 vc task comment 仅将用户输入的文本作为评论添加到当前任务，不进行本地解析。
+        status: todo
+        tasks:
+          - title: 审查并确认 vc task comment 命令的处理逻辑简洁。
+            description: |
+              完成以下步骤：
+              1. 打开文件 `src/cli/cli.py`。
+              2. 找到使用 `@cli.command("task")` 装饰器的函数，并检查其处理 `comment` 子命令的部分。
+              3. 确认 `comment` 子命令接受一个 `--prompt` 参数。
+              4. 确认用户通过 `--prompt` 输入的文本被直接传递给后续处理逻辑，**没有**进行本地解析、意图判断或任何复杂处理。
+              5. **验证：** 通过代码审查确认逻辑的简洁性。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+  - title: 阶段二：数据库结构规范化与 Guide 数据结构
+    description: 对工作流系统进行数据库结构规范化，并设计核心数据访问 API，特别是针对 Task Guide 的存储和访问。
+    status: todo
+    stories:
+      - title: 数据库结构规范化
+        description: 规范化数据库 schema，移除冗余或不符合设计原则的结构，聚焦支持 Task 和 Guide 数据存储。
+        status: todo
+        tasks:
+          - title: 设计并实现规范化的数据库 schema。
+            description: |
+              完成以下步骤：
+              1. 分析现有数据库 schema 定义 (`src/db`)。
+              2. 设计符合规范化原则的数据库 schema，重点关注如何高效、清晰地存储 Task Guide 及其关联信息（步骤、Rules 引用、Memory 引用、评论）。
+              3. 修改 `src/db` 中的模型定义和数据库初始化代码，实现新的 schema。
+              4. **验证：** 通过数据库工具或代码检查，确认新的表结构和字段符合设计。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+      - title: 设计和实现 Task Guide 数据模型与存储
+        description: 定义 Task Guide 的数据结构（包含 Steps, Rules, Memory links, Comments）并在数据库中实现存储。
+        status: todo
+        tasks:
+          - title: 定义 Task Guide 数据模型并在数据库中实现持久化。
+            description: |
+              完成以下步骤：
+              1. 在代码中定义 Task Guide 的数据模型，包括其核心组件（分步指南、关联的 Rule ID 列表、关联的 Memory Permalink 列表、评论列表等）以及与 Task 的关联关系。
+              2. 使用 ORM 或适当的数据库访问方法，实现 Task Guide 数据模型在数据库中的创建、读取和基本更新（如添加评论）的持久化逻辑。
+              3. **验证：** 编写简单的测试代码，验证 Task Guide 对象的创建和存储，以及能否正确读取。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+      - title: 设计和实现核心数据访问 API
+        description: 提供标准的 Python API 接口用于获取和存储 Task Guide 数据。
+        status: todo
+        tasks:
+          - title: 设计并实现 Task Guide 数据访问层 API。
+            description: |
+              完成以下步骤：
+              1. 定义一套清晰的 Python 函数或类方法，作为 Task Guide 数据的访问接口。这些 API 应该抽象底层数据库实现细节。
+              2. 实现这些 API 方法，使其能够通过数据库访问层执行 Task Guide 的读取（特别是按 Task ID 获取当前指南）和更新（如追加评论）操作。
+              3. **验证：** 编写单元测试或简单的调用脚本，验证 API 接口的可用性和正确性。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+  - title: 阶段三：Rules 与 Memory 深度集成
+    description: 在 `vc guide` 命令中，根据指南结构获取并呈现 Rules 和 Memory 的详细内容。
+    status: todo
+    stories:
+      - title: 在 vc guide 中集成 Rules 详情呈现
+        description: 修改 `vc guide` 命令，使其能从指南结构中获取 Rules ID，并调用 `rule_engine` 获取详情进行呈现。
+        status: todo
+        tasks:
+          - title: 从 Task Guide 结构中提取 Rule IDs 并获取 Rule 详情，然后呈现。
+            description: |
+              完成以下步骤：
+              1. 修改加载 Task Guide 数据的逻辑，使其能够解析并获取指南中引用的所有 Rule ID 列表。
+              2. 实现或调用与 `src/rule_engine` 模块交互的逻辑，根据提取的 Rule ID 列表获取对应的 Rule 详细信息。假定 `src/rule_engine` 现在只提供数据获取功能。
+              3. 修改 `vc guide` 命令的输出格式化逻辑，将获取到的 Rule 详情清晰地包含在指南输出中，并与其关联的步骤对应。
+              4. **验证：** 创建一个包含 Rule 引用的测试 Task Guide，运行 `vc guide`，确认 Rule 详情正确显示。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+      - title: 在 vc guide 中集成 Memory 详情呈现
+        description: 修改 `vc guide` 命令，使其能从指南结构中获取 Memory Permalink，并调用 `memory` 获取详情进行呈现。
+        status: todo
+        tasks:
+          - title: 从 Task Guide 结构中提取 Memory Permalinks 并获取 Memory 详情，然后呈现。
+            description: |
+              完成以下步骤：
+              1. 修改加载 Task Guide 数据的逻辑，使其能够解析并获取指南中引用的所有 Memory Permalink 列表。
+              2. 实现或调用与 `src/memory` 模块交互的逻辑，根据提取的 Memory Permalink 列表获取对应的 Memory 条目详细内容。假定 `src/memory` 提供按 permalink 获取内容的功能。
+              3. 修改 `vc guide` 命令的输出格式化逻辑，将获取到的 Memory 条目详情清晰地包含在指南输出中，并与其关联的步骤对应。
+              4. **验证：** 创建一个包含 Memory 引用的测试 Task Guide，运行 `vc guide`，确认 Memory 详情正确显示。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+      - title: 优化 Task 指南整体呈现格式
+        description: 统一 Task 指南的整体呈现格式，确保 Rules 和 Memory 内容与步骤关联清晰。
+        status: todo
+        tasks:
+          - title: 设计并实现 Task 指南的最终输出格式。
+            description: |
+              完成以下步骤：
+              1. 设计一个用户友好、易于 Agent 解析的文本或结构化格式，用于呈现完整的 Task Guide。该格式应清晰地组织指南步骤、关联的 Rules 详情和关联的 Memory 内容。
+              2. 实现相应的格式化代码，将加载和获取到的 Task Guide、Rule 和 Memory 数据转化为设计的输出格式。
+              3. **验证：** 手动检查不同 Task Guide 的输出，确保格式清晰、信息完整且关联正确。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''
+  - title: 贯穿所有阶段的任务
+    description: 在整个重构过程中持续进行的任务，确保代码质量和可维护性。
+    status: todo
+    stories:
+      - title: 编写单元测试和集成测试
+        description: 为所有重构和新实现的核心逻辑编写自动化测试。
+        status: todo
+        tasks:
+          - title: 编写和运行自动化测试覆盖核心功能。
+            description: |
+              完成以下步骤：
+              1. 为 `src/cli` (vc guide 和 vc task comment 处理)、`src/guide` (加载和解析)、`src/rule_engine` (详情获取)、`src/memory` (详情获取/评论追加)、`src/parsing` (摘要生成) 和 `src/status` 模块编写单元测试。
+              2. 使用模拟对象 (mocks) 来隔离被测试模块，特别是模拟外部服务（如通过文件系统存储的 Rule Engine 数据和 Memory 数据）。
+              3. 编写集成测试，验证 `vc guide show` 命令的端到端流程（从获取当前任务 ID 到输出 YAML 指南，包括数据加载和格式化）的正确性。
+              4. **验证：** 配置和运行测试套件，确保所有单元测试和集成测试都能成功通过。
+            status: todo
+            priority: high
+            assignees: []
+            due_date: ''
+      - title: 更新和创建开发者文档
+        description: 反映重构后的代码结构、API以及开发流程，确保文档与代码同步。
+        status: todo
+        tasks:
+          - title: 更新或创建开发者文档。
+            description: |
+              完成以下步骤：
+              1. 更新 CLI 命令文档，说明 `vc guide` 和 `vc task comment` 的精简用法。
+              2. 创建新的文档，详细描述 Task Guide 的数据模型和用于访问这些数据的 Python API。
+              3. 审查并更新 `src/rule_engine`, `src/memory`, `src/parsing`, `src/status` 等关键模块的文档，反映它们在重构后的角色和接口。
+              4. 提供一份高层次的架构概述文档，解释重构后的系统结构、模块职责和数据流程。
+              5. **验证：** 确保文档清晰、准确，并与当前代码库状态一致。
+            status: todo
+            priority: medium
+            assignees: []
+            due_date: ''

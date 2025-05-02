@@ -66,9 +66,11 @@ def parse_github_url(url: str) -> Tuple[str, int]:
 @click.option("--status", "-s", help="任务状态")
 @click.option("--assignee", "-a", help="任务负责人")
 @click.option("--labels", "-l", multiple=True, help="设置新的标签列表")
+@click.option("--priority", "-p", type=click.Choice(["low", "medium", "high"]), help="任务优先级")
 @click.option("--due", "--due-date", help="截止日期 (格式: YYYY-MM-DD，设置为'clear'可清除截止日期)")
 @click.option("--link-github", "-g", help="关联的 GitHub Issue URL")
-@click.option("--link-story", "-s", help="关联的故事 ID")
+@click.option("--link-story", "-y", help="关联的故事 ID")
+@click.option("--ref", "--reference", "-r", help="关联参考文档路径")
 @click.option("--unlink", type=click.Choice(["story", "github"]), help="取消关联 (story 或 github)")
 @click.option("--current", is_flag=True, help="将此任务设置为当前活动任务")
 def update_task(
@@ -78,9 +80,11 @@ def update_task(
     status: Optional[str] = None,
     assignee: Optional[str] = None,
     labels: Optional[Tuple[str]] = None,
+    priority: Optional[str] = None,
     due: Optional[str] = None,
     link_github: Optional[str] = None,
     link_story: Optional[str] = None,
+    ref: Optional[str] = None,
     unlink: Optional[str] = None,
     current: bool = False,
 ) -> int:
@@ -105,7 +109,7 @@ def update_task(
     """
     try:
         # 检查是否提供了至少一个更新参数或 --current 标志
-        update_args = [title, desc, status, assignee, labels, due, link_github, link_story, unlink]
+        update_args = [title, desc, status, assignee, labels, priority, due, link_github, link_story, ref, unlink]
         if not any(arg is not None and arg != () for arg in update_args) and not current:
             console.print("[bold yellow]警告:[/bold yellow] 未提供任何需要更新的字段或设置当前任务。使用 --help 查看可用选项。")
             return 1
@@ -118,9 +122,11 @@ def update_task(
             status=status,
             assignee=assignee,
             labels=list(labels) if labels else None,
+            priority=priority,
             due_date=due,
             github_url=link_github,
             link_story=link_story,
+            ref_path=ref,
             unlink=unlink,
             set_current=current,
         )
@@ -150,9 +156,11 @@ def execute_update_task(
     status: Optional[str] = None,
     assignee: Optional[str] = None,
     labels: Optional[List[str]] = None,
+    priority: Optional[str] = None,
     due_date: Optional[str] = None,
     github_url: Optional[str] = None,
     link_story: Optional[str] = None,
+    ref_path: Optional[str] = None,
     unlink: Optional[str] = None,
     set_current: bool = False,
 ) -> Dict[str, Any]:
@@ -220,6 +228,9 @@ def execute_update_task(
     if labels is not None:
         log_updates["标签"] = ", ".join(labels)
         update_data["labels"] = labels
+    if priority is not None:
+        log_updates["优先级"] = priority
+        update_data["priority"] = priority
     if due_date is not None:
         log_updates["截止日期"] = due_date
         update_data["due_date"] = None if due_date.lower() == "clear" else due_date
@@ -237,6 +248,9 @@ def execute_update_task(
     if link_story is not None:
         log_updates["关联故事"] = link_story
         update_data["story_id"] = link_story
+
+    if ref_path is not None:
+        log_updates["参考文档"] = ref_path
     if unlink == "story":
         log_updates["取消关联故事"] = True
         update_data["story_id"] = None
@@ -278,6 +292,37 @@ def execute_update_task(
                     task_updated_successfully = True
                     results["data"] = updated_task_dict
                     logger.info(f"任务 {effective_task_id} 更新成功")
+
+                    # 处理参考文档
+                    if ref_path:
+                        try:
+                            from pathlib import Path
+
+                            ref_file = Path(ref_path)
+                            if not ref_file.is_file():
+                                results["warnings"].append(f"参考文件未找到: {ref_path}")
+                            else:
+                                content = ref_file.read_text(encoding="utf-8")
+                                task_title = updated_task_dict.get("title", "未知任务")
+                                note_title = f"Task Ref: {task_title} - {ref_file.name}"
+                                tags_str = f"task:{effective_task_id},type:reference"
+
+                                mem_success, mem_msg, mem_data = memory_service.create_note(
+                                    content=content, title=note_title, folder="task_references", tags=tags_str
+                                )
+
+                                if mem_success:
+                                    logger.info(f"成功存储参考文档到Memory: {ref_path}")
+                                    results["data"]["reference"] = {"path": ref_path, "memory_id": mem_data.get("id")}
+                                    if hasattr(task_service, "log_task_activity") and callable(getattr(task_service, "log_task_activity")):
+                                        task_service.log_task_activity(
+                                            session, effective_task_id, "添加参考文档", details={"path": ref_path, "memory_id": mem_data.get("id")}
+                                        )
+                                else:
+                                    results["warnings"].append(f"存储参考文档到Memory失败: {mem_msg}")
+                        except Exception as e:
+                            logger.error(f"处理参考文档时出错: {e}", exc_info=True)
+                            results["warnings"].append(f"处理参考文档时出错: {e}")
                 else:
                     raise Exception(f"TaskService.update_task 未能成功更新任务 {effective_task_id}")
             elif not set_current:

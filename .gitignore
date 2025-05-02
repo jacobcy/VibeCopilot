@@ -106,6 +106,7 @@ dist/
 build/
 *.tar.gz
 *.zip
+repomix
 
 # Local certificates
 *.pem

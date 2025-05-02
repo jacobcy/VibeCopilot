@@ -55,7 +55,6 @@ COMMAND_HELP: Dict[str, Dict] = {
             "delete": "删除路线图",
             "sync": "同步路线图",
             "switch": "切换路线图",
-            "status": "查看状态",
         },
         "example": "/roadmap show",
     },

@@ -109,6 +109,9 @@ class TaskService:
             if github_issue:
                 data["github_issue_number"] = github_issue.get("number")
 
+            # 添加默认工作流
+            data["workflow_id"] = "wf_universal_task"
+
             # 调用仓库的 create 方法
             task_orm = self._task_repo.create(session=session, **data)  # 调用基类 create 方法
 
@@ -285,6 +288,22 @@ class TaskService:
             logger.error("TaskSessionService not initialized in TaskService")
             return None
         return self._session_service.link_to_flow_session(task_id, flow_type, session_id)
+
+    def link_to_workflow(self, session: Session, task_id: str, workflow_id: str) -> Optional[Dict[str, Any]]:
+        """直接关联任务到工作流（不创建会话）
+
+        Args:
+            session: 数据库会话
+            task_id: 任务ID
+            workflow_id: 工作流ID或名称
+
+        Returns:
+            关联的工作流信息，失败返回None
+        """
+        if not self._session_service:
+            logger.error("TaskSessionService not initialized in TaskService")
+            return None
+        return self._session_service.link_to_workflow(task_id, workflow_id)
 
     def create_task_with_flow(self, session: Session, task_data: Dict[str, Any], workflow_id: str) -> Optional[Dict[str, Any]]:
         """创建任务并自动关联工作流会话"""

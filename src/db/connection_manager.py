@@ -214,3 +214,31 @@ def get_session_factory():
 def ensure_tables_exist(force_recreate=False) -> bool:
     """确保所有表存在"""
     return connection_manager.ensure_tables_exist(force_recreate)
+
+
+def get_db_path() -> str:
+    """获取数据库文件路径
+
+    Returns:
+        str: 数据库文件的绝对路径
+
+    Raises:
+        ValueError: 如果数据库URL不是SQLite或无法解析
+    """
+    config_manager = get_config()
+    database_url = config_manager.get("database.url")
+
+    if not database_url:
+        raise ValueError("Database URL not found in configuration.")
+
+    if not database_url.startswith("sqlite:///"):
+        raise ValueError("Only SQLite databases are supported for this operation.")
+
+    db_path = database_url[len("sqlite:///") :]
+
+    # 确保是绝对路径
+    if not os.path.isabs(db_path):
+        project_root = config_manager.get("paths.project_root", os.getcwd())
+        db_path = os.path.abspath(os.path.join(project_root, db_path))
+
+    return db_path

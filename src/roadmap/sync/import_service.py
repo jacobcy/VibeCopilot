@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import yaml
 
+from src.db.session import session_scope
 from src.parsing.processors.roadmap_processor import RoadmapProcessor
 from src.utils.file_utils import get_data_path
 from src.validation.roadmap_validation import RoadmapValidator
@@ -89,78 +90,79 @@ class RoadmapImportService:
             return {"success": False, "error": error_msg}
 
         try:
-            # 步骤1: 解析并验证 YAML 文件
-            yaml_data = await self._parse_and_validate_yaml(file_path, verbose)
-            if yaml_data is None:
-                return {"success": False, "error": f"无法解析或验证YAML文件: {file_path}"}
+            with session_scope() as session:
+                # 步骤1: 解析并验证 YAML 文件
+                yaml_data = await self._parse_and_validate_yaml(file_path, verbose)
+                if yaml_data is None:
+                    return {"success": False, "error": f"无法解析或验证YAML文件: {file_path}"}
 
-            # source_file is now just file_path
-            source_file = file_path
+                # source_file is now just file_path
+                source_file = file_path
 
-            # 初始化导入器
-            stop_on_error = not verbose
-            roadmap_importer = RoadmapImporter(self.service, verbose, stop_on_error)
-            milestone_importer = MilestoneImporter(self.service, verbose, stop_on_error)
-            epic_importer = EpicImporter(self.service, verbose, stop_on_error)
-            task_importer = TaskImporter(self.service, verbose, stop_on_error)
+                # 初始化导入器
+                stop_on_error = not verbose
+                roadmap_importer = RoadmapImporter(self.service, verbose, stop_on_error)
+                milestone_importer = MilestoneImporter(self.service, verbose, stop_on_error)
+                epic_importer = EpicImporter(self.service, verbose, stop_on_error)
+                task_importer = TaskImporter(self.service, verbose, stop_on_error)
 
-            # 获取或创建路线图ID
-            roadmap_id = roadmap_importer.get_or_create_roadmap(yaml_data, source_file)
-            if not roadmap_id:
-                return {"success": False, "error": "无法获取或创建路线图ID"}
+                # 获取或创建路线图ID
+                roadmap_id = roadmap_importer.get_or_create_roadmap(yaml_data, source_file)
+                if not roadmap_id:
+                    return {"success": False, "error": "无法获取或创建路线图ID"}
 
-            # 确保路线图存在
-            roadmap = self.service.get_roadmap(roadmap_id)
-            if not roadmap:
-                error_msg = f"路线图不存在: {roadmap_id}"
-                logger.error(error_msg)
-                print_error(error_msg)
-                return {"success": False, "error": error_msg}
+                # 确保路线图存在
+                roadmap = self.service.get_roadmap(roadmap_id)
+                if not roadmap:
+                    error_msg = f"路线图不存在: {roadmap_id}"
+                    logger.error(error_msg)
+                    print_error(error_msg)
+                    return {"success": False, "error": error_msg}
 
-            # 用于跟踪导入状态
-            import_stats = {
-                "milestones": {"success": 0, "failed": 0},
-                "epics": {"success": 0, "failed": 0},
-                "stories": {"success": 0, "failed": 0},
-                "tasks": {"success": 0, "failed": 0},
-            }
+                # 用于跟踪导入状态
+                import_stats = {
+                    "milestones": {"success": 0, "failed": 0},
+                    "epics": {"success": 0, "failed": 0},
+                    "stories": {"success": 0, "failed": 0},
+                    "tasks": {"success": 0, "failed": 0},
+                }
 
-            # 优先导入Epic结构
-            if "epics" in yaml_data:
-                logger.info(f"检测到Epic结构，优先导入Epic-Story-Task")
-                if verbose:
-                    logger.debug(f"检测到Epic结构，优先导入Epic-Story-Task")
-                epic_importer.import_epics(yaml_data, roadmap_id, import_stats)
+                # 优先导入Epic结构
+                if "epics" in yaml_data:
+                    logger.info(f"检测到Epic结构，优先导入Epic-Story-Task")
+                    if verbose:
+                        logger.debug(f"检测到Epic结构，优先导入Epic-Story-Task")
+                    epic_importer.import_epics(yaml_data, roadmap_id, import_stats)
 
-            # 导入里程碑（如果有）
-            elif "milestones" in yaml_data:
-                logger.info(f"检测到Milestone结构，导入Milestone-Task")
-                if verbose:
-                    logger.debug(f"检测到Milestone结构，导入Milestone-Task")
-                milestone_importer.import_milestones(yaml_data, roadmap_id, import_stats)
+                # 导入里程碑（如果有）
+                elif "milestones" in yaml_data:
+                    logger.info(f"检测到Milestone结构，导入Milestone-Task")
+                    if verbose:
+                        logger.debug(f"检测到Milestone结构，导入Milestone-Task")
+                    milestone_importer.import_milestones(yaml_data, roadmap_id, import_stats)
 
-                # 导入根级任务 - 如果存在，关联到里程碑
-                if "tasks" in yaml_data:
-                    # 找到第一个里程碑作为默认关联对象
-                    milestone_id = None
-                    milestones = self.service.get_milestones(roadmap_id)
-                    if milestones:
-                        milestone_id = milestones[0].get("id")
+                    # 导入根级任务 - 如果存在，关联到里程碑
+                    if "tasks" in yaml_data:
+                        # 找到第一个里程碑作为默认关联对象
+                        milestone_id = None
+                        milestones = self.service.get_milestones(roadmap_id)
+                        if milestones:
+                            milestone_id = milestones[0].get("id")
 
-                    # 导入任务，关联到找到的里程碑
-                    task_importer.import_tasks(yaml_data["tasks"], milestone_id, roadmap_id, import_stats)
+                        # 导入任务，关联到找到的里程碑
+                        task_importer.import_tasks(yaml_data["tasks"], milestone_id, roadmap_id, import_stats)
 
-            # 仅有根级任务
-            elif "tasks" in yaml_data:
-                logger.info(f"仅检测到根级任务，直接导入Task")
-                if verbose:
-                    logger.debug(f"仅检测到根级任务，直接导入Task")
-                task_importer.import_tasks(yaml_data["tasks"], None, roadmap_id, import_stats)
+                # 仅有根级任务
+                elif "tasks" in yaml_data:
+                    logger.info(f"仅检测到根级任务，直接导入Task")
+                    if verbose:
+                        logger.debug(f"仅检测到根级任务，直接导入Task")
+                    task_importer.import_tasks(yaml_data["tasks"], None, roadmap_id, import_stats)
 
-            # 生成导入结果
-            result = self._generate_import_result(file_path, roadmap_id, import_stats, verbose)
+                # 生成导入结果
+                result = self._generate_import_result(file_path, roadmap_id, import_stats, verbose)
 
-            return result
+                return result
 
         except Exception as e:
             error_msg = f"从YAML导入路线图失败"

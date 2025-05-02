@@ -17,6 +17,24 @@ from src.core.config.models import ConfigEnvironment, ConfigError, ConfigValue
 logger = logging.getLogger(__name__)
 
 
+def get_app_dir() -> Path:
+    """获取应用根目录
+
+    Returns:
+        Path: 应用根目录路径
+    """
+    # 默认使用当前工作目录作为应用根目录
+    app_dir = os.environ.get("VIBECOPILOT_APP_DIR")
+    if app_dir:
+        return Path(app_dir)
+
+    # 如果没有设置环境变量，使用当前目录的父目录
+    # 假设src目录位于项目根目录下
+    current_file = Path(__file__)
+    # 从 /path/to/src/core/config/manager.py 到 /path/to
+    return current_file.parent.parent.parent.parent
+
+
 class ConfigManager:
     """配置管理器"""
 

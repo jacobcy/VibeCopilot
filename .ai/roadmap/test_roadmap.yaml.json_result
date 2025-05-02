@@ -1,6 +1,0 @@
-{
-  "success": false,
-  "error": "强制LLM解析失败: '\\n  \"metadata\"'",
-  "content_type": "roadmap",
-  "content_preview": "metadata:\n  title: 测试路线图\n  description: 这是一个用于测试LLM解析的路线图\n  version: \"1.0\"\n  last_updated: \"2024-05-..."
-}

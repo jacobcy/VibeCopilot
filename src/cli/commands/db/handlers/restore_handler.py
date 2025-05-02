@@ -14,8 +14,7 @@ import click
 from rich.console import Console
 
 from src.cli.core.decorators import pass_service
-from src.core.config import get_config
-from src.utils.file_utils import ensure_directory_exists
+from src.db.connection_manager import get_db_path
 
 from .base_handler import ClickBaseHandler
 from .exceptions import DatabaseError, ValidationError
@@ -65,27 +64,9 @@ class RestoreHandler(ClickBaseHandler):
 
         return True
 
-    def _get_db_path_from_config(self) -> str:
-        """从配置中获取并验证数据库文件路径 (仅限SQLite)"""
-        config_manager = get_config()
-        database_url = config_manager.get("database.url")
-        if not database_url:
-            raise ValueError("Database URL not found in configuration.")
-
-        if not database_url.startswith("sqlite:///"):
-            raise ValueError("Database restore currently only supports SQLite databases.")
-
-        db_path = database_url[len("sqlite:///") :]
-        if not os.path.isabs(db_path):
-            project_root = config_manager.get("paths.project_root", os.getcwd())
-            db_path = os.path.abspath(os.path.join(project_root, db_path))
-
-        # 确保目录存在，以防文件还未创建
-        db_dir = os.path.dirname(db_path)
-        if db_dir:
-            ensure_directory_exists(db_dir)
-
-        return db_path
+    def _get_db_path(self) -> str:
+        """获取数据库文件路径"""
+        return get_db_path()
 
     def handle(self, **kwargs: Dict[str, Any]) -> int:
         """
@@ -106,8 +87,7 @@ class RestoreHandler(ClickBaseHandler):
 
         try:
             # 获取数据库文件路径
-            # db_path = get_db_path()
-            db_path = self._get_db_path_from_config()
+            db_path = self._get_db_path()
 
             # 检查当前数据库文件
             if os.path.exists(db_path) and not force:
@@ -170,7 +150,8 @@ def restore_db(service, backup_path: str, force: bool, verbose: bool):
     """
     handler = RestoreHandler()
     try:
-        result = handler.execute(service=service, backup_path=backup_path, force=force, verbose=verbose)
+        params: Dict[str, Any] = {"backup_path": backup_path, "force": force, "verbose": verbose}
+        result = handler.execute(service=service, **params)
         return result
     except Exception:
         return 1

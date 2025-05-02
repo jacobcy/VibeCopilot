@@ -39,7 +39,12 @@ class ServiceFactory:
             if service_type == "roadmap":
                 from src.roadmap import RoadmapService
 
-                self._services[service_type] = RoadmapService()
+                # 过滤掉verbose参数，只传递config参数(如果存在)
+                service_kwargs = {}
+                if "config" in kwargs:
+                    service_kwargs["config"] = kwargs["config"]
+
+                self._services[service_type] = RoadmapService(**service_kwargs)
             elif service_type == "task":
                 from src.db import ensure_tables_exist
                 from src.services.task import TaskService
@@ -62,6 +67,10 @@ class ServiceFactory:
                 from src.memory.services.note_service import NoteService
 
                 self._services[service_type] = NoteService(**kwargs)
+            elif service_type == "db":
+                from src.db import DatabaseService
+
+                self._services[service_type] = DatabaseService(**kwargs)
             else:
                 raise ValueError(f"未知的服务类型: {service_type}")
 

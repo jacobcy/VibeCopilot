@@ -237,3 +237,18 @@ class Repository(Generic[T]):
                 query = query.filter(getattr(self.model_class, attr) == value)
 
         return query.all()
+
+    def count(self, session: Session) -> int:
+        """计算符合条件的记录数量
+
+        Args:
+            session: SQLAlchemy 会话对象
+
+        Returns:
+            int: 记录数量
+        """
+        try:
+            return session.query(self.model_class).count()
+        except Exception as e:
+            logger.error(f"计算 {self.model_class.__name__} 数量失败: {e}", exc_info=True)
+            return 0

@@ -22,7 +22,7 @@ class RoadmapImporter(BaseImporter):
 
     def get_or_create_roadmap(self, yaml_data: Dict[str, Any], file_path: Optional[str] = None) -> str:
         """
-        从YAML数据中获取或创建路线图，返回路线图ID
+        从YAML数据中获取或创建路线图，返回路线图ID (在单个Session中完成)
 
         Args:
             yaml_data: 路线图YAML数据
@@ -34,23 +34,38 @@ class RoadmapImporter(BaseImporter):
         # 提取路线图元数据
         roadmap_name, roadmap_description, roadmap_version = self._extract_roadmap_metadata(yaml_data, file_path)
 
-        # 查找现有路线图
-        roadmap_data = self._find_existing_roadmap(None, roadmap_name)
-        if roadmap_data:
-            roadmap_id = roadmap_data.get("id")
-            if roadmap_id:
-                logger.info(f"找到现有路线图: {roadmap_name}, ID: {roadmap_id}")
+        with session_scope() as session:
+            try:
+                # 查找现有路线图 (使用当前session)
+                roadmap_obj = self.service.roadmap_repo.get_by_name(session, roadmap_name)
+                if roadmap_obj:
+                    roadmap_id = roadmap_obj.id
+                    logger.info(f"找到现有路线图: {roadmap_name}, ID: {roadmap_id}")
+                    return roadmap_id
+
+                # 创建新路线图 (使用当前session)
+                logger.info(f"创建新路线图: {roadmap_name}")
+                roadmap_data = {
+                    "title": roadmap_name,
+                    "description": roadmap_description,
+                    "version": roadmap_version,
+                    "status": "active",
+                }
+                new_roadmap_obj = self.service.roadmap_repo.create(session, **roadmap_data)
+
+                if not new_roadmap_obj or not hasattr(new_roadmap_obj, "id"):
+                    self.log_error(f"创建路线图 '{roadmap_name}' 后未能获取有效对象或ID。")
+                    raise Exception(f"创建路线图失败: {roadmap_name}")
+
+                roadmap_id = new_roadmap_obj.id
+                logger.info(f"创建新路线图成功, ID: {roadmap_id}")
+                # Session 提交由 session_scope 处理
                 return roadmap_id
 
-        # 创建新路线图
-        logger.info(f"创建新路线图: {roadmap_name}")
-        roadmap_id = self._create_new_roadmap(roadmap_name, roadmap_description, roadmap_version)
-
-        if not roadmap_id:
-            raise Exception(f"创建路线图失败: {roadmap_name}")
-
-        logger.info(f"创建新路线图成功, ID: {roadmap_id}")
-        return roadmap_id
+            except Exception as e:
+                # session_scope 会处理回滚
+                self.log_error(f"获取或创建路线图时出错: {e}", show_traceback=True)
+                raise Exception(f"获取或创建路线图 '{roadmap_name}' 失败: {e}")
 
     def _extract_roadmap_metadata(self, yaml_data: Dict[str, Any], file_path: Optional[str] = None) -> tuple:
         """从YAML数据中提取路线图元数据"""
@@ -85,62 +100,15 @@ class RoadmapImporter(BaseImporter):
 
         return roadmap_name, roadmap_description, roadmap_version
 
-    def _find_existing_roadmap(self, identifier: Optional[str], name: Optional[str]) -> Optional[Dict[str, Any]]:
-        """
-        查找现有路线图，先按ID查找，再按名称(title)查找
+    # def _find_existing_roadmap(self, identifier: Optional[str], name: Optional[str]) -> Optional[Dict[str, Any]]:
+    #     """
+    #     查找现有路线图，先按ID查找，再按名称(title)查找 (已移入 get_or_create_roadmap)
+    #     ...
+    #     """
+    #     ...
+    #     return None
 
-        Args:
-            identifier: 路线图ID
-            name: 路线图标题 (title)
-
-        Returns:
-            Optional[Dict[str, Any]]: 找到的路线图数据字典或None
-        """
-        roadmap_obj: Optional[Any] = None
-
-        try:
-            with session_scope() as session:
-                if identifier:
-                    roadmap_dict = self.service.get_roadmap(identifier)
-                    if roadmap_dict:
-                        self.log_info(f"通过ID找到路线图: {identifier}")
-                        return roadmap_dict
-
-                if name:
-                    roadmap_obj = self.service.roadmap_repo.get_by_name(session, name)
-                    if roadmap_obj:
-                        self.log_info(f"发现标题匹配的路线图: {name}")
-                        return self.service._object_to_dict(roadmap_obj) if hasattr(self.service, "_object_to_dict") else {"id": roadmap_obj.id}
-        except Exception as e:
-            self.log_error(f"查找路线图时出错: {e}", show_traceback=True)
-
-        return None
-
-    def _create_new_roadmap(self, name: str, description: str, version: str) -> Optional[str]:
-        """创建新路线图并返回ID"""
-        roadmap_obj: Optional[Any] = None
-        try:
-            if self.verbose:
-                logger.debug(f"准备创建路线图: 标题={name}")
-
-            roadmap_data = {
-                "title": name,
-                "description": description,
-                "version": version,
-                "status": "active",
-            }
-
-            with session_scope() as session:
-                roadmap_obj = self.service.roadmap_repo.create(session, **roadmap_data)
-
-            if not roadmap_obj or not hasattr(roadmap_obj, "id"):
-                self.log_error(f"创建路线图 '{name}' 后未能获取有效对象或ID。")
-                return None
-
-            roadmap_id = roadmap_obj.id
-            self.log_info(f"创建路线图成功: {roadmap_id} ({name})")
-            return roadmap_id
-
-        except Exception as e:
-            self.log_error(f"创建路线图时出错: {e}", show_traceback=True)
-            return None
+    # def _create_new_roadmap(self, name: str, description: str, version: str) -> Optional[str]:
+    #     """创建新路线图并返回ID (已移入 get_or_create_roadmap)"""
+    #     ...
+    #     return None

@@ -36,7 +36,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
         content_type: str = "text",
         source: Optional[str] = None,
         sync_status: SyncStatus = SyncStatus.NOT_SYNCED,
-    ) -> MemoryItem:
+    ) -> Dict[str, Any]:
         """创建新的记忆项 (整合自 helpers.item_utils.create_memory_item)
 
         Args:
@@ -51,7 +51,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
             sync_status: 同步状态，默认未同步（注意：此参数保留但不直接使用，由模型表结构决定）
 
         Returns:
-            MemoryItem: 创建的记忆项
+            Dict[str, Any]: 包含ID和title的字典
         """
         # 生成内容摘要
         summary = ""
@@ -82,13 +82,41 @@ class MemoryItemRepository(Repository[MemoryItem]):
             "tags": tags,
             "permalink": permalink,
             "source": source,
+            # 显式添加模型中定义的默认值，确保类型正确
+            "is_deleted": False,
             "sync_status": sync_status.name if isinstance(sync_status, SyncStatus) else str(sync_status),
+            "entity_count": 0,
+            "relation_count": 0,
+            "observation_count": 0,
+            # created_at, updated_at, remote_updated_at, vector_updated_at 由数据库或模型处理
         }
+        # 移除 None 值，让数据库或模型处理 nullable 字段
+        data = {k: v for k, v in data.items() if v is not None}
+
         try:
-            # Pass data dictionary directly to the base create method
-            item = self.create(session, data)
+            # 手动创建 MemoryItem 对象，确保类型正确
+            item = MemoryItem(
+                title=data.get("title"),
+                summary=data.get("summary"),
+                content_type=data.get("content_type", "text"),
+                folder=data.get("folder", "Inbox"),
+                tags=data.get("tags"),
+                permalink=data.get("permalink"),
+                source=data.get("source"),
+                is_deleted=data.get("is_deleted", False),
+                sync_status=data.get("sync_status", "NOT_SYNCED"),
+                entity_count=data.get("entity_count", 0),
+                relation_count=data.get("relation_count", 0),
+                observation_count=data.get("observation_count", 0)
+                # 其他字段让 SQLAlchemy 处理默认值或 nullable
+            )
+            session.add(item)
+            session.flush()  # 确保对象获得 ID 并被添加到 session
+            session.refresh(item)  # 刷新对象状态，确保ID等属性已加载
+            # item = self.create(session, data) # 不再使用基类的 create
             logger.info(f"创建记忆项: {item.title} (文件夹: {folder})")
-            return item
+            # 返回字典而不是 ORM 对象，避免 DetachedInstanceError
+            return {"id": item.id, "title": item.title}  # 返回包含 ID 和 title 的字典
         except Exception as e:
             logger.error(f"创建记忆项失败: {str(e)}")
             # session.rollback() # Rollback is handled by the session context manager now
@@ -350,7 +378,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
                 }
                 item = self.create_item(session, **data)
                 is_new = True
-                logger.info(f"从远程创建记忆项: {item.title}")
+                logger.info(f"从远程创建记忆项: {item['title']}")
             else:
                 # 检查是否需要更新
                 remote_updated_at_str = note_data.get("updated_at")
@@ -398,7 +426,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
                         "is_deleted": False,  # 确保未删除
                     }
                     item = self.update_item(session, item.id, **update_data)
-                    logger.info(f"从远程更新/恢复记忆项: {item.title}")
+                    logger.info(f"从远程更新/恢复记忆项: {item['title']}")
 
             session.commit()  # 确保提交事务
             return item, is_new
@@ -428,7 +456,7 @@ class MemoryItemRepository(Repository[MemoryItem]):
         try:
             item = self.update_item(session, item_id, **update_data)
             if item:
-                logger.info(f"标记记忆项已同步: {item.title} (ID={item_id})")
+                logger.info(f"标记记忆项已同步: {item['title']} (ID={item_id})")
                 return True
             else:
                 logger.warning(f"标记同步状态失败: 未找到ID为{item_id}的活动记忆项")

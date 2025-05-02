@@ -29,8 +29,6 @@ console = Console()
 class ShowHandler(ClickBaseHandler):
     """数据库条目显示命令处理器"""
 
-    VALID_FORMATS = {"table", "json", "yaml"}
-
     def __init__(self):
         super().__init__()
 
@@ -39,7 +37,7 @@ class ShowHandler(ClickBaseHandler):
         验证显示命令参数
 
         Args:
-            **kwargs: 命令参数 (只需要 id 和 format)
+            **kwargs: 命令参数 (只需要 id)
 
         Returns:
             bool: 验证是否通过
@@ -48,7 +46,6 @@ class ShowHandler(ClickBaseHandler):
             ValidationError: 验证失败时抛出
         """
         entity_id = kwargs.get("id")
-        output_format = kwargs.get("format", "table")
 
         if not entity_id:
             raise ValidationError("实体ID不能为空")
@@ -60,17 +57,13 @@ class ShowHandler(ClickBaseHandler):
         except ValueError as e:
             raise ValidationError(f"无效的实体ID格式: {entity_id}. {str(e)}")
 
-        if output_format not in self.VALID_FORMATS:
-            raise ValidationError(f"不支持的输出格式: {output_format}")
-
         return True
 
     def handle(self, **kwargs: Dict[str, Any]) -> int:
         entity_id = kwargs.get("id")
-        output_format = kwargs.get("format", "table")
 
         try:
-            self.validate(id=entity_id, format=output_format)
+            self.validate(id=entity_id)
             entity_type_enum = IdGenerator.get_entity_type_from_id(entity_id)
             entity_type_str = entity_type_enum.name.lower()
 
@@ -106,7 +99,9 @@ class ShowHandler(ClickBaseHandler):
                 console.print(f"[yellow]未找到 {entity_type_str} 类型，ID为 {entity_id} 的条目[/yellow]")
                 return 1
 
-            return self._display_entity(entity_dict, entity_type_str, entity_id, output_format)
+            # 始终使用YAML格式输出
+            print(yaml.dump(entity_dict, allow_unicode=True, sort_keys=False))
+            return 0
 
         except ValidationError as e:
             logger.error(f"参数验证失败: {e}")
@@ -120,19 +115,6 @@ class ShowHandler(ClickBaseHandler):
             logger.error(f"处理显示命令时发生意外错误: {e}", exc_info=True)
             self.error_handler(e)
             return 1
-
-    def _display_entity(self, entity: Dict, entity_type: str, entity_id: str, output_format: str) -> int:
-        """显示实体详情"""
-        if output_format == "json":
-            print(json.dumps(entity, indent=2, ensure_ascii=False))
-        elif output_format == "yaml":
-            print(yaml.dump(entity, allow_unicode=True, sort_keys=False))
-        else:
-            console.print(f"[bold]{entity_type} (ID: {entity_id})[/bold]")
-            display_method = getattr(self, f"_display_{entity_type}_details", self._display_generic_details)
-            display_method(entity)
-
-        return 0
 
     def _display_task_details(self, task: Dict) -> None:
         """显示任务详情"""

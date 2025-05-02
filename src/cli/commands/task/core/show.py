@@ -53,14 +53,15 @@ def get_relative_path(path: str) -> str:
 @click.option("--log", "-l", is_flag=True, help="显示任务日志")
 @click.option("--ref", "-r", is_flag=True, help="显示参考资料")
 @click.option("--comments", "-c", is_flag=True, help="显示评论")
-def show(task_id: Optional[str], verbose: bool, format: str, log: bool, ref: bool, comments: bool) -> None:
+@click.option("--guide", "-g", is_flag=True, help="显示执行指南")
+def show(task_id: Optional[str], verbose: bool, format: str, log: bool, ref: bool, comments: bool, guide: bool) -> None:
     """显示任务详情
 
     如果未提供 TASK_ID，则显示当前活动任务。
-    可以通过选项控制输出格式、是否显示日志、参考资料和评论。
+    可以通过选项控制输出格式、是否显示日志、参考资料、评论和执行指南。
     """
     try:
-        result = execute_show_task(task_id, verbose, format, log, ref, comments)
+        result = execute_show_task(task_id, verbose, format, log, ref, comments, guide)
         if result["code"] != 0:
             raise click.ClickException(result["message"])
     except Exception as e:
@@ -75,6 +76,7 @@ def execute_show_task(
     log: bool = False,
     ref: bool = False,
     comments: bool = False,
+    guide: bool = False,
 ) -> Dict[str, Any]:
     """执行任务显示
 
@@ -85,6 +87,7 @@ def execute_show_task(
         log: 是否显示任务日志
         ref: 是否显示参考资料
         comments: 是否显示评论
+        guide: 是否显示执行指南
 
     Returns:
         包含操作结果的字典
@@ -138,16 +141,36 @@ def execute_show_task(
             if comments:
                 task_comments = task_service.get_task_comments(session, current_task_id)
 
+            # 获取任务关联的工作流执行指南
+            session_info = None
+            if guide and task.get("current_session_id"):
+                try:
+                    from src.flow_session.manager import FlowSessionManager
+
+                    session_manager = FlowSessionManager(session)
+                    session_obj = session_manager.get_session(task.get("current_session_id"))
+                    if session_obj:
+                        session_info = session_obj.to_dict()
+                except Exception as e:
+                    logger.warning(f"获取执行指南失败: {e}")
+
         # --- Process and display results outside the session ---
         if task:
-            # 调用格式化函数
-            output_content = format_task_output(task, format, verbose)
-
-            # 根据返回类型打印
+            output_content = format_task_output(task, format, verbose=True)
             if isinstance(output_content, Table):
+                output_content.title = f"[bold cyan]任务详情: {task.get('title', '无标题')}[/bold cyan]"
                 console.print(output_content)
-            else:  # 假设是字符串 (JSON/YAML)
-                console.print(output_content)
+            else:
+                console.print(f"[bold cyan]任务详情:[/bold cyan] \n{output_content}")
+
+            if "task_comments" in locals() and task_comments:
+                console.print("\n[bold underline cyan]评论:[/bold underline cyan]")
+                for comment in task_comments:
+                    console.print(
+                        f"[green]评论者:[/green] {comment.get('author', '匿名')} @ {comment.get('created_at', '未知时间')}\n{comment.get('content', '')}"
+                    )
+            elif "task_comments" in locals() and not task_comments:
+                console.print("\n[dim]无评论[/dim]")
 
             results["data"] = task
 
@@ -166,20 +189,70 @@ def execute_show_task(
                     results["status"] = "warning"
                     results["message"] += f" 显示参考时出错: {ref_result['message']}\n"
 
-            # Display comments
-            if comments:
-                if task_comments:
-                    console.print("\n[bold underline]评论:[/bold underline]")
-                    for comment in task_comments:
-                        comment_panel = Panel(
-                            Markdown(comment.get("content", "")),
-                            title=f"评论者: {comment.get('author', '匿名')} @ {comment.get('created_at', '未知时间')}",
-                            border_style="cyan",
-                            title_align="left",
-                        )
-                        console.print(comment_panel)
+            # Display execution guide
+            if guide:
+                console.print("\n[bold underline]执行指南:[/bold underline]")
+                if session_info:
+                    try:
+                        # Display basic workflow execution guide information
+                        console.print(f"[cyan]工作流:[/cyan] {session_info.get('workflow_name', '未知工作流')}")
+                        console.print(f"[cyan]指南名称:[/cyan] {session_info.get('name', '未命名指南')}")
+
+                        # Get execution guide context and steps
+                        from src.flow_session.core.session_context import get_context_for_session
+
+                        context = get_context_for_session(session, session_info.get("id"))
+
+                        if context:
+                            # Display stage information
+                            stage_id = context.get("current_stage")
+                            if stage_id:
+                                stage_info = context.get("stages", {}).get(stage_id, {})
+                                console.print(f"[cyan]当前阶段:[/cyan] {stage_info.get('name', stage_id)}")
+
+                                # Display stage description
+                                stage_description = stage_info.get("description")
+                                if stage_description:
+                                    console.print(Panel(Markdown(stage_description), title="阶段描述", border_style="green"))
+
+                                # Display checklist items
+                                checklist = stage_info.get("checklist", [])
+                                if checklist:
+                                    console.print("[cyan]阶段检查项:[/cyan]")
+                                    for item in checklist:
+                                        status = "[green]✓[/green]" if item.get("completed") else "[yellow]⧖[/yellow]"
+                                        console.print(f"  {status} {item.get('name', '未命名项')}")
+
+                            # Display task steps
+                            steps = context.get("steps", [])
+                            if steps:
+                                console.print("\n[cyan]执行步骤:[/cyan]")
+                                for i, step in enumerate(steps, 1):
+                                    console.print(f"  {i}. {step.get('name', '未命名步骤')}")
+
+                            # Display deliverables
+                            deliverables = context.get("deliverables", [])
+                            if deliverables:
+                                console.print("\n[cyan]交付物:[/cyan]")
+                                for i, deliverable in enumerate(deliverables, 1):
+                                    name = deliverable.get("name", "未命名交付物")
+                                    status = deliverable.get("status", "待完成")
+                                    console.print(f"  {i}. {name} - {status}")
+                        else:
+                            console.print("[yellow]执行指南正在生成中，请稍后查看...[/yellow]")
+                    except Exception as e:
+                        logger.warning(f"显示执行指南详情失败: {e}", exc_info=True)
+                        console.print("[yellow]显示执行指南详情失败，可能执行指南还未完全生成[/yellow]")
                 else:
-                    console.print("\n[dim]无评论[/dim]")
+                    # If there is no associated session but there is a workflow, prompt the user
+                    if task.get("workflow_id"):
+                        console.print("[yellow]此任务已关联工作流，但执行指南尚未创建[/yellow]")
+                        console.print(
+                            "提示: 可以通过 `vc task link " + str(current_task_id) + " --flow " + str(task.get("workflow_id")) + "` 重新关联工作流并生成执行指南"
+                        )
+                    else:
+                        console.print("[dim]此任务未关联工作流，无法显示执行指南[/dim]")
+                        console.print("提示: 可以通过 `vc task link " + str(current_task_id) + " --flow <工作流ID>` 关联工作流并生成执行指南")
 
             if results["status"] == "success":
                 results["message"] = f"成功显示任务 {current_task_id} 信息"

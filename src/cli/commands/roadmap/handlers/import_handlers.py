@@ -4,9 +4,8 @@
 处理路线图YAML文件的导入操作
 """
 
-import asyncio
 import os
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 
@@ -25,8 +24,8 @@ async def handle_import(
     Args:
         source: YAML文件路径
         service: RoadmapService实例
-        roadmap_id: 可选的路线图ID
-        fix: 是否自动修复格式问题
+        roadmap_id: 可选的路线图ID (不再使用，保留参数兼容性)
+        fix: 是否自动修复格式问题 (不再使用，保留参数兼容性)
         activate: 是否设为活动路线图
         verbose: 是否显示详细信息
 
@@ -42,24 +41,11 @@ async def handle_import(
             return {"success": False, "error": f"文件不存在: {source}"}
 
         # 验证文件
-        is_valid, warnings, errors = validator.validate_file(source)
+        _, warnings, errors = validator.validate_file(source)
 
-        # 如果有错误，显示并处理
+        # 如果有错误，显示并返回错误
         if errors:
-            if not fix:
-                return {"success": False, "error": "YAML验证失败", "messages": errors, "warnings": warnings}
-
-            # 指定修复后的输出文件路径
-            basename = os.path.basename(source)
-            name, ext = os.path.splitext(basename)
-            output_path = os.path.join(os.path.dirname(source), f"{name}_fixed{ext}")
-
-            # 使用服务进行修复
-            fix_result = await service.fix_yaml_file(source, output_path, verbose=verbose)
-            if not fix_result.get("success"):
-                return {"success": False, "error": f"无法自动修复: {fix_result.get('error')}"}
-
-            source = fix_result.get("fixed_path")
+            return {"success": False, "error": "YAML验证失败", "messages": errors, "warnings": warnings}
 
         # 2. 导入路线图
         result = await service.import_from_yaml(source, roadmap_id, verbose=verbose)
@@ -82,9 +68,10 @@ async def handle_import(
             return {"success": False, "error": "导入成功但未返回路线图ID", "warnings": warnings if warnings else []}
 
         # 添加字段类型警告（如果有）
-        if result.get("field_warnings"):
+        field_warnings = result.get("field_warnings")
+        if field_warnings and isinstance(field_warnings, list):
             warnings = warnings or []
-            warnings.extend(result.get("field_warnings"))
+            warnings.extend(field_warnings)
 
         # Handle activation separately if needed after successful import
         activated_status = False

@@ -254,23 +254,24 @@ class RoadmapService:
                 milestones = []
                 with session_scope() as session:
                     milestones = self.milestone_repo.get_by_roadmap_id(session, roadmap_id)
-                for milestone in milestones:
-                    # 使用字符串值比较而不是直接比较Column对象
-                    milestone_status = str(milestone.status) if milestone.status is not None else ""
-                    if status != "all" and milestone_status != status:
-                        continue
-                    elements.append(
-                        {
-                            "id": milestone.id,
-                            "type": "milestone",
-                            "name": milestone.title,  # 使用title作为name，与前端显示一致
-                            "title": milestone.title,
-                            "status": milestone.status,
-                            "priority": "normal",
-                            "assignee": "",
-                            "labels": [],
-                        }
-                    )
+                    # 在会话内部处理里程碑对象，避免分离状态
+                    for milestone in milestones:
+                        # 使用字符串值比较而不是直接比较Column对象
+                        milestone_status = str(milestone.status) if milestone.status is not None else ""
+                        if status != "all" and milestone_status != status:
+                            continue
+                        elements.append(
+                            {
+                                "id": milestone.id,
+                                "type": "milestone",
+                                "name": milestone.title,  # 使用title作为name，与前端显示一致
+                                "title": milestone.title,
+                                "status": milestone.status,
+                                "priority": "normal",
+                                "assignee": "",
+                                "labels": [],
+                            }
+                        )
 
             if type == "all" or type == "story":
                 # 使用数据层方法获取故事
@@ -279,29 +280,27 @@ class RoadmapService:
                 stories = []
                 with session_scope() as session:
                     stories = self.story_repo.get_by_roadmap_id(session, roadmap_id)
-                for story in stories:
-                    # 使用字符串值比较而不是直接比较Column对象
-                    story_status = str(story.status) if story.status is not None else ""
-                    if status != "all" and story_status != status:
-                        continue
-                    story_assignee = str(story.assignee) if story.assignee is not None else ""
-                    if assignee and story_assignee != assignee:
-                        continue
-                    story_labels = story.labels.split(",") if story.labels else []
-                    if labels and not any(label in story_labels for label in labels):
-                        continue
-                    elements.append(
-                        {
-                            "id": story.id,
-                            "type": "story",
-                            "name": story.title,  # 使用title作为name，与前端显示一致
-                            "title": story.title,
-                            "status": story.status,
-                            "priority": story.priority,
-                            "assignee": story.assignee,
-                            "labels": story_labels,
-                        }
-                    )
+                    # 在会话内部处理故事对象，避免分离状态
+                    for story in stories:
+                        # 使用字符串值比较而不是直接比较Column对象
+                        story_status = str(story.status) if story.status is not None else ""
+                        if status != "all" and story_status != status:
+                            continue
+                        # 安全处理labels属性
+                        story_labels = getattr(story, "labels", "").split(",") if hasattr(story, "labels") else []
+                        if labels and not any(label in story_labels for label in labels):
+                            continue
+                        elements.append(
+                            {
+                                "id": story.id,
+                                "type": "story",
+                                "name": story.title,  # 使用title作为name，与前端显示一致
+                                "title": story.title,
+                                "status": story.status,
+                                "priority": story.priority,
+                                "labels": story_labels,  # 使用安全获取的labels
+                            }
+                        )
 
             if type == "all" or type == "task":
                 # 使用数据层方法获取任务
@@ -310,36 +309,37 @@ class RoadmapService:
                 tasks = []
                 with session_scope() as session:
                     tasks = self.task_repo.get_by_roadmap_id(session, roadmap_id)
-                for task in tasks:
-                    # 使用字符串值比较而不是直接比较Column对象
-                    task_status = str(task.status) if task.status is not None else ""
-                    if status != "all" and task_status != status:
-                        continue
-                    task_assignee = str(task.assignee) if task.assignee is not None else ""
-                    if assignee and task_assignee != assignee:
-                        continue
+                    # 在会话内部处理任务对象，避免分离状态
+                    for task in tasks:
+                        # 使用字符串值比较而不是直接比较Column对象
+                        task_status = str(task.status) if task.status is not None else ""
+                        if status != "all" and task_status != status:
+                            continue
+                        task_assignee = str(task.assignee) if task.assignee is not None else ""
+                        if assignee and task_assignee != assignee:
+                            continue
 
-                    # 安全处理标签
-                    task_labels_value = task.labels
-                    if isinstance(task_labels_value, list):
-                        task_labels = task_labels_value
-                    else:
-                        task_labels_str = str(task_labels_value) if task_labels_value is not None else ""
-                        task_labels = task_labels_str.split(",") if task_labels_str else []
-                    if labels and not any(label in task_labels for label in labels):
-                        continue
-                    elements.append(
-                        {
-                            "id": task.id,
-                            "type": "task",
-                            "name": task.title,  # 使用title作为name，与前端显示一致
-                            "title": task.title,
-                            "status": task.status,
-                            "priority": task.priority,
-                            "assignee": task.assignee,
-                            "labels": task_labels,
-                        }
-                    )
+                        # 安全处理标签
+                        task_labels_value = task.labels
+                        if isinstance(task_labels_value, list):
+                            task_labels = task_labels_value
+                        else:
+                            task_labels_str = str(task_labels_value) if task_labels_value is not None else ""
+                            task_labels = task_labels_str.split(",") if task_labels_str else []
+                        if labels and not any(label in task_labels for label in labels):
+                            continue
+                        elements.append(
+                            {
+                                "id": task.id,
+                                "type": "task",
+                                "name": task.title,  # 使用title作为name，与前端显示一致
+                                "title": task.title,
+                                "status": task.status,
+                                "priority": task.priority,
+                                "assignee": task.assignee,
+                                "labels": task_labels,
+                            }
+                        )
 
             # 排序
             if sort_by in ["id", "title", "status", "priority"]:
