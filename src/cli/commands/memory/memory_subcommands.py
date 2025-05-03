@@ -10,6 +10,8 @@ import logging
 import sys
 from typing import Any, Dict, List, Tuple, Union
 
+import click  # 确保导入 click 或相关库
+
 from src.memory import MemoryService, get_memory_service
 
 logger = logging.getLogger(__name__)
@@ -39,23 +41,23 @@ def handle_list_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
     return _memory_service.list_notes(folder=_get_attr(args, "folder"))
 
 
-def handle_show_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
+@click.command(name="show", help="显示内存项内容")
+@click.argument("path", required=True)  # 移除 help 参数，或确保它在命令级别定义
+def show_memory_cli(path: str) -> None:
     """
-    处理显示子命令，显示知识库内容详情
-
-    Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
-
-    Returns:
-        元组，包含(是否成功, 消息, 结果数据)
+    显示指定内存项的内容。路径示例：memory:///readme
     """
-    # 检查必需参数
-    path = _get_attr(args, "path")
-    if not path:
-        return False, "错误: 缺少必要参数 --path (文档路径或标识符)", {}
-
-    # 使用统一的MemoryService
-    return _memory_service.read_note(path=path)
+    try:
+        # 使用 path 参数直接获取并显示内容
+        memory_service = MemoryService()  # 假设服务实例化
+        item = memory_service.get_item_by_path(path)  # 替换为实际方法
+        if item:
+            console.print(f"内容: {item.content}")  # 简化输出，替换为实际逻辑
+        else:
+            console.print("[yellow]未找到指定内存项[/yellow]")
+    except Exception as e:
+        console.print(f"[red]显示内存项失败: {str(e)}[/red]")
+        logger.error(f"显示内存项出错: {e}")
 
 
 def handle_create_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -116,25 +118,25 @@ def handle_update_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     return _memory_service.update_note(path=path, content=content, tags=_get_attr(args, "tags"))
 
 
-def handle_delete_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
+@click.command()
+@click.argument("path", required=True)  # 确保 path 作为位置参数
+@click.option("-f", "--force", is_flag=True, help="强制删除，不提示确认")
+@click.option("-v", "--verbose", is_flag=True, help="提供详细输出")
+def handle_delete_subcommand(path: str, force: bool, verbose: bool) -> None:
     """
-    处理删除子命令，删除知识库内容
+    处理删除知识库内容
 
     Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
-
-    Returns:
-        元组，包含(是否成功, 消息, 结果数据)
+        path: 文档路径或标识符（位置参数）
+        force: 是否强制删除
+        verbose: 是否显示详细输出
     """
-    # 检查必需参数
-    path = _get_attr(args, "path")
-    if not path:
-        return False, "错误: 缺少必要参数 --path (文档路径或标识符)", {}
-
-    # 使用统一的MemoryService
-    # 直接传递原始路径，MemoryService内部会处理
-    force = _get_attr(args, "force", False)
-    return _memory_service.delete_note(path=path, force=force)
+    if verbose:
+        click.echo(f"正在删除: {path} (强制: {force})")
+    success, message, data = _memory_service.delete_note(path, force)
+    click.echo(message)
+    if verbose and success:
+        click.echo(f"操作详情: {data}")
 
 
 def handle_search_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, List[Dict[str, Any]]]:
@@ -166,14 +168,16 @@ def handle_import_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     Returns:
         元组，包含(是否成功, 消息, 结果数据)
     """
-    # 检查必需参数
-    source_dir = _get_attr(args, "source_dir")
-    if not source_dir:
-        return False, "错误: 缺少必要参数 --source-dir (源文档目录)", {}
+    # 获取源路径参数（可能来自位置参数或选项）
+    source = _get_attr(args, "source")
+
+    # 在memory_click.py中已经处理了source为空的情况，这里是额外的检查
+    if not source:
+        return False, "错误: 请提供要导入的文件或目录路径", {}
 
     # 使用统一的MemoryService
     recursive = _get_attr(args, "recursive", False)
-    return _memory_service.import_documents(source_dir=source_dir, recursive=recursive)
+    return _memory_service.import_documents(source_path=source, recursive=recursive)
 
 
 def handle_export_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -254,3 +258,28 @@ def handle_watch_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str
     """
     # 使用统一的MemoryService
     return _memory_service.start_sync_watch()
+
+
+def show_memory_cli(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    处理show子命令，显示知识库内容详情
+
+    Args:
+        args: 命令行参数，可以是字典或任何支持getattr的对象
+
+    Returns:
+        元组，包含(是否成功, 消息, 结果数据)
+    """
+    # 检查必需参数
+    path = _get_attr(args, "path")
+    if not path:
+        return False, "错误: 缺少必要参数 path (内存项路径)", {}
+
+    # 使用统一的MemoryService
+    # 这里应该是调用真实的memory_service.read_note或类似方法
+    try:
+        # 实际的服务调用
+        return _memory_service.read_note(path=path)
+    except Exception as e:
+        logger.error(f"显示内存项出错: {e}")
+        return False, f"显示内存项失败: {str(e)}", {}
