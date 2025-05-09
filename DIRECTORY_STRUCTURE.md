@@ -81,10 +81,3 @@ VibeCopilot/
 ├── CONTRIBUTING.md       # 贡献指南
 └── LICENSE              # 许可证
 ```
-
-## Notes
-
-1. 临时目录如 `.pytest_cache/`, `.mypy_cache/`, `__pycache__/` 等应添加到 `.gitignore`
-2. `bak/` 和 `backups/` 目录应合并为一个统一的备份目录
-3. `.DS_Store` 文件应添加到 `.gitignore`
-4. 开发工具配置文件应统一放在对应的配置目录中

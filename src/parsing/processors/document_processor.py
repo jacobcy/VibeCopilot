@@ -141,3 +141,44 @@ class DocumentProcessor:
             metadata["directory"] = doc_result["file_info"]["directory"]
 
         return metadata
+
+    def generate_document_summary(self, content: str, max_length: int = 150) -> str:
+        """
+        生成文档摘要
+
+        使用LLM解析器生成文档摘要，提取文档的主要内容要点
+
+        Args:
+            content: 文档文本内容
+            max_length: 摘要最大长度
+
+        Returns:
+            str: 生成的文档摘要
+        """
+        try:
+            # 构建摘要提示
+            summary_prompt = {"task": "summarize", "content": content, "max_length": max_length, "content_type": "document"}
+
+            # 使用LLM解析器生成摘要
+            result = self.parser.parse(content, content_type="summary", custom_instructions=f"生成不超过{max_length}字符的文档摘要，保留核心内容和主要观点")
+
+            # 检查结果，提取摘要
+            if isinstance(result, dict) and "summary" in result:
+                summary = result["summary"]
+            elif isinstance(result, dict) and "content" in result:
+                summary = result["content"]
+            else:
+                # 如果没有得到有效摘要，使用简单方法提取
+                sentences = content.split("。")[:3]  # 取前三句
+                summary = "。".join(sentences)
+                if len(summary) > max_length:
+                    summary = summary[: max_length - 3] + "..."
+
+            # 确保摘要不超过最大长度
+            if len(summary) > max_length:
+                summary = summary[: max_length - 3] + "..."
+
+            return summary
+        except Exception as e:
+            # 发生错误时返回简单摘要
+            return content[: max_length - 3] + "..." if len(content) > max_length else content

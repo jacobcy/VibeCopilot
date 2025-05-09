@@ -32,32 +32,38 @@ def handle_list_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str,
     处理列表子命令，列出知识库内容
 
     Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
+        args: 命令行参数，字典格式
 
     Returns:
         元组，包含(是否成功, 消息, 结果列表)
     """
     # 使用统一的MemoryService
+    # 假设 MemoryService.list_notes 返回正确的元组格式
     return _memory_service.list_notes(folder=_get_attr(args, "folder"))
 
 
-@click.command(name="show", help="显示内存项内容")
-@click.argument("path", required=True)  # 移除 help 参数，或确保它在命令级别定义
-def show_memory_cli(path: str) -> None:
+def show_memory_cli(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    显示指定内存项的内容。路径示例：memory:///readme
+    处理show子命令，显示知识库内容详情
+
+    Args:
+        args: 命令行参数，字典格式
+
+    Returns:
+        元组，包含(是否成功, 消息, 结果数据)
     """
+    # 检查必需参数
+    path = _get_attr(args, "path")
+    if not path:
+        return False, "错误: 缺少必要参数 path (内存项路径)", {}
+
+    # 使用统一的MemoryService
     try:
-        # 使用 path 参数直接获取并显示内容
-        memory_service = MemoryService()  # 假设服务实例化
-        item = memory_service.get_item_by_path(path)  # 替换为实际方法
-        if item:
-            console.print(f"内容: {item.content}")  # 简化输出，替换为实际逻辑
-        else:
-            console.print("[yellow]未找到指定内存项[/yellow]")
+        # 假设 MemoryService.read_note 返回正确的元组格式
+        return _memory_service.read_note(path_or_permalink=path)
     except Exception as e:
-        console.print(f"[red]显示内存项失败: {str(e)}[/red]")
         logger.error(f"显示内存项出错: {e}")
+        return False, f"显示内存项失败: {str(e)}", {}
 
 
 def handle_create_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -65,7 +71,7 @@ def handle_create_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     处理创建子命令 (原write子命令)
 
     Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
+        args: 命令行参数，字典格式
 
     Returns:
         元组，包含(是否成功, 消息, 附加数据)
@@ -80,18 +86,20 @@ def handle_create_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
         return False, "错误: 缺少必要参数 --folder (存储目录)", {}
 
     # 获取内容
-    # 修复：确认在有管道输入时能正确处理
     content = _get_attr(args, "content")
 
     # 如果没有提供content，尝试从标准输入读取
     if not content and not sys.stdin.isatty():
         content = sys.stdin.read()
 
-    # 仍然没有内容时使用默认值
+    # 仍然没有内容时使用默认值 (或者可以报错)
     if not content:
-        content = "这是示例内容。实际实现中将使用会话内容或用户提供的内容。"
+        # 考虑是否应该报错而不是使用默认值
+        # return False, "错误: 缺少内容", {}
+        content = "这是示例内容。实际实现中将使用会话内容或用户提供的内容。"  # 临时保留
 
     # 使用统一的MemoryService
+    # 假设 MemoryService.create_note 返回正确的元组格式
     return _memory_service.create_note(content=content, title=title, folder=folder, tags=_get_attr(args, "tags"))
 
 
@@ -100,7 +108,7 @@ def handle_update_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     处理更新子命令，更新知识库内容
 
     Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
+        args: 命令行参数，字典格式
 
     Returns:
         元组，包含(是否成功, 消息, 结果数据)
@@ -111,32 +119,39 @@ def handle_update_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
         return False, "错误: 缺少必要参数 --path (文档路径或标识符)", {}
 
     content = _get_attr(args, "content")
+    # 更新时内容是否必须？取决于设计，这里假设是必须的
     if not content:
         return False, "错误: 缺少必要参数 --content (更新后的内容)", {}
 
     # 使用统一的MemoryService
+    # 假设 MemoryService.update_note 返回正确的元组格式
     return _memory_service.update_note(path=path, content=content, tags=_get_attr(args, "tags"))
 
 
-@click.command()
-@click.argument("path", required=True)  # 确保 path 作为位置参数
-@click.option("-f", "--force", is_flag=True, help="强制删除，不提示确认")
-@click.option("-v", "--verbose", is_flag=True, help="提供详细输出")
-def handle_delete_subcommand(path: str, force: bool, verbose: bool) -> None:
+def handle_delete_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
     """
     处理删除知识库内容
 
     Args:
-        path: 文档路径或标识符（位置参数）
-        force: 是否强制删除
-        verbose: 是否显示详细输出
+        args: 命令行参数，字典格式
+
+    Returns:
+        元组，包含(是否成功, 消息, 结果数据)
     """
-    if verbose:
-        click.echo(f"正在删除: {path} (强制: {force})")
-    success, message, data = _memory_service.delete_note(path, force)
-    click.echo(message)
-    if verbose and success:
-        click.echo(f"操作详情: {data}")
+    path = _get_attr(args, "path")
+    if not path:
+        return False, "错误: 缺少必要参数 path (文档路径或标识符)", {}
+
+    force = _get_attr(args, "force", False)
+    # verbose 参数现在由 Click 在 memory_click.py 中处理，子命令只负责核心逻辑
+    # verbose = _get_attr(args, "verbose", False)
+    # if verbose:
+    #     click.echo(f"正在删除: {path} (强制: {force})") # 输出逻辑移到 memory_click.py
+
+    # 使用统一的MemoryService
+    # 假设 MemoryService.delete_note 返回正确的元组格式
+    # 注意：MemoryService.delete_note 需要能处理 identifier_or_permalink
+    return _memory_service.delete_note(path_or_permalink=path, force=force)
 
 
 def handle_search_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, List[Dict[str, Any]]]:
@@ -144,7 +159,7 @@ def handle_search_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     处理搜索子命令
 
     Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
+        args: 命令行参数，字典格式
 
     Returns:
         元组，包含(是否成功, 消息, 结果列表)
@@ -155,6 +170,7 @@ def handle_search_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
         return False, "错误: 缺少必要参数 --query (搜索关键词)", []
 
     # 使用统一的MemoryService
+    # 假设 MemoryService.search_notes 返回正确的元组格式
     return _memory_service.search_notes(query=query, content_type=_get_attr(args, "type"))
 
 
@@ -163,20 +179,21 @@ def handle_import_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     处理导入子命令
 
     Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
+        args: 命令行参数，字典格式
 
     Returns:
         元组，包含(是否成功, 消息, 结果数据)
     """
-    # 获取源路径参数（可能来自位置参数或选项）
-    source = _get_attr(args, "source")
+    # 获取源路径参数
+    source = _get_attr(args, "source")  # 已在 memory_click.py 中处理了位置参数和 --source
 
-    # 在memory_click.py中已经处理了source为空的情况，这里是额外的检查
     if not source:
+        # 这个检查理论上不应该触发，因为 memory_click.py 做了检查
         return False, "错误: 请提供要导入的文件或目录路径", {}
 
     # 使用统一的MemoryService
     recursive = _get_attr(args, "recursive", False)
+    # 假设 MemoryService.import_documents 返回正确的元组格式
     return _memory_service.import_documents(source_path=source, recursive=recursive)
 
 
@@ -185,7 +202,7 @@ def handle_export_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     处理导出子命令
 
     Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
+        args: 命令行参数，字典格式
 
     Returns:
         元组，包含(是否成功, 消息, 结果数据)
@@ -195,55 +212,8 @@ def handle_export_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, st
     format_type = _get_attr(args, "format", "md")
 
     # 使用统一的MemoryService
+    # 假设 MemoryService.export_documents 返回正确的元组格式
     return _memory_service.export_documents(output_dir=output_dir, format_type=format_type)
-
-
-def handle_sync_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
-    """
-    处理同步子命令
-
-    只同步docs/目录下的文档，不同步规则
-    注意：仅此命令使用同步编排器而非MemoryService
-
-    Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
-
-    Returns:
-        元组，包含(是否成功, 消息, 结果数据)
-    """
-    try:
-        # 导入SyncOrchestrator，避免直接依赖memory内部实现
-        import asyncio
-
-        from src.status.sync.sync_orchestrator import SyncOrchestrator
-
-        # 创建SyncOrchestrator实例
-        sync_orchestrator = SyncOrchestrator()
-
-        # 仅同步document类型，不同步规则
-        coroutine = sync_orchestrator.sync_by_type("document")
-
-        # 使用事件循环执行异步函数
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            # 如果没有可用的事件循环，创建一个新的
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(coroutine)
-
-        # 处理结果
-        total_synced = result.get("total_synced", 0)
-        return True, f"文档同步完成：已同步{total_synced}个文档", result
-    except ImportError as e:
-        # 如果无法导入SyncOrchestrator，报错
-        logger.error(f"无法导入同步编排器: {e}")
-        return False, "文档同步失败：无法导入同步编排器", {"error": str(e)}
-    except Exception as e:
-        # 捕获所有其他异常
-        logger.error(f"文档同步失败: {e}")
-        return False, f"文档同步失败: {str(e)}", {"error": str(e)}
 
 
 def handle_watch_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
@@ -251,35 +221,11 @@ def handle_watch_subcommand(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str
     处理监控子命令，启动知识库内容变更监控
 
     Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
+        args: 命令行参数，字典格式
 
     Returns:
         元组，包含(是否成功, 消息, 结果数据)
     """
     # 使用统一的MemoryService
+    # 假设 MemoryService.start_sync_watch 返回正确的元组格式
     return _memory_service.start_sync_watch()
-
-
-def show_memory_cli(args: Union[Dict[str, Any], Any]) -> Tuple[bool, str, Dict[str, Any]]:
-    """
-    处理show子命令，显示知识库内容详情
-
-    Args:
-        args: 命令行参数，可以是字典或任何支持getattr的对象
-
-    Returns:
-        元组，包含(是否成功, 消息, 结果数据)
-    """
-    # 检查必需参数
-    path = _get_attr(args, "path")
-    if not path:
-        return False, "错误: 缺少必要参数 path (内存项路径)", {}
-
-    # 使用统一的MemoryService
-    # 这里应该是调用真实的memory_service.read_note或类似方法
-    try:
-        # 实际的服务调用
-        return _memory_service.read_note(path=path)
-    except Exception as e:
-        logger.error(f"显示内存项出错: {e}")
-        return False, f"显示内存项失败: {str(e)}", {}

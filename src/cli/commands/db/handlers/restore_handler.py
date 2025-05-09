@@ -133,25 +133,17 @@ class RestoreHandler(ClickBaseHandler):
             super().error_handler(error)
 
 
-@click.command(name="restore", help="从备份文件恢复数据库")
-@click.argument("backup_path", type=click.Path(exists=True))
-@click.option("--force", "-f", is_flag=True, help="强制覆盖现有数据库")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service(service_type="db")
-def restore_db(service, backup_path: str, force: bool, verbose: bool):
-    """
-    从备份文件恢复数据库命令
-
-    Args:
-        service: 数据库服务实例
-        backup_path: 备份文件路径
-        force: 是否强制覆盖现有数据库
-        verbose: 是否显示详细信息
-    """
+@click.command(name="restore", help="恢复数据库")
+@click.argument("backup_file", type=click.Path(exists=True, dir_okay=False), required=True)
+@click.option("--force", is_flag=True, default=False, help="强制恢复，不提示确认")
+@click.option("--verbose", is_flag=True, default=False, help="显示详细信息")
+def restore_db_cli(backup_file: str, force: bool, verbose: bool):
+    """恢复数据库的Click命令入口"""
     handler = RestoreHandler()
+    params: Dict[str, Any] = {"backup_file": backup_file, "force": force, "verbose": verbose}
     try:
-        params: Dict[str, Any] = {"backup_path": backup_path, "force": force, "verbose": verbose}
-        result = handler.execute(service=service, **params)
-        return result
-    except Exception:
-        return 1
+        handler.handle(**params)
+    except Exception as e:
+        console.print(f"[red]恢复数据库时出错: {str(e)}[/red]")
+        logger.error(f"恢复数据库时出错 (File={backup_file}): {e}", exc_info=True)
+        raise click.Abort()

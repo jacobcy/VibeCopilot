@@ -109,9 +109,6 @@ class TaskService:
             if github_issue:
                 data["github_issue_number"] = github_issue.get("number")
 
-            # 添加默认工作流
-            data["workflow_id"] = "wf_universal_task"
-
             # 调用仓库的 create 方法
             task_orm = self._task_repo.create(session=session, **data)  # 调用基类 create 方法
 
@@ -194,19 +191,18 @@ class TaskService:
         """获取任务详情"""
         return self._query_service.get_task(session, task_id)
 
-    def get_task_by_identifier(self, session: Session, identifier: str) -> Optional[Dict[str, Any]]:
+    def get_task_by_identifier(self, identifier: str) -> Optional[Dict[str, Any]]:
         """通过ID或名称查找任务
 
         先按ID精确查找，如果找不到，则按名称（不区分大小写）查找。
 
         Args:
-            session: 数据库会话
             identifier: 任务ID或任务名称
 
         Returns:
             任务信息字典，如果找不到则返回None
         """
-        return self._query_service.get_task_by_identifier(session, identifier)
+        return self._query_service.get_task_by_identifier(identifier)
 
     def delete_task(self, identifier: str) -> bool:
         """删除任务，可以通过ID或标题识别任务"""

@@ -24,8 +24,10 @@ class Epic(Base):
     status = Column(String(50), default="draft")
     priority = Column(String(20), default="medium")
     roadmap_id = Column(String(50), ForeignKey("roadmaps.id"))
+    assignee = Column(String(100), nullable=True)
     created_at = Column(String(50), nullable=True)
     updated_at = Column(String(50), nullable=True)
+    local_display_number = Column(String(20), nullable=True, index=True)
 
     # 关系
     roadmap = relationship("Roadmap", back_populates="epics")
@@ -54,7 +56,9 @@ class Epic(Base):
             "status": self.status,
             "priority": self.priority,
             "roadmap_id": self.roadmap_id,
+            "assignee": self.assignee,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "local_display_number": self.local_display_number,
             "stories": [story.to_dict() for story in self.stories] if self.stories else [],
         }

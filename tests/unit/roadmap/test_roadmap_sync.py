@@ -7,8 +7,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from src.roadmap.sync.github_sync import GitHubSyncService
-from src.roadmap.sync.yaml_sync import YamlSyncService
+from src.sync.github_sync import GitHubSyncService
+from src.sync.yaml_sync import YamlSyncService
 
 
 class TestRoadmapSync(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestRoadmapSync(unittest.TestCase):
         # 验证引用关系
         self.assertEqual(yaml_sync.service, mock_service)
 
-    @patch("src.roadmap.sync.yaml_sync.os.path.exists")
+    @patch("src.sync.yaml_sync.os.path.exists")
     @patch("os.path.join")
     def test_yaml_sync_export(self, mock_join, mock_exists):
         """测试YAML同步导出功能"""
@@ -48,7 +48,7 @@ class TestRoadmapSync(unittest.TestCase):
         self.assertEqual(result["roadmap_id"], "roadmap1")
         self.assertEqual(result["file_path"], "/path/to/output.yaml")
 
-    @patch("src.roadmap.sync.yaml_sync.os.path.exists")
+    @patch("src.sync.yaml_sync.os.path.exists")
     def test_yaml_sync_import(self, mock_exists):
         """测试YAML同步导入功能"""
         # 设置模拟
@@ -73,7 +73,7 @@ class TestRoadmapSync(unittest.TestCase):
         mock_service = MagicMock()
 
         # 初始化服务
-        with patch("src.roadmap.sync.github_sync.GitHubApiFacade") as mock_github_api:
+        with patch("src.sync.github_sync.GitHubApiFacade") as mock_github_api:
             mock_api_instance = MagicMock()
             mock_github_api.return_value = mock_api_instance
 

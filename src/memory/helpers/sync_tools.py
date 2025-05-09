@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
-def sync_file(file_path: str, folder: str = "default", project: str = "vibecopilot") -> bool:
+def sync_file(file_path: str, folder: str = "default", project: str = "vibecopilot") -> Union[str, bool]:
     """
     将单个文件同步到知识库
 
@@ -29,7 +29,7 @@ def sync_file(file_path: str, folder: str = "default", project: str = "vibecopil
         project: 项目名称
 
     Returns:
-        bool: 同步是否成功
+        Union[str, bool]: 成功时返回永久链接(permalink)，失败时返回False
     """
     if not os.path.exists(file_path):
         logger.error(f"文件不存在: {file_path}")
@@ -39,6 +39,35 @@ def sync_file(file_path: str, folder: str = "default", project: str = "vibecopil
         # 读取文件内容
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
+
+        # 构建文件名（不含.md后缀）用于检查是否已删除
+        title = os.path.basename(file_path)
+        if title.endswith(".md"):
+            title = title[:-3]  # 去除 .md 后缀
+
+        # 检查文件是否已存在但被标记为已删除
+        # 导入数据库相关工具
+        try:
+            from src.db.repositories.memory_item_repository import MemoryItemRepository
+            from src.db.session_manager import session_scope
+
+            # 使用数据库会话检查文件是否已被标记为删除
+            with session_scope() as session:
+                repo = MemoryItemRepository()
+                permalink = f"{folder}/{title}" if folder else title
+                item = repo.get_by_permalink(session, permalink)
+
+                # 如果文件存在且被标记为已删除，则去除删除标记
+                if item and item.is_deleted:
+                    logger.info(f"文件已存在但被标记为已删除，将去除删除标记: {permalink}")
+                    repo.undelete_note(session, item.id)
+                    logger.info(f"已去除文件 {permalink} 的删除标记")
+        except ImportError:
+            # 如果无法导入数据库模块，则忽略此步骤
+            logger.warning("无法导入数据库模块，跳过检查文件是否已删除")
+        except Exception as e:
+            # 如果检查过程出错，记录但继续执行
+            logger.warning(f"检查文件是否已删除时出错：{str(e)}")
 
         # 构建同步命令
         cmd = [
@@ -55,7 +84,23 @@ def sync_file(file_path: str, folder: str = "default", project: str = "vibecopil
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode == 0:
-            logger.info(f"文件同步成功: {file_path}")
+            # 尝试从输出中提取permalink
+            output = result.stdout.strip()
+            # Basic Memory输出格式类似:
+            # # Created note
+            # file_path: imported/test.md
+            # permalink: imported/test
+            # checksum: f0ca22d8
+            if "permalink:" in output:
+                for line in output.split("\n"):
+                    if line.strip().startswith("permalink:"):
+                        permalink = line.split("permalink:")[1].strip()
+                        # 添加memory://前缀
+                        permalink = f"memory://{permalink}"
+                        logger.info(f"文件同步成功: {file_path}, permalink: {permalink}")
+                        return permalink
+
+            logger.info(f"文件同步成功: {file_path}, 但未返回permalink")
             return True
         else:
             logger.error(f"文件同步失败: {file_path}, 错误: {result.stderr}")
@@ -66,7 +111,7 @@ def sync_file(file_path: str, folder: str = "default", project: str = "vibecopil
         return False
 
 
-def sync_files(file_paths: List[str], folder: str = "default", project: str = "vibecopilot") -> Dict[str, bool]:
+def sync_files(file_paths: List[str], folder: str = "default", project: str = "vibecopilot") -> Dict[str, Union[str, bool]]:
     """
     同步多个文件到知识库
 
@@ -76,7 +121,7 @@ def sync_files(file_paths: List[str], folder: str = "default", project: str = "v
         project: 项目名称
 
     Returns:
-        Dict[str, bool]: 文件路径到同步结果的映射
+        Dict[str, Union[str, bool]]: 文件路径到同步结果的映射，成功时值为permalink或True，失败时为False
     """
     results = {}
 
@@ -157,7 +202,7 @@ def start_sync_watch(project: str = "vibecopilot") -> subprocess.Popen:
         raise
 
 
-def sync_directory(directory: str, pattern: str = "*.md", folder: str = "default", project: str = "vibecopilot") -> Dict[str, bool]:
+def sync_directory(directory: str, pattern: str = "*.md", folder: str = "default", project: str = "vibecopilot") -> Dict[str, Union[str, bool]]:
     """
     同步目录中所有匹配模式的文件
 
@@ -168,7 +213,7 @@ def sync_directory(directory: str, pattern: str = "*.md", folder: str = "default
         project: 项目名称
 
     Returns:
-        Dict[str, bool]: 文件路径到同步结果的映射
+        Dict[str, Union[str, bool]]: 文件路径到同步结果的映射，成功时值为permalink或True，失败时为False
     """
     if not os.path.exists(directory) or not os.path.isdir(directory):
         logger.error(f"目录不存在: {directory}")

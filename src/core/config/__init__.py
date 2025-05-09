@@ -7,6 +7,7 @@
 
 from src.core.config.manager import ConfigManager, get_app_dir, get_config, refresh_config
 from src.core.config.models import ConfigEnvironment, ConfigError, ConfigPathError, ConfigValidationError, ConfigValue
+from src.core.config.settings import SettingsConfig
 from src.core.config.workflow import get_template_path, get_workflows_directory, list_templates
 
 __all__ = [
@@ -25,4 +26,6 @@ __all__ = [
     "get_template_path",
     "list_templates",
     "get_workflows_directory",
+    # 设置配置
+    "SettingsConfig",
 ]

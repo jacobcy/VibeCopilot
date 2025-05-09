@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re  # 导入 re 模块用于正则表达式
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -59,6 +60,11 @@ def show(task_id: Optional[str], verbose: bool, format: str, log: bool, ref: boo
 
     如果未提供 TASK_ID，则显示当前活动任务。
     可以通过选项控制输出格式、是否显示日志、参考资料、评论和执行指南。
+
+    TASK_ID 可以是:
+    - 实际任务ID (task_12345)
+    - 本地显示编号 (T1, #T1)
+    - 分层编号 (1.1, #1.1) - 表示第1个story的第1个任务
     """
     try:
         result = execute_show_task(task_id, verbose, format, log, ref, comments, guide)
@@ -81,7 +87,7 @@ def execute_show_task(
     """执行任务显示
 
     Args:
-        task_id: 任务ID，如果为None，则尝试获取当前任务
+        task_id: 任务ID或显示编号，支持层级编号格式(如 1.1)，如果为None，则尝试获取当前任务
         verbose: 是否显示详细信息
         format: 输出格式(json/yaml)
         log: 是否显示任务日志
@@ -129,8 +135,84 @@ def execute_show_task(
                 results["message"] = "内部错误：无法确定要显示的任务ID。"
                 return results
 
-            # 获取任务信息
-            task = task_service.get_task(session, current_task_id)
+            # 处理各种任务标识符格式
+            # 1. 检查是否是层级编号格式 (1.1 或 #1.1)
+            hierarchical_pattern = re.compile(r"^#?(\d+\.\d+)$")
+            hierarchical_match = hierarchical_pattern.match(current_task_id)
+
+            if hierarchical_match:
+                logger.debug(f"检测到层级编号格式: {current_task_id}")
+                hierarchical_number = hierarchical_match.group(1)
+
+                # 需要通过搜索所有任务来找到匹配的层级编号
+                # 因为层级编号是在列表显示时动态生成的，而不是存储在数据库中
+                all_tasks = task_service.search_tasks(session=session)
+
+                # 组织任务数据 - 按story_id分组
+                tasks_by_story = {}
+                independent_tasks = []
+
+                for task in all_tasks:
+                    story_id = task.get("story_id")
+                    if story_id:
+                        if story_id not in tasks_by_story:
+                            tasks_by_story[story_id] = []
+                        tasks_by_story[story_id].append(task)
+                    else:
+                        independent_tasks.append(task)
+
+                # 生成层级编号并查找匹配的任务
+                found_task = None
+
+                # 处理按story分组的任务
+                story_counter = 1
+                for story_id, tasks in tasks_by_story.items():
+                    # 按照local_display_number排序任务
+                    sorted_tasks = sorted(tasks, key=lambda x: x.get("local_display_number", ""))
+                    # 为每个任务分配层级编号
+                    task_counter = 1
+                    for task in sorted_tasks:
+                        # 创建层级编号 story_num.task_num
+                        task_hierarchical_number = f"{story_counter}.{task_counter}"
+                        if task_hierarchical_number == hierarchical_number:
+                            found_task = task
+                            break
+                        task_counter += 1
+                    if found_task:
+                        break
+                    story_counter += 1
+
+                # 如果是独立任务
+                if not found_task:
+                    # 独立任务使用单一编号
+                    for i, task in enumerate(independent_tasks, 1):
+                        if str(i) == hierarchical_number:
+                            found_task = task
+                            break
+
+                if found_task:
+                    current_task_id = found_task.get("id")
+                    logger.info(f"通过层级编号 {hierarchical_number} 找到任务 ID: {current_task_id}")
+                    task = found_task
+                else:
+                    results["status"] = "error"
+                    results["code"] = 404
+                    results["message"] = f"未找到层级编号为 {hierarchical_number} 的任务"
+                    return results
+
+            # 2. 检查是否是本地显示编号格式 (如 T1, #T1)
+            elif current_task_id.startswith("#") or current_task_id.startswith("T"):
+                # 尝试通过本地显示编号查找任务
+                logger.debug(f"尝试使用本地显示编号查找任务: {current_task_id}")
+                task = task_service.get_task_by_identifier(current_task_id)
+                if task:
+                    current_task_id = task.get("id")  # 更新为实际的任务ID
+                    logger.info(f"成功通过本地显示编号 {current_task_id} 找到任务: {task.get('id')}")
+
+            # 3. 直接通过ID查找
+            else:
+                task = task_service.get_task(session, current_task_id)
+
             if not task:
                 results["status"] = "error"
                 results["code"] = 404
@@ -239,30 +321,29 @@ def execute_show_task(
                                     status = deliverable.get("status", "待完成")
                                     console.print(f"  {i}. {name} - {status}")
                         else:
-                            console.print("[yellow]执行指南正在生成中，请稍后查看...[/yellow]")
+                            console.print("[yellow]未找到执行指南上下文[/yellow]")
                     except Exception as e:
-                        logger.warning(f"显示执行指南详情失败: {e}", exc_info=True)
-                        console.print("[yellow]显示执行指南详情失败，可能执行指南还未完全生成[/yellow]")
+                        logger.error(f"显示执行指南失败: {e}", exc_info=True)
+                        console.print(f"[bold red]显示执行指南时出错:[/bold red] {e}")
                 else:
-                    # If there is no associated session but there is a workflow, prompt the user
-                    if task.get("workflow_id"):
-                        console.print("[yellow]此任务已关联工作流，但执行指南尚未创建[/yellow]")
-                        console.print(
-                            "提示: 可以通过 `vc task link " + str(current_task_id) + " --flow " + str(task.get("workflow_id")) + "` 重新关联工作流并生成执行指南"
-                        )
-                    else:
-                        console.print("[dim]此任务未关联工作流，无法显示执行指南[/dim]")
-                        console.print("提示: 可以通过 `vc task link " + str(current_task_id) + " --flow <工作流ID>` 关联工作流并生成执行指南")
+                    console.print("[dim]此任务没有关联的执行指南[/dim]")
 
-            if results["status"] == "success":
-                results["message"] = f"成功显示任务 {current_task_id} 信息"
-            elif results["status"] == "warning" and not results["message"]:
-                results["message"] = f"成功显示任务 {current_task_id} 信息，但显示附加信息时出现警告。"
+            # Add next steps suggestion
+            console.print("\n[dim]提示: 使用 'vc task update #编号 --status=进行中' 更新任务状态[/dim]")
+
+            # Update results with success
+            results["status"] = "success"
+            results["message"] = f"成功显示任务 {current_task_id} 的详情"
+        else:
+            # This should not happen as we already checked for task existence
+            results["status"] = "error"
+            results["code"] = 404
+            results["message"] = f"未找到任务 {current_task_id}"
 
     except Exception as e:
-        logger.error(f"显示任务数据库操作期间出错: {e}", exc_info=True)
+        logger.error(f"显示任务详情时出错: {e}", exc_info=True)
         results["status"] = "error"
         results["code"] = 500
-        results["message"] = f"显示任务时出错: {e}"
+        results["message"] = f"显示任务详情时出错: {e}"
 
     return results

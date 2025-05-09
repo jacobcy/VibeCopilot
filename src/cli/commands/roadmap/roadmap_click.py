@@ -6,18 +6,41 @@
 
 import asyncio
 import logging
+import sys
 from functools import wraps
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import click
 from rich.console import Console
+from rich.prompt import Confirm
 
 from src.cli.commands.roadmap.handlers.delete_handlers import get_object_name, get_type_name, handle_delete
 from src.cli.commands.roadmap.handlers.import_handlers import handle_import
 from src.cli.commands.roadmap.handlers.list_handlers import handle_list_roadmaps
+from src.cli.commands.roadmap.handlers.operations_handlers import export_to_yaml, handle_link_github, handle_validate
 from src.cli.commands.roadmap.handlers.show_handlers import handle_show_all_milestones, handle_show_elements_by_type, handle_show_roadmap
 from src.cli.commands.roadmap.handlers.switch_handlers import handle_switch_roadmap
-from src.cli.core.decorators import pass_service
+from src.cli.commands.roadmap.handlers.sync_handlers import handle_sync_roadmap
+from src.cli.commands.roadmap.handlers.update_handlers import RoadmapUpdateHandlers
+from src.core.config import get_config
+
+# Import the RoadmapServiceFacade
+from src.roadmap.service import RoadmapService  # 用于向后兼容
+from src.roadmap.service.roadmap_service_facade import RoadmapServiceFacade
+from src.status.service import StatusService
+from src.sync.github_project import GitHubProjectSync
+
+# 保留以便在命令行处理中使用
+from src.utils import console_utils
+from src.utils.console_utils import print_error, print_info, print_success, print_warning
+
+# 从main.py导入CLIContext (假设已将其移至模块顶部)
+try:
+    from src.cli.main import CLIContext
+except ImportError:
+    # 如果CLIContext仍在main函数内部，这里可能需要调整或采用其他方式获取服务
+    # 但最好是将CLIContext移到模块级别
+    CLIContext = object  # 占位符，表示无法直接导入
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -39,69 +62,57 @@ def roadmap():
     pass
 
 
-@roadmap.command(name="sync", help="从GitHub同步路线图数据")
-@click.argument("repository", required=True)
-@click.option("--theme", "-t", help="GitHub项目主题标签")
-@click.option(
-    "--operation",
-    "-o",
-    type=click.Choice(["push", "pull"]),
-    default="pull",
-    help="同步操作类型",
-)
-@click.option("--roadmap", "-r", help="指定路线图ID")
-@click.option("--force", "-f", is_flag=True, help="强制同步，忽略冲突")
+@roadmap.command(name="sync", help="将本地路线图与关联的 GitHub 项目同步")
+@click.argument("operation", type=click.Choice(["push", "pull"]))
+@click.argument("id", required=False)  # 本地ID或远程标识符(Number或Node ID)
 @click.option("--verbose", "-v", is_flag=True, help="显示详细输出")
-@pass_service
-def sync(
-    service,
-    repository,
-    theme=None,
-    operation="pull",
-    roadmap=None,
-    force=False,
-    verbose=False,
-):
-    """从GitHub同步路线图数据
+@click.option("--force", "-f", is_flag=True, help="Force sync operation")
+@click.pass_obj
+@async_command
+async def sync(service, operation: str, id: Optional[str], verbose: bool, force: bool):
+    """将本地路线图与关联的 GitHub 项目同步。
 
-    REPOSITORY: GitHub仓库名称，格式：所有者/仓库名
+    OPERATION: 同步操作类型 (push: 本地 -> GitHub, pull: GitHub -> 本地)
+    ID: push操作时为本地路线图ID，pull操作时为远程项目编号(Number)或Node ID
     """
-    from .handlers.sync_handlers import RoadmapSyncHandlers
-
-    sync_args = {
-        "repository": repository,
-        "theme": theme,
-        "operation": operation,
-        "roadmap": roadmap,
-        "force": force,
-        "verbose": verbose,
-    }
-
     try:
-        result = RoadmapSyncHandlers.handle_sync_command(sync_args, service)
+        # 调用同步处理器函数
+        result = await handle_sync_roadmap(service, operation, id, force, verbose)
 
-        if verbose:
-            console.print(f"[bold]完整响应:[/]\n{result}")
+        if result.get("status") == "success":
+            console_utils.print_success(result.get("message", "同步操作成功"))
+            if verbose and result.get("details"):
+                console.print(f"[bold]同步详情:[/]\n{result.get('details')}")
+            return 0
         else:
-            status_icon = "✓" if result.get("status") == "success" else "✗"
-            color = "green" if result.get("status") == "success" else "red"
-            console.print(f"[{color}]{status_icon} {result.get('summary', 'GitHub同步完成')}[/{color}]")
+            console_utils.print_error(result.get("message", "同步操作失败"))
+            return 1
+
     except Exception as e:
-        console.print(f"[red]✗ GitHub同步失败: {str(e)}[/red]")
+        console.print(f"[red]✗ 同步命令执行失败: {str(e)}[/red]")
+        logger.error(f"同步命令执行失败: {e}", exc_info=True)
+        return 1
 
 
 @roadmap.command(name="switch", help="切换活动路线图")
 @click.argument("roadmap_id", required=False)
 @click.option("--show", is_flag=True, help="只显示当前活动路线图")
 @click.option("--clear", is_flag=True, help="清除当前活动路线图设置")
-@pass_service
-def switch(service, roadmap_id=None, show=False, clear=False):
+@click.pass_obj
+def switch(cli_context, roadmap_id=None, show=False, clear=False):
     """切换活动路线图
 
     ROADMAP_ID: 路线图ID，不提供则显示当前活动路线图
     """
     try:
-        result = handle_switch_roadmap(service, roadmap_id, show, clear)
+        # 原来的错误调用:
+        # result = handle_switch_roadmap(service, roadmap_id, show, clear)
+
+        # 正确的方式: 实例化 RoadmapService 并传递
+        from src.roadmap.service import RoadmapService  # 确保导入
+
+        roadmap_service_instance = RoadmapService()  # 创建 RoadmapService 实例
+        result = handle_switch_roadmap(roadmap_service_instance, roadmap_id, show, clear)  # 使用正确的实例
 
         if result.get("success"):
             console.print(f"[green]{result.get('message')}[/green]")
@@ -116,31 +127,60 @@ def switch(service, roadmap_id=None, show=False, clear=False):
 
 
 @roadmap.command(name="list", help="列出路线图")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service
+@click.option("--remote", "-r", is_flag=True, help="列出远程GitHub Project作为路线图")
+@click.pass_obj
 def list_roadmaps(
-    service,
-    verbose=False,
+    cli_context,
+    remote: bool,
 ):
     """列出所有路线图"""
-    try:
-        # 列出所有路线图
-        result = handle_list_roadmaps(service=service, verbose=verbose)
+    console.print("[bold cyan]=== 路线图列表 ===[/bold cyan]")
 
-        if not result.get("success"):
-            console.print(f"[red]{result.get('message', '获取路线图列表失败')}[/red]")
-            return 1
+    if remote:
+        console.print("\n正在获取远程GitHub Projects...")
+        github_sync = GitHubProjectSync()
+        projects_result = github_sync.get_github_projects()
 
-        # 输出结果
-        console.print(result.get("formatted_output", ""), highlight=False)
+        if projects_result.get("success"):
+            projects = projects_result.get("projects", [])
+            if projects:
+                console.print(f"找到 {len(projects)} 个远程GitHub Projects:")
+                # 确保项目字典包含预期的键
+                for project in projects:
+                    number = project.get("number", "N/A")
+                    title = project.get("title", "未知标题")
+                    state = project.get("state", "未知状态")
+                    project_id = project.get("id", "N/A")  # 这里的id是node id
+                    console.print(f"  [bold]- {title}[/bold] (Number: {number}, ID: {project_id}, 状态: {state})")
+            else:
+                console_utils.print_info("未找到远程GitHub Projects。")
+        else:
+            error_message = projects_result.get("message", "获取远程GitHub Projects 失败。")
+            console_utils.print_error(f"错误: {error_message}")
+    else:
+        # --- 修正调用本地路线图处理函数 ---
+        # 原来的错误调用:
+        # handle_list_roadmaps(service)
 
-        # 总数已经在 format_roadmaps_output 中显示，这里不需要重复显示
+        # 正确的方式: 实例化 RoadmapService 并传递
+        from src.roadmap.service import RoadmapService  # 确保导入
 
-        return 0
+        roadmap_service_instance = RoadmapService()  # 创建 RoadmapService 实例
+        result = handle_list_roadmaps(roadmap_service_instance)  # 使用正确的实例
 
-    except Exception as e:
-        console.print(f"[bold red]执行错误:[/bold red] {str(e)}")
-        return 1
+        # 处理 handle_list_roadmaps 的返回结果并打印
+        if result.get("success"):
+            if result.get("formatted_output"):
+                # rich_console.print 会自动处理换行符，所以直接打印
+                console.print(result["formatted_output"], end="")  # end="" 避免额外换行
+            elif result.get("message"):  # 如果没有 formatted_output 但有消息
+                # 根据消息类型选择打印方式
+                if "没有找到任何路线图" in result["message"]:
+                    console_utils.print_info(result["message"])
+                else:
+                    console.print(result["message"])
+        else:
+            console_utils.print_error(result.get("message", "列出路线图失败"))
 
 
 @roadmap.command(name="create", help="创建新的路线图元素或从文件生成标准YAML")
@@ -162,7 +202,7 @@ def list_roadmaps(
     type=click.Choice(["high", "medium", "low"]),
     help="优先级 (用于epic, 手动创建时)",
 )
-@pass_service
+@click.pass_obj
 @async_command
 async def create(
     service,
@@ -262,7 +302,7 @@ async def create(
     type=click.Choice(["high", "medium", "low"]),
     help="优先级 (用于epic)",
 )
-@pass_service
+@click.pass_obj
 def update(
     service,
     type: str,
@@ -275,8 +315,6 @@ def update(
     priority: Optional[str] = None,
 ):
     """更新路线图元素状态"""
-    from .handlers.update_handlers import RoadmapUpdateHandlers
-
     update_args = {
         "type": type,
         "id": id,
@@ -306,50 +344,42 @@ def update(
 @roadmap.command(name="validate", help="验证路线图YAML文件")
 @click.argument("source", type=click.Path(exists=True))
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service
-@async_command
-async def validate(
+@click.pass_obj
+def validate(
     service,
     source: str,
     verbose: bool = False,
 ):
     """验证路线图YAML文件格式"""
-    from src.validation.roadmap_validation import RoadmapValidator
-
     try:
-        # 创建验证器
-        validator = RoadmapValidator()
-
-        # 验证文件
-        is_valid, warnings, errors = validator.validate_file(source)
+        # 使用处理器函数进行验证
+        result = handle_validate(source, verbose)
 
         # 显示验证结果
-        if is_valid and not warnings and not errors:
+        if result.get("success") and not result.get("warnings") and not result.get("errors"):
             console.print("[bold green]✅ 验证通过，文件格式完全符合要求[/bold green]")
             return 0
 
         # 显示警告
-        if warnings:
+        if result.get("warnings"):
             console.print("\n[bold yellow]警告:[/bold yellow]")
-            for warning in warnings:
+            for warning in result["warnings"]:
                 console.print(f"[yellow]⚠️ {warning}[/yellow]")
 
         # 显示错误
-        if errors:
+        if result.get("errors"):
             console.print("\n[bold red]错误:[/bold red]")
-            for error in errors:
+            for error in result["errors"]:
                 console.print(f"[red]❌ {error}[/red]")
 
-        # 返回状态码
-        return 0 if is_valid else 1
+        # 根据验证结果返回适当的状态码
+        return 0 if result.get("success") else 1
 
     except Exception as e:
         console.print(f"[red]执行出错: {str(e)}[/red]")
-        if verbose:
+        if verbose and result.get("error_details"):
             console.print("[red]详细错误信息:[/red]")
-            import traceback
-
-            console.print(traceback.format_exc())
+            console.print(result["error_details"])
         return 1
 
 
@@ -357,7 +387,7 @@ async def validate(
 @click.argument("source", type=click.Path(exists=True))
 @click.option("--activate", "-a", is_flag=True, help="导入后设为当前活动路线图")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service
+@click.pass_obj
 @async_command
 async def import_roadmap(
     service,
@@ -393,72 +423,63 @@ async def import_roadmap(
         return 1
 
 
-@roadmap.command(name="show", help="查看路线图详情")
-@click.option("--id", "-i", help="路线图ID，不提供则使用当前活动路线图")
-@click.option("--type", "-t", type=click.Choice(["roadmap", "milestone", "epic", "story"]), default="roadmap", help="要显示的元素类型")
-@pass_service
-def show(service, id=None, type="roadmap"):
-    """查看路线图详情"""
-    try:
-        # 获取路线图ID
-        roadmap_id = id or service.active_roadmap_id
-        if not roadmap_id:
-            console.print("[red]未指定路线图ID，且未设置活动路线图。请指定ID或使用 'roadmap switch <roadmap_id>' 设置活动路线图。[/red]")
-            return 1
+@roadmap.command(name="show", help="查看路线图或其元素的详情")
+@click.argument("identifier", required=False, default=None)
+@click.option(
+    "--type",
+    "-t",
+    "type_option",
+    type=click.Choice(["roadmap", "milestone", "epic", "story"]),
+    default=None,
+    help="要显示的元素类型。如果省略，会尝试从 IDENTIFIER 推断，或默认为 roadmap。",
+)
+@click.pass_obj
+def show(cli_context, identifier: Optional[str], type_option: Optional[str]):
+    """
+    查看路线图或其元素的详情。
 
-        # 根据类型显示不同内容
-        if type == "milestone":
-            # 显示路线图的所有里程碑
-            result = handle_show_all_milestones(
-                service=service,
-                roadmap_id=roadmap_id,
-                format="yaml",  # 使用YAML格式
-            )
-        elif type == "epic" or type == "story":
-            # 显示路线图的所有史诗或故事
-            result = handle_show_elements_by_type(
-                service=service,
-                roadmap_id=roadmap_id,
-                element_type=type,
-                format="yaml",  # 使用YAML格式
-            )
-        else:
-            # 默认显示路线图详情
-            result = handle_show_roadmap(
-                service=service,
-                roadmap_id=roadmap_id,
-                milestone_id=None,
-                task_id=None,
-                health=False,
-                format="yaml",  # 使用YAML格式
-            )
+    IDENTIFIER: 路线图/元素的ID (如 rm_xxxx) 或名称。
+                如果省略，且类型为 roadmap (或省略类型)，则显示当前活动路线图。
+                如果省略，且类型为 milestone/epic/story，则列出活动路线图下的所有此类元素。
+    """
+    from .handlers.show_handlers import handle_show_command
+
+    try:
+        # Instantiate RoadmapService correctly
+        from src.roadmap.service import RoadmapService  # Ensure import
+
+        roadmap_service_instance = RoadmapService()  # Create RoadmapService instance
+
+        # Pass the RoadmapService instance
+        result = handle_show_command(roadmap_service_instance, identifier, type_option)
 
         if not result.get("success"):
             console.print(f"[red]{result.get('message', '获取详情失败')}[/red]")
             return 1
 
-        # 直接打印输出内容，不使用Rich控制台
-        print(result["data"]["formatted_output"])
+        # Use console.print for rich output
+        if result.get("data") and result["data"].get("formatted_output"):
+            console.print(result["data"]["formatted_output"], end="")  # end="" if formatted_output handles newlines
+        elif result.get("message"):  # Fallback if no formatted_output but there's a message
+            console.print(result.get("message"))
         return 0
 
     except Exception as e:
-        console.print(f"[bold red]执行错误:[/bold red] {str(e)}")
+        console.print(f"[bold red]执行show命令时出错: {str(e)}[/bold red]")
+        logger.error(f"Error in roadmap show command: {e}", exc_info=True)
         return 1
 
 
 @roadmap.command(name="export", help="导出路线图为YAML")
 @click.option("--id", "-i", help="路线图ID，不提供则使用当前活动路线图")
 @click.option("--output", "-o", required=True, type=click.Path(), help="输出文件路径(必填)")
-@pass_service
+@click.pass_obj
 def export(
     service,
     id: Optional[str],
     output: str,
 ):
     """导出路线图为YAML文件"""
-    # 直接导入处理器函数
-    from .handlers.operations_handlers import export_to_yaml
-
     try:
         # 直接调用处理器函数
         result = export_to_yaml(service, id, output)
@@ -476,38 +497,108 @@ def export(
 
 
 @roadmap.command(name="delete", help="删除路线图或元素")
-@click.argument("type", type=click.Choice(["roadmap", "milestone", "epic", "story"]))
-@click.argument("id")
+@click.argument("identifier", required=True)
 @click.option("--force", "-f", is_flag=True, help="强制删除，不请求确认")
-@click.option("--cascade", "-c", is_flag=True, help="级联删除关联元素")
-@pass_service
-def delete(service, type: str, id: str, force: bool, cascade: bool):
+@click.pass_obj
+def delete(service_obj, identifier: str, force: bool):
     """删除路线图或元素"""
     try:
-        # 获取对象信息
-        name = get_object_name(service, type, id)
+        # 从 ID 推断实体类型
+        from src.utils.id_generator import EntityType, IdGenerator
+
+        entity_type_enum = IdGenerator.get_entity_type_from_id(identifier)
+        if not entity_type_enum:
+            console.print(f"[red]无效的ID: {identifier}[/red]")
+            return 1
+        type_mapping = {
+            EntityType.ROADMAP: "roadmap",
+            EntityType.MILESTONE: "milestone",
+            EntityType.STORY: "story",
+            EntityType.EPIC: "epic",
+            EntityType.TASK: "task",
+        }
+        type_arg = type_mapping.get(entity_type_enum)
+        if not type_arg:
+            console.print(f"[red]不支持的实体类型: {entity_type_enum.name}[/red]")
+            return 1
+        id_arg = identifier
+
+        # 实例化 RoadmapService
+        from src.roadmap.service import RoadmapService
+
+        service = RoadmapService()
+
+        # 获取对象名称
+        name = get_object_name(service, type_arg, id_arg)
 
         # 确认删除
         if not force:
-            if not click.confirm(f"确定要删除{get_type_name(type)} '{name}' ({id})吗?"):
+            if not click.confirm(f"确定要删除{get_type_name(type_arg)} '{name}' ({id_arg})吗? "):
                 console.print("[yellow]操作已取消[/yellow]")
                 return 1
 
-        # 执行删除
-        result = handle_delete(service, type, id, cascade)
+        # 执行删除，总是级联删除
+        result = handle_delete(service, type_arg, id_arg)
 
         # 处理结果
         if result.get("success"):
-            message = f"{get_type_name(type)} '{name}' ({id}) 已成功删除"
-            console.print(f"[green]{message}[/green]")
+            console.print(f"[green]{get_type_name(type_arg)} '{name}' ({id_arg}) 已成功删除[/green]")
             return 0
         else:
-            error_message = f"删除失败: {result.get('error', '未知错误')}"
-            console.print(f"[red]{error_message}[/red]")
+            console.print(f"[red]删除失败: {result.get('message', '未知错误')}[/red]")
             return 1
 
     except Exception as e:
         console.print(f"[red]删除过程中出错: {str(e)}[/red]")
+        return 1
+
+
+@roadmap.command(name="link", help="关联本地路线图到 GitHub 项目或显示现有链接")
+@click.option("--project-identifier", "-p", required=False, help="GitHub项目编号 (UI Number) 或 Node ID (创建链接时必需)")
+@click.option("--roadmap-id", "-i", help="要关联的本地路线图ID (默认为当前活动路线图)")
+@click.option("--list", "-l", "list_links", is_flag=True, help="显示当前已建立的本地路线图与GitHub Project的链接")
+@click.pass_obj
+@async_command
+async def link_github(ctx_obj, project_identifier: Optional[str], roadmap_id: Optional[str], list_links: bool):
+    """关联本地路线图到 GitHub 项目或显示现有链接。
+
+    Owner 和 Repo 信息将从全局配置中自动获取。
+    如果配置缺失，请运行 'vc status init'。
+    """
+    # 检查参数组合
+    if list_links:
+        if project_identifier or roadmap_id:
+            console_utils.print_warning("使用 --list 时，将忽略 --project-identifier 和 --roadmap-id 参数。")
+        # 调用处理函数显示列表
+        result = handle_link_github(list_links=True, ctx_obj=ctx_obj)
+    elif project_identifier:
+        # 创建链接操作，现在不需要 owner 和 repo 作为参数
+        result = handle_link_github(
+            project_identifier=project_identifier,
+            local_roadmap_id=roadmap_id,
+            list_links=False,
+            ctx_obj=ctx_obj
+            # owner 和 repo 将在 handler 内部获取
+        )
+    else:
+        # 参数不足以执行操作 (既不是 list 也不是 create)
+        console_utils.print_error("请提供 --project-identifier 来创建链接，或使用 --list 查看现有链接。")
+        return 1  # Indicate error
+
+    # 处理结果
+    if result.get("success"):
+        console_utils.print_success(result.get("message", "操作成功"))
+        # 如果是列表操作且有内容，打印链接
+        if list_links and result.get("links"):
+            if result["links"]:
+                console.print("[bold]现有链接:[/]")
+                for local_id, gh_id in result["links"].items():
+                    console.print(f"  - 本地路线图: {local_id} <-> GitHub Project: {gh_id}")
+            else:
+                console_utils.print_info("当前没有已建立的链接。")
+        return 0
+    else:
+        console_utils.print_error(result.get("message", "操作失败"))
         return 1
 
 

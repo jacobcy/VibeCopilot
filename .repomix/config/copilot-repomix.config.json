@@ -1,7 +1,7 @@
 {
   "output": {
-    "filePath": "/Users/jacobcy/Public/VibeCopilot/repomix/output.txt",
-    "style": "plain",
+    "filePath": "/Users/jacobcy/Public/VibeCopilot/repomix/",
+    "style": "xml",
     "parsableStyle": false,
     "headerText": "",
     "instructionFilePath": "",

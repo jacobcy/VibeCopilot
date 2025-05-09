@@ -65,60 +65,96 @@ def list_tasks(
                 console.print("[yellow]未找到符合条件的任务。[/yellow]")
                 return
 
-            # --- 移除旧的 JSON/YAML 批量输出逻辑 ---
-            # if format.lower() == "json": ...
-            # else: ...
-
-            # --- 新的逐条处理和状态高亮逻辑 ---
+            # --- 创建任务表格 ---
             status_colors = {
                 "todo": "yellow",
                 "backlog": "bright_black",
                 "in_progress": "blue",
                 "review": "cyan",
                 "done": "green",
-                "closed": "bright_green",  # 假设有 closed 状态
+                "closed": "bright_green",
                 "blocked": "red",
             }
             default_color = "white"  # 未知状态的颜色
 
-            tasks_data = result["data"]
-            for i, task_dict in enumerate(tasks_data):
-                if i > 0:
-                    # 在任务之间打印分隔符
-                    console.print("--- -", style="dim")
+            # 创建表格
+            table = Table(show_header=True, header_style="bold", box=None, padding=(0, 1, 0, 1))
+            table.add_column("编号", style="dim", justify="right")
+            table.add_column("标题", style="bold")
+            table.add_column("状态", justify="center")
 
+            # 添加可选列
+            if verbose:
+                table.add_column("ID", style="dim")
+                table.add_column("创建时间", style="dim")
+
+            # 填充表格数据
+            tasks_data = result["data"]
+
+            # 组织任务数据 - 按story_id分组
+            tasks_by_story = {}
+            independent_tasks = []
+
+            for task in tasks_data:
+                story_id = task.get("story_id")
+                if story_id:
+                    if story_id not in tasks_by_story:
+                        tasks_by_story[story_id] = []
+                    tasks_by_story[story_id].append(task)
+                else:
+                    independent_tasks.append(task)
+
+            # 处理独立任务和按story分组的任务
+            display_tasks = []
+
+            # 先处理按story分组的任务
+            story_counter = 1
+            for story_id, tasks in tasks_by_story.items():
+                # 按照local_display_number排序任务
+                sorted_tasks = sorted(tasks, key=lambda x: x.get("local_display_number", ""))
+                # 为每个任务分配层级编号
+                task_counter = 1
+                for task in sorted_tasks:
+                    # 创建层级编号 story_num.task_num
+                    hierarchical_number = f"{story_counter}.{task_counter}"
+                    task["hierarchical_number"] = hierarchical_number
+                    display_tasks.append(task)
+                    task_counter += 1
+                story_counter += 1
+
+            # 再处理独立任务
+            for i, task in enumerate(independent_tasks):
+                # 独立任务使用单一编号
+                task["hierarchical_number"] = f"{i+1}"
+                display_tasks.append(task)
+
+            # 添加任务行到表格
+            for task in display_tasks:
                 # 获取状态和对应颜色
-                status_value = task_dict.get("status", "unknown")
+                status_value = task.get("status", "unknown")
                 color = status_colors.get(status_value, default_color)
 
-                # 将单个任务字典转为 YAML 字符串 (块状风格，增加缩进以便区分)
-                try:
-                    yaml_string = yaml.safe_dump(
-                        task_dict, allow_unicode=True, sort_keys=False, default_flow_style=False, indent=2, width=1000  # 使用缩进  # 尽量避免自动换行
-                    )
-                except yaml.YAMLError as e:
-                    logger.error(f"转换任务 {task_dict.get('id')} 为 YAML 时出错: {e}")
-                    # 打印基础信息作为回退
-                    console.print(f"id: {task_dict.get('id')}\nerror: 无法序列化任务数据")
-                    continue  # 处理下一个任务
+                # 获取显示编号和标题
+                display_number = task.get("hierarchical_number", "")
+                title = task.get("title", "")
+                task_id = task.get("id", "")
+                created_at = task.get("created_at", "")
 
-                # 查找并高亮 status 行
-                highlighted_yaml_lines = []
-                lines = yaml_string.splitlines()
-                for line in lines:
-                    # 匹配以 'status:' 开头的行 (允许前面有空格)
-                    match = re.match(r"^(\s*status:\s*)(.*)$", line)
-                    if match:
-                        prefix = match.group(1)  # 前缀（空格和 'status: '）
-                        value = match.group(2).strip()  # 原始状态值
-                        # 使用 rich markup 包裹状态值
-                        highlighted_line = f"{prefix}[bold {color}]{value}[/bold {color}]"
-                        highlighted_yaml_lines.append(highlighted_line)
-                    else:
-                        highlighted_yaml_lines.append(line)
+                # 简化创建时间，仅保留日期部分
+                if created_at and len(created_at) > 10:
+                    created_at = created_at[:10]
 
-                # 使用 console.print 打印修改后的、逐行处理的字符串
-                console.print("\n".join(highlighted_yaml_lines))
+                # 根据是否显示详细信息添加行
+                if verbose:
+                    table.add_row(f"#{display_number}" if display_number else "", title, f"[{color}]{status_value}[/{color}]", task_id, created_at)
+                else:
+                    table.add_row(f"#{display_number}" if display_number else "", title, f"[{color}]{status_value}[/{color}]")
+
+            # 打印表格
+            console.print(table)
+
+            # 打印简短的使用说明
+            console.print("\n[dim]提示: 使用 'vc task show #编号' 查看详细信息[/dim]")
 
             return  # 成功完成
         else:
@@ -191,9 +227,7 @@ def execute_list_tasks(
                 "offset": offset,
             }
 
-            # 使用TaskQueryService的search_tasks方法
-            # tasks = task_service._query_service.search_tasks(**query_params)
-            # 改为调用 TaskService 的公共方法
+            # 使用TaskService的公共方法
             tasks = task_service.search_tasks(**query_params)
 
             if not tasks:
@@ -205,25 +239,23 @@ def execute_list_tasks(
             for task in tasks:
                 refined_dict = {
                     "id": task.get("id"),
+                    "local_display_number": task.get("local_display_number"),
+                    "story_id": task.get("story_id"),  # 添加story_id用于任务分组
                     "title": task.get("title"),
                     "description": task.get("description"),
                     "status": task.get("status"),
-                    "memory_references": task.get("memory_references", []),  # 确保有默认值
+                    "memory_references": task.get("memory_references", []),
+                    "created_at": task.get("created_at"),
                 }
                 refined_task_dicts.append(refined_dict)
 
-            # results["data"] = [task for task in tasks] # 旧代码
-            results["data"] = refined_task_dicts  # 使用精简后的数据
+            results["data"] = refined_task_dicts
             results["message"] = f"成功检索到 {len(refined_task_dicts)} 个任务"
-
-            # --- 移除控制台表格输出 ---
-            # ... (表格代码已移除)
 
     except Exception as e:
         logger.error(f"列出任务时出错: {e}", exc_info=True)
         results["status"] = "error"
         results["code"] = 500
         results["message"] = f"列出任务时出错: {e}"
-        # console.print(f"[bold red]错误:[/bold red] {e}") # 错误信息由调用者处理
 
     return results

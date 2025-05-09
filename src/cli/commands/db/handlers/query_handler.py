@@ -336,74 +336,30 @@ class QueryHandler(QueryBaseHandler):
             raise DatabaseError(f"查询 {entity_type} 失败: {str(e)}")
 
 
-@click.group(name="query", help="数据库查询命令组")
-def query():
-    """数据库查询命令组"""
-    pass
-
-
-@query.command(name="get", help="查询单个实体")
-@click.argument("entity_type")
-@click.argument("entity_id")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
+@click.command(name="query", help="查询数据")
+@click.argument("query_keywords", required=False)
+@click.option("-t", "--type", "entity_type", required=True, help="实体类型 (e.g., roadmap, epic, milestone, story, task)")
+@click.option("-q", "--query", help="查询字符串")
+@click.option("-v", "--verbose", is_flag=True, default=False, help="显示详细信息")
 @pass_service(service_type="db")
-def get_entity(service, entity_type: str, entity_id: str, verbose: bool):
-    """
-    查询单个实体
+def query_db_cli(service, query_keywords, entity_type: str, query: str, verbose: bool):
+    """查询数据的Click命令入口"""
+    # 优先使用位置参数，如果没有则使用--query选项
+    final_query = query_keywords or query
 
-    Args:
-        service: 数据库服务实例
-        entity_type: 实体类型
-        entity_id: 实体ID
-        verbose: 是否显示详细信息
-    """
-    handler = GetEntityHandler()
+    handler = QueryHandler()
+    params: Dict[str, Any] = {
+        "type": entity_type,
+        "query": final_query,
+        "format": "yaml",  # 始终使用YAML格式
+        "verbose": verbose,
+        "service": service,  # 传递服务实例
+    }
     try:
-        result = handler.execute(service=service, entity_type=entity_type, entity_id=entity_id, format="yaml", verbose=verbose)
-        return result
-    except Exception:
-        return 1
-
-
-@query.command(name="search", help="搜索实体")
-@click.argument("entity_type")
-@click.argument("query_string")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service(service_type="db")
-def search_entities(service, entity_type: str, query_string: str, verbose: bool):
-    """
-    搜索实体
-
-    Args:
-        service: 数据库服务实例
-        entity_type: 实体类型
-        query_string: 搜索条件
-        verbose: 是否显示详细信息
-    """
-    handler = SearchEntitiesHandler()
-    try:
-        result = handler.execute(service=service, entity_type=entity_type, query_string=query_string, format="yaml", verbose=verbose)
-        return result
-    except Exception:
-        return 1
-
-
-@query.command(name="list", help="列出所有实体")
-@click.argument("entity_type")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service(service_type="db")
-def list_entities(service, entity_type: str, verbose: bool):
-    """
-    列出所有实体
-
-    Args:
-        service: 数据库服务实例
-        entity_type: 实体类型
-        verbose: 是否显示详细信息
-    """
-    handler = ListEntitiesHandler()
-    try:
-        result = handler.execute(service=service, entity_type=entity_type, format="yaml", verbose=verbose)
-        return result
-    except Exception:
-        return 1
+        handler.handle(**params)
+    except Exception as e:
+        # handler.error_handler(e) # error_handler 现在是 handler 的一部分
+        # 或者直接处理
+        console.print(f"[red]查询数据时出错: {str(e)}[/red]")
+        logger.error(f"查询数据时出错 (Type={entity_type}, Query={final_query}): {e}", exc_info=True)
+        raise click.Abort()

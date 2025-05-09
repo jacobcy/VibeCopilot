@@ -39,7 +39,7 @@ def get_object_name(service: RoadmapService, type: str, id: str) -> str:
         return "未命名对象"
 
 
-def handle_delete(service: RoadmapService, type: str, id: str, cascade: bool = False) -> Dict:
+def handle_delete(service: RoadmapService, type: str, id: str) -> Dict:
     """
     处理删除操作
 
@@ -47,7 +47,6 @@ def handle_delete(service: RoadmapService, type: str, id: str, cascade: bool = F
         service: RoadmapService实例
         type: 要删除的对象类型
         id: 对象ID
-        cascade: 是否级联删除
 
     Returns:
         Dict: 包含操作结果的字典
@@ -59,12 +58,12 @@ def handle_delete(service: RoadmapService, type: str, id: str, cascade: bool = F
             from src.roadmap.service.roadmap_operations import delete_roadmap as delete_roadmap_op
 
             # 调用 operations 函数，传递 service 和 id
-            # 注意：cascade 参数暂时忽略
+            # 确保级联删除
             result = delete_roadmap_op(service, id)
         # -------------------------------
         elif type == "milestone":
             # TODO: 检查 service 是否有 delete_milestone，或修改为调用 operations
-            result = service.delete_milestone(id, cascade=cascade)
+            result = service.delete_milestone(id)
         elif type == "story":
             # TODO: 检查 service 是否有 delete_story，或修改为调用 operations
             result = service.delete_story(id)

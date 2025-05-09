@@ -36,8 +36,76 @@ class TaskRepository(Repository[Task]):
         data.setdefault("updated_at", now_iso)
         data.setdefault("memory_references", [])
 
-        # Model's __init__ handles defaults too, this provides primary defaults
+        # 生成本地显示编号
+        if "local_display_number" not in data:
+            # 尝试根据所属Story生成本地显示编号
+            story_id = data.get("story_id")
 
+            if story_id:
+                # 在同一Story内自增编号
+                try:
+                    # 查询当前Story下的所有Task的local_display_number
+                    tasks_with_number = session.query(Task).filter(Task.story_id == story_id, Task.local_display_number.isnot(None)).all()
+
+                    # 提取编号部分，处理形如"T1", "T2"的编号
+                    max_number = 0
+                    for task in tasks_with_number:
+                        # 尝试从local_display_number中提取数字部分
+                        if task.local_display_number and task.local_display_number.startswith("T"):
+                            try:
+                                num = int(task.local_display_number[1:])
+                                max_number = max(max_number, num)
+                            except ValueError:
+                                pass  # 忽略无法解析为数字的部分
+
+                    # 生成新的编号，格式为 "T<story_short_id>-<number>"
+                    # 使用story_id的最后4位作为前缀
+                    story_prefix = story_id[-4:] if story_id and len(story_id) > 4 else ""
+                    data["local_display_number"] = f"T{story_prefix}-{max_number + 1}"
+                    logger.info(f"Task: 生成本地显示编号 {data['local_display_number']} (Story: {story_id})")
+                except Exception as e:
+                    logger.error(f"生成Task本地显示编号时出错: {e}", exc_info=True)
+                    # 如果出错，使用默认编号格式
+                    data["local_display_number"] = f"T{datetime.now().strftime('%m%d%H%M%S')}"
+            else:
+                # 独立任务，生成全局唯一编号
+                try:
+                    # 查询数据库中所有Task的local_display_number，找出独立任务的最大编号
+                    tasks_with_number = (
+                        session.query(Task)
+                        .filter(
+                            Task.story_id.is_(None), Task.local_display_number.isnot(None), Task.local_display_number.like("T-%")  # 查找格式为 "T-数字" 的编号
+                        )
+                        .all()
+                    )
+
+                    # 提取编号部分，处理形如"T-1", "T-2"的编号
+                    max_number = 0
+                    for task in tasks_with_number:
+                        try:
+                            # 从 "T-数字" 格式中提取数字部分
+                            if task.local_display_number.startswith("T-"):
+                                num_str = task.local_display_number[2:]  # 去掉 "T-" 前缀
+                                num = int(num_str)
+                                max_number = max(max_number, num)
+                        except (ValueError, AttributeError):
+                            pass  # 忽略无法解析的编号
+
+                    # 生成新的独立任务编号，格式为 "T-<number>"
+                    data["local_display_number"] = f"T-{max_number + 1}"
+                    logger.info(f"独立Task: 生成全局本地显示编号 {data['local_display_number']}")
+                except Exception as e:
+                    logger.error(f"生成独立Task本地显示编号时出错: {e}", exc_info=True)
+                    # 如果出错，使用时间戳作为编号前缀
+                    data["local_display_number"] = f"T-{datetime.now().strftime('%m%d%H%M%S')}"
+                    logger.info(f"独立Task: 生成时间戳本地显示编号 {data['local_display_number']}")
+
+        # 移除不存在于Task模型中的字段
+        if "workflow_id" in data:
+            logger.warning(f"Task模型没有workflow_id属性，已从创建数据中删除")
+            data.pop("workflow_id")
+
+        # Model's __init__ handles defaults too, this provides primary defaults
         entity = self.model_class(**data)
         session.add(entity)
         return entity

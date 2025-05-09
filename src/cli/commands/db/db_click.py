@@ -1,100 +1,64 @@
 """
 数据库命令组模块
 
-定义数据库相关的CLI命令。
+只负责注册从 handlers 导入的命令。
 """
-
-from typing import Any, Dict
 
 import click
 
-from src.cli.commands.db.handlers.backup_handler import BackupHandler
+from src.cli.commands.db.handlers.backup_handler import backup_db_cli
 
-# 导入处理函数
-from src.cli.commands.db.handlers.init_handler import handle_db_init
-from src.cli.commands.db.handlers.list_handler import handle_db_list
-from src.cli.commands.db.handlers.query_handler import QueryHandler
-from src.cli.commands.db.handlers.restore_handler import RestoreHandler
-from src.cli.commands.db.handlers.show_handler import ShowHandler
-from src.cli.commands.db.handlers.status_handler import StatusHandler
-from src.cli.core.decorators import pass_service
+# 从 handlers 导入具体的 Click 命令函数
+from src.cli.commands.db.handlers.init_handler import init_db_cli as init_db_handler
+from src.cli.commands.db.handlers.list_handler import list_db_cli
+from src.cli.commands.db.handlers.query_handler import query_db_cli
+from src.cli.commands.db.handlers.restore_handler import restore_db_cli
+from src.cli.commands.db.handlers.show_handler import show_db_cli
+from src.cli.commands.db.handlers.status_handler import status_db_cli
+from src.db.init_data import load_all_initial_data  # 导入初始数据加载函数
 
 
 # 数据库命令组
 @click.group(name="db", help="数据库管理命令")
 def db():
+    """数据库管理命令组"""
     pass
 
 
-# 初始化命令
-@db.command(name="init", help="初始化数据库")
-@click.option("--force", is_flag=True, default=False, help="强制重新创建数据库")
-@click.option("--verbose", is_flag=True, default=False, help="显示详细信息")
-def init_command(force: bool, verbose: bool):
-    """初始化数据库的Click命令入口"""
-    handle_db_init(force=force, verbose=verbose)
+# 在这里将普通函数包装为click命令
+@click.command(name="init")
+@click.option("--force", is_flag=True, help="强制重新初始化数据库")
+@click.option("--sample-data", is_flag=True, help="加载示例数据")
+def init_db_cli(force=False, sample_data=False):
+    """初始化数据库并导入初始数据"""
+    try:
+        # 调用原始的初始化函数
+        result = init_db_handler(force)  # 暂时只传一个参数
+
+        # 导入初始数据 - 修复导入路径
+        from src.db import get_session  # 从正确的模块导入
+
+        session = get_session()
+        try:
+            click.echo("正在导入初始数据...")
+            load_all_initial_data(session)
+            click.echo("初始数据导入完成")
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            click.echo(f"导入初始数据时出错: {str(e)}")
+        finally:
+            session.close()
+    except Exception as e:
+        click.echo(f"初始化数据导入功能失败: {str(e)}")
+
+    return result
 
 
-# 列出实体命令
-@db.command(name="list", help="列出数据库中的实体")
-@click.option("-t", "--type", "entity_type", default="roadmap", help="要列出的实体类型 (e.g., roadmap, epic, milestone, story, task)")
-@click.option("-v", "--verbose", is_flag=True, default=False, help="显示详细信息")
-def list_command(entity_type: str, verbose: bool):
-    """列出数据库实体的Click命令入口"""
-    handle_db_list(entity_type=entity_type, verbose=verbose)
-
-
-# 显示实体命令
-@db.command(name="show", help="显示数据库条目")
-@click.option("-i", "--id", required=True, help="实体ID")
-def show_command(id: str):
-    """显示数据库条目的Click命令入口"""
-    handler = ShowHandler()
-    params: Dict[str, Any] = {"id": id, "format": "yaml"}  # 始终使用YAML格式
-    handler.handle(**params)
-
-
-# 查询数据命令
-@db.command(name="query", help="查询数据")
-@click.option("-t", "--type", "entity_type", required=True, help="实体类型 (e.g., roadmap, epic, milestone, story, task)")
-@click.option("-q", "--query", default=None, help="查询字符串")
-@click.option("-v", "--verbose", is_flag=True, default=False, help="显示详细信息")
-@pass_service(service_type="db")
-def query_command(service, entity_type: str, query: str, verbose: bool):
-    """查询数据的Click命令入口"""
-    handler = QueryHandler()
-    params: Dict[str, Any] = {"type": entity_type, "query": query, "format": "yaml", "verbose": verbose, "service": service}  # 始终使用YAML格式  # 添加服务实例
-    handler.handle(**params)
-
-
-# 备份数据库命令
-@db.command(name="backup", help="备份数据库")
-@click.option("--output", default=None, help="输出文件路径")
-@click.option("--verbose", is_flag=True, default=False, help="显示详细信息")
-def backup_command(output: str, verbose: bool):
-    """备份数据库的Click命令入口"""
-    handler = BackupHandler()
-    params: Dict[str, Any] = {"output": output, "verbose": verbose}
-    handler.handle(**params)
-
-
-# 恢复数据库命令
-@db.command(name="restore", help="恢复数据库")
-@click.argument("backup_file", required=True)
-@click.option("--force", is_flag=True, default=False, help="强制恢复，不提示确认")
-@click.option("--verbose", is_flag=True, default=False, help="显示详细信息")
-def restore_command(backup_file: str, force: bool, verbose: bool):
-    """恢复数据库的Click命令入口"""
-    handler = RestoreHandler()
-    params: Dict[str, Any] = {"backup_file": backup_file, "force": force, "verbose": verbose}
-    handler.handle(**params)
-
-
-# 数据库状态命令
-@db.command(name="status", help="查询数据库表状态和结构信息")
-@click.option("-t", "--type", default="all", help="表名称或实体类型，默认为所有表")
-def status_command(type: str):
-    """查询数据库表状态和结构信息的Click命令入口"""
-    handler = StatusHandler()
-    params: Dict[str, Any] = {"type": type, "detail": False, "format": "yaml"}  # 不显示示例数据  # 始终使用YAML格式
-    handler.handle(**params)
+db.add_command(init_db_cli)
+db.add_command(list_db_cli)
+db.add_command(show_db_cli)
+db.add_command(query_db_cli)
+db.add_command(backup_db_cli)
+db.add_command(restore_db_cli)
+db.add_command(status_db_cli)

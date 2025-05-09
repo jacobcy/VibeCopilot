@@ -7,7 +7,7 @@ Story数据库模型
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from src.models.db.base import Base
@@ -26,8 +26,13 @@ class Story(Base):
     priority = Column(String(20), default="medium")
     points = Column(Integer, default=0)
     epic_id = Column(String(50), ForeignKey("epics.id"), nullable=True)
+    milestone_id = Column(String(50), ForeignKey("milestones.id"), nullable=True)
+    assignee = Column(String(100), nullable=True)
+    labels = Column(Text, nullable=True)
     created_at = Column(String(50), nullable=True)
     updated_at = Column(String(50), nullable=True)
+    local_display_number = Column(String(20), nullable=True, index=True)
+    is_implicit = Column(Boolean, default=False, nullable=False)
 
     # 关系
     epic = relationship("Epic", back_populates="stories", foreign_keys=[epic_id])
@@ -58,7 +63,12 @@ class Story(Base):
             "priority": self.priority,
             "points": self.points,
             "epic_id": self.epic_id,
+            "milestone_id": self.milestone_id,
+            "assignee": self.assignee,
+            "labels": self.labels,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "local_display_number": self.local_display_number,
+            "is_implicit": self.is_implicit,
             "tasks": [task.to_dict() for task in self.tasks] if self.tasks else [],
         }

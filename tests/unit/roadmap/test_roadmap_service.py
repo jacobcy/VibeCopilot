@@ -13,8 +13,8 @@ from src.roadmap.service.roadmap_service import RoadmapService
 class TestRoadmapService(unittest.TestCase):
     """测试Roadmap服务功能"""
 
-    @patch("src.roadmap.sync.GitHubSyncService")
-    @patch("src.roadmap.sync.YamlSyncService")
+    @patch("src.sync.GitHubSyncService")
+    @patch("src.sync.YamlSyncService")
     def test_init_roadmap_service(self, mock_yaml_sync, mock_github_sync):
         """测试初始化路线图服务"""
         # 设置模拟对象

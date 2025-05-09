@@ -46,7 +46,8 @@ def get_domain_status(provider_manager, domain: str, entity_id: Optional[str] = 
 
     except Exception as e:
         logger.error(f"获取领域 '{domain}' 状态时出错: {e}", exc_info=True)
-        return {"error": f"获取领域 '{domain}' 状态失败: {str(e)}", "code": "STATUS_ERROR", "suggestions": ["检查日志获取详细错误信息", "确认系统配置是否正确"]}
+        error_msg = str(e) if str(e) else f"获取领域 '{domain}' 状态时发生未指明的错误。详情请查看日志。"
+        return {"error": error_msg, "code": "STATUS_ERROR", "suggestions": ["检查日志获取详细错误信息", "确认系统配置是否正确"]}
 
 
 def get_system_status(provider_manager, detailed: bool = False) -> Dict[str, Any]:
@@ -192,44 +193,3 @@ def update_project_phase(project_state, subscriber_manager, phase: str) -> Dict[
     except Exception as e:
         logger.error(f"更新项目阶段时出错: {e}", exc_info=True)
         return {"status": "error", "error": f"更新项目阶段失败: {str(e)}", "code": "UPDATE_FAILED"}
-
-
-def initialize_project_status(project_state, subscriber_manager, project_name: str = None) -> Dict[str, Any]:
-    """初始化项目状态
-
-    Args:
-        project_state: 项目状态实例
-        subscriber_manager: 订阅者管理器实例
-        project_name: 项目名称，如果为None则使用默认名称
-
-    Returns:
-        Dict[str, Any]: 操作结果
-    """
-    try:
-        # 设置项目名称
-        name = project_name if project_name else "VibeCopilot"
-        project_state.update_state("name", name)
-
-        # 设置默认阶段和进度
-        project_state.update_state("phase", "planning")
-        project_state.update_state("progress", 20)
-        project_state.update_state("start_time", time.time())
-
-        # 获取更新后的状态
-        updated_state = project_state.get_project_state()
-
-        # 通知订阅者
-        subscriber_manager.notify_subscribers("project_state", updated_state)
-
-        return {
-            "status": "success",
-            "message": f"项目 '{name}' 状态已初始化",
-            "name": name,
-            "phase": "planning",
-            "progress": 20,
-            "初始化成功": True,
-            "系统信息": "项目已初始化",
-        }
-    except Exception as e:
-        logger.error(f"初始化项目状态时出错: {e}", exc_info=True)
-        return {"status": "error", "error": f"初始化项目状态失败: {str(e)}", "code": "INIT_FAILED"}

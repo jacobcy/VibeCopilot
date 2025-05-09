@@ -19,7 +19,6 @@ from src.cli.commands.memory.memory_subcommands import (
     handle_import_subcommand,
     handle_list_subcommand,
     handle_search_subcommand,
-    handle_sync_subcommand,
     handle_update_subcommand,
     handle_watch_subcommand,
     show_memory_cli,
@@ -153,19 +152,6 @@ def search(query, type, format, verbose, agent_mode):
             click.echo("\n搜索结果:")
             for idx, item in enumerate(data, 1):
                 click.echo(f"[{idx}] {item}")
-    else:
-        click.echo(f"错误: {message}", err=True)
-
-
-@memory.command()
-@click.option("--verbose", "-v", is_flag=True, help="提供详细输出")
-@click.option("--agent-mode", is_flag=True, help="启用agent优化的输出格式")
-def sync(verbose, agent_mode):
-    """同步知识库文件和索引"""
-    args = click.get_current_context().params
-    success, message, data = handle_sync_subcommand(args)
-    if success:
-        click.echo(message)
     else:
         click.echo(f"错误: {message}", err=True)
 

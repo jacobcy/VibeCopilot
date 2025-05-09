@@ -41,8 +41,10 @@ graph TD
     PM --> FP[FunctionProvider]
     SM --> LS[LogSubscriber]
     SM --> CB[回调函数订阅]
-    RP --> RS[RoadmapService]
-    WP --> FS[FlowSessionManager]
+    RP --- PS
+    WP --- PS
+    TP --- PS
+    PS --- current_state[project_state.json]
 ```
 
 ### 核心组件
@@ -348,3 +350,81 @@ python -m src.health.cli check --module all
 - 系统整体健康度的最低要求
 - API验证配置
 - 检查执行配置
+
+## 核心概念
+
+### 状态管理
+
+状态模块中有几个关键概念：
+
+1. **状态（Status）**：特定实体的状态表示，如任务的"进行中"、"已完成"等。不同领域有各自的状态定义。
+
+2. **项目状态（ProjectState）**：整个项目的全局状态，包括：
+   - 当前阶段（planning, development, testing等）
+   - 当前活动实体IDs（当前任务、当前会话、当前路线图等）
+   - 项目基本信息（名称、版本等）
+
+3. **健康状态（Health Status）**：描述系统各组件运行健康程度的指标，由HealthCalculator计算。
+
+4. **域（Domain）**：每个状态提供者负责的领域，如"task"、"roadmap"、"workflow"等。
+
+5. **实体（Entity）**：领域中的具体对象，如特定的任务、路线图元素等，通常由ID标识。
+
+### 状态管理的核心职责
+
+- **StatusService**：中央状态服务，管理状态提供者和订阅者，是状态操作的主要入口点。
+
+- **ProviderManager**：管理状态提供者的注册和获取，负责状态数据的获取和更新。
+
+- **SubscriberManager**：管理状态订阅者的注册和通知，支持对状态变更的响应机制。
+
+- **ProjectState**：维护项目全局状态，集中管理所有当前活动实体ID，使用单一的 `project_state.json` 文件进行持久化。
+
+- **IStatusProvider**：状态提供者接口，由各领域模块实现，负责返回特定领域状态信息。
+
+- **IStatusSubscriber**：状态订阅者接口，用于响应状态变更事件。
+
+## 状态初始化流程
+
+当项目首次运行或执行 `vibecopilot status init` 命令时，状态初始化流程如下：
+
+1. **初始化 StatusService 实例**：
+   - 调用 `StatusService.get_instance()` 获取单例
+   - 初始化核心组件：ProviderManager、SubscriberManager、HealthCalculator、ProjectState
+
+2. **注册默认提供者**：
+   - 通过 `register_default_providers` 注册基本状态提供者
+   - 包括：ProjectState, TaskProvider, WorkflowProvider, RoadmapProvider等
+
+3. **注册默认订阅者**：
+   - 通过 `register_default_subscribers` 注册基本订阅者
+   - 包括：LogSubscriber, HealthCheckSubscriber等
+
+4. **初始化项目状态**：
+   - 调用 `StatusService.initialize_project_status` 初始化项目状态
+   - 项目状态保存在 `project_state.json` 中
+
+5. **执行初始健康检查**：
+   - 计算系统初始健康度
+   - 报告任何初始化问题
+
+## 状态持久化
+
+以下状态信息会被持久化：
+
+1. **项目状态**：
+   - 文件：`~/data/temp/status/project_state.json`
+   - 包含：项目名称、当前阶段、版本、各种当前活动实体ID（任务ID、会话ID、路线图ID等）
+   - 管理者：ProjectState类
+
+注意：早期版本中存在的多个分散的状态文件（如 `current_task.json`、`current_session.json`、`current_roadmap.json`）已合并到单一的 `project_state.json` 文件中，由 ProjectState 类统一管理。
+
+## 与其他模块的关系
+
+Status模块与其他核心模块有紧密关系：
+
+1. **Content Sync模块**：同步编排器 (`SyncOrchestrator`) 已从Status模块移至独立的 `src/content_sync` 模块，专注于内容同步功能。
+
+2. **Health模块**：提供系统健康状态检查功能，与Status模块紧密集成。
+
+3. **Init模块**：初始化过程中使用Status模块建立初始项目状态。

@@ -52,8 +52,7 @@ VibeCopilot使用环境变量进行配置，主要环境变量文件为项目根
 
 ### 路线图配置
 
-- `ROADMAP_PROJECT_TITLE`: 路线图项目标题
-- `ROADMAP_DATA_FILE`: 路线图数据文件路径
+- `ROADMAP_PROJECT_NAME`: 路线图项目标题
 
 ### Obsidian同步
 

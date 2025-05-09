@@ -11,6 +11,9 @@ import click
 from rich.console import Console
 
 from src.cli.commands.status.output_helpers import output_result
+
+# 导入我们的新命令
+from src.cli.commands.status.subcommands.init import init_command
 from src.cli.core.decorators import pass_service
 
 # 引入 get_config
@@ -21,110 +24,75 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
-@click.group(help="项目状态管理命令")
+@click.group(name="status")
 def status():
-    """项目状态管理命令组"""
+    """项目状态管理相关命令"""
+    logger.info("Status command group invoked.")
     pass
 
 
-@status.command(name="show", help="显示项目状态概览")
-@click.option(
-    "--type",
-    type=click.Choice(["all", "summary", "critical"]),
-    default="summary",
-    help="状态类型",
-)
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
+@status.command(name="show")
+@click.option("--entity-type", help="实体类型", default=None)
+@click.option("--entity-id", help="实体ID", default=None)
 @click.option("--format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
-@pass_service(service_type="status")
-def show(service: StatusService, type="summary", verbose=False, format="text"):
-    """显示项目状态概览"""
-    try:
-        config_manager = get_config()
-        app_name = config_manager.get("app.name", "VibeCopilot")  # 获取应用名称
-
-        # 获取基本系统状态
-        if type == "all":
-            result = service.get_system_status(detailed=True)
-        elif type == "critical":
-            result = service.get_critical_status()
-        else:  # summary
-            result = service.get_system_status(detailed=False)
-
-        # 将应用名称添加到结果中以便输出
-        if isinstance(result, dict):
-            # 确保 system_info 存在
-            if "system_info" not in result:
-                result["system_info"] = {}
-            result["system_info"]["app_name"] = app_name
-
-        # 获取任务摘要
-        try:
-            task_summary = service.get_domain_status("task")
-            task_summary.pop("error", None)
-            result["task_summary"] = task_summary
-        except Exception as task_e:
-            logger.warning(f"获取任务摘要时出错: {task_e}")
-            result["task_summary"] = {"error": f"获取任务摘要失败: {task_e}"}
-
-        # 输出结果
-        if format == "text":
-            console.print(f"[bold cyan]=== {app_name} 状态概览 ===[/bold cyan]\n")
-
-        output_result(result, format, "system", verbose)
-    except Exception as e:
-        console.print(f"[bold red]执行错误:[/bold red] {str(e)}")
-        return 1
-
-
-@status.command(name="workflow", help="显示工作流状态")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@click.option("--format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
-@pass_service(service_type="status")
-def workflow(service, verbose=False, format="text"):
-    """显示工作流状态"""
-    try:
-        # 直接调用服务获取工作流状态
-        result = service.get_domain_status("workflow")
+def show_command(entity_type, entity_id, format, verbose):
+    """显示项目状态信息"""
+    from src.cli.commands.status.subcommands.show import handle_show
 
-        # 输出结果
-        output_result(result, format, "domain", verbose)
-    except Exception as e:
-        console.print(f"[bold red]执行错误:[/bold red] {str(e)}")
-        return 1
-
-
-@status.command(name="flow", help="显示工作流状态 (workflow的别名)")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@click.option("--format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
-@pass_service(service_type="status")
-def flow(service, verbose=False, format="text"):
-    """显示工作流状态 (workflow的别名)"""
-    try:
-        # 使用实体ID "current" 获取当前会话工作流状态
-        result = service.get_domain_status("workflow", entity_id="current")
-
-        # 输出结果
-        output_result(result, format, "domain", verbose)
-    except Exception as e:
-        console.print(f"[bold red]执行错误:[/bold red] {str(e)}")
-        return 1
+    handle_show(None, {"entity_type": entity_type, "entity_id": entity_id, "format": format, "verbose": verbose})
 
 
 @status.command(name="roadmap", help="显示路线图状态")
 @click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
 @click.option("--format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
-@pass_service(service_type="status")
-def roadmap(service, verbose=False, format="text"):
+def roadmap(verbose=False, format="text"):
     """显示路线图状态"""
+    logger.info("Roadmap command function entered.")
+    service = None
     try:
-        # 直接调用服务获取路线图状态
-        result = service.get_domain_status("roadmap")
+        logger.info("Attempting to get StatusService instance manually.")
+        service = StatusService.get_instance()
+        logger.info(f"StatusService instance obtained manually: {service}")
+    except Exception as e_service_init:
+        logger.error(f"Error getting StatusService instance: {e_service_init}", exc_info=True)
+        error_msg_init = str(e_service_init) if str(e_service_init) else repr(e_service_init)
+        if not error_msg_init or error_msg_init == "None":
+            error_msg_init = "获取 StatusService 实例时发生未知错误。"
+        console.print(f"[bold red]初始化错误:[/bold red] {error_msg_init}")
+        return 1
 
-        # 输出结果
+    if verbose:
+        logger.info("Executing 'vc status roadmap --verbose'")
+        logger.info(f"StatusService instance: {service}")
+        if service and hasattr(service, "provider_manager"):
+            logger.info(f"ProviderManager instance: {service.provider_manager}")
+            roadmap_provider = service.provider_manager.get_provider("roadmap")
+            logger.info(f"Roadmap provider from manager: {roadmap_provider}")
+            if roadmap_provider:
+                logger.info(f"Type of roadmap provider: {type(roadmap_provider)}")
+        else:
+            logger.warning("StatusService (manual) or ProviderManager not available.")
+
+    try:
+        if not service:
+            logger.error("Service is None before calling get_domain_status.")
+            console.print("[bold red]执行错误:[/bold red] 状态服务未能初始化。")
+            return 1
+
+        if verbose:
+            logger.info('Calling service.get_domain_status("roadmap")')
+        result = service.get_domain_status("roadmap")
+        if verbose:
+            logger.info(f"Result from get_domain_status: {result}")
+
         output_result(result, format, "domain", verbose)
     except Exception as e:
-        console.print(f"[bold red]执行错误:[/bold red] {str(e)}")
+        error_message = str(e) if str(e) else repr(e)
+        if not error_message or error_message == "None":
+            error_message = "执行 roadmap 状态命令时发生未知错误。请检查日志以获取详细信息。"
+        console.print(f"[bold red]执行错误:[/bold red] {error_message}")
+        logger.error(f"Error executing 'vc status roadmap': {e}", exc_info=True)
         return 1
 
 
@@ -181,32 +149,8 @@ def update(service, phase, verbose=False, format="text"):
         return 1
 
 
-@status.command(name="init", help="初始化项目状态")
-@click.option("--name", help="项目名称")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@click.option("--format", type=click.Choice(["text", "json"]), default="text", help="输出格式")
-@pass_service(service_type="status")
-def init(service, name=None, verbose=False, format="text"):
-    """初始化项目状态"""
-    try:
-        # 设置默认项目名称
-        project_name = name if name else "VibeCopilot"
-
-        # 在开始时输出初始化标记
-        if format == "text":
-            console.print(f"🚀 [bold]正在初始化项目状态...[/bold]")
-
-        # 直接调用服务初始化项目状态
-        result = service.initialize_project_status(project_name)
-
-        if format == "text" and "status" in result and result["status"] == "success":
-            console.print(f"✅ [bold green]初始化完成[/bold green]: 项目 {project_name} 状态已初始化")
-
-        # 输出结果
-        output_result(result, format, "generic", verbose)
-    except Exception as e:
-        console.print(f"[bold red]初始化错误:[/bold red] {str(e)}")
-        return 1
+# 注册新的init命令
+status.add_command(init_command)
 
 
 if __name__ == "__main__":

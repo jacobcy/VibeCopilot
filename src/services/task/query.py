@@ -74,34 +74,72 @@ class TaskQueryService:
     def get_task_by_identifier(self, identifier: str) -> Optional[Dict[str, Any]]:
         """通过ID或名称查找任务
 
-        先按ID精确查找，如果找不到，则按名称（不区分大小写）查找。
+        先按ID精确查找，如果找不到，则尝试按本地显示编号查找，最后尝试按名称（不区分大小写）查找。
 
         Args:
-            identifier: 任务ID或任务名称
+            identifier: 任务ID、本地显示编号或任务名称
+                支持的本地显示编号格式: "T1", "#T1", "#1", "T-1", "#T-1"
 
         Returns:
             任务信息字典，如果找不到则返回None
         """
         try:
+            # 去除可能的前缀并标准化标识符
+            clean_identifier = identifier.strip()
+
+            # 检查是否是本地显示编号格式
+            is_local_number = False
+            display_number_to_search = None
+
+            # 处理 #T1, #1, #T-1 等格式 (去除#号)
+            if clean_identifier.startswith("#"):
+                clean_identifier = clean_identifier[1:].strip()  # 去除#号
+                is_local_number = True
+
+            # 处理各种格式
+            if clean_identifier.startswith("T"):
+                # 已经是T开头，直接使用
+                display_number_to_search = clean_identifier
+                is_local_number = True
+            elif clean_identifier.isdigit():
+                # 纯数字，添加T前缀
+                display_number_to_search = f"T{clean_identifier}"
+                is_local_number = True
+
             # 使用 session_scope 获取会话
             with session_scope() as session:
-                # 首先尝试通过ID查找
+                # 1. 首先尝试通过ID查找
                 task_orm = self._task_repo.get_by_id(session, identifier)
                 if task_orm:
+                    logger.debug(f"[get_task_by_identifier] 通过ID找到任务: {identifier}")
                     return task_orm.to_dict() if hasattr(task_orm, "to_dict") else None
 
-                # 如果找不到，尝试通过名称查找（不区分大小写）
+                # 2. 如果是本地显示编号格式，尝试按本地显示编号查找
+                if is_local_number and display_number_to_search:
+                    logger.debug(f"[get_task_by_identifier] 尝试按本地显示编号查找: {display_number_to_search}")
+                    # 查询指定本地显示编号的任务
+                    task_orm = (
+                        session.query(self._task_repo.model_class)
+                        .filter(self._task_repo.model_class.local_display_number == display_number_to_search)
+                        .first()
+                    )
+
+                    if task_orm:
+                        logger.debug(f"[get_task_by_identifier] 通过本地显示编号找到任务: {display_number_to_search}")
+                        return task_orm.to_dict() if hasattr(task_orm, "to_dict") else None
+
+                # 3. 如果找不到，尝试通过名称查找（不区分大小写）
                 tasks_orm = self._task_repo.get_all(session)  # 获取所有 ORM 对象
-                logger.debug(f"[get_task_by_identifier] Found {len(tasks_orm)} tasks via get_all for title comparison.")  # <-- 日志1
+                logger.debug(f"[get_task_by_identifier] Found {len(tasks_orm)} tasks via get_all for title comparison.")
                 found_task_dict = None
                 for task_orm_item in tasks_orm:
                     task_title = getattr(task_orm_item, "title", "")
                     task_id = getattr(task_orm_item, "id", "N/A")
                     logger.debug(
                         f"[get_task_by_identifier] Comparing identifier '{identifier.lower()}' with task title '{task_title.lower()}' (ID: {task_id})"
-                    )  # <-- 日志2
+                    )
                     if task_title.lower() == identifier.lower():
-                        logger.debug(f"[get_task_by_identifier] Title match found for identifier '{identifier}'! Task ID: {task_id}")  # <-- 日志3
+                        logger.debug(f"[get_task_by_identifier] Title match found for identifier '{identifier}'! Task ID: {task_id}")
                         # 转换为字典
                         found_task_dict = task_orm_item.to_dict() if hasattr(task_orm_item, "to_dict") else None
                         break  # 找到就退出循环
@@ -109,11 +147,11 @@ class TaskQueryService:
                 if found_task_dict:
                     return found_task_dict
                 # 都找不到，返回None
-                logger.debug(f"[get_task_by_identifier] No title match found for identifier '{identifier}'.")  # <-- 日志4
+                logger.debug(f"[get_task_by_identifier] No match found for identifier '{identifier}'.")
                 return None
 
         except Exception as e:
-            logger.error(f"通过标识符 {identifier} 查找任务失败: {e}", exc_info=True)  # 添加 exc_info
+            logger.error(f"通过标识符 {identifier} 查找任务失败: {e}", exc_info=True)
             return None
 
     def list_tasks(

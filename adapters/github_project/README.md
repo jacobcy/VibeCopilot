@@ -72,13 +72,13 @@
 
 ```python
 # 使用整合型Issues客户端
-from adapters.github_project.api import GitHubIssuesClient
+from src.sync import GitHubIssuesClient
 
 client = GitHubIssuesClient()
 issues = client.get_issues("owner", "repo", state="open")
 
 # 也可以使用专门的客户端
-from adapters.github_project.api.clients.issues import GitHubIssueLabelsClient
+from src.sync.clients.issues import GitHubIssueLabelsClient
 
 labels_client = GitHubIssueLabelsClient()
 labels = labels_client.get_labels("owner", "repo")

@@ -46,13 +46,13 @@ summary: "本文记录了VibeCopilot项目中解决Python模块循环导入问�
 
 ```python
 # 移除顶层导入
-# from src.roadmap.sync import GitHubSyncService, YamlSyncService
+# from src.sync import GitHubSyncService, YamlSyncService
 
 def __init__(self, session: Optional[Session] = None):
     # ...代码省略...
 
     # 延迟导入，避免循环依赖
-    from src.roadmap.sync import GitHubSyncService, YamlSyncService
+    from src.sync import GitHubSyncService, YamlSyncService
 
     # 初始化同步服务
     self.github_sync = GitHubSyncService(self)

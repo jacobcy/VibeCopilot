@@ -5,29 +5,7 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "/Volumes/Cube/Public/VibeCopilot"
-      ]
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ]
-    },
-    "time": {
-      "command": "uvx",
-      "args": [
-        "mcp-server-time",
-        "--local-timezone",
-        "Asia/Shanghai"
-      ]
-    },
-    "basic-memory": {
-      "command": "uvx",
-      "args": [
-        "basic-memory",
-        "mcp"
+        "/Users/jacobcy/Public/VibeCopilot"
       ]
     },
     "git": {
@@ -35,8 +13,10 @@
       "args": [
         "mcp-server-git",
         "--repository",
-        "/Volumes/Cube/Public/VibeCopilot"
+        "/Users/jacobcy/Public/VibeCopilot"
       ]
     }
-  }
+  },
+  "version": "1.0.0",
+  "transport": "stdio"
 }

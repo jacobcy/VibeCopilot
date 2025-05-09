@@ -5,15 +5,18 @@
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 from src.status.core.health_calculator import HealthCalculator
 from src.status.core.project_state import ProjectState
 from src.status.core.provider_manager import ProviderManager
 from src.status.core.subscriber_manager import SubscriberManager
-from src.status.interfaces import IStatusProvider
+from src.status.interfaces import IStatusProvider, IStatusSubscriber
+from src.status.providers.flow_session_provider import FlowSessionStatusProvider
+from src.status.providers.github_info_provider import GitHubInfoProvider
+from src.status.providers.health_provider import HealthProvider
+from src.status.providers.roadmap_provider import RoadmapStatusProvider
 from src.status.providers.task_provider import TaskStatusProvider
-from src.status.providers.workflow_provider import WorkflowStatusProvider
 from src.status.subscribers.log_subscriber import LogSubscriber
 
 logger = logging.getLogger(__name__)
@@ -45,112 +48,59 @@ class MockRoadmapStatusProvider(IStatusProvider):
         return [{"id": "mock:roadmap", "name": "模拟路线图数据", "type": "mock", "status": "warning"}]
 
 
-def initialize_components():
-    """初始化状态服务的核心组件
-
-    Returns:
-        tuple: 包含(provider_manager, subscriber_manager, health_calculator, project_state)的元组
-    """
-    logger.info("初始化状态服务核心组件...")
+def initialize_components() -> Tuple[ProviderManager, SubscriberManager, HealthCalculator, ProjectState]:
+    """初始化状态模块的核心组件"""
     provider_manager = ProviderManager()
     subscriber_manager = SubscriberManager()
     health_calculator = HealthCalculator()
+
+    # 使用新的构造方法初始化 ProjectState，不再传入文件路径
     project_state = ProjectState()
 
+    logger.info("状态模块核心组件初始化完成。")
     return provider_manager, subscriber_manager, health_calculator, project_state
 
 
-def register_default_providers(provider_manager, health_calculator, project_state):
-    """注册默认的状态提供者
+def register_default_providers(provider_manager: ProviderManager, health_calculator: HealthCalculator, project_state: ProjectState) -> None:
+    """注册默认状态提供者"""
+    logger.info("注册默认状态提供者 (in service_initialization)...")
 
-    包括系统健康状态和项目状态
-
-    Args:
-        provider_manager: 提供者管理器实例
-        health_calculator: 健康计算器实例
-        project_state: 项目状态实例
-    """
-    # 尝试获取数据库会话，但不强制依赖
-    session = None
     try:
-        from src.db import get_session_factory
+        # 添加日志以帮助调试
+        logger.info("开始注册默认提供者...")
+        provider_manager.register_provider("health", HealthProvider())
+        logger.info("健康状态提供者注册成功")
 
-        # 直接使用已初始化的会话，减少数据库操作
-        session_factory = get_session_factory()
-        if session_factory is not None:
-            session = session_factory()
-    except Exception as e:
-        logger.warning(f"获取数据库会话失败: {e}")
-        # 将错误降级为警告，不影响状态模块初始化
+        # 添加调试日志
+        logger.info("正在注册 GitHub 信息提供者...")
+        github_provider = GitHubInfoProvider()
+        provider_manager.register_provider("github_info", github_provider)
+        logger.info("GitHub 信息提供者注册成功")
 
-    # 注册健康状态提供者
-    provider_manager.register_provider("health", health_calculator.get_health_status)
-    logger.info("健康状态提供者注册成功")
-
-    # 注册项目状态提供者
-    provider_manager.register_provider("project_state", project_state.get_project_state)
-    logger.info("项目状态提供者注册成功")
-
-    # 注册任务状态提供者
-    try:
-        task_provider = TaskStatusProvider()
-        provider_manager.register_provider("task", task_provider)
-        logger.info("任务状态提供者注册成功")
-    except Exception as e:
-        logger.error(f"注册任务状态提供者失败: {e}")
-        provider_manager.register_provider(
-            "task",
-            lambda: {
-                "status": "error",
-                "error": f"任务状态提供者初始化失败: {e}",
-                "code": "PROVIDER_INIT_ERROR",
-            },
-        )
-
-    # 注册路线图状态提供者
-    register_roadmap_provider(provider_manager)
-
-    # 注册工作流状态提供者
-    register_workflow_provider(provider_manager, session)
-
-
-def register_roadmap_provider(provider_manager):
-    """注册路线图状态提供者
-
-    Args:
-        provider_manager: 提供者管理器实例
-    """
-    try:
-        # 使用模拟提供者替代临时禁用的真实提供者
-        logger.info("路线图状态提供者已临时禁用，使用模拟提供者")
-        roadmap_provider = MockRoadmapStatusProvider()
+        # RoadmapStatusProvider is instantiated here, it needs RoadmapService later.
+        roadmap_provider = RoadmapStatusProvider(project_state)  # Still pass project_state
         provider_manager.register_provider("roadmap", roadmap_provider)
-        logger.info("模拟路线图状态提供者注册成功")
-    except ImportError as e:
-        logger.error(f"注册路线图状态提供者失败 (导入错误): {e}")
-        provider_manager.register_provider(
-            "roadmap",
-            lambda: {
-                "status": "error",
-                "error": f"路线图状态提供者导入失败: {e}",
-                "code": "IMPORT_ERROR",
-                "health": 0,
-                "suggestions": ["检查导入路径是否正确", "确保所有必要的模块已安装", "检查代码中是否存在导入冲突"],
-            },
-        )
+
+        try:
+            task_provider = TaskStatusProvider(project_state)
+            provider_manager.register_provider("task", task_provider)
+        except Exception as e:
+            logger.error(f"注册TaskStatusProvider时出错: {e}")
+
+        if not provider_manager.has_provider("project_state"):
+            provider_manager.register_provider("project_state", project_state.get_project_state)
+
+        # Removed explicit connect_services() or get_roadmap_service() calls here.
+        # The connection will be attempted by StatusService.__init__ using force_connect,
+        # or when RoadmapStatusProvider._ensure_service_set is called.
+        logger.info("默认提供者已注册。服务连接将由 StatusService.__init__ 或按需处理。")
+
     except Exception as e:
-        logger.error(f"注册路线图状态提供者失败: {e}")
-        # 使用模拟数据作为临时解决方案
-        provider_manager.register_provider(
-            "roadmap",
-            lambda: {
-                "status": "error",
-                "error": f"路线图状态提供者初始化失败: {e}",
-                "code": "PROVIDER_INIT_ERROR",
-                "health": 0,
-                "suggestions": ["检查数据库连接", "确保所有必要的表都已创建", "验证 RoadmapService 配置"],
-            },
-        )
+        logger.error(f"注册默认提供者时出错: {e}", exc_info=True)
+        # 添加更详细的错误处理
+        import traceback
+
+        logger.error(f"完整错误堆栈: {traceback.format_exc()}")
 
 
 def register_workflow_provider(provider_manager, session=None):

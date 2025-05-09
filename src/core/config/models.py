@@ -4,9 +4,11 @@
 提供配置系统中使用的基础类、枚举和异常定义。
 """
 
+import json
 import logging
 import os
 from enum import Enum
+from pathlib import Path
 from typing import Any, Generic, Optional, TypeVar
 
 # 配置日志
@@ -52,9 +54,16 @@ class ConfigEnvironment(Enum):
 
 
 class ConfigValue(Generic[T]):
-    """配置值包装器，支持环境变量覆盖"""
+    """配置值包装器，支持环境变量覆盖和从settings.json加载"""
 
     def __init__(self, default: T, env_key: Optional[str] = None, validator: Optional[callable] = None):
+        """初始化配置值
+
+        Args:
+            default: 默认值
+            env_key: 环境变量键名
+            validator: 可选的验证函数
+        """
         self.default = default
         self.env_key = env_key
         self.validator = validator
@@ -68,32 +77,37 @@ class ConfigValue(Generic[T]):
         return value.strip()
 
     def get_value(self) -> T:
-        """获取配置值，优先使用环境变量"""
+        """获取配置值，优先级：环境变量 > 默认值
+
+        Returns:
+            T: 配置值
+        """
+        # 尝试从环境变量获取
         if self.env_key and self.env_key in os.environ:
             value = self._clean_env_value(os.environ[self.env_key])
 
-            # 如果清理后的值为空，使用默认值
+            # 如果清理后的值为空，继续尝试其他来源
             if not value:
-                return self.default
+                logger.debug(f"环境变量 {self.env_key} 值为空")
+            else:
+                # 根据默认值类型进行转换
+                try:
+                    if isinstance(self.default, bool):
+                        value = value.lower() in ("true", "1", "yes")
+                    elif isinstance(self.default, int):
+                        value = int(value)
+                    elif isinstance(self.default, float):
+                        value = float(value)
+                    elif isinstance(self.default, list):
+                        value = [v.strip() for v in value.split(",") if v.strip()]
 
-            # 根据默认值类型进行转换
-            try:
-                if isinstance(self.default, bool):
-                    value = value.lower() in ("true", "1", "yes")
-                elif isinstance(self.default, int):
-                    value = int(value)
-                elif isinstance(self.default, float):
-                    value = float(value)
-                elif isinstance(self.default, list):
-                    value = [v.strip() for v in value.split(",") if v.strip()]
-            except (ValueError, TypeError) as e:
-                logger.warning(f"环境变量 {self.env_key} 值转换失败: {e}")
-                return self.default
+                    # 验证值
+                    if self.validator and not self.validator(value):
+                        logger.warning(f"环境变量 {self.env_key} 值验证失败")
+                    else:
+                        return value
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"环境变量 {self.env_key} 值转换失败: {e}")
 
-            # 验证值
-            if self.validator and not self.validator(value):
-                logger.warning(f"环境变量 {self.env_key} 值验证失败")
-                return self.default
-
-            return value
+        # 使用默认值
         return self.default

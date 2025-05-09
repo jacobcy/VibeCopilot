@@ -17,7 +17,7 @@ from typing import List, Optional
 project_dir = Path(__file__).parent.parent.parent
 sys.path.append(str(project_dir))
 
-from src.status.sync.sync_orchestrator import SyncOrchestrator
+from src.content_sync import SyncOrchestrator
 
 # Configure logging
 logging.basicConfig(

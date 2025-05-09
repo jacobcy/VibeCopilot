@@ -13,7 +13,7 @@ GitHub项目API包.
 
 示例用法:
 ```python
-from adapters.github_project.api.clients import GitHubProjectsClient, GitHubIssuesClient
+from src.sync.clients import GitHubProjectsClient, GitHubIssuesClient
 
 # 初始化项目客户端
 projects_client = GitHubProjectsClient()

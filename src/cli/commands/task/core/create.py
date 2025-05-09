@@ -136,9 +136,21 @@ def execute_create_task(
         assignee = "AI Agent"
         logger.info(f"没有指定负责人，默认设置为: {assignee}")
 
-    config = get_config()
-    github_owner = config.get("github.owner", None)
-    logger.info(f"任务负责人: {github_owner or '未设置'}")
+    # 从StatusService获取GitHub配置
+    try:
+        from src.status.service import StatusService
+
+        status_service = StatusService.get_instance()
+        github_info = status_service.get_domain_status("github_info")
+
+        github_owner = None
+        if github_info and "github_info" in github_info:
+            github_owner = github_info["github_info"].get("effective_owner")
+            logger.info(f"任务负责人: {github_owner or '未设置'}")
+    except Exception as e:
+        logger.warning(f"获取GitHub配置时出错: {e}")
+        github_owner = None
+        logger.info("任务负责人: 未设置")
 
     task_data = {
         "title": title,

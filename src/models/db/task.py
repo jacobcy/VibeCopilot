@@ -6,13 +6,33 @@ Task数据库模型
 定义任务的数据库模型结构
 """
 
+import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from src.models.db.base import Base
+
+
+# 定义任务状态枚举
+class TaskStatus(enum.Enum):
+    TODO = "todo"
+    IN_PROGRESS = "in_progress"
+    DONE = "done"
+    BLOCKED = "blocked"
+    CANCELLED = "cancelled"
+    BACKLOG = "backlog"
+
+
+# 定义任务优先级枚举
+class TaskPriority(enum.Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    NONE = "none"
 
 
 class Task(Base):
@@ -39,6 +59,7 @@ class Task(Base):
     memory_references = Column(
         JSON, nullable=True
     )  # 存储为 JSON 对象列表: [{"permalink": "memory://...", "title": "文档名", "added_at": "2023-01-01T00:00:00"}]
+    local_display_number = Column(String(20), nullable=True, index=True)  # 新增：本地显示编号，例如 "T1"
 
     # 关系
     story = relationship("Story", back_populates="tasks")
@@ -90,6 +111,7 @@ class Task(Base):
             "github_issue": self.github_issue,
             "current_session_id": self.current_session_id,
             "memory_references": self.memory_references,
+            "local_display_number": self.local_display_number,  # 新增：本地显示编号
         }
 
     def __repr__(self):

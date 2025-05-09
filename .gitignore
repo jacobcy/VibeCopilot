@@ -35,7 +35,6 @@ config/default/.env.notion
 
 # IDE
 .idea/
-.vscode/
 *.sublime-project
 *.sublime-workspace
 
@@ -76,6 +75,7 @@ pnpm-lock.yaml
 .cursor/rules/.DS_Store
 .cursor/rules/*/.DS_Store
 .cursor/mcp.json
+.roo/mcp.json
 
 # App specific
 external/

@@ -31,7 +31,7 @@ def init_templates() -> Dict[str, int]:
 
     # 检查模板表是否为空
     if repo.count(session) == 0:
-        logger.info("模板表为空，开始初始化默认模板...")
+        logger.info("数据库中没有模板，正在初始化示例模板...")
         # 添加一些示例模板
         templates = [
             {
@@ -82,7 +82,7 @@ def init_templates() -> Dict[str, int]:
                 logger.error(f"创建模板失败: {template['name']}", exc_info=True)
                 fail_count += 1
     else:
-        logger.info("模板表不为空，跳过初始化")
+        logger.info("数据库中已存在模板，跳过初始化。")
 
     logger.info(f"模板初始化完成: 成功 {success_count}, 失败 {fail_count}")
     session.close()

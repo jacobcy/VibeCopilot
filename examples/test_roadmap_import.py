@@ -9,7 +9,7 @@ import logging
 import os
 import time
 
-from src.roadmap.sync.import_service import RoadmapImportService, get_temp_dir
+from src.sync.import_service import RoadmapImportService, get_temp_dir
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)

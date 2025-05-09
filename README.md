@@ -1,153 +1,161 @@
-# VibeCopilot 模板生成系统
+# VibeCopilot - AI 辅助开发工作流
 
-VibeCopilot 是一个强大的AI辅助开发工具，集成了模板生成、命令处理、规则管理等多个子系统。它提供了统一的命令接口，可以通过MCP协议在任何支持的项目中使用。
+[![构建状态](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/jacobcy/VibeCopilot/actions/workflows/ci.yml/badge.svg)
+[![测试状态](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/jacobcy/VibeCopilot/actions/workflows/test-all.yml/badge.svg)
+[![许可证](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![版本](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/jacobcy/VibeCopilot/releases)
 
-## 功能特点
+VibeCopilot 是一款旨在通过 AI 增强开发流程的命令行工具，帮助开发者更高效地管理项目、任务、知识和工作流。它通过 **MCP (Modular Command Protocol)** 标准与 Cursor IDE 等外部工具集成。
 
-- **多种生成器**: 支持基于正则表达式的本地生成和基于LLM的云端智能生成
-- **变量验证**: 自动验证必需变量和变量类型
-- **命令行界面**: 提供丰富的命令行工具管理和使用模板
-- **模板管理**: 支持模板的导入、创建、更新和删除
-- **多种输出格式**: 支持Markdown、JSON等多种输出格式
-- **MCP服务器**: 提供标准的MCP接口，支持跨项目使用
+## ✨ 主要功能
 
-Looking at the README.md, here's how to use VibeCopilot:
+VibeCopilot 提供了以下核心功能模块，通过统一的命令行界面进行管理：
 
-## Installation
+* **数据库管理 (`db`)**: 初始化、查询、备份和恢复项目数据库 (基于 SQLite)。
+* **工作流管理 (`flow`)**: 定义、创建、执行和管理开发工作流及会话。支持结构化的开发流程检查点。
+* **知识库管理 (`memory`)**: 存储、检索、同步和管理项目相关的知识和文档 (当前使用 **basic-memory** 实现)。
+* **路线图管理 (`roadmap`)**: 创建、查看、更新项目路线图，并支持与 **GitHub Projects** 进行双向同步，自动检测 Git 仓库信息。
+* **规则管理 (`rule`)**: 定义、验证和管理项目中的结构化规则（如代码规范、流程规则等）。支持基于 YAML/Markdown 的规则模板。
+* **状态管理 (`status`)**: 查看和更新项目的整体状态、各模块状态及活动路线图等持久化状态。
+* **任务管理 (`task`)**: 创建、查询、更新和管理开发任务（类似 GitHub Issues）。
+* **模板管理 (`template`)**: 管理用于生成代码、文档或其他内容的模板。支持多种生成器。
+* **帮助系统 (`help`)**: 提供详细的命令行帮助信息和规则文档。
 
-First, install all dependencies:
-```bash
-pip install -r requirements.txt
-```
+## 🚀 快速开始
 
-For MCP server functionality, install as an editable uvx package:
+### 技术栈
+
+* **后端**: Python 3.9+ (FastAPI/Flask, SQLAlchemy)
+* **数据库**: SQLite (元数据), **basic-memory** (知识库)
+* **包管理**: `uv` / `pnpm`
+* **AI**: Claude API
+
+### 环境准备
+
+1. 确保已安装 Python 3.9+ 和 Git。
+2. 安装 `uv` 包管理器（如果尚未安装）：`pip install uv`
+3. 设置必要的环境变量，例如：
+    * `GITHUB_TOKEN`: 用于 GitHub 集成
+    * `VIBECOPILOT_ENV`: 运行环境 (development, testing, production)
+    * `DB_PATH`: SQLite 数据库文件路径
+    * `LOG_LEVEL`: 日志级别
+
+### 安装
+
+在项目根目录下，使用 `uvx` 安装可编辑模式的 VibeCopilot：
+
 ```bash
 uvx install-editable .
 ```
 
-## Starting the MCP Server
+### 初始化
 
-Launch the MCP server with the following command:
+首次运行或在新的工作区中，需要在项目根目录下运行初始化命令：
+
 ```bash
-uvx mcp-server-cursor --workspace /path/to/project
+vibecopilot db init
+vibecopilot status init
+# 如果需要初始化规则和模板等数据，可能还需要运行其他初始化命令
+# 例如: vibecopilot rule load
+# 例如: vibecopilot template load
 ```
 
-## Template Generation
+### 💻 使用方法
 
-Test template generation with the regex generator (default):
-```bash
-python test_template_generator.py templates/rule/command.md -v '{"name":"test_command","description":"A test command for demonstration"}'
+VibeCopilot 主要通过命令行界面 (CLI) 进行交互。
+
+#### 通用选项
+
+* `--version`: 显示 VibeCopilot 的版本信息。
+* `-v, --verbose`: 显示详细的日志信息，有助于调试。
+* `-h, --help`: 显示帮助信息。
+
+#### 主要命令
+
+以下是 VibeCopilot 提供的主要命令组：
+
+```
+Usage: vibecopilot [OPTIONS] COMMAND [ARGS]...
+
+  VibeCopilot CLI工具
+
+Options:
+  --version      显示版本信息
+  -v, --verbose  显示详细日志信息
+  -h, --help     Show this message and exit.
+
+Commands:
+  db        数据库管理命令
+  flow      工作流管理命令
+  help      显示帮助信息
+  memory    知识库管理命令
+  roadmap   路线图管理命令
+  rule      规则管理命令
+  status    项目状态管理命令
+  task      任务管理命令
+  template  模板管理命令
 ```
 
-Use the LLM generator by adding the `-g llm` flag:
+要查看具体命令组的详细用法，请使用：
+
 ```bash
-python test_template_generator.py templates/rule/command.md -v '{"name":"test_command","description":"A test command for demonstration"}' -g llm
+vibecopilot <命令组名称> --help
+```
+例如，查看 `roadmap` 命令组的帮助信息：
+
+```bash
+vibecopilot roadmap --help
+```
+要查看某个具体子命令的帮助信息，请使用：
+
+```bash
+vibecopilot <命令组名称> <子命令名称> --help
+```
+例如，查看 `roadmap sync` 子命令的帮助信息：
+
+```bash
+vibecopilot roadmap sync --help
 ```
 
-## Using with Cursor IDE
+### 与 Cursor IDE 集成
 
-To use VibeCopilot in Cursor IDE, add this configuration to `.cursor/mcp.json`:
+将以下配置添加到您工作区的 `.cursor/mcp.json` 文件中：
+
 ```json
 {
     "mcpServers": {
-      "cursor-command": {
+      "vibecopilot-server": {
         "command": "uvx",
         "args": [
           "mcp-server-cursor",
           "--workspace",
           "${workspaceRoot}"
-        ]
+        ],
+        "host": "127.0.0.1", # 根据实际情况配置
+        "port": 5000        # 根据实际情况配置
       }
     }
 }
 ```
+然后重启 Cursor IDE。
 
-## Command Line Tools
+## 📂 项目结构速览
 
-The template system offers several command line tools:
-```bash
-# List all templates
-python -m src.commands.template.main list
+* `/src`: 核心源代码
+* `/config`: 配置文件 (.yaml, .json)
+* `/docs`: 项目文档
+* `/tests`: 测试代码
+* `/.ai`: AI相关资源 (例如知识库存储)
+* `/templates`: 各种生成模板
 
-# View a specific template
-python -m src.commands.template.main show <template_id>
+更多详细结构和规范请参考 `/docs/README.md`。
 
-# Generate template content
-python -m src.commands.template.main generate <template_id> --variables '{"name":"value"}'
+## 🤝 贡献
 
-# Import a template
-python -m src.commands.template.main import <file_path>
+欢迎为 VibeCopilot 做出贡献！请阅读 [CONTRIBUTING.md](https://github.com/jacobcy/VibeCopilot/blob/main/CONTRIBUTING.md) 了解详细信息。我们遵循 [约定式提交规范](https://www.conventionalcommits.org/en/v1.0.0/) (`core-rules/convention`) 和强制开发流程检查点 (`dev-rules/flow`)。
 
-# Load all templates from a directory
-python -m src.commands.template.main load
-```
+(在此处可以添加更多具体的贡献指南，例如如何报告 Bug、提交 Pull Request 等，或者指引到 CONTRIBUTING.md 文件)
 
-## 命令行工具
+## 📄 许可证
 
-模板系统提供了一套完整的命令行工具:
-
-```bash
-# 列出所有模板
-python -m src.commands.template.main list
-
-# 查看特定模板
-python -m src.commands.template.main show <template_id>
-
-# 生成模板内容
-python -m src.commands.template.main generate <template_id> --variables '{"name":"value"}'
-
-# 导入模板
-python -m src.commands.template.main import <file_path>
-
-# 加载目录中的所有模板
-python -m src.commands.template.main load
-```
-
-## 项目结构
-
-```
-src/
-├── commands/
-│   └── template/       # 模板命令行工具
-├── cursor/            # Cursor命令处理系统
-│   ├── command/       # 命令处理核心
-│   ├── server.py      # MCP服务器
-│   └── command_handler.py  # 命令处理器
-├── models/            # 数据模型
-├── templates/
-│   ├── core/         # 模板核心功能
-│   └── generators/   # 模板生成器
-│       ├── base_generator.py     # 生成器基类
-│       ├── regex_generator.py    # 正则生成器
-│       └── llm_generator.py      # LLM生成器
-templates/
-├── rule/            # 规则模板
-└── doc/             # 文档模板
-```
-
-## 支持的功能
-
-系统支持多种功能，包括:
-
-- **规则模板**: 用于生成各类规则文档
-- **文档模板**: 用于生成API文档、架构文档等
-- **任务模板**: 用于生成任务描述和计划
-- **命令处理**: 通过MCP服务器提供统一的命令接口
-- **规则管理**: 管理和执行项目规则
-- **工作流管理**: 管理项目工作流程
-
-## 开发者指南
-
-要扩展系统功能:
-
-1. 添加新的模板生成器: 实现`TemplateGenerator`接口
-2. 添加新的命令: 在`src/commands/template/commands.py`中注册新命令
-3. 创建新模板: 在templates目录下创建符合规范的Markdown文件
-4. 扩展MCP服务器: 在`src/cursor/server.py`中添加新的方法
-
-## 许可证
-
-本项目采用MIT许可证。
-
-![CI](https://github.com/jacobcy/VibeCopilot/actions/workflows/ci.yml/badge.svg)
-![Tests](https://github.com/jacobcy/VibeCopilot/actions/workflows/test-all.yml/badge.svg)
+本项目采用 MIT 许可证。详情请参阅 [LICENSE](https://github.com/jacobcy/VibeCopilot/blob/main/LICENSE) 文件。

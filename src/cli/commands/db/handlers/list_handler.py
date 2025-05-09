@@ -12,9 +12,11 @@ import click
 import yaml
 from rich.console import Console
 from rich.table import Table
+from sqlalchemy import inspect, text
 
 from src.cli.core.decorators import pass_service
 from src.db import DatabaseService, get_session
+from src.db.session_manager import session_scope
 from src.db.utils.entity_mapping import get_valid_entity_types, map_entity_to_table, map_table_to_entity
 from src.db.utils.schema import get_all_tables
 
@@ -300,141 +302,94 @@ class ListHandler(ClickBaseHandler):
 
 
 @click.command(name="list", help="列出数据库内容")
-@click.option("--type", required=False, help="要列出的实体类型 (如 epic, story, task 等)，不指定则列出所有可用类型")
-@click.option("--verbose", is_flag=True, help="显示详细信息")
+@click.argument("entity_type", required=False)
+@click.option("-t", "--type", help="要列出的实体类型 (如 epic, story, task 等)，不指定则列出所有可用类型")
+@click.option("-v", "--verbose", is_flag=True, help="显示详细信息")
+@click.option("-a", "--all", is_flag=True, help="列出所有表的数据")
 @pass_service(service_type="db")
-def list_db_cli(service, type: Optional[str] = None, verbose: bool = False) -> None:
-    """
-    列出数据库内容命令
+def list_db_cli(service, entity_type, type, verbose, all) -> None:
+    """列出数据库内容命令"""
+    session = get_session()
 
-    Args:
-        service: 数据库服务实例
-        type: 实体类型，不指定则列出所有可用类型
-        verbose: 是否显示详细信息
-    """
-    handler = ListHandler()
-    session = None
-    exit_code = 0
     try:
-        # 始终使用YAML格式
-        format = "yaml"
+        # 首先判断是否需要显示所有表数据统计
+        if all:
+            if verbose:
+                console.print("列出所有表的数据统计")
 
-        session = get_session()
+            # 直接使用inspector获取所有表，确保获取完整的表列表
+            inspector = inspect(session.bind)
+            all_tables = inspector.get_table_names()
 
-        if type:
-            # --- Type specified: Validate, Get Entities, Display ---
-            entity_type_input = type
-            final_entity_type = entity_type_input  # Assume input is correct initially
+            # 过滤系统表
+            all_tables = [table for table in all_tables if not table.startswith("sqlite_")]
 
-            # --- Validation requiring session ---
-            valid_types = get_valid_entity_types(session)  # Get all valid types from DB models
+            all_tables_data = {}
 
-            if entity_type_input not in valid_types:
-                # Try mapping table name to entity type
-                temp_mapped = map_table_to_entity(entity_type_input)
-                if temp_mapped != entity_type_input and temp_mapped in valid_types:
-                    final_entity_type = temp_mapped
-                    logger.info(f"将表名/输入 {entity_type_input} 映射为实体类型 {final_entity_type}")
-                # Check if it's a type known directly by the service (even if not a primary mapped entity)
-                elif hasattr(service, "repo_map") and entity_type_input in service.repo_map:
-                    final_entity_type = entity_type_input
-                else:
-                    # Invalid type
-                    console.print(f"[red]不支持的实体类型: {entity_type_input}，可用类型: {', '.join(sorted(valid_types))}[/red]")
-                    exit_code = 1
-                    raise click.Abort()  # Abort execution
+            for table_name in all_tables:
+                try:
+                    # 直接查询每个表的记录数
+                    result = session.execute(text(f"SELECT COUNT(*) AS count FROM {table_name}"))
+                    count = result.scalar()  # 获取记录数
+                    all_tables_data[table_name] = {"row_count": count}  # 存储记录数
+                except Exception as e:
+                    logger.warning(f"获取表 {table_name} 数据失败: {e}")
+                    all_tables_data[table_name] = {"error": str(e)}  # 记录错误
 
-            # --- Check if type exists in service repo_map before querying (optional but good practice) ---
-            if hasattr(service, "repo_map") and service.repo_map:
-                if final_entity_type not in service.repo_map:
-                    # This type might be valid in the DB but not queryable via this service directly
-                    table_name = map_entity_to_table(final_entity_type)
-                    console.print(f"[yellow]警告: {final_entity_type} 不是此服务可直接查询的实体类型[/yellow]")
-                    console.print(f"[yellow]服务支持的类型: {', '.join(sorted(service.repo_map.keys()))}[/yellow]")
-                    entities = []  # Return empty list for display
-                else:
-                    # --- Get Entities (using session and correct entity type) ---
-                    if verbose:
-                        console.print(f"列出所有 {final_entity_type}")
+            # 汇总结果
+            total_records = sum(data.get("row_count", 0) for data in all_tables_data.values() if "row_count" in data)
 
-                    # 对于 roadmap 类型，使用简化方法获取实体
-                    if final_entity_type == "roadmap":
-                        entities = service.get_entities_simplified(session, final_entity_type)
-                    else:
-                        # 对于其他类型，使用普通方法获取实体
-                        entities = service.get_entities(session, final_entity_type)
-            else:
-                # Should not happen if service is initialized correctly
-                logger.error("DatabaseService 未正确初始化 repo_map")
-                console.print("[red]内部错误: 数据库服务配置不完整[/red]")
-                exit_code = 1
-                raise click.Abort()
+            # 输出结果
+            result = {"tables_data": all_tables_data, "total_tables": len(all_tables), "total_records": total_records}
 
-            # --- Display Entities ---
-            handler._format_and_display_entities(entities, final_entity_type, format)
+            print(yaml.dump(result, allow_unicode=True, sort_keys=False))
+            return
 
+        # 处理没有类型参数的情况
+        if not entity_type and not type:
+            # 动态获取所有表/实体类型
+            inspector = inspect(session.bind)
+            all_tables = inspector.get_table_names()
+
+            # 过滤系统表或特殊表
+            entity_types = [table for table in all_tables if not table.startswith("sqlite_") and not table.startswith("_")]
+
+            click.echo("entity_types:")
+            for entity in entity_types:
+                click.echo(f"- {entity}")
+            return
+
+        # 处理指定类型参数的情况
+        final_type = entity_type or type
+        handler = ListHandler()
+        format = "yaml"  # 始终使用 YAML 格式
+
+        if final_type in service.repo_map:
+            entities = service.get_entities(session, final_type)
+            handler._format_and_display_entities(entities, final_type, format)
         else:
-            # --- No type specified: Display Available Types ---
-            available_types = get_valid_entity_types(session, include_tables=False)
-            # Intersect with service repo_map if available for more accuracy on what list command supports
-            if hasattr(service, "repo_map") and service.repo_map:
-                repo_entities = set(service.repo_map.keys())
-                available_types = sorted(list(set(available_types).intersection(repo_entities)))
+            # 直接查询任意表的数据
+            try:
+                query = text(f"SELECT * FROM {final_type}")  # 直接查询表
+                entities = session.execute(query).fetchall()  # 获取所有记录
 
-            handler._display_available_types(format, available_types=available_types)
+                if entities:
+                    # 获取表的列信息
+                    inspector = inspect(session.bind)
+                    columns = [c["name"] for c in inspector.get_columns(final_type)]
 
-    except Exception as e:
-        # Let friendly_error_handling decorator manage user output for Abort/other exceptions
-        if not isinstance(e, (ValidationError, DatabaseError, click.Abort)):
-            logger.error(f"执行 list 命令时出错: {e}", exc_info=True)
-        if not isinstance(e, click.Abort):
-            console.print(f"[red]执行 list 命令时发生错误: {str(e)}[/red]")
-        exit_code = 1
-        # Re-raise Abort or allow decorator to handle it
-        raise click.Abort()
+                    formatted_entities = []
+                    for row in entities:
+                        # 将行转换为字典，使用实际列名
+                        formatted_row = {columns[i]: str(row[i]) for i in range(len(columns))}
+                        formatted_entities.append(formatted_row)
+
+                    handler._format_and_display_entities(formatted_entities, final_type, format)
+                else:
+                    console.print(f"[yellow]未找到 {final_type} 类型的条目[/yellow]")
+            except Exception as e:
+                console.print(f"[red]查询表 {final_type} 失败: {str(e)}[/red]")
+                logger.error(f"查询表 {final_type} 出错: {e}")
     finally:
         if session:
             session.close()
-        # Exit code is mainly handled by click.Abort now
-        # if exit_code != 0:
-        #    ctx = click.get_current_context()
-        #    ctx.exit(exit_code)
-
-
-def handle_db_list(entity_type: str, verbose: bool):
-    """处理数据库列出实体的命令
-
-    Args:
-        entity_type (str): 要列出的实体类型
-        verbose (bool): 是否显示详细日志
-    """
-    if verbose:
-        click.echo(f"正在列出 '{entity_type}' 类型的实体...")
-
-    try:
-        # 创建数据库服务实例
-        db_service = DatabaseService(verbose=verbose)
-
-        with db_service.get_session() as session:
-            # 对于 roadmap 类型，使用简化方法获取实体
-            if entity_type == "roadmap":
-                entities = db_service.get_entities_simplified(session, entity_type)
-            else:
-                entities = db_service.get_entities(session, entity_type)
-
-        if not entities:
-            click.echo(f"未找到类型为 '{entity_type}' 的实体。")
-            return
-
-        # 始终使用YAML格式输出
-        print(yaml.dump(entities, allow_unicode=True, sort_keys=False))
-
-    except ValueError as e:
-        # 处理未知的实体类型错误
-        click.echo(click.style(f"❌ 错误: {e}", fg="red"))
-    except Exception as e:
-        error_msg = f"列出实体时出错: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        click.echo(click.style(f"❌ {error_msg}", fg="red"))
-        if verbose:
-            click.echo(f"详细错误: {e}")

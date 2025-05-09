@@ -8,10 +8,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from src.status.init_service import InitService
+
 # 导入服务模块
 from src.status.service import StatusService
 from src.status.service_initialization import initialize_components, register_default_providers, register_default_subscribers
-from src.status.status_operations import get_domain_status, get_system_status, initialize_project_status, update_project_phase, update_status
+from src.status.status_operations import get_domain_status, get_system_status, update_project_phase, update_status
 
 # 全局状态服务实例
 status_service = None
@@ -56,12 +58,12 @@ def initialize():
 
 __all__ = [
     "StatusService",
+    "InitService",
     "initialize_components",
     "register_default_providers",
     "register_default_subscribers",
     "get_domain_status",
     "get_system_status",
-    "initialize_project_status",
     "update_project_phase",
     "update_status",
 ]

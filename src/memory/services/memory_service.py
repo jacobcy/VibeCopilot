@@ -3,168 +3,179 @@
 """
 统一内存服务模块
 
-提供对知识库功能的统一访问接口，整合笔记管理、搜索和同步功能。
-作为NoteService、SearchService和SyncService的门面(Facade)，
-向外部提供简洁统一的API，隐藏内部实现细节。
+提供对知识库功能的统一访问接口，作为内存操作的 Facade。
+(重构完成：委托给 memory_operations)
 """
 
 import logging
+import os
+import pathlib
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from src.memory.services.note_service import NoteService
-from src.memory.services.search_service import SearchService
-from src.memory.services.sync_service import SyncService
+# --- 数据库和工具依赖 ---
+from src.db.repositories.memory_item_repository import MemoryItemRepository
+from src.db.session_manager import session_scope
+
+# --- 导入操作逻辑 --- #
+from src.memory.services.memory_operations import execute_create_note, execute_import_documents, execute_list_notes, execute_read_note
+
+# --- 导入真实的工具封装层 --- #
+from src.memory.tools.basic_memory_wrapper import BasicMemoryWrapper
+
+# 移除对 note_utils 的依赖，逻辑移至 memory_operations
+# from src.memory.helpers.note_utils import ...
+
+
+# from src.tools.wrappers.filesystem_wrapper import FilesystemWrapper # 导入真实的 filesystem 封装
+
+
+# --- 暂时使用 TODO 标记表示需要 Filesystem 真实实现 --- #
+# FilesystemWrapper 的占位符定义现在移到 memory_operations.py 中，这里不再需要
+# class TODO_FilesystemWrapper:
+#     ...
+# --- 结束 Filesystem TODO ---
 
 logger = logging.getLogger(__name__)
 
 
 class MemoryService:
-    """统一内存服务类
-
-    作为门面(Facade)模式实现，整合多个子服务的功能，
-    提供统一的接口给CLI层和外部系统使用。
-    """
+    """统一内存服务类 (Facade)"""
 
     def __init__(self):
         """初始化统一内存服务"""
-        self.note_service = NoteService()
-        self.search_service = SearchService()
-        self.sync_service = SyncService()
         self.logger = logging.getLogger(__name__)
-        self.logger.info("初始化统一内存服务")
+        self._memory_item_repo = MemoryItemRepository()
+        self.basic_memory = BasicMemoryWrapper()
+        # self.filesystem = FilesystemWrapper() # 真实实现
+        # 使用 memory_operations 导入的占位符类
+        from src.memory.tools.filesystem_wrapper import TODO_FilesystemWrapper
 
-    # ===== 笔记管理功能 =====
+        self.filesystem = TODO_FilesystemWrapper()  # 使用占位符
+
+        self.project = "vibecopilot"  # TODO: 从配置加载
+        try:
+            self.memory_root_str = os.environ.get("VIBECOPILOT_MEMORY_PATH", "~/.ai/vibecopilot/memory/notes")
+            self.memory_root = pathlib.Path(os.path.expanduser(self.memory_root_str))
+            self.memory_root.mkdir(parents=True, exist_ok=True)
+            self.logger.info(f"MemoryService Facade initialized. Root: {self.memory_root}")
+        except Exception as e:
+            self.logger.exception(f"Error initializing memory root path '{self.memory_root_str}': {e}")
+            raise RuntimeError(f"Failed to initialize memory service root path: {e}") from e
+
+    # --- 标识符辅助函数 (保留在 Service 或移至 Operations 皆可，暂留此处) --- #
+    # 如果 operations 内部不再需要直接访问 Service 的这些方法，可以移除
+    def _get_identifier(self, folder: str, title: str) -> str:
+        # 这里的实现应该与 operations 中的 _get_identifier 一致
+        folder = folder.strip("/")
+        title = title.strip()
+        return f"{folder}/{title}" if folder else title
+
+    def _get_file_path(self, identifier: str) -> pathlib.Path:
+        # 这里的实现应该与 operations 中的 _get_file_path 一致
+        safe_identifier = identifier
+        return self.memory_root / f"{safe_identifier}.md"
+
+    # ===== 笔记管理功能 (委托给 Operations) ===== #
 
     def create_note(self, content: str, title: str, folder: str, tags: Optional[str] = None) -> Tuple[bool, str, Dict[str, Any]]:
-        """创建新笔记
+        """创建新笔记 (委托给 execute_create_note)"""
+        return execute_create_note(
+            content=content,
+            title=title,
+            folder=folder,
+            tags=tags,
+            repo=self._memory_item_repo,
+            basic_memory=self.basic_memory,
+            memory_root=self.memory_root,
+        )
 
-        Args:
-            content: 笔记内容
-            title: 笔记标题
-            folder: 存储目录
-            tags: 标签列表，逗号分隔
+    def read_note(self, path_or_permalink: str, use_local: bool = True) -> Tuple[bool, str, Dict[str, Any]]:
+        """读取笔记内容 (委托给 execute_read_note)"""
+        return execute_read_note(
+            path_or_permalink=path_or_permalink, repo=self._memory_item_repo, basic_memory=self.basic_memory, memory_root=self.memory_root
+        )
 
-        Returns:
-            元组，包含(是否成功, 消息, 结果数据)
-        """
-        return self.note_service.create_note(content=content, title=title, folder=folder, tags=tags)
+    def delete_note(self, path_or_permalink: str, force: bool = False) -> Tuple[bool, str, Dict[str, Any]]:
+        """删除内存项 (直接调用 BasicMemoryWrapper)"""
+        self.logger.debug(f"Service: Deleting note via Wrapper - '{path_or_permalink}'")
+        try:
+            success, message, data = self.basic_memory.delete_note(identifier=path_or_permalink)
+            return success, message, data
+        except Exception as e:
+            self.logger.exception(f"调用 BasicMemoryWrapper.delete_note 时发生错误: {e}")
+            return False, f"删除笔记时发生内部错误: {str(e)}", {}
 
-    def read_note(self, path: str) -> Tuple[bool, str, Dict[str, Any]]:
-        """读取笔记内容
+    # ===== 搜索功能 (直接调用 Wrapper) ===== #
+    def search_notes(self, query: str, content_type: Optional[str] = None) -> Tuple[bool, str, List[Dict[str, Any]]]:
+        """搜索知识库内容 (直接调用 Wrapper)"""
+        # 搜索逻辑相对简单，可以直接调用 Wrapper
+        self.logger.debug(f"Service: Searching notes - query='{query}', type='{content_type or 'any'}'")
+        try:
+            types_list = [content_type] if content_type else None
+            success, msg, results = self.basic_memory.search_notes(query=query, types=types_list)
+            if success:
+                # 格式化消息移到这里，因为 operations 不再处理搜索
+                user_msg = f"为 '{query}' 找到 {len(results)} 个结果:\n"
+                if results:
+                    formatted_list = []
+                    for item in results:
+                        identifier = item.get("identifier", "未知标识")
+                        snippet = item.get("snippet", "无摘要")
+                        score_str = f" (Score: {item.get('score'):.2f})" if item.get("score") is not None else ""
+                        formatted_list.append(f"- {identifier}{score_str}: {snippet}")
+                    user_msg += "\n".join(formatted_list)
+                else:
+                    user_msg = f"未能为 '{query}' 找到任何结果。"
+                return True, user_msg.strip(), results  # 返回格式化后的消息
+            else:
+                self.logger.error(f"Basic Memory Wrapper 搜索失败: {msg}")
+                return False, f"知识库工具搜索失败: {msg}", []
+        except Exception as e:
+            self.logger.exception(f"搜索笔记时发生意外错误: {e}")
+            return False, f"搜索笔记时发生内部错误: {str(e)}", []
 
-        Args:
-            path: 笔记路径或永久链接
+    # ===== 导入功能 (委托给 Operations) ===== #
+    def import_documents(self, source_path: str, recursive: bool = False, target_folder_prefix: str = "") -> Tuple[bool, str, Dict[str, Any]]:
+        """从外部文件系统导入文档 (委托给 execute_import_documents)"""
+        return execute_import_documents(
+            source_path=source_path,
+            repo=self._memory_item_repo,
+            basic_memory=self.basic_memory,
+            filesystem=self.filesystem,
+            memory_root=self.memory_root,
+            recursive=recursive,
+            target_folder_prefix=target_folder_prefix,
+        )
 
-        Returns:
-            元组，包含(是否成功, 消息, 结果数据)
-        """
-        return self.note_service.read_note(path=path)
-
-    def update_note(self, path: str, content: str, tags: Optional[str] = None) -> Tuple[bool, str, Dict[str, Any]]:
-        """更新笔记内容
-
-        Args:
-            path: 笔记路径或永久链接
-            content: 更新后的内容
-            tags: 更新的标签，逗号分隔
-
-        Returns:
-            元组，包含(是否成功, 消息, 结果数据)
-        """
-        return self.note_service.update_note(path=path, content=content, tags=tags)
-
-    def delete_note(self, path: str, force: bool = False) -> Tuple[bool, str, Dict[str, Any]]:
-        """删除笔记
-
-        Args:
-            path: 笔记路径或永久链接
-            force: 是否强制删除
-
-        Returns:
-            元组，包含(是否成功, 消息, 结果数据)
-        """
-        return self.note_service.delete_note(path=path, force=force)
-
-    # ===== 搜索功能 =====
+    # ===== 统计与状态 (直接访问 DB) ===== #
+    def get_memory_stats(self) -> Dict[str, Any]:
+        """获取知识库统计信息 (直接访问 DB)"""
+        # 统计逻辑相对简单，保留在 Service 中
+        self.logger.debug("Service: Getting memory stats")
+        try:
+            with session_scope() as session:
+                total_items = self._memory_item_repo.count_items(session, include_deleted=False)
+                deleted_items = self._memory_item_repo.count_items(session, include_deleted=True) - total_items
+            sync_status = "local_only (功能待实现)"  # TODO: 实现同步状态检查
+            stats = {"notes_count": total_items, "deleted_count": deleted_items, "sync_status": sync_status}
+            self.logger.info(f"内存统计: {stats}")
+            return stats
+        except Exception as e:
+            self.logger.exception(f"获取内存统计时出错: {e}")
+            return {"error": f"获取统计失败: {str(e)}"}
 
     def list_notes(self, folder: Optional[str] = None) -> Tuple[bool, str, List[Dict[str, Any]]]:
-        """列出知识库笔记
+        """列出笔记 (委托给 execute_list_notes)"""
+        return execute_list_notes(repo=self._memory_item_repo, folder=folder)
 
-        Args:
-            folder: 筛选特定目录的内容
 
-        Returns:
-            元组，包含(是否成功, 消息, 结果列表)
-        """
-        return self.search_service.list_notes(folder=folder)
+# --- 单例模式 --- #
+_memory_service_instance = None
 
-    def search_notes(self, query: str, content_type: Optional[str] = None) -> Tuple[bool, str, List[Dict[str, Any]]]:
-        """搜索知识库内容
 
-        Args:
-            query: 搜索关键词
-            content_type: 内容类型过滤
-
-        Returns:
-            元组，包含(是否成功, 消息, 结果列表)
-        """
-        return self.search_service.search_notes(query=query, content_type=content_type)
-
-    # ===== 同步功能 =====
-
-    def sync_all(self) -> Tuple[bool, str, Dict[str, Any]]:
-        """同步所有知识库内容
-
-        Returns:
-            元组，包含(是否成功, 消息, 结果数据)
-        """
-        return self.sync_service.sync_all()
-
-    def start_sync_watch(self) -> Tuple[bool, str, Dict[str, Any]]:
-        """启动知识库监控
-
-        Returns:
-            元组，包含(是否成功, 消息, 结果数据)
-        """
-        return self.sync_service.start_sync_watch()
-
-    def import_documents(self, source_dir: str, recursive: bool = False) -> Tuple[bool, str, Dict[str, Any]]:
-        """从外部导入文档
-
-        Args:
-            source_dir: 源文档目录
-            recursive: 是否递归导入子目录
-
-        Returns:
-            元组，包含(是否成功, 消息, 结果数据)
-        """
-        return self.sync_service.import_documents(source_dir=source_dir, recursive=recursive)
-
-    def export_documents(self, output_dir: Optional[str] = None, format_type: str = "md") -> Tuple[bool, str, Dict[str, Any]]:
-        """导出知识库文档
-
-        Args:
-            output_dir: 输出目录
-            format_type: 导出格式，支持md和json
-
-        Returns:
-            元组，包含(是否成功, 消息, 结果数据)
-        """
-        return self.sync_service.export_documents(output_dir=output_dir, format_type=format_type)
-
-    # ===== 统计与状态 =====
-
-    def get_memory_stats(self) -> Dict[str, Any]:
-        """获取知识库统计信息
-
-        Returns:
-            字典，包含知识库统计数据
-        """
-        # 结合不同服务的统计信息
-        note_stats = self.note_service.get_stats()
-        sync_stats = self.sync_service.get_sync_status()
-
-        # 合并统计结果
-        stats = {**note_stats, "sync_status": sync_stats}
-
-        return stats
+def get_memory_service() -> MemoryService:
+    """获取统一内存服务单例"""
+    global _memory_service_instance
+    if _memory_service_instance is None:
+        _memory_service_instance = MemoryService()
+    return _memory_service_instance

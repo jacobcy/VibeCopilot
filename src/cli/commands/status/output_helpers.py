@@ -11,9 +11,7 @@ from typing import Any, Dict
 logger = logging.getLogger(__name__)
 
 
-def output_result(
-    result: Dict[str, Any], output_format: str, result_type: str, verbose: bool = False
-) -> None:
+def output_result(result: Dict[str, Any], output_format: str, result_type: str, verbose: bool = False) -> None:
     """输出结果
 
     Args:
@@ -26,9 +24,22 @@ def output_result(
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         # 文本格式
+        # Check for actual error value before printing as an error
+        if result and result.get("error"):
+            # Assuming a convention that if 'error' key has a truthy value, it's an error message to print.
+            # If 'error' is present but None or empty, it might not be an error to display this way.
+            print(f"❌ 错误: {result['error']}")
+            # Optionally, if there are suggestions and it's an error, print them
+            if isinstance(result.get("suggestions"), list) and result["suggestions"]:
+                print("💡 建议:")
+                for suggestion in result["suggestions"]:
+                    print(f"  - {suggestion}")
+            return  # Stop further processing if an error was handled
+
         if result_type == "system":
             print_system_status(result, verbose)
         elif result_type == "domain":
+            # Pass along the result, print_domain_status will also need to handle 'error': None correctly
             print_domain_status(result, verbose)
         else:
             print_generic_status(result, verbose)
@@ -41,7 +52,8 @@ def print_system_status(status: Dict[str, Any], verbose: bool = False) -> None:
         status: 系统状态数据
         verbose: 是否显示详细信息
     """
-    if "error" in status:
+    # Check for actual error value
+    if status and status.get("error"):
         print(f"❌ 错误: {status['error']}")
         return
 
@@ -70,9 +82,7 @@ def print_system_status(status: Dict[str, Any], verbose: bool = False) -> None:
             domain_status = domain_health.get("status", "未知")
             domain_color = _get_health_color(domain_status)
 
-            print(
-                f"  {domain_color}{domain_name}: {domain_health.get('score', 0)}% ({domain_status})\033[0m"
-            )
+            print(f"  {domain_color}{domain_name}: {domain_health.get('score', 0)}% ({domain_status})\033[0m")
 
             # 如果是详细模式，显示更多信息
             if verbose:
@@ -93,32 +103,42 @@ def print_domain_status(status: Dict[str, Any], verbose: bool = False) -> None:
         status: 域状态数据
         verbose: 是否显示详细信息
     """
-    if "error" in status:
+    # Check for actual error value. If 'error' key exists AND has a truthy value, it's an error.
+    # If 'error' key exists but its value is None or empty string, it implies no error.
+    if status and status.get("error"):
         print(f"❌ 错误: {status['error']}")
         return
 
-    # 打印域名称和健康状态
-    name = status.get("name", "未知")
-    health = status.get("health", {})
-    health_score = health.get("score", 0)
-    health_status = health.get("status", "未知")
-    health_color = _get_health_color(health_status)
+    # If we are here, status_data['error'] was None or not present, so proceed with normal printing.
+    # ... (the rest of your existing print_domain_status logic for successful cases)
+    # Example snippet of how it might continue:
+    name = status.get("domain", status.get("name", "未知领域"))  # Try 'domain' key first for consistency
+    active_id = status.get("active_roadmap_id", "未设置")
+    current_status = status.get("status", "未知")
+    health_score = status.get("health", "未知")  # Assuming health might be a string like 'good'
 
-    print(f"{health_color}{name}域状态: {health_score}% ({health_status})\033[0m")
+    print(f"✅ {name} 状态:")
+    print(f"  当前活动路线图 ID: {active_id}")
+    print(f"  整体状态: {current_status}")
+    print(f"  健康度: {health_score}")
 
-    # 打印组件状态
-    components = status.get("components", [])
-    if components:
-        print("\n📊 组件状态:")
-        for component in components:
-            comp_name = component.get("name", "未知")
-            comp_health = component.get("health", {})
-            comp_status = comp_health.get("status", "未知")
-            comp_color = _get_health_color(comp_status)
+    entity_data = status.get("entity_data")
+    if entity_data and isinstance(entity_data, dict):
+        print(
+            f"  当前查看: {entity_data.get('title', entity_data.get('id', 'N/A'))} ({status.get('check_type', 'N/A')}:{status.get('element_id', active_id)})"
+        )
+        print(f"    详细状态: {entity_data.get('status', 'N/A')}")
+        if verbose:
+            print(f"    描述: {entity_data.get('description', 'N/A')}")
+            print(f"    创建于: {entity_data.get('created_at', 'N/A')}")
+            print(f"    更新于: {entity_data.get('updated_at', 'N/A')}")
 
-            print(
-                f"  {comp_color}{comp_name}: {comp_health.get('score', 0)}% ({comp_status})\033[0m"
-            )
+    children = status.get("children")
+    if children and isinstance(children, list):
+        child_type_name = "史诗" if status.get("check_type") == "roadmap" else "故事"
+        print(f"  包含的 {child_type_name}:")
+        for child in children:
+            print(f"    - {child.get('title', child.get('id', 'N/A'))} (状态: {child.get('status', 'N/A')})")
 
     # 打印问题
     issues = status.get("issues", [])
@@ -155,7 +175,8 @@ def print_generic_status(status: Dict[str, Any], verbose: bool = False) -> None:
         status: 状态数据
         verbose: 是否显示详细信息
     """
-    if "error" in status:
+    # Check for actual error value
+    if status and status.get("error"):
         print(f"❌ 错误: {status['error']}")
         return
 

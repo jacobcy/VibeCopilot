@@ -6,312 +6,366 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+# 导入数据库相关
+from sqlalchemy.orm import Session
+
+from src.core.config import get_config  # 导入配置函数
+from src.db.connection_manager import get_db_path, get_session
 from src.db.repositories.roadmap_repository import RoadmapRepository
 from src.db.session_manager import session_scope
+from src.utils.id_generator import IdGenerator
+
+if TYPE_CHECKING:
+    from src.roadmap.service.roadmap_service import RoadmapService  # 循环导入保护
 
 logger = logging.getLogger(__name__)
 
 
-def get_roadmap(service, roadmap_id: str) -> Optional[Dict[str, Any]]:
-    """获取路线图
+def get_roadmap(roadmap_id: str) -> Optional[Dict[str, Any]]:
+    """获取单个路线图的字典表示"""
+    from src.roadmap.service import RoadmapServiceFacade
 
-    Args:
-        service: 路线图服务实例
-        roadmap_id: 路线图ID
+    service = RoadmapServiceFacade()
 
-    Returns:
-        Optional[Dict[str, Any]]: 路线图数据
-    """
     try:
-        # 使用 session_scope 获取会话
         with session_scope() as session:
-            # 使用 service 上的无状态 repo，并传入 session 和 id
-            roadmap = service.roadmap_repo.get_by_id(session, roadmap_id)
-            if roadmap:
-                # 确保 service._object_to_dict 是可用的
-                return service._object_to_dict(roadmap)
-            # 如果在 session 内未找到 roadmap
+            roadmap_model = service.roadmap_repo.get_by_id(session, roadmap_id)
+            if roadmap_model:
+                return roadmap_model.to_dict()  # to_dict no longer includes github_link
+            return None
+    except Exception as e:
+        logger.error(f"获取路线图 {roadmap_id} 时出错: {e}", exc_info=True)
+        return None
+
+
+def get_roadmaps() -> List[Dict[str, Any]]:
+    """获取所有Roadmaps的列表，并包含更多调试信息"""
+    from src.roadmap.service import RoadmapServiceFacade
+
+    service = RoadmapServiceFacade()
+
+    results = []
+    db_path = get_db_path()
+    logger.info(f"[get_roadmaps] Attempting to fetch roadmaps from DB: {db_path}")
+    try:
+        with session_scope() as session:
+            roadmaps_entities = service.roadmap_repo.get_all(session)
+            logger.info(f"[get_roadmaps] Fetched {len(roadmaps_entities) if roadmaps_entities else 0} entities from roadmap_repo.get_all()")
+            if not roadmaps_entities:
+                logger.info("[get_roadmaps] No roadmap entities found in the database via repository.")
+                return []
+
+            project_state = None
+            try:
+                from src.status.service import StatusService
+
+                status_service = StatusService.get_instance()
+                project_state = status_service.project_state
+                logger.info("[get_roadmaps] Successfully obtained ProjectState.")
+            except Exception as e:
+                logger.warning(f"[get_roadmaps] Unable to get ProjectState: {e}", exc_info=True)
+
+            active_id = None
+            if project_state:
+                try:
+                    active_id = project_state.get_current_roadmap_id()
+                    logger.info(f"[get_roadmaps] Active roadmap ID from ProjectState: {active_id}")
+                except Exception as e:
+                    logger.warning(f"[get_roadmaps] Error getting active_id from project_state: {e}", exc_info=True)
             else:
-                logger.warning(f"在数据库会话内未找到路线图: {roadmap_id}")
-                # 这里可以返回 None，或者让函数继续执行到下面的 return None
-                # 为清晰起见，让它继续
-                pass
+                logger.info("[get_roadmaps] ProjectState not available, active_id will be None.")
+
+            for r in roadmaps_entities:
+                try:
+                    roadmap_dict = r.to_dict()
+                    roadmap_dict["active"] = r.id == active_id
+                    # Ensure stats are at least empty dict if not present
+                    roadmap_dict.setdefault("stats", {})
+                    results.append(roadmap_dict)
+                except Exception as e_conv:
+                    logger.error(
+                        f"[get_roadmaps] Error converting roadmap entity (ID: {getattr(r, 'id', 'UNKNOWN')}) to dict: {e_conv}", exc_info=True
+                    )
+
+            logger.info(f"[get_roadmaps] Successfully processed {len(results)} roadmap entities into dicts.")
 
     except Exception as e:
-        # 如果在数据库操作过程中出错
-        logger.error(f"获取路线图时数据库操作失败: {e}", exc_info=True)
-        return None  # 出错则返回 None
-
-    # 如果 try 块成功执行完毕但没有在 if roadmap 中返回 (即 roadmap 未找到)
-    logger.warning(f"获取路线图完成，但未找到: {roadmap_id}")
-    return None
+        logger.error(f"[get_roadmaps] Error fetching roadmaps from database: {e}", exc_info=True)
+        return []  # Return empty list on error to prevent further issues
+    return results
 
 
-def get_roadmaps(service) -> List[Dict[str, Any]]:
-    """获取所有路线图
+def get_epics(roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """获取史诗列表"""
+    from src.roadmap.service import RoadmapServiceFacade
 
-    Args:
-        service: 路线图服务实例
+    service = RoadmapServiceFacade()
 
-    Returns:
-        List[Dict[str, Any]]: 路线图列表
-    """
+    actual_roadmap_id = roadmap_id or service.active_roadmap_id
+    if not actual_roadmap_id:
+        logger.warning("get_epics: 未找到活动路线图ID")
+        return []
     try:
-        # 使用 session_scope 并调用无状态 repo
         with session_scope() as session:
-            # 移除旧的仓库实例化
-            # roadmap_repo = RoadmapRepository(session)
-            # 调用 service 上的无状态 repo，并传入 session
-            roadmaps = service.roadmap_repo.get_all(session)
-            if roadmaps:
-                # 确保 service._object_to_dict 是可用的
-                return [service._object_to_dict(roadmap) for roadmap in roadmaps]
+            epics_model = service.epic_repo.get_by_roadmap_id(session, actual_roadmap_id)
+            return [epic.to_dict() for epic in epics_model]
+    except Exception as e:
+        logger.error(f"获取路线图 {actual_roadmap_id} 的史诗时出错: {e}", exc_info=True)
+        return []
 
-            # 如果没有路线图，返回空列表
-            logger.info("数据库中没有找到路线图，返回空列表")
+
+def get_stories(roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """获取用户故事列表"""
+    from src.roadmap.service import RoadmapServiceFacade
+
+    service = RoadmapServiceFacade()
+
+    actual_roadmap_id = roadmap_id or service.active_roadmap_id
+    if not actual_roadmap_id:
+        logger.warning("get_stories: 未找到活动路线图ID")
+        return []
+    try:
+        with session_scope() as session:
+            stories_model = service.story_repo.get_by_roadmap_id(session, actual_roadmap_id)
+            return [story.to_dict() for story in stories_model]
+    except Exception as e:
+        logger.error(f"获取路线图 {actual_roadmap_id} 的故事时出错: {e}", exc_info=True)
+        return []
+
+
+def get_milestones(roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """获取里程碑列表"""
+    from src.roadmap.service import RoadmapServiceFacade
+
+    service = RoadmapServiceFacade()
+
+    actual_roadmap_id = roadmap_id or service.active_roadmap_id
+    if not actual_roadmap_id:
+        logger.warning("get_milestones: 未找到活动路线图ID")
+        return []
+    try:
+        with session_scope() as session:
+            milestones_model = service.milestone_repo.get_by_roadmap_id(session, actual_roadmap_id)
+            if milestones_model:
+                return [milestone.to_dict() for milestone in milestones_model]
+            logger.info(f"未找到路线图 {actual_roadmap_id} 的里程碑，返回空列表")  # 更新日志
             return []
     except Exception as e:
-        # 如果出错，记录错误并返回空列表
-        logger.error(f"获取路线图列表失败: {e}", exc_info=True)  # 添加 exc_info
+        logger.error(f"获取路线图 {actual_roadmap_id} 的里程碑时出错: {e}", exc_info=True)
         return []
 
 
-def get_epics(service, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    """获取路线图下的所有Epic
-
-    Args:
-        service: 路线图服务实例
-        roadmap_id: 路线图ID，不提供则使用活跃路线图
-
-    Returns:
-        List[Dict[str, Any]]: Epic列表
-    """
-    roadmap_id = roadmap_id or service.active_roadmap_id
-    if not roadmap_id:
-        logger.error("未设置活跃路线图，无法获取 Epic")
+def get_milestone_tasks(milestone_id: str, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """获取特定里程碑下的任务"""
+    # roadmap_id 在这里可能用于验证里程碑是否属于该路线图，但基本查询只需要 milestone_id
+    if not milestone_id:
+        logger.warning("get_milestone_tasks: 未提供里程碑ID")
         return []
     try:
-        # --- 使用 session_scope ---
-        with session_scope() as session:
-            # 调用 repo 的 get_by_roadmap_id 方法
-            epics = service.epic_repo.get_by_roadmap_id(session, roadmap_id)
-            return [service._object_to_dict(epic) for epic in epics]
-        # ------------------------
+        return get_tasks(milestone_id=milestone_id)  # 复用get_tasks
     except Exception as e:
-        logger.error(f"获取路线图 Epics 失败 (ID: {roadmap_id}): {e}", exc_info=True)
+        logger.error(f"获取里程碑 {milestone_id} 的任务时出错: {e}", exc_info=True)
         return []
 
 
-def get_stories(service, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    """获取路线图下的所有Story
+def get_tasks(roadmap_id: Optional[str] = None, milestone_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """获取任务列表，可按路线图或里程碑筛选"""
+    from src.roadmap.service import RoadmapServiceFacade
 
-    Args:
-        service: 路线图服务实例
-        roadmap_id: 路线图ID，不提供则使用活跃路线图
+    service = RoadmapServiceFacade()
 
-    Returns:
-        List[Dict[str, Any]]: Story列表
-    """
-    roadmap_id = roadmap_id or service.active_roadmap_id
-    if not roadmap_id:
-        logger.error("未设置活跃路线图，无法获取 Story")
+    actual_roadmap_id = roadmap_id or service.active_roadmap_id
+    if not actual_roadmap_id and not milestone_id:  # 如果都没有，则无法查询
+        logger.warning("get_tasks: 路线图ID和里程碑ID均未提供")
         return []
+
     try:
-        # --- 使用 session_scope ---
         with session_scope() as session:
-            # 调用 repo 的 get_by_roadmap_id 方法
-            stories = service.story_repo.get_by_roadmap_id(session, roadmap_id)
-            return [service._object_to_dict(story) for story in stories]
-        # ------------------------
-    except Exception as e:
-        logger.error(f"获取路线图 Stories 失败 (ID: {roadmap_id}): {e}", exc_info=True)
-        return []
-
-
-def get_milestones(service, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    """获取路线图下的所有Milestone
-
-    Args:
-        service: 路线图服务实例
-        roadmap_id: 路线图ID，不提供则使用活跃路线图
-
-    Returns:
-        List[Dict[str, Any]]: Milestone列表
-    """
-    roadmap_id = roadmap_id or service.active_roadmap_id
-    if not roadmap_id:
-        logger.error("未设置活跃路线图，无法获取里程碑")
-        return []
-
-    try:
-        # 使用 session_scope 获取会话
-        with session_scope() as session:
-            # 移除旧的检查和实例化逻辑
-            # milestone_repo = service.milestone_repo
-            # if milestone_repo is None:
-            #     from src.db.repositories.roadmap_repository import MilestoneRepository
-            #     milestone_repo = MilestoneRepository(service.session) # 错误：访问 service.session
-
-            # 调用无状态 repo，传入 session
-            milestones = service.milestone_repo.filter(session, roadmap_id=roadmap_id)
-            if milestones:
-                return [service._object_to_dict(milestone) for milestone in milestones]
-
-        # 如果未找到
-        logger.info(f"未找到路线图 {roadmap_id} 的里程碑，返回空列表")
-        return []
-    except Exception as e:
-        logger.error(f"获取路线图里程碑失败: {e}", exc_info=True)  # 添加 exc_info
-        return []
-
-
-def get_milestone_tasks(service, milestone_id: str, roadmap_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    """获取里程碑下的所有任务 (注意：Task 不能直接关联 Milestone)
-
-    Args:
-        service: 路线图服务实例
-        milestone_id: 里程碑ID
-        roadmap_id: 路线图ID，不提供则使用活跃路线图
-
-    Returns:
-        List[Dict[str, Any]]: 任务列表
-    """
-    # roadmap_id = roadmap_id or service.active_roadmap_id # roadmap_id 在此逻辑中可能不是必需的
-
-    # --- 由于 Task 不能直接关联 Milestone，此函数逻辑需要重审 ---
-    logger.warning(f"get_milestone_tasks 调用 (Milestone ID: {milestone_id})，但 Task 模型无法直接关联 Milestone。此函数可能返回空或需要调整逻辑。")
-    # 可能的替代逻辑：
-    # 1. 找到 Milestone 关联的 Epics/Stories (如果模型支持)
-    # 2. 找到这些 Stories 下的 Tasks
-    # 或者，如果业务逻辑允许 Task 有一个 milestone_id 字段（当前没有），则修改模型和查询
-
-    # 暂时返回空列表，表示无法按此方式获取
-    return []
-
-
-def get_tasks(service, roadmap_id: Optional[str] = None, milestone_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    """获取路线图或里程碑下的所有Task
-
-    Args:
-        service: 路线图服务实例
-        roadmap_id: 路线图ID，不提供则使用活跃路线图
-        milestone_id: 里程碑ID，如果提供则获取特定里程碑下的任务
-
-    Returns:
-        List[Dict[str, Any]]: Task列表
-    """
-    roadmap_id = roadmap_id or service.active_roadmap_id
-    if not roadmap_id and not milestone_id:
-        logger.error("未设置活跃路线图且未提供里程碑ID，无法获取任务")
-        return []
-
-    try:
-        tasks_dicts = []  # Initialize list for dictionaries
-        with session_scope() as session:  # Open session scope
-            tasks = []
             if milestone_id:
-                # --- 注意: Task 模型当前没有直接的 milestone_id 关联 --- #
-                # 这部分逻辑可能需要调整或依赖 TaskRepository 的 filter 实现
-                logger.warning(f"Fetching tasks by milestone_id ({milestone_id}), which might not be directly supported by Task model.")
-                milestone_tasks = service.task_repo.filter(session, milestone_id=milestone_id)
-                if milestone_tasks:
-                    tasks.extend(milestone_tasks)
-            elif roadmap_id:
-                # --- 获取与路线图关联的任务 (通过 Story -> Epic -> Roadmap) --- #
-                # 假设 TaskRepository.get_by_roadmap_id 实现了正确的关联查询
-                roadmap_tasks = service.task_repo.get_by_roadmap_id(session, roadmap_id)
-                # --- 添加日志 ---
-                logger.debug(f"[get_tasks] Fetched {len(roadmap_tasks)} raw task objects for roadmap {roadmap_id} from repository.")
-                if roadmap_tasks:
-                    tasks.extend(roadmap_tasks)
-                    logger.info(f"从路线图 {roadmap_id} 找到 {len(tasks)} 个任务")
-                else:
-                    logger.info(f"路线图 {roadmap_id} 下未找到任务")
-
-            # --- Convert to dicts *inside* the session scope --- #
-            if tasks:
-                for task in tasks:
-                    task_dict = {
-                        "id": task.id,
-                        "title": task.title,  # Explicitly include title
-                        "description": task.description,
-                        "status": task.status,  # Directly use the string value
-                        "priority": task.priority,  # Directly use the string value
-                        "story_id": task.story_id,
-                        "story_title": task.story.title if task.story else "N/A",  # Include story title
-                        "created_at": task.created_at if task.created_at else None,  # Directly use the string value
-                        "updated_at": task.updated_at if task.updated_at else None  # Directly use the string value
-                        # Add other necessary fields from Task model if needed
-                    }
-                    tasks_dicts.append(task_dict)
-
-            # --- 添加日志 ---
-            logger.debug(f"[get_tasks] Returning {len(tasks_dicts)} task dictionaries for roadmap {roadmap_id}.")
-            # Session closes here
-
-        # --- Return the list of dictionaries outside the scope --- #
-        if not tasks_dicts:
-            params_str = f"路线图ID={roadmap_id}" if roadmap_id else ""
-            params_str += f"{', ' if params_str else ''}里程碑ID={milestone_id}" if milestone_id else ""
-            logger.info(f"未找到{params_str}的任务，返回空列表")
-
-        return tasks_dicts
-
+                tasks_model = service.task_repo.get_by_milestone_id(session, milestone_id)
+            elif actual_roadmap_id:  # 只有当milestone_id不存在时，才按roadmap_id查
+                # TaskRepository 可能没有 get_by_roadmap_id, 需要通过milestone/story获取
+                # 这是一个简化，实际可能需要更复杂的查询
+                tasks_model = []
+                milestones_in_roadmap = service.milestone_repo.get_by_roadmap_id(session, actual_roadmap_id)
+                for milestone in milestones_in_roadmap:
+                    tasks_model.extend(service.task_repo.get_by_milestone_id(session, milestone.id))
+            else:  # 不应该到这里
+                return []
+            return [task.to_dict() for task in tasks_model]
     except Exception as e:
-        logger.error(f"获取任务失败: {e}", exc_info=True)
+        logger.error(f"获取任务时出错 (roadmap_id: {actual_roadmap_id}, milestone_id: {milestone_id}): {e}", exc_info=True)
         return []
 
 
-def get_roadmap_info(service, roadmap_id: Optional[str] = None) -> Dict[str, Any]:
+def _get_github_info(status_service=None) -> Dict[str, Any]:
     """
-    获取路线图信息
-
-    Args:
-        service: 路线图服务实例
-        roadmap_id: 路线图ID，不提供则使用活跃路线图
-
-    Returns:
-        Dict[str, Any]: 路线图信息
+    获取GitHub相关信息。
+    - owner 和 repo 从全局 GitHub 配置 (settings.json 通过 StatusService) 获取。
+    - project_id 和 project_title 从当前活动路线图的后端配置 (ProjectState) 获取。
     """
-    roadmap_id = roadmap_id or service.active_roadmap_id
+    github_info_data = {}  # 用于存储最终结果
 
-    # 获取路线图基本信息
-    roadmap = get_roadmap(service, roadmap_id)
-    if not roadmap:
-        return {"success": False, "error": f"未找到路线图: {roadmap_id}"}
+    # 1. 获取 StatusService 实例 (如果未提供)
+    if not status_service:
+        try:
+            from src.roadmap.service.service_connector import get_status_service
 
-    # 获取统计信息
-    epics = get_epics(service, roadmap_id)
-    milestones = get_milestones(service, roadmap_id)
-    stories = get_stories(service, roadmap_id)
+            status_service = get_status_service()
+            if not status_service:
+                logger.error("未能获取StatusService实例 (在_get_github_info中)")
+                raise ValueError("未能获取StatusService实例，请确保vc status init已经执行")
+        except Exception as e:
+            logger.error(f"获取StatusService实例时出错 (在_get_github_info中): {e}")
+            raise ValueError(f"获取StatusService实例时出错，请确保vc status init已经执行: {e}")
 
-    tasks_count = 0
-    completed_tasks = 0
-    for milestone in milestones:
-        milestone_tasks = get_milestone_tasks(service, milestone.get("id"), roadmap_id)
-        tasks_count += len(milestone_tasks)
-        completed_tasks += sum(1 for task in milestone_tasks if task.get("status") == "completed")
+    # 2. 从 StatusService 获取全局 GitHub owner 和 repo
+    try:
+        logger.info("尝试从StatusService获取全局GitHub owner/repo...")
+        # GitHubInfoProvider.get_status() 直接返回包含 effective_owner/repo 的字典
+        github_domain_status = status_service.get_domain_status("github_info")
 
-    # 计算整体进度
-    progress = 0.0
-    if tasks_count > 0:
-        progress = completed_tasks / tasks_count * 100
+        if github_domain_status and github_domain_status.get("configured", False):
+            owner = github_domain_status.get("effective_owner")
+            repo = github_domain_status.get("effective_repo")
+            source = github_domain_status.get("source", "unknown")
 
-    # 获取状态信息
-    status_info = service.manager.check_roadmap("roadmap", roadmap_id=roadmap_id)
+            if not owner or not repo:
+                logger.error(f"GitHub全局配置不完整，owner ({owner}) 或 repo ({repo}) 缺失。来源: {source}")
+                raise ValueError("GitHub全局配置不完整 (owner/repo)，请执行 'vc status init' 命令配置GitHub信息")
 
-    return {
-        "success": True,
-        "roadmap": roadmap,
-        "stats": {
-            "epics_count": len(epics),
-            "milestones_count": len(milestones),
-            "stories_count": len(stories),
-            "tasks_count": tasks_count,
+            github_info_data["owner"] = owner
+            github_info_data["repo"] = repo
+            logger.info(f"从StatusService获取全局GitHub信息成功: {owner}/{repo} (来源: {source})")
+        else:
+            status_message = github_domain_status.get("status_message", "GitHub未配置或获取失败")
+            logger.error(f"GitHub全局配置未就绪或获取失败: {status_message}")
+            raise ValueError(f"GitHub全局配置未就绪: {status_message}。请执行 'vc status init'。")
+
+    except Exception as e:
+        if isinstance(e, ValueError) and ("请执行 'vc status init'" in str(e) or "全局配置不完整" in str(e)):
+            raise
+        logger.error(f"从StatusService获取全局GitHub owner/repo时出错: {e}", exc_info=True)
+        raise ValueError(f"获取全局GitHub owner/repo失败: {e}。请执行 'vc status init'。")
+
+    # 3. 从 ProjectState 获取当前活动路线图的 project_id 和 project_title
+    try:
+        project_state = status_service.project_state
+        active_gh_config = project_state.get_active_roadmap_backend_config().get("github", {})
+
+        project_id = active_gh_config.get("project_id")
+        project_title = active_gh_config.get("project_title")  # 可能是 None
+
+        github_info_data["project_id"] = project_id  # 允许为 None
+        github_info_data["project_title"] = project_title  # 允许为 None
+
+        logger.info(f"从ProjectState获取活动路线图的GitHub Project信息: ID={project_id}, Title={project_title}")
+
+    except Exception as e:
+        logger.warning(f"从ProjectState获取活动GitHub Project信息时出错: {e}。project_id 和 project_title 可能未设置。", exc_info=True)
+        github_info_data["project_id"] = None  # 确保在出错时这些键存在且为None
+        github_info_data["project_title"] = None
+
+    # roadmap_title 在这个上下文中似乎与 project_title 重复或不明确，暂时移除
+    # 如果需要一个通用的项目标题，可以考虑从 project_state.get_project_name() 获取
+    # github_info_data["roadmap_title"] = project_title or "VibeCopilot Project"
+
+    return github_info_data
+
+
+def get_roadmap_info(roadmap_id: Optional[str] = None) -> Dict[str, Any]:
+    """获取路线图详细信息，包括关联的Epic、Story、任务等"""
+    from src.roadmap.service import RoadmapServiceFacade
+
+    service = RoadmapServiceFacade()
+
+    # 尝试获取路线图信息
+    actual_roadmap_id = roadmap_id or service.active_roadmap_id
+    if not actual_roadmap_id:
+        logger.warning("get_roadmap_info: 未找到活动路线图ID")
+        return {}
+
+    try:
+        # 获取路线图基本信息
+        roadmap_info = get_roadmap(actual_roadmap_id) or {}
+        if not roadmap_info:
+            logger.warning(f"未找到路线图: {actual_roadmap_id}")
+            return {}
+
+        # 获取统计数据
+        epics_list = get_epics(actual_roadmap_id)
+        milestones_list = get_milestones(actual_roadmap_id)
+        stories_list = get_stories(actual_roadmap_id)
+
+        total_tasks = 0
+        completed_tasks = 0
+        for milestone in milestones_list:
+            milestone_tasks = get_milestone_tasks(milestone.get("id", ""), actual_roadmap_id)
+            total_tasks += len(milestone_tasks)
+            completed_tasks += sum(1 for task in milestone_tasks if task.get("status") == "completed")
+
+        progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+
+        stats = {
+            "total_epics": len(epics_list),
+            "total_milestones": len(milestones_list),
+            "total_stories": len(stories_list),
+            "total_tasks": total_tasks,
             "completed_tasks": completed_tasks,
-            "progress": progress,
-        },
-        "status": status_info,
-    }
+            "progress": round(progress, 2),
+        }
+        logger.debug(f"[roadmap_data.get_roadmap_info] stats: {stats}")
+
+        # 添加 GitHub 链接信息 (与 patch 逻辑对齐)
+        if not roadmap_info.get("github_link"):
+            try:
+                from src.status.service import StatusService  # 确保导入
+
+                status_service = StatusService.get_instance()
+                project_state = status_service.project_state
+
+                # 检查是否有 GitHub 项目链接
+                github_project_id = project_state.get_github_project_id_for_roadmap(actual_roadmap_id)
+                if github_project_id:
+                    # 从 settings.json 获取 owner/repo
+                    github_info = status_service.get_domain_status("github_info") or {}
+                    owner = github_info.get("effective_owner")
+                    repo = github_info.get("effective_repo")
+
+                    if owner and repo and github_project_id:
+                        # 构建 GitHub 链接
+                        project_id_str = str(github_project_id) if github_project_id.isdigit() else github_project_id
+                        github_link_data = {
+                            "owner": owner,
+                            "repo": repo,
+                            "project_id": project_id_str,
+                            "url": f"https://github.com/{owner}/{repo}/projects/{project_id_str}",
+                        }
+                        roadmap_info["github_link"] = github_link_data
+                        logger.info(f"已添加 GitHub 链接信息: {github_link_data}")
+                    else:
+                        logger.warning(f"缺少构建 GitHub 链接所需的信息: owner={owner}, repo={repo}, project_id={github_project_id}")
+            except Exception as e:
+                logger.error(f"添加 GitHub 链接时出错: {e}", exc_info=True)
+
+        # 确保路线图名称存在
+        if roadmap_info and not roadmap_info.get("name") and roadmap_info.get("title"):
+            roadmap_info["name"] = roadmap_info.get("title")
+
+        # 构建最终结果
+        final_result = {
+            "success": True,
+            "roadmap": roadmap_info,
+            "stats": stats,
+            "name": roadmap_info.get("name", "未命名路线图") if roadmap_info else "未命名路线图",
+            "description": roadmap_info.get("description", "无描述") if roadmap_info else "无描述",
+            "active_id": service.active_roadmap_id,
+        }
+
+        return final_result
+
+    except Exception as e:
+        logger.error(f"获取路线图详情时出错: {e}", exc_info=True)
+        return {"success": False, "error": f"获取路线图详情时出错: {e}"}

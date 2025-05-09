@@ -39,29 +39,11 @@ class ConfigManager:
     """配置管理器"""
 
     def __init__(self, config_path: Optional[Union[str, Path]] = None):
-        """初始化配置管理器
-
-        Args:
-            config_path: 配置文件路径
-        """
-        self.config_dir = self._get_config_dir()
-        self.config_path = Path(config_path) if config_path else Path(self.config_dir) / "config.json"
+        """初始化配置管理器"""
+        self.config_dir = Path(".vibecopilot/config")
+        self.settings_path = Path(".vibecopilot/config/settings.json")
         self.config = self._load_config()
         self._validate_paths()
-
-    def _get_config_dir(self) -> Path:
-        """获取配置目录
-
-        优先使用环境变量VIBECOPILOT_CONFIG_DIR，否则使用用户主目录下的data/temp
-        """
-        config_dir = os.environ.get("VIBECOPILOT_CONFIG_DIR")
-        if config_dir:
-            path = Path(config_dir)
-        else:
-            path = Path.home() / "data/temp"
-
-        path.mkdir(parents=True, exist_ok=True)
-        return path
 
     def _resolve_config_values(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """递归解析配置值，将ConfigValue实例转换为实际值"""
@@ -78,21 +60,13 @@ class ConfigManager:
     def _load_config(self) -> Dict[str, Any]:
         """加载配置
 
-        按优先级加载：环境变量 > 配置文件 > 默认配置
+        现在仅从默认配置和环境变量加载值
         """
         try:
-            # 首先加载默认配置
+            # 加载默认配置并解析ConfigValue (只解析环境变量)
             config = self._resolve_config_values(DEFAULT_CONFIG)
 
-            # 如果配置文件存在，加载并合并
-            if self.config_path.exists():
-                with open(self.config_path) as f:
-                    file_config = json.load(f)
-                config = self._merge_configs(config, file_config)
-                logger.debug(f"已从 {self.config_path} 加载配置")
-            else:
-                logger.info(f"配置文件不存在，使用默认配置: {self.config_path}")
-                self.save_config(config)
+            logger.debug("已从环境变量和默认值加载配置")
 
             return config
 
@@ -103,42 +77,34 @@ class ConfigManager:
     def _validate_paths(self):
         """验证并标准化所有路径配置"""
         paths = self.config.get("paths", {})
-        project_root = Path(paths.get("project_root", Path.cwd()))
+        project_root_str = os.environ.get("VIBECOPILOT_APP_DIR") or str(Path.cwd())
+        project_root = Path(project_root_str)
+
+        if "paths" not in self.config:
+            self.config["paths"] = {}
+        self.config["paths"]["project_root"] = str(project_root)
 
         for key, path in paths.items():
             if key == "project_root":
                 continue
 
-            # 转换为绝对路径
-            if not os.path.isabs(path):
-                abs_path = project_root / path
-                self.config["paths"][key] = str(abs_path)
+            try:
+                path_obj = Path(path)
+                if not path_obj.is_absolute():
+                    abs_path = project_root / path_obj
+                    self.config["paths"][key] = str(abs_path)
+                else:
+                    self.config["paths"][key] = str(path_obj)
+            except Exception as e:
+                logger.warning(f"处理路径配置 '{key}: {path}' 时出错: {e}")
 
-            # 确保父目录存在
-            Path(self.config["paths"][key]).parent.mkdir(parents=True, exist_ok=True)
-
-    def _merge_configs(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-        """递归合并配置字典"""
-        merged = base.copy()
-
-        for key, value in override.items():
-            if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
-                merged[key] = self._merge_configs(merged[key], value)
-            else:
-                merged[key] = value
-
-        return merged
-
-    def save_config(self, config: Dict[str, Any]) -> bool:
-        """保存配置到文件"""
-        try:
-            with open(self.config_path, "w") as f:
-                json.dump(config, f, indent=2)
-            logger.info(f"配置已保存到 {self.config_path}")
-            return True
-        except Exception as e:
-            logger.error(f"保存配置失败: {e}")
-            return False
+            abs_path_str = self.config["paths"].get(key, path)
+            try:
+                abs_path_obj = Path(abs_path_str)
+                if abs_path_obj.parent and str(abs_path_obj.parent) != ".":
+                    abs_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                logger.warning(f"创建路径 '{abs_path_str}' 的父目录时出错: {e}")
 
     def get(self, key_path: str, default: Any = None) -> Any:
         """获取配置值
@@ -154,32 +120,6 @@ class ConfigManager:
                 return default
         return value
 
-    def set(self, key_path: str, value: Any, save: bool = True) -> bool:
-        """设置配置值
-
-        支持使用点符号访问嵌套配置，如'database.url'
-        """
-        parts = key_path.split(".")
-        target = self.config
-
-        # 遍历路径直到最后一个部分
-        for i, part in enumerate(parts[:-1]):
-            if part not in target:
-                # 自动创建中间节点
-                target[part] = {}
-            elif not isinstance(target[part], dict):
-                # 如果中间节点不是字典，报错
-                logger.error(f"设置配置值失败：路径 {'.'.join(parts[:i+1])} 不是字典")
-                return False
-            target = target[part]
-
-        # 设置最终值
-        target[parts[-1]] = value
-
-        if save:
-            return self.save_config(self.config)
-        return True
-
     def reload(self):
         """重新加载配置"""
         self.config = self._load_config()
@@ -191,11 +131,7 @@ class ConfigManager:
         这个方法会重新加载所有配置，包括从环境变量、配置文件和默认值
         """
         try:
-            # 清除已解析的配置缓存
-            self.config = {}
-            # 重新加载所有配置
             self.config = self._load_config()
-            # 验证路径
             self._validate_paths()
             logger.info("配置已成功刷新")
             return True

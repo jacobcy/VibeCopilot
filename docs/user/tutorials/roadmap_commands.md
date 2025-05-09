@@ -145,25 +145,32 @@ roadmap switch --format=json       # 以JSON格式输出路线图信息
 
 ### 6. 同步路线图 (sync)
 
-在本地数据库和外部源（GitHub或YAML文件）之间同步路线图数据。
+在本地数据库和GitHub Project之间同步路线图数据。
 
 ```bash
-roadmap sync [options] <source>
+roadmap sync <operation> [id]
 
 # 参数
-source                  # 同步来源 (github:<owner>/<repo> 或 <file.yaml>)
+operation            # 同步操作类型 (push 或 pull)
+id                  # push操作时为本地路线图ID，pull操作时为远程项目Number
 
 # 选项
---operation=<op>       # 同步操作 (push 或 pull，仅用于 GitHub)
---roadmap=<id>        # 指定路线图ID
---force              # 强制同步，忽略冲突
---verbose           # 显示详细信息
+--verbose, -v       # 显示详细信息
 
 # 示例
-roadmap sync github:owner/repo --operation=pull    # 从GitHub拉取
-roadmap sync github:owner/repo --operation=push    # 推送到GitHub
-roadmap sync path/to/roadmap.yaml                 # 从YAML文件导入
+roadmap sync pull 123                # 从GitHub Project #123拉取到本地
+roadmap sync push roadmap_456        # 将本地路线图 roadmap_456 推送到GitHub
+roadmap sync push                    # 推送当前活动路线图到GitHub
+roadmap sync pull 123 --verbose      # 显示详细的同步信息
 ```
+
+**说明：**
+
+- `pull` 操作会自动创建本地路线图（如果不存在）
+- `push` 操作会自动创建远程GitHub Project（如果不存在）
+- 不指定本地路线图ID时，将使用当前活动路线图
+- 同步时会自动处理关联信息，无需手动设置
+- 所有同步操作都是强制的，会直接覆盖目标端的数据
 
 ## 返回值格式
 

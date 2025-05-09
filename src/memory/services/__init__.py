@@ -10,16 +10,10 @@ VibeCopilot 记忆服务模块
 - 记忆项服务：管理本地数据库中的记忆项并与Basic Memory同步
 """
 
-from .memory_item_service import MemoryItemService
-from .memory_service import MemoryService
-from .note_service import NoteService
-from .search_service import SearchService
-from .sync_service import SyncService
+# Expose the main service facade
+from .memory_service import MemoryService, get_memory_service
 
-__all__ = [
-    "NoteService",
-    "SearchService",
-    "SyncService",
-    "MemoryItemService",
-    "MemoryService",
-]
+# Expose operations if needed directly (usually accessed via MemoryService)
+# from .memory_operations import ...
+
+__all__ = ["MemoryService", "get_memory_service"]

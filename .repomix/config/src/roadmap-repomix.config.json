@@ -1,0 +1,31 @@
+{
+  "output": {
+    "filePath": "/Users/jacobcy/Public/VibeCopilot/repomix/",
+    "style": "markdown",
+    "parsableStyle": false,
+    "headerText": "",
+    "instructionFilePath": ".repomix/instructions/roadmap-instructions.md",
+    "fileSummary": true,
+    "directoryStructure": true,
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "topFilesLength": 5,
+    "showLineNumbers": false,
+    "copyToClipboard": false,
+    "includeEmptyDirectories": false,
+    "compress": false
+  },
+  "include": [],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": []
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  },
+  "cwd": "/Users/jacobcy/Public/VibeCopilot"
+}

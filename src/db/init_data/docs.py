@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Dict, List
 
 from src.core.config import get_app_dir
-from src.memory.services.memory_item_service import MemoryItemService
+from src.db.repositories.memory_item_repository import MemoryItemRepository
+from src.memory.services.memory_service import MemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def get_doc_files() -> List[str]:
     return [str(file) for file in md_files]
 
 
-def init_docs() -> Dict[str, int]:
+def init_docs(session) -> Dict[str, int]:
     """初始化文档 Memory Items"""
     logger.info("开始初始化文档 Memory Items...")
     success_count = 0
@@ -45,7 +46,7 @@ def init_docs() -> Dict[str, int]:
         return {"success": success_count, "failed": fail_count}
 
     try:
-        memory_service = MemoryItemService()
+        memory_service = MemoryService()
 
         for file_path_str in doc_files:
             file_path = Path(file_path_str)
@@ -57,32 +58,14 @@ def init_docs() -> Dict[str, int]:
                 # 使用文件名作为标题
                 title = file_path.stem
 
-                # 创建 MemoryItem 数据 - 现在直接传递参数
-                # item_data = {
-                #     "title": title,
-                #     "content": content,
-                #     "type": "document",  # 或者其他合适的类型
-                #     "source": f"file://{file_path_str}"
-                # }
+                # 修改：使用create_note方法而不是create_item
+                success, message, result = memory_service.create_note(content=content, title=title, folder="docs", tags="document,init")
 
-                # 调用服务层方法，传递解构的参数
-                created_item = memory_service.create_item(
-                    title=title,
-                    content=content,
-                    folder="Docs",  # 指定一个文件夹
-                    tags="document,init",  # 示例标签
-                    permalink=None,  # 初始导入没有 permalink
-                    content_type="document",  # 指定类型
-                    source=f"file://{file_path_str}",
-                )
-
-                if created_item and isinstance(created_item, dict):
-                    item_id = created_item.get("id")
-                    item_title = created_item.get("title", "未知标题")
-                    logger.info(f"成功创建 Memory Item: {item_title} (ID: {item_id})")
+                if success:
+                    logger.info(f"成功创建 Memory Item: {title}, 消息: {message}")
                     success_count += 1
                 else:
-                    logger.error(f"创建 Memory Item 失败: {title}")
+                    logger.error(f"创建 Memory Item 失败: {title}, 错误: {message}")
                     fail_count += 1
 
             except Exception as e:

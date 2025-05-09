@@ -2,31 +2,18 @@
 
 commands:
   "roadmap sync":
-    description: "从GitHub同步路线图数据 (用法: roadmap sync [OPTIONS] REPOSITORY)"
+    description: "在本地路线图和GitHub Project之间同步数据"
     arguments:
-      - name: "repository"
-        description: "GitHub仓库 (格式: owner/repo)"
+      - name: "operation"
+        description: "同步操作类型 (push: 本地 -> GitHub, pull: GitHub -> 本地)"
         required: true
         type: "string"
-    options:
-      "--theme":
-        description: "GitHub项目主题标签"
-        required: false
-        type: "string"
-      "--operation":
-        description: "同步操作类型"
         values: ["push", "pull"]
-        default: "pull"
+      - name: "id"
+        description: "push操作时为本地路线图ID，pull操作时为远程项目Number"
         required: false
         type: "string"
-      "--roadmap":
-        description: "指定路线图ID"
-        required: false
-        type: "string"
-      "--force":
-        description: "强制同步，忽略冲突"
-        type: "flag"
-        required: false
+    options:
       "--verbose":
         description: "显示详细输出"
         type: "flag"

@@ -319,77 +319,21 @@ class StatusHandler(ClickBaseHandler):
 
 
 @click.command(name="status", help="查询数据库表状态和结构信息")
-@click.option("-t", "--type", default="all", help="表名称或实体类型，默认为所有表")
-@click.option("--format", type=click.Choice(["table", "json", "yaml"]), default="yaml", help="输出格式")
-@pass_service(service_type="db")
-def status_db(service, type: str = "all", format: str = "yaml") -> None:
-    """查询数据库表状态和结构信息"""
-    # Adjust format for rules table
-    if type.lower() == "rules" and format == "table":
-        format = "yaml"
+@click.argument("entity_type", required=False)
+@click.option("-t", "--type", "type_option", help="表名称或实体类型，默认为所有表")
+def status_db_cli(entity_type: Optional[str], type_option: Optional[str]):
+    """查询数据库表状态和结构信息的Click命令入口"""
+    # 优先使用位置参数，如果没有则使用--type选项，如果都没有则使用默认值"all"
+    final_type = entity_type or type_option or "all"
 
     handler = StatusHandler()
-    session = None
-    exit_code = 0
+    # `detail` 和 `format` 在 StatusHandler 内部处理或有默认值
+    params: Dict[str, Any] = {"type": final_type, "format": "yaml"}
     try:
-        # --- Validation (doesn't need session) ---
-        if format not in handler.VALID_FORMATS:
-            raise ValidationError(f"不支持的输出格式: {format}")
-
-        session = get_session()
-
-        if type == "all":
-            # --- Get All Stats ---
-            db_stats_data = get_db_stats(session)
-            handler._display_db_stats(db_stats_data, format, False)  # 不显示示例数据
-        else:
-            # --- Get Single Table Stats & Schema ---
-            entity_type_or_table_name = type  # User input
-
-            # Attempt to map entity type to table name
-            mapped_table_name = map_entity_to_table(entity_type_or_table_name)
-
-            # Use mapped name if it's different and potentially valid, otherwise use original input
-            table_name = mapped_table_name if mapped_table_name != entity_type_or_table_name else entity_type_or_table_name
-            logger.info(f"Input type '{entity_type_or_table_name}' resolved to table name '{table_name}'")
-
-            # Validate the final table name
-            all_tables = get_all_tables(session)
-            if table_name not in all_tables:
-                # Provide better error message including valid entity types if input was likely an entity type
-                valid_entities = get_valid_entity_types(session, include_tables=False)  # Get only entity names
-                error_msg = f"未知的表名或实体类型: {entity_type_or_table_name}。"
-                error_msg += f"\n可用表: {', '.join(sorted(all_tables))}"
-                if entity_type_or_table_name in valid_entities:
-                    # If the input was a valid entity type, suggest the correct table name
-                    correct_table = map_entity_to_table(entity_type_or_table_name)
-                    error_msg += f"\n提示: 您可能想查询表 '{correct_table}'。"
-                elif entity_type_or_table_name not in valid_entities:
-                    # Also list valid entity types if the input wasn't one
-                    error_msg += f"\n可用实体类型: {', '.join(sorted(valid_entities))}"
-                raise ValidationError(error_msg)
-
-            schema_data = get_table_schema(session, table_name)  # Use potentially mapped table_name
-            if "error" in schema_data:
-                console.print(f"[red]获取表 '{table_name}' 结构失败: {schema_data['error']}[/red]")
-                exit_code = 1
-                raise click.Abort()
-
-            table_stats_data = get_table_stats(session, table_name)  # Use potentially mapped table_name
-            handler._display_table_stats(schema_data, table_stats_data, format, False)  # 不显示示例数据
-
+        handler.handle(**params)
     except Exception as e:
-        # Let friendly_error_handling decorator manage user output for Abort/other exceptions
-        if not isinstance(e, (ValidationError, DatabaseError, click.Abort)):
-            logger.error(f"执行 status 命令时出错: {e}", exc_info=True)
-        if not isinstance(e, click.Abort):
-            console.print(f"[red]执行 status 命令时发生错误: {str(e)}[/red]")
-        exit_code = 1
+        # handler.error_handler(e) # error_handler 现在是 handler 的一部分
+        # 或者直接处理
+        console.print(f"[red]查询状态时出错: {str(e)}[/red]")
+        logger.error(f"查询状态时出错 (Type={final_type}): {e}", exc_info=True)
         raise click.Abort()
-    finally:
-        if session:
-            session.close()
-        # Exit with the determined code if needed, though Abort handles non-zero exit
-        # if exit_code != 0:
-        #    ctx = click.get_current_context()
-        #    ctx.exit(exit_code)

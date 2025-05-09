@@ -123,22 +123,17 @@ class BackupHandler(ClickBaseHandler):
 
 
 @click.command(name="backup", help="备份数据库")
-@click.option("--output", "-o", help="备份文件输出路径")
-@click.option("--verbose", "-v", is_flag=True, help="显示详细信息")
-@pass_service(service_type="db")
-def backup_db(service, output: Optional[str], verbose: bool):
-    """
-    备份数据库命令
-
-    Args:
-        service: 数据库服务实例
-        output: 备份文件输出路径
-        verbose: 是否显示详细信息
-    """
+@click.option("--output", default=None, help="输出文件路径")
+@click.option("--verbose", is_flag=True, default=False, help="显示详细信息")
+def backup_db_cli(output: str, verbose: bool):
+    """备份数据库的Click命令入口"""
     handler = BackupHandler()
+    params: Dict[str, Any] = {"output": output, "verbose": verbose}
     try:
-        params: Dict[str, Any] = {"output": output, "verbose": verbose}
-        result = handler.execute(service=service, **params)
-        return result
-    except Exception:
-        return 1
+        handler.handle(**params)
+    except Exception as e:
+        # handler.error_handler(e) # error_handler 现在是 handler 的一部分
+        # 或者直接处理
+        console.print(f"[red]备份数据库时出错: {str(e)}[/red]")
+        logger.error(f"备份数据库时出错: {e}", exc_info=True)
+        raise click.Abort()

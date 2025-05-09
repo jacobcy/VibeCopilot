@@ -52,7 +52,11 @@ src/roadmap/
   - `roadmap_status.py`: 提供路线图状态的服务接口。
 
 - **同步层 (`sync`)**: 负责路线图与外部系统的数据同步。
-  - `GitHubSyncService`: 实现与GitHub仓库的项目板和议题的双向同步。详细指南参见 [`roadmap_github_sync.md`](./docs/roadmap_github_sync.md)。
+  - `GitHubSyncService`: 实现与GitHub仓库的项目板和议题的双向同步。具有以下特点：
+    - 自动检测Git仓库信息，无需手动指定repository参数
+    - 路线图存储GitHub配置（owner、repo、project_id）
+    - 动态接收同步参数，增强灵活性
+    - 详细指南参见 [`roadmap_github_sync.md`](./docs/roadmap_github_sync.md) 和 [`github-sync-refactoring.md`](/docs/roadmap/github-sync-refactoring.md)
   - `YamlSyncService`: 处理路线图数据的YAML文件导入和导出，并内置了验证逻辑。详细指南参见 [`roadmap_yaml_sync.md`](./docs/roadmap_yaml_sync.md)。
   - 验证组件: 包括`yaml_validator_schema.py`, `yaml_validator_section.py`和`yaml_validator_cli.py`。
   - 验证工具：python src/roadmap/sync/yaml_validator_cli.py validate path/to/roadmap.yaml
@@ -201,8 +205,9 @@ vc task show task_456
 
 ### 同步操作
 
-- `sync_to_github(roadmap_id)`: 将指定路线图同步到关联的 GitHub 项目。
-- `sync_from_github(roadmap_id)`: 从关联的 GitHub 项目同步状态更新到本地路线图。
+- `sync_to_github(owner, repo, project_id, roadmap_id)`: 将指定路线图同步到关联的 GitHub 项目。
+- `sync_status_from_github(owner, repo, project_id, roadmap_id)`: 从关联的 GitHub 项目同步状态更新到本地路线图。
+- `set_github_link(roadmap_id, owner, repo, project_id)`: 设置或更新路线图的 GitHub 链接信息。
 - `export_to_yaml(roadmap_id, output_path)`: 将路线图导出为 YAML 文件。
 - `import_from_yaml(file_path, roadmap_id=None)`: 从 YAML 文件导入或更新路线图。
 

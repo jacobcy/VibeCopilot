@@ -34,25 +34,19 @@ class Roadmap(Base):
 
     def __init__(self, **kwargs):
         """初始化Roadmap，确保ID字段不为空"""
-        # 确保ID字段
         if not kwargs.get("id"):
             kwargs["id"] = f"roadmap_{uuid.uuid4().hex[:8]}"
-
-        # 处理标签格式
         if "tags" in kwargs and isinstance(kwargs["tags"], list):
             kwargs["tags"] = json.dumps(kwargs["tags"])
-
-        # 确保时间戳
         if not kwargs.get("created_at"):
             kwargs["created_at"] = datetime.now().isoformat()
         if not kwargs.get("updated_at"):
             kwargs["updated_at"] = datetime.now().isoformat()
-
         super().__init__(**kwargs)
 
     def to_dict(self):
         """转换为字典"""
-        return {
+        data = {
             "id": self.id,
             "title": self.title,
             "name": self.title,
@@ -65,3 +59,4 @@ class Roadmap(Base):
             "epics": [epic.to_dict() for epic in self.epics] if self.epics else [],
             "milestones": [milestone.to_dict() for milestone in self.milestones] if self.milestones else [],
         }
+        return data
